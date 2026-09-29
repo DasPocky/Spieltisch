@@ -13,7 +13,15 @@ export interface ScoreEntry {
  * Kompakte Punkteleiste – bis 4 Spieler als Raster, darüber wischbar.
  * Der Spieler am Zug ist blau hervorgehoben, der Führende bekommt einen Stern.
  */
-export function Scoreboard({ entries, currentId, me, online }: { entries: ScoreEntry[]; currentId: string | null; me: string | null; online: Set<string> | null }) {
+export function Scoreboard({ entries, currentId, me, online, selectedId, onSelect }: {
+  entries: ScoreEntry[];
+  currentId: string | null;
+  me: string | null;
+  online: Set<string> | null;
+  /** optional: antippbar, z. B. um den Block eines Spielers anzuzeigen */
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const max = Math.max(...entries.map((p) => p.score));
   const fits = entries.length <= 4;
@@ -35,8 +43,16 @@ export function Scoreboard({ entries, currentId, me, online }: { entries: ScoreE
           <div
             key={p.id}
             data-cur={cur}
+            role={onSelect ? "button" : undefined}
+            tabIndex={onSelect ? 0 : undefined}
+            aria-pressed={onSelect ? selectedId === p.id : undefined}
+            onClick={onSelect ? () => onSelect(p.id) : undefined}
+            onKeyDown={onSelect ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(p.id); } } : undefined}
             className={cn(
-              "relative min-w-0 rounded-xl px-2.5 pt-1.5 pb-2 transition",
+              "relative min-w-0 rounded-xl px-2.5 pt-1.5 pb-2 text-left transition outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+              onSelect && "cursor-pointer",
+              selectedId === p.id && !cur && "ring-2 ring-inset ring-navy-300/70",
+              selectedId === p.id && cur && "ring-2 ring-inset ring-white/70",
               !fits && "w-26 shrink-0 snap-start",
               cur ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass",
             )}

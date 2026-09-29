@@ -108,6 +108,30 @@ test("Host entfernt einen Spieler", async ({ browser }) => {
   await expect(guest.getByText("Du wurdest aus dem Raum entfernt.")).toBeVisible();
 });
 
+test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
+  const host = await newPhone(browser);
+  const guest = await newPhone(browser);
+  const code = await createRoom(host, "Anna", "2468");
+  await joinRoom(guest, code, "Ben", "2468");
+  await host.getByRole("button", { name: /Gespielt wird/ }).click();
+  await host.getByRole("button", { name: /Kniffel/ }).click();
+  await expect(guest.getByText("Gespielt wird")).toBeVisible();
+  await expect(guest.getByRole("button", { name: /Gespielt wird Kniffel/ })).toBeVisible();
+  await host.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(guest.getByText("Warte auf Anna")).toBeVisible();
+  await host.getByRole("button", { name: /Würfeln/ }).click();
+  const dice = (p: Page) => p.getByRole("img", { name: /^Würfel \d$/ }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  await expect.poll(() => dice(host)).toHaveLength(5);
+  await expect.poll(() => dice(guest)).toEqual(await dice(host));
+  await expectNoScroll(guest);
+  await shot(host, "36-kniffel-online-host");
+  await shot(guest, "37-kniffel-online-guest");
+  await host.getByRole("button", { name: /Chance/ }).click();
+  await host.getByRole("button", { name: /eintragen/ }).click();
+  await expect(guest.getByTestId("current-player")).toHaveText("Du");
+  await expect(guest.getByRole("button", { name: /Würfeln/ })).toBeVisible();
+});
+
 test("Unbekannter Raum", async ({ page }) => {
   await page.goto("/r/ZZZZZ");
   await expect(page.getByRole("heading", { name: "Raum ZZZZZ gibt es nicht" })).toBeVisible();

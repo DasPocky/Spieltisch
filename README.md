@@ -2,7 +2,12 @@
 
 Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder am eigenen Handy, Räume mit Code + PIN) oder **lokal** (ein Gerät für alle). Gebaut mit React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui, läuft kostenlos auf Cloudflare Workers mit Durable Objects.
 
-**Spiele:** Tutto (Würfel & Karten). Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
+**Spiele:**
+
+- **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
+- **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
+
+Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
 
 - **Online-Räume:** Auf der Seite eines Spiels erstellt der Host einen Raum mit PIN. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
 - **Lokal:** Alle spielen an einem Gerät, ohne Server. Der Spielstand bleibt im Browser, getrennt pro Spiel.
@@ -60,6 +65,7 @@ shared/                       Logik für Browser UND Server
   games/
     index.ts                  Verzeichnis aller Spiele (Logik)
     tutto/                    Tutto: Karten-Daten und Spiellogik
+    kniffel/                  Kniffel: Wertung und Spiellogik
 worker/index.ts               API + Durable Object GameRoom
 src/
   platform/                   Plattform-Oberfläche: RoomScreen (Kopfzeile, Lobby), Menü,
@@ -68,11 +74,12 @@ src/
     types.ts                  Schnittstelle GameUI (Oberfläche eines Spiels)
     index.ts                  Verzeichnis aller Spiel-Oberflächen
     tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Menü-Extras
+    kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
   pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum
   hooks/                      useRoom (WebSocket + Reconnect), useRoute (Mini-Router), useViewMode
   components/ui/              shadcn/ui-Komponenten
 tests/
-  unit/                       Vitest: Zufall, Raum/Rechte, Tutto-Regeln
+  unit/                       Vitest: Zufall, Raum/Rechte, Tutto- und Kniffel-Regeln
   e2e/                        Playwright: lokal, online mit zwei Browsern, kleines Handy
 ```
 
@@ -171,7 +178,7 @@ export const meinSpielUI: GameUI<MeinState, MeinAction> = {
 };
 ```
 
-Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard`, `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
+Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
 
 Das `Board` muss ohne Scrollen auf einen Handy-Bildschirm passen: Es sitzt in einem Flex-Container mit fester Höhe – den Platz in der Mitte mit `flex-1 min-h-0` füllen, Tasten mit `shrink-0` unten.
 

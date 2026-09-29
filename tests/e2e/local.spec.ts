@@ -80,6 +80,7 @@ test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
   await expect(page.getByText("Im Stapel: 56 Karten")).toBeVisible();
   await shot(page, "09-menu");
   await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "−50" })).toBeVisible();
   await expectNoScroll(page);
   await shot(page, "10-full-view");

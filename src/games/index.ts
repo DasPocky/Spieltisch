@@ -3,10 +3,12 @@
  */
 import { GAME_IDS, getGame, isGameId, type GameId } from "@shared/games";
 import type { GameUI } from "./types";
+import { kniffelUI } from "./kniffel";
 import { tuttoUI } from "./tutto";
 
 const UIS: Record<GameId, GameUI<never, never>> = {
   tutto: tuttoUI as unknown as GameUI<never, never>,
+  kniffel: kniffelUI as unknown as GameUI<never, never>,
 };
 
 export function getGameUI(id: string): GameUI {
