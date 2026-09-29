@@ -6,6 +6,7 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
 - **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen aus Grundspiel und Erweiterungen, einzeln zuschaltbar: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor · Neumond: Heiler, der Alte, Dorfdepp, Sündenbock · Charaktere: Wildes Kind, Wolfshund, Fuchs, Bärenführer, Ritter mit rostigem Schwert, zwei Schwestern, Urwolf, großer böser Wolf · Die Gemeinde: Rabe · Grundspiel: Dieb · Solo-Rollen: weißer Werwolf, Flötenspieler, Engel. Hausregeln als Schalter (Hauptmann, Stichwahl, Seherin nur gut/böse, Hexe heilt sich selbst, erste Nacht ohne Opfer, Tote reden, Tote aufdecken) und „Eigene Karten“ zum Spielen mit dem echten Kartenspiel.
+- **Eine Nacht** – Werwolf in zehn Minuten für 3–10: eine Nacht mit heimlich getauschten Karten (Werwölfe, Günstling, Freimaurer, Seherin, Räuber, Unruhestifter, Betrunkener, Schlaflose, Jäger, Gerber), dann Diskussion mit Timer und eine gleichzeitige Abstimmung. Online handelt jeder am eigenen Handy, lokal führt ein Handy mit Vorlesen durch die Nacht.
 - **Mau-Mau** – französisches (32/52) oder deutsches Blatt, 2–8 Spieler je nach Blatt. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
 - **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar.
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
@@ -71,6 +72,7 @@ shared/                       Logik für Browser UND Server
     tutto/                    Tutto: Karten-Daten und Spiellogik
     kniffel/                  Kniffel: Wertung und Spiellogik
     werwolf/                  Werwolf: Rollen, Nacht/Tag, geheime Sicht pro Spieler
+    einenacht/                Eine Nacht: Karten, Tausch-Reihenfolge, Abstimmung
     maumau/                   Mau-Mau: Hausregeln, geheime Hände
     fischen/                  Fischen: Fragen, Teich, Quartette
 worker/index.ts               API + Durable Object GameRoom
@@ -83,6 +85,7 @@ src/
     tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Menü-Extras
     kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
     werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
+    einenacht/                Gerät in der Mitte, Handy-Ansicht, Timer, Auflösung
     maumau/                   Tisch, Hand, Farbwunsch, Weitergeben mit Sichtschutz
     fischen/                  Fragen-Verlauf, Hand, Frage-Auswahl
   pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum

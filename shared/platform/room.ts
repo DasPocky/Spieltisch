@@ -80,7 +80,7 @@ export function playerLimits(room: RoomState): { min: number; max: number; note?
 }
 
 function context(room: RoomState, actorId: string | null): GameContext {
-  return { players: room.players, hostId: room.hostId, actorId, options: room.options };
+  return { players: room.players, hostId: room.hostId, actorId, options: room.options, now: Date.now() };
 }
 
 export function addPlayer(prev: RoomState, p: { id: string; name: string }): RoomState {

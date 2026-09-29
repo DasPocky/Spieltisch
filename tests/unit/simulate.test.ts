@@ -57,6 +57,19 @@ function candidates(r: RoomState, online: boolean): Move[] {
     case "fischen":
       for (const target of ids) for (const rank of DECKS[(r.game as FischenState).deck].ranks) add({ type: "ask", target, rank });
       break;
+    case "einenacht": {
+      const ids2 = r.players.map((p) => p.id);
+      ["ready", "startNight", "next", "nightDone", "closeVote"].forEach((type) => add({ type }));
+      for (let i = 0; i < 3; i++) { add({ type: "peek", i }); add({ type: "drunk", i }); }
+      add({ type: "see", center: [0, 2] });
+      add({ type: "rob", target: null });
+      add({ type: "trouble", a: null });
+      for (const t of ids2) { add({ type: "see", player: t }); add({ type: "rob", target: t }); add({ type: "vote", target: t }); }
+      for (const a of ids2) for (const b of ids2) if (a < b) add({ type: "trouble", a, b });
+      add({ type: "lynch", targets: [pick(ids2)] });
+      add({ type: "lynch", targets: [] });
+      break;
+    }
     case "werwolf": {
       const s = r.game as WerwolfState;
       const alive = Object.keys(s.roles).filter((id) => s.alive[id]);
@@ -154,6 +167,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["fischen", 8, { deck: "fr52" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
+  ["einenacht", 9, { seherin: true, raeuber: true, unruhestifter: true, betrunkener: true, schlaflose: true, jaeger: true, gerber: true, guenstling: true, freimaurer: true }],
+  ["einenacht", 3, { wolves: "1" }],
   ["werwolf", 9, { captain: true, tie: "runoff", aura: true, peaceful: true, selfHeal: false, hexe: true, jaeger: true, dieb: true, floetenspieler: true, engel: true, weisserwolf: true, wolves: "3" }],
   ["werwolf", 6, { cards: "own", captain: true, narrator: "human" }],
   ["werwolf", 20, {

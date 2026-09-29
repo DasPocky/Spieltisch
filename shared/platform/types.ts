@@ -38,6 +38,8 @@ export interface GameContext {
   /** Wer die Aktion auslöst – null heißt lokales Gerät (darf alles). Beim Start (`setup`) ist null = lokales Spiel. */
   actorId: string | null;
   options: Options;
+  /** Zeitpunkt der Aktion in ms (Server- bzw. Gerätezeit) – für Timer; nie für Zufall verwenden */
+  now: number;
 }
 
 /**

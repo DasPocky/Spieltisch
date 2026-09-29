@@ -19,7 +19,7 @@ function Icon({ className }: { className?: string }) {
 function HeaderExtra({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
   const label = s.phase === "assign" ? "Karten" : s.phase === "reveal" ? "Rollen" : s.phase === "night" ? `🌙 Nacht ${s.night}`
     : s.phase === "over" ? "Ende" : s.phase === "election" ? "👑 Wahl" : `☀️ Tag ${s.night}`;
-  return <span className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold ring-1 ring-inset ring-border" data-testid="ww-phase">{label}</span>;
+  return <span className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold whitespace-nowrap ring-1 ring-inset ring-border" data-testid="ww-phase">{label}</span>;
 }
 
 function MenuExtras({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
