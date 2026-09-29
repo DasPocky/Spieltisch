@@ -399,6 +399,16 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
   }
 }
 
+/** Nacht sofort auflösen: offene Wolfsstimmen zählen, alle anderen offenen Aktionen verfallen. */
+function forceNight(s: WerwolfState, ctx: GameContext) {
+  if (!s.victim && s.pending.includes("werwolf") && !s.acted.includes("werwolf")) {
+    s.victim = majority(Object.values(s.wolfVotes), true);
+  }
+  s.log.push(`Nacht ${s.night} vom Host beendet`);
+  s.pending = [];
+  dawn(s, ctx);
+}
+
 function closeVote(s: WerwolfState, ctx: GameContext) {
   const tally: Record<string, number> = {};
   for (const t of Object.values(s.votes)) if (t) tally[t] = (tally[t] ?? 0) + 1;
@@ -484,6 +494,24 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
   actionKind: (a) => (a.type in ACTIONS ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
+  skipLabel: (s) => {
+    if (s.phase === "reveal") return "Nicht alle bereit – Nacht beginnen";
+    if (s.phase === "night") return "Nacht beenden (wer nicht reagiert hat, verpasst seine Aktion)";
+    if (s.phase === "day" && !s.stepwise) return "Abstimmung beenden";
+    if (s.phase === "hunter") return "Jäger überspringen";
+    return null;
+  },
+  skipTurn(prev, ctx) {
+    const s = structuredClone(prev);
+    if (s.phase === "reveal") startNight(s);
+    else if (s.phase === "night") forceNight(s, ctx);
+    else if (s.phase === "day" && !s.stepwise) closeVote(s, ctx);
+    else if (s.phase === "hunter") {
+      s.hunters.shift();
+      afterDeaths(s, s.afterHunter);
+    }
+    return s;
+  },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
     if (id === s.narratorId) { s.phase = "over"; s.winner = null; s.log.push("Der Spielleiter hat den Raum verlassen."); return s; }

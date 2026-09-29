@@ -89,6 +89,12 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
   /** Spielerzahl abhängig von den Einstellungen (z. B. Spielleiter zählt mit). Ohne: info.minPlayers/maxPlayers. */
   playerLimits?(options: Options): { min: number; max: number; note?: string };
 
+  /**
+   * Damit nichts hängen bleibt: Der Host löst auf, worauf gerade gewartet wird (z. B. ein abwesender Spieler).
+   * `skipLabel` liefert die Beschriftung des Knopfes oder null, wenn gerade nichts zu überspringen ist.
+   */
+  skipTurn?(state: S, ctx: GameContext): S;
+  skipLabel?(state: S, ctx: GameContext): string | null;
   /** Ein Spieler verlässt die laufende Partie. ctx.players enthält ihn noch. */
   onPlayerRemoved?(state: S, playerId: string, ctx: GameContext): S;
   /** Der Host hat eine Einstellung während der Partie geändert. */

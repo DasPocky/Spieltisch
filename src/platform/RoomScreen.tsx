@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
-import { canPlayTurn, playerLimits, type RoomAction, type RoomState } from "@shared/platform/room";
+import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getGameUI } from "@/games";
@@ -54,6 +54,7 @@ export function RoomScreen(props: Props) {
         </div>
       </header>
 
+      <StuckBar {...props} isHost={isHost} />
       {board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}
     </div>
   );
@@ -124,4 +125,33 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
       </Sheet>
     </section>
   );
+}
+
+/**
+ * Damit nichts hängen bleibt: Ist der Host offline, kann jemand anderes übernehmen.
+ * Ist der Spieler am Zug offline, kann der Host seinen Zug überspringen.
+ */
+function StuckBar({ room, online, dispatch, onClaimHost, isHost }: Props & { isHost: boolean }) {
+  if (!online) return null;
+  const host = room.players.find((p) => p.id === room.hostId);
+  if (!isHost && host && !online.has(host.id) && onClaimHost) {
+    return (
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-gold/15 px-3 py-2 text-sm" role="status">
+        <span><b>{host.name}</b> (Host) ist offline.</span>
+        <Button size="sm" variant="gold" onClick={onClaimHost}>Host übernehmen</Button>
+      </div>
+    );
+  }
+  const curId = currentPlayerId(room);
+  const cur = room.players.find((p) => p.id === curId);
+  const label = isHost ? skipLabel(room) : null;
+  if (isHost && cur && !online.has(cur.id) && label) {
+    return (
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-gold/15 px-3 py-2 text-sm" role="status">
+        <span><b>{cur.name}</b> ist offline.</span>
+        <Button size="sm" variant="gold" onClick={() => dispatch({ type: "skip" })}>Überspringen</Button>
+      </div>
+    );
+  }
+  return null;
 }

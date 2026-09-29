@@ -134,6 +134,19 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    if (msg.type === "claimHost") {
+      const host = this.room.state.hostId;
+      if (host === playerId) return;
+      if (host && this.onlineIds().has(host)) {
+        this.send(ws, { type: "error", message: "Der Host ist noch verbunden." });
+        return;
+      }
+      this.room.state = { ...this.room.state, hostId: playerId };
+      await this.persist();
+      this.broadcast();
+      return;
+    }
+
     if (msg.type === "action" && msg.action && typeof msg.action === "object") {
       try {
         this.room.state = applyRoomAction(this.room.state, msg.action, playerId);
@@ -227,15 +240,20 @@ export class GameRoom extends DurableObject<Env> {
     }
   }
 
-  private broadcast(): void {
-    if (!this.room) return;
-    const sockets = this.ctx.getWebSockets();
+  /** Spieler mit offener Verbindung */
+  private onlineIds(): Set<string> {
     const online = new Set<string>();
-    for (const ws of sockets) {
+    for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.playerId && ws.readyState === WebSocket.OPEN) online.add(att.playerId);
     }
-    const onlineList = [...online];
+    return online;
+  }
+
+  private broadcast(): void {
+    if (!this.room) return;
+    const sockets = this.ctx.getWebSockets();
+    const onlineList = [...this.onlineIds()];
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (!att?.playerId) continue;

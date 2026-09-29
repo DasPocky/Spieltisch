@@ -341,6 +341,17 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
   actionKind: (a) => (TURN_ACTIONS.has(a.type) ? "turn" : HOST_ACTIONS.has(a.type) ? "host" : null),
   currentPlayerId: (s) => s.curId,
   isOver: (s) => s.winnerId !== null,
+  skipLabel: (s, ctx) => {
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    return cur && !s.winnerId ? `Zug von ${cur.name} überspringen (Niete)` : null;
+  },
+  skipTurn(prev, ctx) {
+    const s = structuredClone(prev);
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    if (cur) pushLog(s, { playerId: cur.id, name: cur.name, pts: 0, penalized: [], cards: s.turnCards });
+    endTurn(s, ctx);
+    return s;
+  },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
     if (s.curId === id) {

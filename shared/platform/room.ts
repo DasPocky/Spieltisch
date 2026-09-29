@@ -33,6 +33,8 @@ export type RoomAction =
   | { type: "setEntry"; mode: EntryMode }
   | { type: "removePlayer"; id: string }
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
+  /** Host: das auflösen, worauf die Partie gerade wartet */
+  | { type: "skip" }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
 
 export function cleanName(name: unknown): string {
@@ -189,6 +191,12 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       [s.players[i], s.players[j]] = [s.players[j], s.players[i]];
       return s;
     }
+    case "skip": {
+      hostOnly();
+      if (prev.phase !== "playing" || !prev.game) throw new GameError("Es läuft keine Partie.");
+      if (!logic.skipTurn || !logic.skipLabel?.(prev.game, context(prev, actorId))) throw new GameError("Gerade gibt es nichts zu überspringen.");
+      return { ...prev, game: logic.skipTurn(prev.game, context(prev, actorId)) };
+    }
     case "game": {
       const action = a.action;
       if (!action || typeof action !== "object" || typeof action.type !== "string") throw new GameError("Ungültige Aktion.");
@@ -218,4 +226,11 @@ export function viewRoom(room: RoomState, viewerId: string | null): RoomState {
   const logic = roomGame(room);
   if (!room.game || !logic.view) return room;
   return { ...room, game: logic.view(room.game, viewerId) };
+}
+
+/** Beschriftung für „Überspringen“, oder null, wenn gerade nichts hängt */
+export function skipLabel(room: RoomState): string | null {
+  const logic = roomGame(room);
+  if (room.phase !== "playing" || !room.game || !logic.skipLabel) return null;
+  return logic.skipLabel(room.game, context(room, room.hostId));
 }

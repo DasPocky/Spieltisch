@@ -207,6 +207,26 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   actionKind: (a) => (a.type === "play" || a.type === "draw" || a.type === "pass" ? "turn" : null),
   currentPlayerId: (s) => (s.winnerId ? null : s.curId),
   isOver: (s) => s.winnerId !== null,
+  skipLabel: (s, ctx) => {
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    return cur && !s.winnerId ? `Zug von ${cur.name} überspringen (zieht ${s.drawn ? "nichts mehr" : s.pendingDraw || 1})` : null;
+  },
+  skipTurn(prev, ctx) {
+    const s = structuredClone(prev);
+    const me = s.curId;
+    if (!me || !s.hands[me]) return s;
+    if (!s.drawn) {
+      const n = s.pendingDraw || 1;
+      give(s, me, n);
+      s.pendingDraw = 0;
+    }
+    s.log.push(`${nameOf(ctx, me)} wurde übersprungen`);
+    s.drawn = null;
+    s.curId = step(ctx.players, me, s.dir);
+    s.n++;
+    sync(s);
+    return s;
+  },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
     // Karten des Spielers kommen unter den Ziehstapel

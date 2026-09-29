@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BookOpen, Menu } from "lucide-react";
 import { getGame } from "@shared/games";
+import { skipLabel } from "@shared/platform/room";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/Confirm";
@@ -19,15 +20,19 @@ export interface MenuProps {
   onAddLocal?: (name: string) => void;
   onLeave: () => void;
   onCloseRoom?: () => void;
+  /** Host-Rolle übernehmen (online, wenn der Host offline ist) */
+  onClaimHost?: () => void;
 }
 
 /** Menü für Lobby und Partie: Ansicht, Regeln, Einladen, Einstellungen, Host-Aktionen, Spieler, Verlassen. */
-export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onAddLocal, onLeave, onCloseRoom }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch">) {
+export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onAddLocal, onLeave, onCloseRoom, onClaimHost }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch">) {
   const mode = useViewMode();
   const ui = getGameUI(room.gameId);
   const name = getGame(room.gameId).info.name;
   const Extras = ui.MenuExtras;
   const playing = room.phase === "playing";
+  const skip = isHost ? skipLabel(room) : null;
+  const hostAway = !!online && !!room.hostId && !online.has(room.hostId) && !isHost;
 
   return (
     <Sheet>
@@ -59,8 +64,17 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
 
           <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} className="mt-5" />
 
+          {hostAway && onClaimHost && (
+            <Button variant="gold" className="mt-4 w-full justify-start" onClick={onClaimHost}>👑 Host ist offline – Host übernehmen</Button>
+          )}
+
           {isHost && playing && (
             <div className="mt-4 grid gap-2">
+              {skip && (
+                <Confirm title={`${skip}?`} description="Damit das Spiel weitergeht, wenn jemand nicht reagiert." confirmLabel="Ja, weiter" onConfirm={() => dispatch({ type: "skip" })}>
+                  <Button variant="secondary" className="justify-start">⏭ {skip}</Button>
+                </Confirm>
+              )}
               <Confirm title="Neue Runde?" description="Alle Punkte werden auf 0 gesetzt. Spieler und Einstellungen bleiben." confirmLabel="Neue Runde" onConfirm={() => dispatch({ type: "restart" })}>
                 <Button variant="secondary" className="justify-start">Neue Runde, gleiche Spieler</Button>
               </Confirm>

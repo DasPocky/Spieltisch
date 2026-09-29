@@ -9,7 +9,9 @@ export type ClientMessage =
   | { type: "join"; name?: string; pin?: string; playerId?: string; token?: string }
   | { type: "action"; action: RoomAction }
   /** Nur Host: Raum sofort und endgültig löschen */
-  | { type: "closeRoom" };
+  | { type: "closeRoom" }
+  /** Host-Rolle übernehmen – nur, wenn der Host gerade nicht verbunden ist */
+  | { type: "claimHost" };
 
 export type ErrorCode = "bad_pin" | "locked" | "kicked" | "not_joined" | "rejected" | "closed";
 

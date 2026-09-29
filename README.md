@@ -104,6 +104,12 @@ tests/
 - **Versteckte Informationen:** Über `view(state, viewerId)` filtert ein Spiel, was ein Spieler sehen darf. Tutto verbirgt so die Reihenfolge des Kartenstapels (Clients sehen nur, welche Karten noch drin sind), Werwolf schickt jedem nur die eigene Rolle (Wölfe kennen ihr Rudel, der Spielleiter sieht alles).
 - **Spielerzahl:** Jedes Spiel hat `minPlayers`/`maxPlayers`, optional abhängig von Einstellungen über `playerLimits(options)`. Die Plattform prüft das Maximum schon beim Beitritt, das Minimum beim Start, und zeigt beides in der Lobby.
 
+### Damit nichts hängen bleibt
+
+- **Host offline:** Ist der Host nicht verbunden, sehen alle anderen „Host übernehmen“. Der Server prüft, dass der Host wirklich weg ist.
+- **Spieler offline oder reagiert nicht:** Jedes Spiel beschreibt mit `skipTurn`/`skipLabel`, wie der Host auflöst, worauf gerade gewartet wird (Tutto: Niete, Kniffel: erstes freies Feld wird gestrichen, Mau-Mau: Karte ziehen, Fischen: nächster Spieler, Werwolf: Nacht bzw. Abstimmung beenden, Jäger überspringen). Ist der Spieler am Zug offline, erscheint dafür ein Balken, sonst steht es im Menü.
+- **Geprüft per Simulation:** `tests/unit/simulate.test.ts` lässt Zufalls-Bots je Spiel und Einstellung 25 komplette Partien lokal und online spielen. In jedem Zustand muss ein erlaubter Zug existieren, jede Partie muss enden, und Karten dürfen nicht verloren gehen.
+
 ### Zugang und Sicherheit
 
 - Raumcode: 5 Zeichen aus 32 (ohne 0/O/1/I), PIN: 4–8 Ziffern. Die PIN wird mit zufälligem Salt als SHA-256 gespeichert und steht nie im Link.

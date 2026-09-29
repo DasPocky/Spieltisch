@@ -171,6 +171,19 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
   actionKind: (a) => (a.type === "ask" ? "turn" : null),
   currentPlayerId: (s) => (s.finished ? null : s.curId),
   isOver: (s) => s.finished,
+  skipLabel: (s, ctx) => {
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    return cur && !s.finished ? `Zug von ${cur.name} überspringen` : null;
+  },
+  skipTurn(prev, ctx) {
+    const s = structuredClone(prev);
+    s.fished = null;
+    s.curId = nextPlayerId(ctx.players, s.curId);
+    s.n++;
+    ensurePlayable(s, ctx.players);
+    sync(s);
+    return s;
+  },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
     s.pile.unshift(...(s.hands[id] ?? []));

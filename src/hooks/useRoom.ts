@@ -103,6 +103,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   }, []);
   const send = useCallback((action: RoomAction) => post({ type: "action", action }), [post]);
   const closeRoom = useCallback(() => post({ type: "closeRoom" }), [post]);
+  const claimHost = useCallback(() => post({ type: "claimHost" }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost };
 }

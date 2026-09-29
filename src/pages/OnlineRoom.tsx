@@ -75,6 +75,7 @@ export function OnlineRoom({ code }: { code: string }) {
       dispatch={room.send}
       onLeave={leave}
       onCloseRoom={room.closeRoom}
+      onClaimHost={room.claimHost}
     />
   );
 }

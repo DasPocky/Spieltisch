@@ -271,6 +271,23 @@ export const kniffel: GameLogic<KniffelState, KniffelAction> = {
   actionKind: (a) => (a.type === "undo" ? "host" : a.type === "roll" || a.type === "hold" || a.type === "score" ? "turn" : null),
   currentPlayerId: (s) => (s.finished ? null : s.curId),
   isOver: (s) => s.finished,
+  skipLabel: (s, ctx) => {
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    return cur && !s.finished ? `Zug von ${cur.name} überspringen (erstes freies Feld wird gestrichen)` : null;
+  },
+  skipTurn(prev, ctx) {
+    const s = structuredClone(prev);
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    if (!cur) return s;
+    const sheet = (s.sheets[cur.id] ??= {});
+    const cat = ALL_CATS.find((c) => sheet[c] === undefined);
+    if (cat) {
+      sheet[cat] = 0;
+      s.log.push({ playerId: cur.id, name: cur.name, cat, pts: 0, extra: 0 });
+    }
+    advance(s, ctx);
+    return s;
+  },
   onPlayerRemoved(prev, id, ctx) {
     if (prev.curId !== id) return prev;
     const s = structuredClone(prev);
