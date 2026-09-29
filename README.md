@@ -7,6 +7,7 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
 - **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor, Beschützer.
 - **Mau-Mau** – deutsches Blatt, 2–5 Spieler. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
+- **Fischen** – Quartett-Spiel mit deutschem Blatt, 2–6 Spieler: nach Werten fragen, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar.
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
 
 Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
@@ -71,6 +72,7 @@ shared/                       Logik für Browser UND Server
     kniffel/                  Kniffel: Wertung und Spiellogik
     werwolf/                  Werwolf: Rollen, Nacht/Tag, geheime Sicht pro Spieler
     maumau/                   Mau-Mau: Hausregeln, geheime Hände
+    fischen/                  Fischen: Fragen, Teich, Quartette
 worker/index.ts               API + Durable Object GameRoom
 src/
   platform/                   Plattform-Oberfläche: RoomScreen (Kopfzeile, Lobby), Menü,
@@ -82,6 +84,7 @@ src/
     kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
     werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
     maumau/                   Tisch, Hand, Farbwunsch, Weitergeben mit Sichtschutz
+    fischen/                  Fragen-Verlauf, Hand, Frage-Auswahl
   pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum
   hooks/                      useRoom (WebSocket + Reconnect), useRoute (Mini-Router), useViewMode
   components/ui/              shadcn/ui-Komponenten
@@ -187,7 +190,7 @@ export const meinSpielUI: GameUI<MeinState, MeinAction> = {
 };
 ```
 
-Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `cards/GermanCard` (Karten des deutschen Blatts samt Rückseite), `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
+Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `cards/GermanCard` (Karten des deutschen Blatts samt Rückseite), `Handoff` (Sichtschutz beim lokalen Weitergeben), `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
 
 Das `Board` muss ohne Scrollen auf einen Handy-Bildschirm passen: Es sitzt in einem Flex-Container mit fester Höhe – den Platz in der Mitte mit `flex-1 min-h-0` füllen, Tasten mit `shrink-0` unten.
 

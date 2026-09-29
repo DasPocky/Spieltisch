@@ -14,6 +14,8 @@ export const SUIT_NAME: Record<Suit, string> = { eichel: "Eichel", gruen: "Grün
 export const RANK_NAME: Record<Rank, string> = { "7": "Sieben", "8": "Acht", "9": "Neun", "10": "Zehn", U: "Unter", O: "Ober", K: "König", A: "Ass" };
 /** Mehrzahl für Quartette */
 export const RANK_PLURAL: Record<Rank, string> = { "7": "Siebener", "8": "Achter", "9": "Neuner", "10": "Zehner", U: "Unter", O: "Ober", K: "Könige", A: "Asse" };
+/** Mehrzahl im Dativ („nach Königen fragen“) */
+export const RANK_DATIVE: Record<Rank, string> = { "7": "Siebenern", "8": "Achtern", "9": "Neunern", "10": "Zehnern", U: "Untern", O: "Obern", K: "Königen", A: "Assen" };
 
 export const suitOf = (c: Card) => c.slice(0, c.indexOf("-")) as Suit;
 export const rankOf = (c: Card) => c.slice(c.indexOf("-") + 1) as Rank;

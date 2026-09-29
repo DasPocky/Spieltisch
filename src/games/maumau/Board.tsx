@@ -4,6 +4,7 @@ import { canPlay, top, type MauMauAction, type MauMauState } from "@shared/games
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { CardBack, GermanCard, SuitIcon } from "@/platform/cards/GermanCard";
+import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { cn, vibrate } from "@/lib/utils";
@@ -12,9 +13,10 @@ import { cn, vibrate } from "@/lib/utils";
 export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<MauMauState, MauMauAction>) {
   const players = room.players;
   const local = me === null;
-  const [shownFor, setShownFor] = useState<string | null>(null);
   const [mau, setMau] = useState(false);
   const [unter, setUnter] = useState<Card | null>(null);
+  // Lokal: Hand erst zeigen, wenn der Richtige das Handy hat
+  const { covered, reveal } = useHandoff(local, s.curId, players.length);
 
   if (s.winnerId) {
     const winner = players.find((p) => p.id === s.winnerId);
@@ -24,8 +26,6 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
 
   const cur = players.find((p) => p.id === s.curId);
   const viewer = local ? s.curId : me;
-  // Lokal: Hand erst zeigen, wenn der Richtige das Handy hat
-  const covered = local && players.length > 1 && shownFor !== s.curId;
   const hand = viewer ? s.hands[viewer] ?? [] : [];
   const myTurn = canAct && viewer === s.curId;
   const playable = (c: Card) => myTurn && (!s.drawn || c === s.drawn) && canPlay(s, c, room.options);
@@ -89,10 +89,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
       {/* Hand */}
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {covered ? (
-          <div className="glass grid gap-3 rounded-2xl p-4 text-center">
-            <p className="text-muted-foreground">Gib das Handy an <b className="text-foreground">{cur?.name}</b>.</p>
-            <Button size="lg" onClick={() => setShownFor(s.curId)}>Ich bin {cur?.name} – Karten zeigen</Button>
-          </div>
+          <HandoffCover name={cur?.name ?? "?"} onReveal={reveal} />
         ) : unter ? (
           <div className="glass rounded-2xl p-3">
             <p className="mb-2 text-center text-sm font-semibold">Welche Farbe wünschst du dir?</p>
