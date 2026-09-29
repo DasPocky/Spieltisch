@@ -14,7 +14,7 @@ import { Scoreboard } from "@/platform/Scoreboard";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** Die laufende Kniffel-Partie: Punkteleiste, Block, Würfel bzw. Eingabe – alles auf einem Bildschirm. */
-export function Board({ room, game: s, me, online, isHost, canAct, mode, act, dispatch }: BoardProps<KniffelState, KniffelAction>) {
+export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mode, act, dispatch }: BoardProps<KniffelState, KniffelAction>) {
   const app = diceModeOf(room) === "app";
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<Cat | null>(null);
@@ -30,7 +30,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, mode, act, di
     const best = Math.max(...entries.map((e) => e.score));
     return (
       <ResultScreen winner={win.join(" & ")} subtitle={`mit ${fmt(best)} Punkten`} ranking={[...entries].sort((a, b) => b.score - a.score)} isHost={isHost} dispatch={dispatch}>
-        <Button variant="secondary" onClick={() => act({ type: "undo" })}>Letzten Eintrag zurücknehmen</Button>
+        {hostTools && <Button variant="secondary" onClick={() => act({ type: "undo" })}>Letzten Eintrag zurücknehmen</Button>}
       </ResultScreen>
     );
   }

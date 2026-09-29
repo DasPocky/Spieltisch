@@ -10,7 +10,7 @@ import { GameCard } from "./GameCard";
 import { PointsPad, RealActions } from "./PointsPad";
 
 /** Die laufende Tutto-Partie: Punkteleiste, Karte, Punkte-Eingabe oder App-Würfel – alles auf einem Bildschirm. */
-export function Board({ room, game: state, me, online, isHost, canAct, mode, act, dispatch }: BoardProps<TuttoState, TuttoAction>) {
+export function Board({ room, game: state, me, online, isHost, hostTools, canAct, mode, act, dispatch }: BoardProps<TuttoState, TuttoAction>) {
   const target = targetOf(room);
   const appDice = diceModeOf(room) === "app";
   const cur = room.players.find((p) => p.id === state.curId);
@@ -26,7 +26,7 @@ export function Board({ room, game: state, me, online, isHost, canAct, mode, act
         isHost={isHost}
         dispatch={dispatch}
       >
-        <Button variant="secondary" onClick={() => act({ type: "undo" })}>Letzten Eintrag zurücknehmen</Button>
+        {hostTools && <Button variant="secondary" onClick={() => act({ type: "undo" })}>Letzten Eintrag zurücknehmen</Button>}
       </ResultScreen>
     );
   }
