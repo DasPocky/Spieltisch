@@ -33,7 +33,7 @@ export interface GameContext {
   /** Spieler in Zugreihenfolge */
   players: Player[];
   hostId: string | null;
-  /** Wer die Aktion auslöst – null heißt lokales Gerät (darf alles) */
+  /** Wer die Aktion auslöst – null heißt lokales Gerät (darf alles). Beim Start (`setup`) ist null = lokales Spiel. */
   actorId: string | null;
   options: Options;
 }
@@ -80,6 +80,9 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
   currentPlayerId(state: S): string | null;
   /** Ist die Partie entschieden? Dann sind keine Zug-Aktionen mehr möglich. */
   isOver(state: S): boolean;
+
+  /** Spielerzahl abhängig von den Einstellungen (z. B. Spielleiter zählt mit). Ohne: info.minPlayers/maxPlayers. */
+  playerLimits?(options: Options): { min: number; max: number; note?: string };
 
   /** Ein Spieler verlässt die laufende Partie. ctx.players enthält ihn noch. */
   onPlayerRemoved?(state: S, playerId: string, ctx: GameContext): S;

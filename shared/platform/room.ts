@@ -6,7 +6,7 @@
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
 
-export const MAX_PLAYERS = 12;
+export const MAX_PLAYERS = 20;
 export const MAX_NAME = 20;
 
 export interface RoomState {
@@ -70,6 +70,13 @@ export function roomGame(room: RoomState): GameLogic<unknown, { type: string }> 
   return getGame(room.gameId);
 }
 
+/** Erlaubte Spielerzahl für das gewählte Spiel mit den aktuellen Einstellungen */
+export function playerLimits(room: RoomState): { min: number; max: number; note?: string } {
+  const logic = roomGame(room);
+  const l = logic.playerLimits?.(room.options) ?? { min: logic.info.minPlayers, max: logic.info.maxPlayers };
+  return { ...l, max: Math.min(MAX_PLAYERS, l.max) };
+}
+
 function context(room: RoomState, actorId: string | null): GameContext {
   return { players: room.players, hostId: room.hostId, actorId, options: room.options };
 }
@@ -79,12 +86,12 @@ export function addPlayer(prev: RoomState, p: { id: string; name: string }): Roo
   const logic = roomGame(prev);
   if (!name) throw new GameError("Bitte gib einen Namen ein.");
   if (prev.players.length >= MAX_PLAYERS) throw new GameError(`Maximal ${MAX_PLAYERS} Spieler.`);
+  if (prev.players.length >= playerLimits(prev).max)
+    throw new GameError(`${logic.info.name} geht mit höchstens ${playerLimits(prev).max} Spielern.`);
   if (prev.players.some((x) => x.name.toLowerCase() === name.toLowerCase()))
     throw new GameError(`„${name}“ spielt schon mit. Nimm einen anderen Namen.`);
   if (prev.phase === "playing" && !logic.joinMidGame)
     throw new GameError("Die Partie läuft schon. Tritt bei, wenn der Host zurück in die Lobby geht.");
-  if (prev.phase === "playing" && prev.players.length >= logic.info.maxPlayers)
-    throw new GameError(`${logic.info.name} geht mit höchstens ${logic.info.maxPlayers} Spielern.`);
   const s = structuredClone(prev);
   s.players.push({ id: p.id, name });
   if (!s.hostId) s.hostId = p.id;
@@ -106,7 +113,8 @@ export function canPlayTurn(room: RoomState, actorId: string | null): boolean {
 
 function assertPlayerCount(room: RoomState, logic: GameLogic<unknown, { type: string }>) {
   const n = room.players.length;
-  const { minPlayers, maxPlayers, name } = logic.info;
+  const { min: minPlayers, max: maxPlayers } = playerLimits(room);
+  const { name } = logic.info;
   if (n < minPlayers) throw new GameError(minPlayers === 1 ? "Mindestens ein Spieler wird gebraucht." : `${name} braucht mindestens ${minPlayers} Spieler.`);
   if (n > maxPlayers) throw new GameError(`${name} geht mit höchstens ${maxPlayers} Spielern.`);
 }
@@ -166,7 +174,8 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       }
       s.players.splice(i, 1);
       if (s.hostId === a.id) s.hostId = s.players[0]?.id ?? null;
-      if (s.phase === "playing" && s.players.length < logic.info.minPlayers) { s.phase = "lobby"; s.game = null; }
+      // Mindestzahl gilt nur beim Start – während der Partie regelt das Spiel Abgänge selbst (onPlayerRemoved)
+      if (s.phase === "playing" && !s.players.length) { s.phase = "lobby"; s.game = null; }
       return s;
     }
     case "movePlayer": {

@@ -5,9 +5,10 @@
 import type { GameLogic } from "../platform/types";
 import { kniffel } from "./kniffel/logic";
 import { tutto } from "./tutto/logic";
+import { werwolf } from "./werwolf/logic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const GAMES = { tutto, kniffel } satisfies Record<string, GameLogic<any, any>>;
+export const GAMES = { tutto, kniffel, werwolf } satisfies Record<string, GameLogic<any, any>>;
 
 export type GameId = keyof typeof GAMES;
 export const GAME_IDS = Object.keys(GAMES) as GameId[];

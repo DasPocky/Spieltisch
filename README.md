@@ -5,6 +5,7 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 **Spiele:**
 
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
+- **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor, Beschützer.
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
 
 Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
@@ -66,6 +67,7 @@ shared/                       Logik für Browser UND Server
     index.ts                  Verzeichnis aller Spiele (Logik)
     tutto/                    Tutto: Karten-Daten und Spiellogik
     kniffel/                  Kniffel: Wertung und Spiellogik
+    werwolf/                  Werwolf: Rollen, Nacht/Tag, geheime Sicht pro Spieler
 worker/index.ts               API + Durable Object GameRoom
 src/
   platform/                   Plattform-Oberfläche: RoomScreen (Kopfzeile, Lobby), Menü,
@@ -75,6 +77,7 @@ src/
     index.ts                  Verzeichnis aller Spiel-Oberflächen
     tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Menü-Extras
     kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
+    werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
   pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum
   hooks/                      useRoom (WebSocket + Reconnect), useRoute (Mini-Router), useViewMode
   components/ui/              shadcn/ui-Komponenten
@@ -91,7 +94,8 @@ tests/
 - **Lokal läuft dieselbe Logik** im Browser (`applyRoomAction` mit `actorId = null`, also alle Rechte).
 - **Die Plattform** (`shared/platform/room.ts`) verwaltet alles, was für jedes Spiel gleich ist: Spieler und Zugreihenfolge, Host, Lobby ↔ Partie, Neue Runde, Spielwechsel, Einstellungen und die Rechteprüfung. Das Spiel sieht nur seinen eigenen Zustand und bekommt Spieler, Host, Akteur und Einstellungen als `GameContext`.
 - **Rechte** deklariert jedes Spiel pro Aktion: `host` (nur Host), `turn` (für den Spieler am Zug – wer das darf, regelt die Raumeinstellung) oder `player` (jeder für sich selbst). Die Plattform prüft, bevor das Spiel die Aktion sieht.
-- **Versteckte Informationen:** Über `view(state, viewerId)` filtert ein Spiel, was ein Spieler sehen darf. Tutto verbirgt so die Reihenfolge des Kartenstapels (Clients sehen nur, welche Karten noch drin sind).
+- **Versteckte Informationen:** Über `view(state, viewerId)` filtert ein Spiel, was ein Spieler sehen darf. Tutto verbirgt so die Reihenfolge des Kartenstapels (Clients sehen nur, welche Karten noch drin sind), Werwolf schickt jedem nur die eigene Rolle (Wölfe kennen ihr Rudel, der Spielleiter sieht alles).
+- **Spielerzahl:** Jedes Spiel hat `minPlayers`/`maxPlayers`, optional abhängig von Einstellungen über `playerLimits(options)`. Die Plattform prüft das Maximum schon beim Beitritt, das Minimum beim Start, und zeigt beides in der Lobby.
 
 ### Zugang und Sicherheit
 

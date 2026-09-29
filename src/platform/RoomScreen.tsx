@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
-import { canPlayTurn, type RoomAction, type RoomState } from "@shared/platform/room";
+import { canPlayTurn, playerLimits, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getGameUI } from "@/games";
@@ -64,8 +64,9 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
   const info = getGame(room.gameId).info;
   const { Icon } = getGameUI(room.gameId);
   const n = room.players.length;
-  const countOk = n >= info.minPlayers && n <= info.maxPlayers;
-  const range = info.minPlayers === info.maxPlayers ? `${info.minPlayers}` : `${info.minPlayers}–${info.maxPlayers}`;
+  const limits = playerLimits(room);
+  const countOk = n >= limits.min && n <= limits.max;
+  const range = limits.min === limits.max ? `${limits.min}` : `${limits.min}–${limits.max}`;
 
   return (
     <section className="pt-2">
@@ -77,6 +78,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
         <span className="min-w-0 flex-1">
           <span className="block text-xs text-muted-foreground">Gespielt wird</span>
           <span className="block font-bold">{info.name} <span className="font-normal text-muted-foreground">· {range} Spieler</span></span>
+          {limits.note && <span className="block text-xs text-muted-foreground">{limits.note}</span>}
         </span>
         {isHost && GAME_IDS.length > 1 && <span className="flex items-center text-sm font-semibold text-navy-300">Wechseln<ChevronRight className="size-4" /></span>}
       </button>
@@ -90,7 +92,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
       {isHost ? (
         <>
           <Button size="lg" className="mt-6 w-full" disabled={!countOk} onClick={() => dispatch({ type: "start" })}>Spiel starten</Button>
-          {!countOk && <p className="mt-2 text-center text-sm text-muted-foreground">{info.name} braucht {range} Spieler.</p>}
+          {!countOk && <p className="mt-2 text-center text-sm text-muted-foreground">{info.name} braucht {range} Spieler{limits.note ? ` (${limits.note})` : ""} – gerade {n}.</p>}
         </>
       ) : (
         <p className="glass mt-6 rounded-xl py-4 text-center text-muted-foreground">Warte, bis der Host das Spiel startet …</p>

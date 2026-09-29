@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addPlayer, canPlayTurn, createRoom, sanitizeOption, viewRoom } from "@shared/platform/room";
+import { addPlayer, canPlayTurn, createRoom, playerLimits, sanitizeOption, viewRoom } from "@shared/platform/room";
 import { GAME_IDS, getGame } from "@shared/games";
 import type { TuttoState } from "@shared/games/tutto/logic";
 import { act, game, roomWith } from "./helpers";
@@ -18,9 +18,13 @@ describe("Spieler & Host", () => {
     expect(addPlayer(r, { id: "x", name: "  Ben   Bo  " }).players[1].name).toBe("Ben Bo");
   });
 
-  it("begrenzt die Spielerzahl", () => {
+  it("begrenzt die Spielerzahl auf das Maximum des Spiels", () => {
     const r = roomWith(Array.from({ length: 12 }, (_, i) => `S${i}`));
-    expect(() => addPlayer(r, { id: "x", name: "Zu viel" })).toThrow(/Maximal/);
+    expect(() => addPlayer(r, { id: "x", name: "Zu viel" })).toThrow(/höchstens 12/);
+    // Kniffel geht nur bis 8: Wechsel erlaubt, Start nicht
+    const k = act(r, { type: "selectGame", gameId: "kniffel" });
+    expect(() => act(k, { type: "start" })).toThrow(/höchstens 8/);
+    expect(playerLimits(k)).toEqual({ min: 1, max: 8 });
   });
 
   it("Host-Aktionen nur für den Host", () => {
