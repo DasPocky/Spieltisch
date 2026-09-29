@@ -26,14 +26,14 @@ export const DECKS: Record<DeckId, Deck> = {
   de32: { id: "de32", name: "Deutsch", hint: "32 Karten, Eichel bis Schellen", suits: DE_SUITS, ranks: ["7", "8", "9", "10", "U", "O", "K", "A"] },
 };
 
-/** Einstellung „Blatt“ für Kartenspiele */
+/** Einstellung „Blatt“ für Kartenspiele – die Oberfläche zeigt dazu kleine Karten */
 export function deckSetting(defaultDeck: DeckId) {
   return {
-    key: "deck", label: "Blatt", type: "choice" as const, default: defaultDeck,
+    key: "deck", label: "Kartenspiel", type: "choice" as const, default: defaultDeck, visual: "deck" as const,
     choices: [
-      { value: "fr32", label: "♣♥ 32", hint: "Französisch, 7–Ass" },
-      { value: "fr52", label: "♣♥ 52", hint: "Französisch, 2–Ass" },
-      { value: "de32", label: "Deutsch", hint: "Eichel & Co., 32" },
+      { value: "fr32", label: "Skat", hint: "32 Karten" },
+      { value: "fr52", label: "Rommé", hint: "52 Karten" },
+      { value: "de32", label: "Deutsch", hint: "32 Karten" },
     ],
   };
 }

@@ -26,7 +26,7 @@ interface SettingBase {
 
 /** Einstellungen werden deklarativ beschrieben – die Plattform zeigt sie an und prüft die Werte. */
 export type SettingDef =
-  | (SettingBase & { type: "choice"; default: string; choices: { value: string; label: string; hint?: string }[] })
+  | (SettingBase & { type: "choice"; default: string; choices: { value: string; label: string; hint?: string }[]; /** besondere Darstellung, z. B. Kartenblätter mit Bild */ visual?: "deck" })
   | (SettingBase & { type: "number"; default: number; min: number; max: number; step: number })
   | (SettingBase & { type: "toggle"; default: boolean; hint?: string });
 

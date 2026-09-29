@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { GAME_LIST } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { IconTile, Logo } from "@/platform/Logo";
+import { InstallHint } from "@/platform/InstallHint";
 
 /** Startseite: Raum per Code beitreten oder ein Spiel auswählen. */
 export function Home() {
@@ -30,6 +31,8 @@ export function Home() {
           <Button type="submit" disabled={!codeOk} className="shrink-0"><LogIn />Los</Button>
         </div>
       </form>
+
+      <InstallHint />
 
       <h2 className="mt-5 mb-2.5 shrink-0 text-xl font-extrabold tracking-tight">Spiel auswählen</h2>
       {/* Nur die Liste scrollt, falls es einmal mehr Spiele werden, als auf den Bildschirm passen */}

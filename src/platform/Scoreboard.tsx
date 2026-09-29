@@ -27,7 +27,10 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
   const fits = entries.length <= 4;
 
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>("[data-cur=true]")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    // Nur die Leiste selbst scrollen – scrollIntoView würde auch den Spielrahmen seitlich verschieben
+    const box = ref.current;
+    const cur = box?.querySelector<HTMLElement>("[data-cur=true]");
+    if (box && cur && box.scrollWidth > box.clientWidth) box.scrollTo({ left: cur.offsetLeft - (box.clientWidth - cur.offsetWidth) / 2, behavior: "smooth" });
   }, [currentId]);
 
   return (

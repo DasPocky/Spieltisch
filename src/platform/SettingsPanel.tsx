@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn, fmt } from "@/lib/utils";
 import { Segmented } from "./Segmented";
+import { DeckPicker } from "./cards/DeckPicker";
 
 const ENTRY_OPTIONS = [
   { value: "turn", label: "Wer dran ist", hint: "am eigenen Handy" },
@@ -48,6 +49,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
 function Setting({ def, value, editable, onChange }: { def: SettingDef; value: unknown; editable: boolean; onChange: (v: string | number | boolean) => void }) {
   switch (def.type) {
     case "choice":
+      if (def.visual === "deck") return <DeckPicker label={def.label} value={String(value ?? def.default)} options={def.choices} editable={editable} onChange={onChange} />;
       return <Segmented label={def.label} value={String(value ?? def.default)} options={def.choices} editable={editable} onChange={onChange} />;
     case "number": {
       const n = Number(value ?? def.default);

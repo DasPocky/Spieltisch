@@ -39,7 +39,7 @@ export function RoomScreen(props: Props) {
   const { Board, HeaderExtra, Icon } = ui;
 
   return (
-    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-hidden" : "min-h-dvh-safe pb-8")}>
+    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe pb-8")}>
       <header className="flex h-14 shrink-0 items-center justify-between">
         <div className="flex min-w-0 items-center gap-2.5">
           <IconTile><Icon className="size-6" /></IconTile>

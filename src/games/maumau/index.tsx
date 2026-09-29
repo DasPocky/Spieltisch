@@ -18,8 +18,8 @@ function Icon({ className }: { className?: string }) {
 
 function HeaderExtra({ game }: BoardProps<MauMauState, MauMauAction>) {
   return (
-    <span className="rounded-full bg-secondary px-3 py-1 text-sm text-muted-foreground ring-1 ring-inset ring-border">
-      <b className="text-foreground tabular-nums">{game.pileCount}</b> im Stapel
+    <span className="rounded-full bg-secondary px-3 py-1 text-sm whitespace-nowrap text-muted-foreground ring-1 ring-inset ring-border">
+      <b className="text-foreground tabular-nums">{game.pileCount}</b><span className="max-[359px]:hidden"> im Stapel</span>
     </span>
   );
 }

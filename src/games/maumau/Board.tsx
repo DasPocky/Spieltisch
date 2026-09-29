@@ -121,7 +121,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
                 })}
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-[1fr_auto_1fr] gap-2">
+            <div className="mt-2 grid grid-cols-[1fr_auto_1fr] gap-2 [&>button]:min-w-0 [&>button]:px-3">
               <Button variant="secondary" size="lg" disabled={!myTurn || !!s.drawn} onClick={() => act({ type: "draw" })}>
                 {s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"}
               </Button>

@@ -123,7 +123,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
       </div>
 
       {/* Mitte: letzte Fragen */}
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 overflow-hidden py-2" aria-live="polite">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden py-2" aria-live="polite">
         <div className="flex shrink-0 items-center justify-between text-sm text-muted-foreground">
           <span>🎣 Teich: <b className="text-foreground tabular-nums">{s.pileCount}</b></span>
           <span className="min-w-0 truncate">★ {myQuartets.length ? myQuartets.map((r) => RANK_PLURAL[r]).join(", ") : "noch kein Quartett"}</span>
