@@ -1,0 +1,17 @@
+/**
+ * Verzeichnis aller Spiel-Oberflächen. Jeder Eintrag in `shared/games` braucht hier sein Gegenstück.
+ */
+import { GAME_IDS, getGame, isGameId, type GameId } from "@shared/games";
+import type { GameUI } from "./types";
+import { tuttoUI } from "./tutto";
+
+const UIS: Record<GameId, GameUI<never, never>> = {
+  tutto: tuttoUI as unknown as GameUI<never, never>,
+};
+
+export function getGameUI(id: string): GameUI {
+  return UIS[isGameId(id) ? id : "tutto"] as unknown as GameUI;
+}
+
+/** Alle Spiele für die Startseite */
+export const GAME_LIST = GAME_IDS.map((id) => ({ id, info: getGame(id).info, ui: getGameUI(id) }));
