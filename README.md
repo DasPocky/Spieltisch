@@ -5,10 +5,10 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 **Spiele:**
 
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
-- **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen aus Grundspiel und Erweiterungen, einzeln zuschaltbar: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor · Neumond: Heiler, der Alte, Dorfdepp, Sündenbock · Charaktere: Wildes Kind, Wolfshund, Fuchs, Bärenführer, Ritter mit rostigem Schwert, zwei Schwestern, Urwolf, großer böser Wolf · Die Gemeinde: Rabe · Grundspiel: Dieb · Solo-Rollen: weißer Werwolf, Flötenspieler, Engel. Hausregeln als Schalter (Hauptmann, Stichwahl, Seherin nur gut/böse, Hexe heilt sich selbst, erste Nacht ohne Opfer, Tote reden, Tote aufdecken) und „Eigene Karten“ zum Spielen mit dem echten Kartenspiel.
+- **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen aus Grundspiel und Erweiterungen, einzeln zuschaltbar: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor · Neumond: Heiler, der Alte, Dorfdepp, Sündenbock · Charaktere: Wildes Kind, Wolfshund, Fuchs, Bärenführer, Ritter mit rostigem Schwert, zwei Schwestern, Urwolf, großer böser Wolf · Die Gemeinde: Rabe · Grundspiel: Dieb · Solo-Rollen: weißer Werwolf, Flötenspieler, Engel · Hausregel: Dorfschlampe. Hausregeln als Schalter (Hauptmann, Stichwahl, Seherin nur gut/böse, Hexe heilt sich selbst, erste Nacht ohne Opfer, Tote reden, Tote aufdecken) und „Eigene Karten“ zum Spielen mit dem echten Kartenspiel.
 - **Eine Nacht** – Werwolf in zehn Minuten für 3–10: eine Nacht mit heimlich getauschten Karten (Werwölfe, Günstling, Freimaurer, Seherin, Räuber, Unruhestifter, Betrunkener, Schlaflose, Jäger, Gerber), dann Diskussion mit Timer und eine gleichzeitige Abstimmung. Online handelt jeder am eigenen Handy, lokal führt ein Handy mit Vorlesen durch die Nacht.
 - **Mau-Mau** – französisches (32/52) oder deutsches Blatt, 2–8 Spieler je nach Blatt. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
-- **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar.
+- **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar. Mit **echten Karten** spielt ihr am Tisch und die App zählt nur Zug und Quartette. Variante: nach „Geh fischen!“ macht der Gefragte weiter.
 - **Flip 7** – Drück-dein-Glück mit Zahlenkarten für 3–18: noch eine Karte oder aufhören, doppelte Zahl heißt raus, sieben verschiedene bringen +15. Klassisch (Einfrieren, Flip 3, zweite Chance, Plus/×2) oder „Voll fies“ angelehnt an die fiese Ausgabe (bis 13, Glücks-13, Unglücks-7, Nur noch eine, Flip 4, Tauschen, Klauen, Abwerfen, Minus und ÷2 zum Verschenken).
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
 
@@ -17,7 +17,8 @@ Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittst
 - **Online-Räume:** Auf der Seite eines Spiels erstellt der Host einen Raum mit PIN. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
 - **Lokal:** Alle spielen an einem Gerät, ohne Server. Der Spielstand bleibt im Browser, getrennt pro Spiel.
 - **Ein Raum, mehrere Spiele:** Nach einer Partie geht der Host zurück in die Lobby und wählt ein anderes Spiel – alle bleiben im Raum.
-- **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel und Spielziel). Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host darf immer, so kann er auch für jemanden ohne Handy spielen.
+- **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **Spielleiter-Funktionen** (Menü) darf er für andere spielen, zurücknehmen und mischen.
+- **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „🔒 mit Zugangscode“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
 - **Fairer Zufall:** `crypto.getRandomValues` mit Verwerfungsmethode (keine Modulo-Verzerrung). Online würfelt und mischt ausschließlich der Server.
 - **Ansicht „Einfach“ oder „Voll“** (im Menü, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
 
@@ -51,6 +52,8 @@ Cloudflare Workers Builds baut und deployt jeden Push auf `main` automatisch:
 Die App ist dann unter `https://spieltisch.<dein-subdomain>.workers.dev` erreichbar (Name in `wrangler.jsonc`). Zusätzlich prüft GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push und Pull Request Build, Unit-Tests und die Playwright-Tests.
 
 Manuell geht es mit `npx wrangler login` und `npm run deploy`.
+
+**Admin-Passwort setzen:** im Cloudflare-Dashboard unter **Workers & Pages → spieltisch → Settings → Variables and Secrets → Add** ein Secret `ADMIN_PASSWORD` anlegen (oder `npx wrangler secret put ADMIN_PASSWORD`). Ohne dieses Secret ist `/admin` gesperrt und alles bleibt offen. Lokal steht das Passwort in `.dev.vars` (`ADMIN_PASSWORD=…`, wird nicht eingecheckt; die Playwright-Tests legen die Datei mit `test-admin` an).
 
 ## Architektur
 
@@ -125,13 +128,15 @@ tests/
 - Wer den Raum erstellt, ist Host. Verlässt der Host den Raum (wird entfernt), übernimmt der nächste Spieler.
 - Nachrichten über 4 KB werden verworfen, jede Aktion wird serverseitig validiert.
 - Räume ohne Aktivität werden nach **48 Stunden** automatisch gelöscht (Durable-Object-Alarm). Der Host kann einen Raum im Menü sofort löschen.
+- Admin: Passwort nur als Cloudflare-Secret, Vergleich in konstanter Zeit, nach 8 Fehlversuchen 10 Minuten Pause. Der Zugangscode wird gesalzen gehasht gespeichert. Abgeschaltete oder gesperrte Spiele lehnt der Server schon beim Erstellen eines Online-Raums ab; bestehende Räume laufen weiter.
 
 ## Datenhaltung
 
 | Ort | Inhalt | Wann gelöscht |
 | --- | --- | --- |
 | Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, Wiederverbindungs-Tokens, Fehlversuche | 48 h nach der letzten Aktion oder sofort über „Raum löschen“ |
-| `localStorage` im Browser | eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
+| Durable Object `SiteSettings` (genau eines) | Admin-Freigaben, Hinweistext, Hash + Salt des Zugangscodes, Fehlversuche | bis der Admin es ändert |
+| `localStorage` im Browser | Zugangscode nach richtiger Eingabe (`spieltisch:access`), eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
 | `sessionStorage` im Browser | Name + PIN für genau einen Beitritt | direkt nach dem Beitritt |
 
 IP-Adressen oder Konten speichert die App nicht. Cloudflare selbst protokolliert Anfragen (Observability ist in `wrangler.jsonc` aktiv).

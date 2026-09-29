@@ -7,11 +7,17 @@ import { GAME_LIST } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { IconTile, Logo } from "@/platform/Logo";
 import { InstallHint } from "@/platform/InstallHint";
+import { accessFor } from "@shared/platform/access";
+import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
 
 /** Startseite: Raum per Code beitreten oder ein Spiel auswählen. */
 export function Home() {
   const [code, setCode] = useState("");
   const codeOk = ROOM_CODE_RE.test(code);
+  const config = useSiteConfig();
+  // Abgeschaltete Spiele erscheinen nicht, Spiele hinter Zugangscode bekommen ein Schloss
+  const games = GAME_LIST.filter(({ id }) => !config || accessFor(config, id) !== "off");
+  const locked = (id: string) => !!config && accessFor(config, id) === "code" && !savedAccess();
 
   return (
     <main className="mx-auto flex h-dvh-safe max-w-md flex-col overflow-hidden px-4 pt-[3vh] pb-[calc(1rem+env(safe-area-inset-bottom))]">
@@ -37,13 +43,13 @@ export function Home() {
       <h2 className="mt-5 mb-2.5 shrink-0 text-xl font-extrabold tracking-tight">Spiel auswählen</h2>
       {/* Nur die Liste scrollt, falls es einmal mehr Spiele werden, als auf den Bildschirm passen */}
       <ul className="no-scrollbar grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pb-1">
-        {GAME_LIST.map(({ id, info, ui: { Icon } }) => (
+        {games.map(({ id, info, ui: { Icon } }) => (
           <li key={id}>
             <button type="button" onClick={() => navigate(`/spiel/${id}`)} aria-label={`${info.name} – ${info.category}, ${info.minPlayers}–${info.maxPlayers} Spieler`}
               className="glass flex h-full w-full items-center gap-2.5 rounded-2xl p-2.5 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring">
               <IconTile className="size-11 rounded-xl"><Icon className="size-7" /></IconTile>
               <span className="min-w-0">
-                <span className="block truncate font-bold leading-tight">{info.name}</span>
+                <span className="block truncate font-bold leading-tight">{info.name}{locked(id) && <span className="ml-1 text-xs" aria-label="mit Zugangscode">🔒</span>}</span>
                 <span className="block truncate text-xs text-muted-foreground">{info.minPlayers}–{info.maxPlayers} Spieler</span>
                 <span className="block truncate text-xs text-muted-foreground">{info.category} · {info.duration}</span>
               </span>

@@ -23,8 +23,14 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
     trace: "retain-on-failure",
   },
+  // Der Admin-Test schaltet Spiele ab – deshalb läuft er erst, wenn alle anderen fertig sind
+  projects: [
+    { name: "spiele", testIgnore: /admin\.spec\.ts/ },
+    { name: "admin", testMatch: /admin\.spec\.ts/, dependencies: ["spiele"] },
+  ],
   webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
+    // Admin-Passwort für den Test-Server (.dev.vars wird nicht eingecheckt)
+    command: `node -e "require('fs').existsSync('.dev.vars')||require('fs').writeFileSync('.dev.vars','ADMIN_PASSWORD=test-admin\\n')" && npx vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

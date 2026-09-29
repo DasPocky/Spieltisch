@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import { isGameId } from "../shared/games";
+import { GAMES, isGameId } from "../shared/games";
+import { ACCESS_CODE_RE, accessFor, DEFAULT_CONFIG, sanitizeConfig, type SiteConfig } from "../shared/platform/access";
 import { addPlayer, applyRoomAction, createRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
@@ -9,6 +10,9 @@ import {
 
 interface Env {
   ROOMS: DurableObjectNamespace<GameRoom>;
+  SETTINGS: DurableObjectNamespace<SiteSettings>;
+  /** Admin-Passwort – als Secret in Cloudflare gesetzt. Fehlt es, ist der Admin-Bereich aus. */
+  ADMIN_PASSWORD?: string;
 }
 
 interface RoomData {
@@ -272,18 +276,114 @@ export class GameRoom extends DurableObject<Env> {
   }
 }
 
+interface SettingsData {
+  config: Omit<SiteConfig, "hasCode">;
+  codeHash: string | null;
+  salt: string;
+  fails: number;
+  lockUntil: number;
+}
+
+/** Vergleich in konstanter Zeit – über die Hashes, damit die Länge nichts verrät */
+async function sameSecret(a: string, b: string): Promise<boolean> {
+  const [x, y] = await Promise.all([hashPin("cmp", a), hashPin("cmp", b)]);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return diff === 0;
+}
+
+const GAME_IDS = Object.keys(GAMES);
+const ADMIN_MAX_FAILS = 8;
+
+/** Ein einziges Durable Object mit den Admin-Einstellungen (Freigaben, Zugangscode, Hinweis). */
+export class SiteSettings extends DurableObject<Env> {
+  private data: SettingsData = { config: { ...DEFAULT_CONFIG }, codeHash: null, salt: crypto.randomUUID(), fails: 0, lockUntil: 0 };
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.blockConcurrencyWhile(async () => {
+      const saved = await ctx.storage.get<SettingsData>("settings");
+      if (saved) this.data = saved;
+    });
+  }
+
+  async config(): Promise<SiteConfig> {
+    return { ...this.data.config, hasCode: !!this.data.codeHash };
+  }
+
+  async checkCode(code: string): Promise<boolean> {
+    if (!this.data.codeHash) return false;
+    return (await hashPin(this.data.salt, code)) === this.data.codeHash;
+  }
+
+  /** Admin: anmelden (ohne `update`) oder speichern. Nach zu vielen Fehlversuchen 10 Minuten Pause. */
+  async admin(password: string, update?: { config: unknown; code?: string | null }): Promise<{ ok: boolean; error?: string; config?: SiteConfig }> {
+    const secret = this.env.ADMIN_PASSWORD;
+    if (!secret) return { ok: false, error: "Der Admin-Bereich ist nicht eingerichtet (ADMIN_PASSWORD fehlt)." };
+    if (Date.now() < this.data.lockUntil) return { ok: false, error: "Zu viele Fehlversuche. Bitte in ein paar Minuten nochmal." };
+    if (!(await sameSecret(password, secret))) {
+      this.data.fails++;
+      if (this.data.fails >= ADMIN_MAX_FAILS) { this.data.fails = 0; this.data.lockUntil = Date.now() + LOCK_MS; }
+      await this.ctx.storage.put("settings", this.data);
+      return { ok: false, error: "Falsches Passwort." };
+    }
+    this.data.fails = 0;
+    if (update) {
+      this.data.config = sanitizeConfig(update.config, GAME_IDS);
+      if (update.code === null) this.data.codeHash = null;
+      else if (typeof update.code === "string" && update.code) {
+        if (!ACCESS_CODE_RE.test(update.code)) return { ok: false, error: "Der Zugangscode braucht 4 bis 32 Zeichen." };
+        this.data.salt = crypto.randomUUID();
+        this.data.codeHash = await hashPin(this.data.salt, update.code);
+      }
+    }
+    await this.ctx.storage.put("settings", this.data);
+    return { ok: true, config: await this.config() };
+  }
+}
+
+const settingsOf = (env: Env) => env.SETTINGS.get(env.SETTINGS.idFromName("site"));
+
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
 
+    // Freigaben für alle (ohne Geheimnisse)
+    if (url.pathname === "/api/config" && request.method === "GET") return json(await settingsOf(env).config());
+
+    // Zugangscode prüfen
+    if (url.pathname === "/api/access" && request.method === "POST") {
+      let body: { code?: unknown };
+      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const ok = typeof body.code === "string" && await settingsOf(env).checkCode(body.code);
+      return json({ ok }, ok ? 200 : 403);
+    }
+
+    // Admin: anmelden oder Einstellungen speichern
+    if (url.pathname === "/api/admin" && request.method === "POST") {
+      let body: { password?: unknown; config?: unknown; code?: unknown };
+      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const update = body.config === undefined ? undefined : { config: body.config, code: body.code === null ? null : typeof body.code === "string" ? body.code : undefined };
+      const res = await settingsOf(env).admin(String(body.password ?? ""), update);
+      return json(res, res.ok ? 200 : 403);
+    }
+
     // Raum anlegen
     if (url.pathname === "/api/rooms" && request.method === "POST") {
-      let body: { pin?: unknown; game?: unknown };
+      let body: { pin?: unknown; game?: unknown; access?: unknown };
       try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
       const pin = String(body.pin ?? "");
       if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
       if (!isGameId(body.game)) return json({ error: "Unbekanntes Spiel." }, 400);
       const gameId = body.game;
+
+      // Admin-Freigabe: abgeschaltet oder nur mit Zugangscode
+      const settings = settingsOf(env);
+      const access = accessFor(await settings.config(), gameId);
+      if (access === "off") return json({ error: "Dieses Spiel ist gerade abgeschaltet." }, 403);
+      if (access === "code" && !(typeof body.access === "string" && await settings.checkCode(body.access))) {
+        return json({ error: "Dafür braucht ihr den Zugangscode.", code: "access" }, 403);
+      }
 
       for (let i = 0; i < 6; i++) {
         const code = makeCode();
