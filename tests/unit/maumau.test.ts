@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { fullDeck, type Card } from "@shared/cards/german";
+import { DECKS, fullDeck, type Card } from "@shared/cards/deck";
 import { canPlay, type MauMauState } from "@shared/games/maumau/logic";
 import { playerLimits, viewRoom, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
 
 const g = (r: RoomState) => r.game as MauMauState;
 
+/** Die Regeltests nutzen das deutsche Blatt; das französische wird unten eigens geprüft */
 function start(n = 3, options: Record<string, string | boolean> = {}) {
   let r = act(roomWith(["Anna", "Ben", "Cem", "Dora", "Emil"].slice(0, n)), { type: "selectGame", gameId: "maumau" });
+  r = act(r, { type: "setOption", key: "deck", value: "de32" });
   for (const [key, value] of Object.entries(options)) r = act(r, { type: "setOption", key, value });
   return act(r, { type: "start" });
 }
@@ -26,14 +28,30 @@ describe("Aufbau", () => {
     expect(s.discard).toHaveLength(1);
     expect(s.pile.length + 15 + 1).toBe(32);
     expect(new Set([...s.pile, ...s.discard, ...Object.values(s.hands).flat()]).size).toBe(32);
-    expect(fullDeck()).toHaveLength(32);
+    expect(fullDeck(DECKS.fr32)).toHaveLength(32);
+    expect(fullDeck(DECKS.fr52)).toHaveLength(52);
   });
 
-  it("Spielerzahl: 2–5, mit 6 Karten nur bis 4", () => {
+  it("Spielerzahl je nach Blatt und Kartenzahl", () => {
     let r = act(roomWith(["A"]), { type: "selectGame", gameId: "maumau" });
     expect(() => act(r, { type: "start" })).toThrow(/mindestens 2/);
+    expect(playerLimits(r)).toEqual({ min: 2, max: 5 }); // französisch, 32 Karten
     r = act(r, { type: "setOption", key: "hand", value: "6" });
     expect(playerLimits(r)).toEqual({ min: 2, max: 4 });
+    r = act(r, { type: "setOption", key: "deck", value: "fr52" });
+    expect(playerLimits(r)).toEqual({ min: 2, max: 7 });
+  });
+
+  it("französisches Blatt: Bube wünscht", () => {
+    let r = act(roomWith(["Anna", "Ben"]), { type: "selectGame", gameId: "maumau" });
+    r = act(r, { type: "start" });
+    expect(g(r).deck).toBe("fr32");
+    expect(g(r).discard[0]).toMatch(/^(kreuz|pik|herz|karo)-/);
+    r = deal(r, { p1: ["kreuz-B", "herz-9"], p2: ["pik-7"] }, "herz-K");
+    expect(() => play(r, "eichel-U" as Card)).toThrow(/nicht/);
+    r = play(r, "kreuz-B", { wish: "karo" });
+    expect(g(r).wish).toBe("karo");
+    expect(() => act(roomWith(["x", "y"]), { type: "selectGame", gameId: "maumau" })).not.toThrow();
   });
 
   it("fremde Hände und der Stapel bleiben geheim", () => {

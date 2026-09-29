@@ -1,14 +1,15 @@
 /**
- * Mau-Mau mit deutschem Blatt – läuft im Browser (lokal) und im Durable Object (online).
+ * Mau-Mau mit französischem oder deutschem Blatt – läuft im Browser (lokal) und im Durable Object (online).
  * Hausregeln sind Einstellungen. Die Hände der anderen und der Ziehstapel bleiben geheim (view).
  */
-import { drawCards, isCard, rankOf, shuffledDeck, sortHand, suitOf, SUITS, type Card, type Suit } from "../../cards/german";
+import { deckOf, deckSetting, DECKS, drawCards, isCardOf, isJack, rankOf, shuffledDeck, sortHand, suitOf, type Card, type DeckId, type Suit } from "../../cards/deck";
 import { shuffle } from "../../platform/random";
 import { nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 export interface MauMauState {
   v: 1;
+  deck: DeckId;
   hands: Record<string, Card[]>;
   /** Anzahl Karten je Spieler (öffentlich) */
   counts: Record<string, number>;
@@ -34,12 +35,12 @@ export type MauMauAction =
   | { type: "draw" }
   | { type: "pass" };
 
-interface Rules { stack7: boolean; skip8: boolean; reverse9: boolean; againA: boolean; unterOnUnter: boolean; mau: boolean; hand: number }
+interface Rules { stack7: boolean; skip8: boolean; reverse9: boolean; againA: boolean; unterOnUnter: boolean; mau: boolean; hand: number; deck: DeckId }
 
 export function rulesOf(o: Options): Rules {
   return {
     stack7: o.stack7 !== false, skip8: o.skip8 !== false, reverse9: o.reverse9 === true, againA: o.againA === true,
-    unterOnUnter: o.unterOnUnter === true, mau: o.mau !== false, hand: o.hand === "6" ? 6 : 5,
+    unterOnUnter: o.unterOnUnter === true, mau: o.mau !== false, hand: o.hand === "6" ? 6 : 5, deck: deckOf(o, "fr32").id,
   };
 }
 
@@ -53,7 +54,7 @@ export function canPlay(s: MauMauState, card: Card, o: Options): boolean {
   const r = rulesOf(o);
   const t = top(s);
   if (s.pendingDraw > 0) return r.stack7 && rankOf(card) === "7";
-  if (rankOf(card) === "U") return rankOf(t) !== "U" || r.unterOnUnter;
+  if (isJack(card)) return !isJack(t) || r.unterOnUnter;
   if (s.wish) return suitOf(card) === s.wish;
   return suitOf(card) === suitOf(t) || rankOf(card) === rankOf(t);
 }
@@ -68,7 +69,7 @@ function refill(s: MauMauState): Card[] {
 
 function give(s: MauMauState, id: string, n: number): Card[] {
   const got = drawCards(s.pile, n, () => refill(s));
-  s.hands[id] = sortHand([...(s.hands[id] ?? []), ...got]);
+  s.hands[id] = sortHand([...(s.hands[id] ?? []), ...got], DECKS[s.deck]);
   return got;
 }
 
@@ -85,11 +86,12 @@ function step(players: Player[], id: string | null, dir: 1 | -1): string | null 
 
 function setup(ctx: GameContext): MauMauState {
   const r = rulesOf(ctx.options);
-  const pile = shuffledDeck();
+  const deck = DECKS[r.deck];
+  const pile = shuffledDeck(deck);
   const hands: Record<string, Card[]> = {};
-  for (const p of ctx.players) hands[p.id] = sortHand(pile.splice(pile.length - r.hand, r.hand));
+  for (const p of ctx.players) hands[p.id] = sortHand(pile.splice(pile.length - r.hand, r.hand), deck);
   const s: MauMauState = {
-    v: 1, hands, counts: {}, pile, pileCount: 0, discard: [pile.pop()!], curId: ctx.players[0]?.id ?? null, dir: 1,
+    v: 1, deck: r.deck, hands, counts: {}, pile, pileCount: 0, discard: [pile.pop()!], curId: ctx.players[0]?.id ?? null, dir: 1,
     wish: null, pendingDraw: 0, drawn: null, winnerId: null, n: 0, log: [],
   };
   // Die aufgedeckte Startkarte wirkt auf den ersten Spieler
@@ -117,16 +119,17 @@ function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauStat
 
   switch (a.type) {
     case "play": {
-      if (!isCard(a.card) || !hand.includes(a.card)) throw new GameError("Diese Karte hast du nicht.");
+      if (!isCardOf(DECKS[s.deck], a.card) || !hand.includes(a.card)) throw new GameError("Diese Karte hast du nicht.");
       if (s.drawn && a.card !== s.drawn) throw new GameError("Nach dem Ziehen darfst du nur die gezogene Karte legen.");
       if (!canPlay(s, a.card, ctx.options)) {
         throw new GameError(s.pendingDraw ? `Du musst ${s.pendingDraw} Karten ziehen${r.stack7 ? " oder eine Sieben legen" : ""}.` : s.wish ? "Das passt nicht – gewünscht ist eine andere Farbe." : "Die Karte passt nicht.");
       }
       const rank = rankOf(a.card);
-      if (rank === "U" && (!a.wish || !SUITS.includes(a.wish))) throw new GameError("Wünsch dir eine Farbe.");
+      const jack = isJack(a.card);
+      if (jack && (!a.wish || !DECKS[s.deck].suits.includes(a.wish))) throw new GameError("Wünsch dir eine Farbe.");
       hand.splice(hand.indexOf(a.card), 1);
       s.discard.push(a.card);
-      s.wish = rank === "U" ? a.wish! : null;
+      s.wish = jack ? a.wish! : null;
       if (hand.length === 0) {
         s.winnerId = me;
         s.log.push(`${nameOf(ctx, me)} hat keine Karten mehr – Mau-Mau!`);
@@ -182,10 +185,10 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   info: {
     id: "maumau",
     name: "Mau-Mau",
-    tagline: "Farbe oder Wert bedienen, Siebenen ziehen lassen, Unter wünschen – wer zuerst keine Karten hat, gewinnt.",
+    tagline: "Farbe oder Wert bedienen, Siebenen ziehen lassen, Buben wünschen – wer zuerst keine Karten hat, gewinnt.",
     category: "Karten",
     minPlayers: 2,
-    maxPlayers: 5,
+    maxPlayers: 8,
     duration: "10–20 Min.",
   },
   version: 1,
@@ -193,15 +196,21 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   ownTurnsOnly: true,
   joinMidGame: false,
   settings: [
-    { key: "hand", label: "Karten pro Spieler", type: "choice", default: "5", choices: [{ value: "5", label: "5 Karten", hint: "2–5 Spieler" }, { value: "6", label: "6 Karten", hint: "2–4 Spieler" }] },
+    deckSetting("fr32"),
+    { key: "hand", label: "Karten pro Spieler", type: "choice", default: "5", choices: [{ value: "5", label: "5 Karten" }, { value: "6", label: "6 Karten" }] },
     { key: "stack7", label: "Siebenen stapeln", type: "toggle", default: true, hint: "7 heißt zwei ziehen – wer selbst eine 7 hat, legt drauf und der Nächste zieht alles" },
     { key: "skip8", label: "8: Nächster setzt aus", type: "toggle", default: true },
-    { key: "unterOnUnter", label: "Unter auf Unter erlaubt", type: "toggle", default: false, hint: "sonst gilt: Unter auf Unter geht nicht" },
+    { key: "unterOnUnter", label: "Bube auf Bube erlaubt", type: "toggle", default: false, hint: "im deutschen Blatt: Unter auf Unter" },
     { key: "reverse9", label: "9: Richtungswechsel", type: "toggle", default: false },
     { key: "againA", label: "Ass: nochmal legen", type: "toggle", default: false },
     { key: "mau", label: "„Mau“ sagen", type: "toggle", default: true, hint: "vor der vorletzten Karte, sonst eine Strafkarte" },
   ],
-  playerLimits: (o) => (rulesOf(o).hand === 6 ? { min: 2, max: 4 } : { min: 2, max: 5 }),
+  /** Es muss nach dem Austeilen genug zum Ziehen bleiben */
+  playerLimits: (o) => {
+    const r = rulesOf(o);
+    const size = DECKS[r.deck].suits.length * DECKS[r.deck].ranks.length;
+    return { min: 2, max: Math.min(8, Math.floor((size - 7) / r.hand)) };
+  },
   setup,
   apply,
   actionKind: (a) => (a.type === "play" || a.type === "draw" || a.type === "pass" ? "turn" : null),

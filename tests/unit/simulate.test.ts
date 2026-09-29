@@ -4,7 +4,7 @@
  * und außer GameError darf nichts geworfen werden. Karten dürfen nicht verloren gehen.
  */
 import { describe, expect, it } from "vitest";
-import { RANKS, SUITS } from "@shared/cards/german";
+import { DECKS } from "@shared/cards/deck";
 import { ALL_CATS, type KniffelState } from "@shared/games/kniffel/logic";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
@@ -49,13 +49,13 @@ function candidates(r: RoomState, online: boolean): Move[] {
     case "maumau": {
       const s = r.game as MauMauState;
       const hand = s.hands[s.curId ?? ""] ?? [];
-      for (const card of hand) add({ type: "play", card, wish: pick(SUITS), mau: Math.random() < 0.8 });
+      for (const card of hand) add({ type: "play", card, wish: pick(DECKS[s.deck].suits), mau: Math.random() < 0.8 });
       add({ type: "draw" });
       add({ type: "pass" });
       break;
     }
     case "fischen":
-      for (const target of ids) for (const rank of RANKS) add({ type: "ask", target, rank });
+      for (const target of ids) for (const rank of DECKS[(r.game as FischenState).deck].ranks) add({ type: "ask", target, rank });
       break;
     case "werwolf": {
       const s = r.game as WerwolfState;
@@ -80,12 +80,12 @@ function checkCards(r: RoomState) {
     const s = r.game as MauMauState;
     const all = [...s.pile, ...s.discard, ...Object.values(s.hands).flat()];
     expect(new Set(all).size).toBe(all.length);
-    expect(all.length).toBe(32);
+    expect(all.length).toBe(DECKS[s.deck].suits.length * DECKS[s.deck].ranks.length);
   }
   if (r.gameId === "fischen") {
     const s = r.game as FischenState;
     const n = s.pile.length + Object.values(s.hands).flat().length + Object.values(s.quartets).flat().length * 4;
-    expect(n).toBe(32);
+    expect(n).toBe(DECKS[s.deck].suits.length * DECKS[s.deck].ranks.length);
   }
 }
 
@@ -132,9 +132,11 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["kniffel", 3, {}],
   ["kniffel", 2, { diceMode: "real", extraKniffel: true }],
   ["maumau", 4, {}],
-  ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false }],
+  ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
+  ["maumau", 7, { deck: "fr52", hand: "6" }],
   ["fischen", 2, {}],
-  ["fischen", 5, { luckyAgain: false }],
+  ["fischen", 5, { luckyAgain: false, deck: "de32" }],
+  ["fischen", 8, { deck: "fr52" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
 ];

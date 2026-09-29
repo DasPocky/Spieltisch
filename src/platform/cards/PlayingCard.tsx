@@ -1,13 +1,25 @@
-import { rankOf, RANK_NAME, suitOf, SUIT_NAME, type Card, type Suit } from "@shared/cards/german";
+import { rankOf, RANK_NAME, suitOf, SUIT_NAME, type Card, type Suit } from "@shared/cards/deck";
 import { cn } from "@/lib/utils";
 
-export const SUIT_COLOR: Record<Suit, string> = { eichel: "#8a5a1f", gruen: "#3d7a3a", rot: "#b8323f", schellen: "#c98f14" };
+export const SUIT_COLOR: Record<Suit, string> = {
+  eichel: "#8a5a1f", gruen: "#3d7a3a", rot: "#b8323f", schellen: "#c98f14",
+  kreuz: "#1a2233", pik: "#1a2233", herz: "#c8283a", karo: "#c8283a",
+};
 
-/** Farbsymbole des deutschen Blatts */
+/** Farbsymbole beider Blätter */
 export function SuitIcon({ suit, className }: { suit: Suit; className?: string }) {
   const c = SUIT_COLOR[suit];
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      {suit === "herz" && <path d="M12 21 C 5 15.5, 2 12, 2 8.2 A 4.8 4.8 0 0 1 12 6 A 4.8 4.8 0 0 1 22 8.2 C 22 12, 19 15.5, 12 21 Z" fill={c} />}
+      {suit === "karo" && <path d="M12 2 L 20 12 L 12 22 L 4 12 Z" fill={c} />}
+      {suit === "pik" && <path d="M12 2 C 9 6, 3 9.5, 3 14 A 4.4 4.4 0 0 0 10.6 16.8 L 9 21.5 H 15 L 13.4 16.8 A 4.4 4.4 0 0 0 21 14 C 21 9.5, 15 6, 12 2 Z" fill={c} />}
+      {suit === "kreuz" && (
+        <g fill={c}>
+          <circle cx="12" cy="7" r="4.3" /><circle cx="6.8" cy="13.6" r="4.3" /><circle cx="17.2" cy="13.6" r="4.3" />
+          <path d="M11 11 H 13 L 14.5 21.5 H 9.5 Z" />
+        </g>
+      )}
       {suit === "rot" && <path d="M12 21 C 5 15.5, 2 12, 2 8.2 A 4.8 4.8 0 0 1 12 6 A 4.8 4.8 0 0 1 22 8.2 C 22 12, 19 15.5, 12 21 Z" fill={c} />}
       {suit === "gruen" && (
         <g>
@@ -37,23 +49,23 @@ export function SuitIcon({ suit, className }: { suit: Suit; className?: string }
   );
 }
 
-const LABEL: Record<string, string> = { "7": "7", "8": "8", "9": "9", "10": "10", U: "U", O: "O", K: "K", A: "A" };
 
-/** Vorderseite einer Karte des deutschen Blatts. Größe über die Breite des Elternelements (Container-Einheiten). */
-export function GermanCard({ card, className, dim }: { card: Card; className?: string; dim?: boolean }) {
+
+/** Vorderseite einer Spielkarte (französisch oder deutsch). Größe über die Breite des Elternelements (Container-Einheiten). */
+export function PlayingCard({ card, className, dim }: { card: Card; className?: string; dim?: boolean }) {
   const suit = suitOf(card);
   const rank = rankOf(card);
   const color = SUIT_COLOR[suit];
-  const face = rank === "U" || rank === "O" || rank === "K";
+  const face = rank === "U" || rank === "O" || rank === "B" || rank === "D" || rank === "K";
   return (
     <div className={cn("@container aspect-[5/8] select-none", className)} role="img" aria-label={`${SUIT_NAME[suit]}-${RANK_NAME[rank]}`}>
       <div className={cn("relative size-full overflow-hidden rounded-[10cqw] bg-paper shadow-[0_6px_14px_rgba(2,8,23,.45)] ring-1 ring-black/10 transition", dim && "brightness-[0.55] saturate-50")}>
         <div className="absolute top-[5cqw] left-[7cqw] flex flex-col items-center leading-none" style={{ color }}>
-          <span className="text-[26cqw] font-extrabold tracking-tighter">{LABEL[rank]}</span>
+          <span className="text-[26cqw] font-extrabold tracking-tighter">{rank}</span>
           <SuitIcon suit={suit} className="mt-[2cqw] size-[20cqw]" />
         </div>
         <div className="absolute right-[7cqw] bottom-[5cqw] flex rotate-180 flex-col items-center leading-none" style={{ color }}>
-          <span className="text-[26cqw] font-extrabold tracking-tighter">{LABEL[rank]}</span>
+          <span className="text-[26cqw] font-extrabold tracking-tighter">{rank}</span>
           <SuitIcon suit={suit} className="mt-[2cqw] size-[20cqw]" />
         </div>
         <div className="absolute inset-[22cqw_14cqw] grid place-items-center rounded-[6cqw]" style={{ background: face ? `${color}14` : undefined, boxShadow: face ? `inset 0 0 0 1.2cqw ${color}55` : undefined }}>

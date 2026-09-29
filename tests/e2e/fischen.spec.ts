@@ -2,9 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
 
 async function askSomething(p: Page) {
-  await p.getByRole("group", { name: "Wert" }).getByRole("button").first().click();
-  const who = p.getByRole("group", { name: "Mitspieler fragen" }).getByRole("button").first();
+  const who = p.getByRole("group", { name: "Mitspieler" }).locator("button:not([disabled])").first();
   await who.click();
+  await p.getByRole("group", { name: "Wert" }).getByRole("button").first().click();
   await p.getByRole("button", { name: /hast du/ }).click();
 }
 
@@ -19,11 +19,12 @@ test("Fischen lokal mit Sichtschutz", async ({ page }) => {
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await page.getByRole("button", { name: /Karten zeigen/ }).click();
   await expect(page.getByTestId("hand").getByRole("img")).not.toHaveCount(0);
+  await expect(page.getByText("1 · Wen fragst du?")).toBeVisible();
   await page.getByRole("group", { name: "Wert" }).getByRole("button").first().click();
   await expectNoScroll(page);
   await shot(page, "70-fischen-local-ask");
   await page.getByRole("button", { name: /hast du/ }).click();
-  await expect(page.getByTestId("events")).toContainText(/fragt/);
+  await expect(page.getByTestId("last-ask")).toContainText("Hast du");
   await expectNoScroll(page);
   await shot(page, "71-fischen-local-after");
 });
@@ -42,7 +43,7 @@ test("Fischen online: nur eigene Werte, Fragen für alle sichtbar", async ({ bro
   expect(handLabels.length).toBeGreaterThan(0);
   await expect(guest.getByText("Warte auf Anna")).toBeVisible();
   await askSomething(host);
-  await expect(guest.getByTestId("events")).toContainText("Anna fragt dich nach");
+  await expect(guest.getByTestId("last-ask")).toContainText("Anna → dich");
   await expectNoScroll(guest);
   await shot(host, "72-fischen-online-host");
   await shot(guest, "73-fischen-online-guest");

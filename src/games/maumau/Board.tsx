@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { rankOf, SUIT_NAME, SUITS, type Card, type Suit } from "@shared/cards/german";
+import { DECKS, isJack, SUIT_NAME, type Card, type Suit } from "@shared/cards/deck";
 import { canPlay, top, type MauMauAction, type MauMauState } from "@shared/games/maumau/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
-import { CardBack, GermanCard, SuitIcon } from "@/platform/cards/GermanCard";
+import { CardBack, PlayingCard, SuitIcon } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
@@ -71,7 +71,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
             {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-extrabold text-navy-950">+{s.pendingDraw}</span>}
           </button>
           <div className="relative h-full" key={s.discard.length}>
-            <GermanCard card={top(s)} className="dice-in h-full" />
+            <PlayingCard card={top(s)} className="dice-in h-full" />
             {s.wish && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="wish">
                 Wunsch: <SuitIcon suit={s.wish} className="size-4" />{SUIT_NAME[s.wish]}
@@ -94,7 +94,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
           <div className="glass rounded-2xl p-3">
             <p className="mb-2 text-center text-sm font-semibold">Welche Farbe wünschst du dir?</p>
             <div className="grid grid-cols-4 gap-2">
-              {SUITS.map((suit) => (
+              {DECKS[s.deck].suits.map((suit) => (
                 <button key={suit} type="button" onClick={() => play(unter, suit)} aria-label={SUIT_NAME[suit]}
                   className="flex flex-col items-center gap-1 rounded-xl bg-paper py-2 text-xs font-bold text-paper-ink outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
                   <SuitIcon suit={suit} className="size-8" />{SUIT_NAME[suit]}
@@ -111,11 +111,11 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
                   const ok = playable(c);
                   return (
                     <button key={c} type="button" disabled={!ok}
-                      onClick={() => (rankOf(c) === "U" ? setUnter(c) : play(c))}
+                      onClick={() => (isJack(c) ? setUnter(c) : play(c))}
                       className={cn("w-[min(19vw,5rem)] shrink-0 rounded-[10%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                         i > 0 && (hand.length > 5 ? "-ml-[min(9vw,2.4rem)]" : "-ml-[min(3vw,0.8rem)]"),
                         ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-gold")}>
-                      <GermanCard card={c} dim={myTurn && !ok} />
+                      <PlayingCard card={c} dim={myTurn && !ok} />
                     </button>
                   );
                 })}

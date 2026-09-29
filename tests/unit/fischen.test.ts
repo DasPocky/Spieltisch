@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { Card } from "@shared/cards/german";
+import type { Card } from "@shared/cards/deck";
 import { askableRanks, handSize, leaders, type FischenState } from "@shared/games/fischen/logic";
 import { viewRoom, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
 
 const g = (r: RoomState) => r.game as FischenState;
+/** Die Regeltests nutzen das deutsche Blatt (32 Karten, 8 Quartette) */
 function start(n = 3) {
-  const r = act(roomWith(["Anna", "Ben", "Cem", "Dora", "Emil", "Finn"].slice(0, n)), { type: "selectGame", gameId: "fischen" });
+  let r = act(roomWith(["Anna", "Ben", "Cem", "Dora", "Emil", "Finn"].slice(0, n)), { type: "selectGame", gameId: "fischen" });
+  r = act(r, { type: "setOption", key: "deck", value: "de32" });
   return act(r, { type: "start" });
 }
 function deal(r: RoomState, hands: Record<string, Card[]>, pile: Card[]): RoomState {
@@ -26,7 +28,7 @@ describe("Fischen", () => {
 
   it("nur nach eigenen Werten fragen", () => {
     const r = deal(start(), { p1: ["rot-K", "gruen-7"], p2: ["eichel-K", "rot-A"], p3: ["schellen-9"] }, ["rot-8"]);
-    expect(askableRanks(g(r).hands.p1)).toEqual(["7", "K"]);
+    expect(askableRanks(g(r), g(r).hands.p1)).toEqual(["7", "K"]);
     expect(() => ask(r, "p2", "A")).toThrow(/selbst hast/);
     expect(() => ask(r, "p1", "K")).toThrow(/Mitspieler/);
   });
@@ -74,6 +76,13 @@ describe("Fischen", () => {
     let r = deal(start(2), { p1: ["rot-7"], p2: ["gruen-7"] }, []);
     r = ask(r, "p2", "7");
     expect(g(r).finished).toBe(true);
+  });
+
+  it("Standard: französisch mit 52 Karten und 13 Quartetten, bis 8 Spieler", () => {
+    const r = act(act(roomWith(["A", "B", "C", "D", "E", "F", "G", "H"]), { type: "selectGame", gameId: "fischen" }), { type: "start" });
+    const s = g(r);
+    expect(s.deck).toBe("fr52");
+    expect(s.pile.length + Object.values(s.hands).flat().length + Object.values(s.quartets).flat().length * 4).toBe(52);
   });
 
   it("Rangliste nach Quartetten", () => {

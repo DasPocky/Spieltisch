@@ -1,10 +1,10 @@
 /**
- * Fischen (Quartett) mit deutschem Blatt – läuft im Browser (lokal) und im Durable Object (online).
+ * Fischen (Quartett) mit französischem oder deutschem Blatt – läuft im Browser (lokal) und im Durable Object (online).
  * Wer dran ist, fragt einen Mitspieler nach einem Wert, den er selbst auf der Hand hat.
  * Hat der ihn, bekommt man alle Karten dieses Werts und darf weiterfragen – sonst heißt es „Geh fischen!“.
  * Vier Gleiche werden sofort als Quartett abgelegt. Wer am Ende die meisten Quartette hat, gewinnt.
  */
-import { drawCards, rankOf, RANKS, shuffledDeck, sortHand, type Card, type Rank } from "../../cards/german";
+import { deckOf, deckSetting, DECKS, drawCards, rankOf, shuffledDeck, sortByRank, type Card, type DeckId, type Rank } from "../../cards/deck";
 import { nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Player } from "../../platform/types";
 
@@ -22,6 +22,7 @@ export interface FischenEvent {
 
 export interface FischenState {
   v: 1;
+  deck: DeckId;
   hands: Record<string, Card[]>;
   counts: Record<string, number>;
   pile: Card[];
@@ -44,12 +45,12 @@ const MAX_EVENTS = 30;
 export const handSize = (players: number) => (players <= 3 ? 7 : 5);
 
 /** Ränge, nach denen gefragt werden darf (die man selbst hat) */
-export const askableRanks = (hand: Card[]): Rank[] => RANKS.filter((r) => hand.some((c) => rankOf(c) === r));
+export const askableRanks = (s: FischenState, hand: Card[]): Rank[] => DECKS[s.deck].ranks.filter((r) => hand.some((c) => rankOf(c) === r));
 
 /** Legt vollständige Quartette ab und gibt sie zurück */
 function layQuartets(s: FischenState, id: string): Rank[] {
   const laid: Rank[] = [];
-  for (const r of RANKS) {
+  for (const r of DECKS[s.deck].ranks) {
     const same = s.hands[id].filter((c) => rankOf(c) === r);
     if (same.length === 4) {
       s.hands[id] = s.hands[id].filter((c) => rankOf(c) !== r);
@@ -74,11 +75,11 @@ const totalQuartets = (s: FischenState) => Object.values(s.quartets).reduce((n, 
  */
 function ensurePlayable(s: FischenState, players: Player[]) {
   for (let i = 0; i <= players.length; i++) {
-    if (totalQuartets(s) === RANKS.length) { s.finished = true; return; }
+    if (totalQuartets(s) === DECKS[s.deck].ranks.length) { s.finished = true; return; }
     const id = s.curId;
     if (id && s.hands[id]) {
       if (!s.hands[id].length && s.pile.length) {
-        s.hands[id] = sortHand([...s.hands[id], ...drawCards(s.pile, 1, () => [])]);
+        s.hands[id] = sortByRank([...s.hands[id], ...drawCards(s.pile, 1, () => [])], DECKS[s.deck]);
         layQuartets(s, id);
       }
       if (s.hands[id].length && players.some((p) => p.id !== id && (s.hands[p.id]?.length ?? 0) > 0)) return;
@@ -89,14 +90,15 @@ function ensurePlayable(s: FischenState, players: Player[]) {
 }
 
 function setup(ctx: GameContext): FischenState {
-  const pile = shuffledDeck();
+  const deck = deckOf(ctx.options, "fr52");
+  const pile = shuffledDeck(deck);
   const n = handSize(ctx.players.length);
   const s: FischenState = {
-    v: 1, hands: {}, counts: {}, pile, pileCount: 0, quartets: {}, curId: ctx.players[0]?.id ?? null,
+    v: 1, deck: deck.id, hands: {}, counts: {}, pile, pileCount: 0, quartets: {}, curId: ctx.players[0]?.id ?? null,
     events: [], fished: null, finished: false, n: 0,
   };
   for (const p of ctx.players) {
-    s.hands[p.id] = sortHand(pile.splice(pile.length - n, n));
+    s.hands[p.id] = sortByRank(pile.splice(pile.length - n, n), deck);
     s.quartets[p.id] = [];
     layQuartets(s, p.id);
   }
@@ -112,7 +114,7 @@ function apply(prev: FischenState, a: FischenAction, ctx: GameContext): FischenS
   if (!me || !s.hands[me]) throw new GameError("Es ist niemand am Zug.");
   if (a.target === me || !s.hands[a.target]) throw new GameError("Frag einen Mitspieler.");
   if (!s.hands[a.target].length) throw new GameError("Diese Person hat keine Karten mehr.");
-  if (!RANKS.includes(a.rank)) throw new GameError("Diesen Wert gibt es nicht.");
+  if (!DECKS[s.deck].ranks.includes(a.rank)) throw new GameError("Diesen Wert gibt es nicht.");
   if (!s.hands[me].some((c) => rankOf(c) === a.rank)) throw new GameError(`Du darfst nur nach Werten fragen, die du selbst hast.`);
 
   s.fished = null;
@@ -122,13 +124,13 @@ function apply(prev: FischenState, a: FischenAction, ctx: GameContext): FischenS
   let again: boolean;
   if (given.length) {
     s.hands[a.target] = s.hands[a.target].filter((c) => rankOf(c) !== a.rank);
-    s.hands[me] = sortHand([...s.hands[me], ...given]);
+    s.hands[me] = sortByRank([...s.hands[me], ...given], DECKS[s.deck]);
     again = true;
   } else {
     // Geh fischen!
     const [card] = drawCards(s.pile, 1, () => []);
     if (card) {
-      s.hands[me] = sortHand([...s.hands[me], card]);
+      s.hands[me] = sortByRank([...s.hands[me], card], DECKS[s.deck]);
       s.fished = card;
       ev.lucky = rankOf(card) === a.rank;
     }
@@ -156,7 +158,7 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
     tagline: "Frag nach Karten, die du selbst hast, und sammle Quartette – oder geh fischen!",
     category: "Karten",
     minPlayers: 2,
-    maxPlayers: 6,
+    maxPlayers: 8,
     duration: "10–20 Min.",
   },
   version: 1,
@@ -164,8 +166,11 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
   ownTurnsOnly: true,
   joinMidGame: false,
   settings: [
+    deckSetting("fr52"),
     { key: "luckyAgain", label: "Glück beim Fischen: nochmal", type: "toggle", default: true, hint: "wer genau den gefragten Wert zieht, ist nochmal dran" },
   ],
+  /** 32 Karten reichen für 6, 52 Karten für 8 Spieler */
+  playerLimits: (o) => ({ min: 2, max: deckOf(o, "fr52").ranks.length > 8 ? 8 : 6 }),
   setup,
   apply,
   actionKind: (a) => (a.type === "ask" ? "turn" : null),

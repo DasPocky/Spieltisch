@@ -6,7 +6,7 @@ async function takeTurn(p: Page) {
   const playable = p.getByTestId("hand").locator("button:not([disabled])");
   if (await playable.count()) {
     await playable.first().click();
-    const wish = p.getByRole("button", { name: "Rot", exact: true });
+    const wish = p.getByRole("button", { name: /^(Herz|Rot)$/ });
     if (await wish.isVisible()) await wish.click();
   } else {
     await p.getByRole("button", { name: /ziehen/i }).first().click();
@@ -59,7 +59,11 @@ test("Mau-Mau online mit zwei Handys", async ({ browser }) => {
   const other = first === host ? guest : host;
   await expect(other.getByTestId("hand").locator("button:not([disabled])")).toHaveCount(0);
   await expect(other.getByRole("button", { name: /ziehen/i }).first()).toBeDisabled();
-  await takeTurn(first);
+  // Bei zwei Spielern ist man nach einer Acht gleich wieder dran
+  for (let i = 0; i < 6 && ((await other.getByTestId("status").textContent()) ?? "").includes("ist am Zug"); i++) {
+    await takeTurn(first);
+    await first.waitForTimeout(300);
+  }
   await expect.poll(async () => (await other.getByTestId("status").textContent()) ?? "").not.toContain("ist am Zug");
   await takeTurn(other);
   await shot(host, "64-maumau-online-after");

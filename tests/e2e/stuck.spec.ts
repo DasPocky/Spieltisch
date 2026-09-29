@@ -22,10 +22,10 @@ test("Spieler am Zug geht offline – der Host überspringt", async ({ browser }
   // Ben zuerst: nach oben schieben
   await host.getByRole("button", { name: "Ben nach oben" }).click();
   await host.getByRole("button", { name: "Spiel starten" }).click();
-  await expect(guest.getByRole("button", { name: /hast du|Wert und Mitspieler/ })).toBeVisible();
+  await expect(guest.getByRole("button", { name: /hast du|antippen/ })).toBeVisible();
   await guest.context().close();
   await expect(host.getByText("Ben ist offline.")).toBeVisible();
   await shot(host, "81-player-offline");
   await host.getByRole("button", { name: "Überspringen" }).click();
-  await expect(host.getByRole("button", { name: /hast du|Wert und Mitspieler/ })).toBeVisible();
+  await expect(host.getByRole("button", { name: /hast du|antippen/ })).toBeVisible();
 });
