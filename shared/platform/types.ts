@@ -67,6 +67,11 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
   settings: SettingDef[];
   /** Zugbasiert? Dann gibt es die Einstellung „Wer darf für den Spieler am Zug handeln?“ */
   turnBased: boolean;
+  /**
+   * Nur der Spieler am Zug handelt selbst – auch der Host nicht für andere (z. B. bei verdeckten Handkarten).
+   * Dann gibt es die Einstellung „Wer darf für den Spieler am Zug handeln?“ nicht.
+   */
+  ownTurnsOnly?: boolean;
   /** Dürfen Spieler während einer laufenden Partie beitreten? */
   joinMidGame: boolean;
 

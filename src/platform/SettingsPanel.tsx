@@ -32,7 +32,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
         <Setting key={def.key} def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}
           onChange={(value) => dispatch({ type: "setOption", key: def.key, value })} />
       ))}
-      {online && logic.turnBased && (
+      {online && logic.turnBased && !logic.ownTurnsOnly && (
         <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}
           onChange={(mode) => dispatch({ type: "setEntry", mode })} />
       )}

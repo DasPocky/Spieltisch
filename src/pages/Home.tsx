@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, LogIn } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { ROOM_CODE_RE } from "@shared/platform/protocol";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,14 +13,16 @@ export function Home() {
   const codeOk = ROOM_CODE_RE.test(code);
 
   return (
-    <main className="mx-auto flex min-h-dvh-safe max-w-md flex-col px-4 pt-[5vh] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-      <div className="text-center">
-        <Logo className="mx-auto mb-4 size-16 -rotate-6 rounded-2xl" />
-        <h1 className="bg-gradient-to-b from-white to-navy-300 bg-clip-text text-5xl font-extrabold leading-none tracking-tighter text-transparent">Spieltisch</h1>
-        <p className="mx-auto mt-3 max-w-[32ch] text-muted-foreground">Spiele für euren Spieleabend – jeder am eigenen Handy oder alle an einem.</p>
+    <main className="mx-auto flex h-dvh-safe max-w-md flex-col overflow-hidden px-4 pt-[3vh] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="flex shrink-0 items-center gap-3.5">
+        <Logo className="size-14 shrink-0 -rotate-6 rounded-2xl" />
+        <div className="min-w-0">
+          <h1 className="bg-gradient-to-b from-white to-navy-300 bg-clip-text text-4xl font-extrabold leading-none tracking-tighter text-transparent">Spieltisch</h1>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">Spiele für euren Spieleabend – jeder am eigenen Handy oder alle an einem.</p>
+        </div>
       </div>
 
-      <form className="glass mt-7 rounded-2xl p-4" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
+      <form className="glass mt-5 shrink-0 rounded-2xl p-3.5" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
         <label htmlFor="code" className="text-sm font-semibold text-muted-foreground">Raum beitreten</label>
         <div className="mt-2 flex gap-2">
           <Input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))}
@@ -29,23 +31,24 @@ export function Home() {
         </div>
       </form>
 
-      <h2 className="mt-7 mb-3 text-xl font-extrabold tracking-tight">Spiel auswählen</h2>
-      <ul className="grid gap-2.5">
+      <h2 className="mt-5 mb-2.5 shrink-0 text-xl font-extrabold tracking-tight">Spiel auswählen</h2>
+      {/* Nur die Liste scrollt, falls es einmal mehr Spiele werden, als auf den Bildschirm passen */}
+      <ul className="no-scrollbar grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto pb-1">
         {GAME_LIST.map(({ id, info, ui: { Icon } }) => (
           <li key={id}>
-            <button type="button" onClick={() => navigate(`/spiel/${id}`)}
-              className="glass flex w-full items-center gap-3.5 rounded-2xl p-3.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
-              <IconTile className="size-13 rounded-2xl"><Icon className="size-9" /></IconTile>
-              <span className="min-w-0 flex-1">
+            <button type="button" onClick={() => navigate(`/spiel/${id}`)} aria-label={`${info.name} – ${info.category}, ${info.minPlayers}–${info.maxPlayers} Spieler`}
+              className="glass flex h-full w-full flex-col items-start gap-2.5 rounded-2xl p-3.5 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring">
+              <IconTile className="size-12 rounded-2xl"><Icon className="size-8" /></IconTile>
+              <span className="min-w-0">
                 <span className="block text-lg font-bold leading-tight">{info.name}</span>
-                <span className="block truncate text-sm text-muted-foreground">{info.category} · {info.minPlayers}–{info.maxPlayers} Spieler · {info.duration}</span>
+                <span className="block text-xs text-muted-foreground">{info.category} · {info.minPlayers}–{info.maxPlayers} Spieler</span>
+                <span className="block text-xs text-muted-foreground">{info.duration}</span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </button>
           </li>
         ))}
       </ul>
-      <p className="mt-auto pt-6 text-center text-xs text-muted-foreground">Online-Räume verschwinden 48 Stunden nach dem letzten Zug.</p>
+      <p className="shrink-0 pt-3 text-center text-xs text-muted-foreground">Online-Räume verschwinden 48 Stunden nach dem letzten Zug.</p>
     </main>
   );
 }

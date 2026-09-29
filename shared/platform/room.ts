@@ -105,7 +105,9 @@ export function currentPlayerId(room: RoomState): string | null {
 
 /** Darf diese Person gerade für den Spieler am Zug handeln? (actorId null = lokales Gerät) */
 export function canPlayTurn(room: RoomState, actorId: string | null): boolean {
-  if (actorId === null || actorId === room.hostId) return true;
+  if (actorId === null) return true;
+  if (roomGame(room).ownTurnsOnly) return currentPlayerId(room) === actorId;
+  if (actorId === room.hostId) return true;
   if (room.entry === "host") return false;
   if (room.entry === "all") return room.players.some((p) => p.id === actorId);
   return currentPlayerId(room) === actorId;

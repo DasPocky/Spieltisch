@@ -6,6 +6,7 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
 - **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor, Beschützer.
+- **Mau-Mau** – deutsches Blatt, 2–5 Spieler. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
 
 Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
@@ -57,6 +58,7 @@ Browser ──HTTP──▶ Worker ──▶ statische React-App (dist/client)
 
 ```
 shared/                       Logik für Browser UND Server
+  cards/german.ts             deutsches Blatt (32 Karten) für alle Kartenspiele
   platform/
     types.ts                  Schnittstelle GameLogic, Einstellungen, Rechte
     room.ts                   Raum: Spieler, Host, Lobby/Partie, Rechteprüfung, Sicht pro Spieler
@@ -68,6 +70,7 @@ shared/                       Logik für Browser UND Server
     tutto/                    Tutto: Karten-Daten und Spiellogik
     kniffel/                  Kniffel: Wertung und Spiellogik
     werwolf/                  Werwolf: Rollen, Nacht/Tag, geheime Sicht pro Spieler
+    maumau/                   Mau-Mau: Hausregeln, geheime Hände
 worker/index.ts               API + Durable Object GameRoom
 src/
   platform/                   Plattform-Oberfläche: RoomScreen (Kopfzeile, Lobby), Menü,
@@ -78,6 +81,7 @@ src/
     tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Menü-Extras
     kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
     werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
+    maumau/                   Tisch, Hand, Farbwunsch, Weitergeben mit Sichtschutz
   pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum
   hooks/                      useRoom (WebSocket + Reconnect), useRoute (Mini-Router), useViewMode
   components/ui/              shadcn/ui-Komponenten
@@ -138,6 +142,7 @@ export const meinSpiel: GameLogic<MeinState, MeinAction> = {
   info: { id: "meinspiel", name: "Mein Spiel", tagline: "Ein Satz für die Auswahl.", category: "Würfel", minPlayers: 2, maxPlayers: 6, duration: "15 Min." },
   version: 1,
   turnBased: true,          // aktiviert „Wer darf für den Spieler am Zug handeln?“
+  // ownTurnsOnly: true,    // bei verdeckten Karten: nur der Spieler am Zug selbst, auch nicht der Host
   joinMidGame: false,       // Beitritt nur in der Lobby
   settings: [               // die Plattform zeigt und prüft diese Einstellungen
     { key: "rounds", label: "Runden", type: "number", default: 10, min: 1, max: 20, step: 1 },
@@ -182,7 +187,7 @@ export const meinSpielUI: GameUI<MeinState, MeinAction> = {
 };
 ```
 
-Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
+Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `cards/GermanCard` (Karten des deutschen Blatts samt Rückseite), `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
 
 Das `Board` muss ohne Scrollen auf einen Handy-Bildschirm passen: Es sitzt in einem Flex-Container mit fester Höhe – den Platz in der Mitte mit `flex-1 min-h-0` füllen, Tasten mit `shrink-0` unten.
 

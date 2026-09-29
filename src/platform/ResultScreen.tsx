@@ -5,10 +5,12 @@ import { cn, fmt } from "@/lib/utils";
 import type { ScoreEntry } from "./Scoreboard";
 
 /** Siegerehrung mit Rangliste. Der Host startet von hier eine neue Runde oder geht zurück in die Lobby. */
-export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, children }: {
+export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, children, scoreLabel }: {
   winner: string;
   subtitle: string;
   ranking: ScoreEntry[];
+  /** Einheit hinter der Zahl in der Rangliste, z. B. „Karten übrig“ */
+  scoreLabel?: string;
   isHost: boolean;
   dispatch: (a: RoomAction) => void;
   /** zusätzliche Host-Knöpfe des Spiels */
@@ -23,7 +25,7 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
       <ol className="mt-8 grid gap-1.5 text-left">
         {ranking.map((p, i) => (
           <li key={p.id} className={cn("flex justify-between rounded-xl px-4 py-3 font-semibold", i === 0 ? "bg-navy-600" : "glass")}>
-            <span><span className="mr-2 text-muted-foreground">{i + 1}.</span>{p.name}</span><span className="tabular-nums">{fmt(p.score)}</span>
+            <span><span className="mr-2 text-muted-foreground">{i + 1}.</span>{p.name}</span><span className="tabular-nums">{fmt(p.score)}{scoreLabel && <span className="ml-1 text-sm font-normal text-muted-foreground">{scoreLabel}</span>}</span>
           </li>
         ))}
       </ol>

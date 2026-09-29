@@ -4,6 +4,7 @@
 import { GAME_IDS, getGame, isGameId, type GameId } from "@shared/games";
 import type { GameUI } from "./types";
 import { kniffelUI } from "./kniffel";
+import { maumauUI } from "./maumau";
 import { tuttoUI } from "./tutto";
 import { werwolfUI } from "./werwolf";
 
@@ -11,6 +12,7 @@ const UIS: Record<GameId, GameUI<never, never>> = {
   tutto: tuttoUI as unknown as GameUI<never, never>,
   kniffel: kniffelUI as unknown as GameUI<never, never>,
   werwolf: werwolfUI as unknown as GameUI<never, never>,
+  maumau: maumauUI as unknown as GameUI<never, never>,
 };
 
 export function getGameUI(id: string): GameUI {
