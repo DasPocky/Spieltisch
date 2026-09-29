@@ -61,7 +61,7 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
     await host.waitForTimeout(500);
     const p = await actor();
     if (await p.getByRole("button", { name: /Würfeln/ }).isVisible()) break;
-    await p.getByRole("button", { name: "Weiter" }).click();
+    await p.getByRole("button", { name: /ächster Spieler/ }).click();
   }
   const roller = await actor();
   await roller.getByRole("button", { name: /Würfeln/ }).click();
@@ -147,7 +147,7 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(guest.getByTestId("current-player")).toBeVisible();
   // Anna beendet ihren Zug, Ben ist dran – Anna sieht nur „Warte auf Ben“
-  await host.getByRole("button", { name: /^(Weiter|Niete)/ }).first().click();
+  await host.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
   await expect(host.getByText("Warte auf Ben")).toBeVisible();
   await host.getByRole("button", { name: "Menü" }).click();
   await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(0);

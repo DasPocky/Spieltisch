@@ -97,4 +97,59 @@ describe("Fischen", () => {
     const other = ["p1", "p2", "p3"].find((x) => x !== cur && x !== "p1")!;
     expect(() => ask(r, cur, "K", other)).toThrow(/ist am Zug/);
   });
+
+  it("Variante: nach „Geh fischen!“ ist der Gefragte dran", () => {
+    let r = act(start(), { type: "setOption", key: "afterFish", value: "asked" });
+    r = deal(r, { p1: ["rot-K", "gruen-7"], p2: ["eichel-A"], p3: ["schellen-9", "rot-9"] }, ["rot-8"]);
+    r = ask(r, "p3", "K");
+    expect(g(r).curId).toBe("p3");
+  });
+});
+
+describe("Fischen mit echten Karten", () => {
+  const table = (n = 3) => {
+    let r = act(roomWith(["Anna", "Ben", "Cem"].slice(0, n)), { type: "selectGame", gameId: "fischen" });
+    r = act(r, { type: "setOption", key: "deck", value: "de32" });
+    r = act(r, { type: "setOption", key: "cards", value: "table" });
+    return act(r, { type: "start" });
+  };
+
+  it("keine Karten in der App, Fragen am Tisch", () => {
+    const r = table();
+    expect(g(r).table).toBe(true);
+    expect(g(r).hands).toEqual({});
+    expect(() => ask(r, "p2", "K")).toThrow(/am Tisch/);
+  });
+
+  it("Quartette eintragen, zurücknehmen, Sieger", () => {
+    let r = table();
+    r = game(r, { type: "quartet", rank: "K", owner: "p2" });
+    expect(() => game(r, { type: "quartet", rank: "K", owner: "p1" })).toThrow(/liegt schon/);
+    r = game(r, { type: "undo" });
+    expect(g(r).quartets.p2).toEqual([]);
+    for (const rank of ["7", "8", "9", "10", "U", "O", "K"]) r = game(r, { type: "quartet", rank, owner: "p1" });
+    expect(g(r).finished).toBe(false);
+    r = game(r, { type: "quartet", rank: "A", owner: "p3" });
+    expect(g(r).finished).toBe(true);
+    expect(leaders(g(r), r.players)).toEqual(["p1"]);
+  });
+
+  it("Geh fischen gibt den Zug weiter – nur der Spieler am Zug tippt", () => {
+    let r = table();
+    expect(() => game(r, { type: "fish" }, "p2")).toThrow(/am Zug/);
+    r = game(r, { type: "fish" }, "p1");
+    expect(g(r).curId).toBe("p2");
+    r = act(r, { type: "setOption", key: "afterFish", value: "asked" });
+    r = game(r, { type: "fish", target: "p1" }, "p2");
+    expect(g(r).curId).toBe("p1");
+  });
+
+  it("wer geht, gibt seine Quartette frei – die Partie kann trotzdem enden", () => {
+    let r = table();
+    r = game(r, { type: "quartet", rank: "K", owner: "p3" });
+    r = act(r, { type: "removePlayer", id: "p3" });
+    expect(g(r).finished).toBe(false);
+    for (const rank of ["7", "8", "9", "10", "U", "O", "K", "A"]) r = game(r, { type: "quartet", rank, owner: "p1" });
+    expect(g(r).finished).toBe(true);
+  });
 });

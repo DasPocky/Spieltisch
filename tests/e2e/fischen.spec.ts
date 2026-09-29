@@ -48,3 +48,34 @@ test("Fischen online: nur eigene Werte, Fragen für alle sichtbar", async ({ bro
   await shot(host, "72-fischen-online-host");
   await shot(guest, "73-fischen-online-guest");
 });
+
+for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+  test(`Fischen mit echten Karten: App zählt Quartette (${size.width}px)`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+    await page.goto("/spiel/fischen/lokal");
+    for (const n of ["Anna", "Ben", "Cem"]) {
+      await page.getByLabel("Name des Spielers").fill(n);
+      await page.getByRole("button", { name: "Hinzufügen" }).click();
+    }
+    await page.getByRole("radio", { name: /Echte Karten/ }).click();
+    await page.getByRole("radio", { name: /Der Gefragte/ }).click();
+    await page.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(page.getByTestId("current-player")).toHaveText("Anna");
+    await expectNoScroll(page);
+    // Quartett Könige für Ben (lag schon beim Austeilen)
+    await page.getByRole("button", { name: "Quartett Könige eintragen" }).click();
+    await page.getByRole("button", { name: "Ben", exact: true }).click();
+    await expect(page.getByRole("button", { name: /Könige: liegt bei Ben/ })).toBeVisible();
+    // Geh fischen – Cem hat „Nein“ gesagt und ist dran
+    await page.getByRole("button", { name: /Geh fischen/ }).click();
+    await page.getByRole("button", { name: "Cem", exact: true }).click();
+    await expect(page.getByTestId("current-player")).toHaveText("Cem");
+    await expectNoScroll(page);
+    await shot(page, `74-fischen-table-${size.width}`);
+    // Zurücknehmen
+    await page.getByRole("button", { name: /Könige zurücknehmen/ }).click();
+    await expect(page.getByRole("button", { name: "Quartett Könige eintragen" })).toBeVisible();
+  });
+}

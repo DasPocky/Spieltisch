@@ -61,9 +61,17 @@ function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "pass" });
       break;
     }
-    case "fischen":
-      for (const target of ids) for (const rank of DECKS[(r.game as FischenState).deck].ranks) add({ type: "ask", target, rank });
+    case "fischen": {
+      const st = r.game as FischenState;
+      for (const target of ids) for (const rank of DECKS[st.deck].ranks) {
+        add({ type: "ask", target, rank });
+        if (st.table && Math.random() < 0.05) add({ type: "quartet", rank, owner: target });
+      }
+      for (const target of ids) add({ type: "fish", target });
+      add({ type: "fish" });
+      if (Math.random() < 0.05) add({ type: "undo" });
       break;
+    }
     case "flip7": {
       const st = r.game as { lines: Record<string, { nums: string[]; mods: string[] }> };
       ["hit", "stay"].forEach((type) => add({ type }));
@@ -130,7 +138,7 @@ function checkCards(r: RoomState) {
       + Object.values(s.lines).reduce((t, l) => t + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
     expect(n).toBe(s.variant === "fies" ? 112 : 94);
   }
-  if (r.gameId === "fischen") {
+  if (r.gameId === "fischen" && !(r.game as FischenState).table) {
     const s = r.game as FischenState;
     const n = s.pile.length + Object.values(s.hands).flat().length + Object.values(s.quartets).flat().length * 4;
     expect(n).toBe(DECKS[s.deck].suits.length * DECKS[s.deck].ranks.length);
@@ -190,6 +198,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["fischen", 2, {}],
   ["fischen", 5, { luckyAgain: false, deck: "de32" }],
   ["fischen", 8, { deck: "fr52" }],
+  ["fischen", 4, { afterFish: "asked" }],
+  ["fischen", 3, { cards: "table", afterFish: "asked", deck: "fr32" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
   ["flip7", 3, { target: 100 }],

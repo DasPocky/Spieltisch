@@ -18,7 +18,7 @@ for (const size of SIZES) {
     await startLocalTutto(page, ["Anna", "Ben", "Cem", "Dora", "Emil"]);
     const plus = page.getByRole("button", { name: "+100", exact: true });
     for (let i = 0; i < 40 && !(await plus.isVisible()); i++) {
-      await page.getByRole("button", { name: /^(Weiter|Niete)/ }).first().click();
+      await page.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
       await page.waitForTimeout(150);
     }
     await plus.click();

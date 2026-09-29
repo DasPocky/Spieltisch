@@ -8,12 +8,12 @@ const KEYS = [50, 100, 200, 300, 400, 500, 600, 1000];
 /** Was ein Tutto mit dieser Karte bringt – steht groß auf dem Knopf, darüber die Überschrift */
 function tuttoLabel(card: CardId, tuttos: number): [string, string] {
   switch (card) {
-    case "x2": return ["Tutto", "×2"];
+    case "x2": return ["🎉 Tutto geschafft", "×2"];
     case "street": return ["Straße geschafft", "+2.000"];
     case "torte": return ["Torte geschafft", "+1.500"];
-    case "pm": return ["Tutto", "±1.000"];
-    case "clover": return ["Tutto", `${tuttos + 1} von 2`];
-    default: return ["Tutto", `+${fmt(CARD_BY_ID[card].quick ?? 0)}`];
+    case "pm": return ["🎉 Tutto geschafft", "±1.000"];
+    case "clover": return ["🎉 Tutto geschafft", `${tuttos + 1} von 2`];
+    default: return ["🎉 Tutto geschafft", `+${fmt(CARD_BY_ID[card].quick ?? 0)}`];
   }
 }
 
@@ -91,9 +91,9 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
   );
   const niete = state.turnPts > 0 ? (
     <Confirm title="Wirklich Niete?" description={`Die ${pts} Punkte dieses Zugs verfallen.`} confirmLabel="Niete" onConfirm={() => book(true)}>
-      <Btn>Niete</Btn>
+      <Btn sub="Nichts gewertet">Niete</Btn>
     </Confirm>
-  ) : <Btn onClick={() => book(true)}>Niete</Btn>;
+  ) : <Btn sub="Nichts gewertet" onClick={() => book(true)}>Niete</Btn>;
 
   if (!card) return <div className="grid"><Btn kind="primary" onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
   if (state.afterTutto) {
@@ -104,7 +104,13 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
       </div>
     );
   }
-  if (card === "stop") return <div className="grid"><Btn kind="primary" onClick={() => book(state.turnPts === 0)}>{state.turnPts > 0 ? `${pts} eintragen` : "Weiter"}</Btn></div>;
+  if (card === "stop") {
+    return (
+      <div className="grid">
+        <Btn sub={state.turnPts > 0 ? `Stopp – ${pts} eintragen` : "Stopp – kein Wurf"} kind="primary" onClick={() => book(state.turnPts === 0)}>Nächster Spieler</Btn>
+      </div>
+    );
+  }
   if (card === "fire") return <div className="grid"><Btn sub="Niete geworfen – Punkte zählen trotzdem" kind="primary" onClick={() => book()}>{pts} eintragen</Btn></div>;
 
   const tutto = () => { vibrate([20, 40, 20]); onAction({ type: "tutto" }); };

@@ -81,14 +81,14 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   );
 
   if (!card) return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
-  if (card === "stop") return <div className="grid"><Btn primary onClick={() => book(state.turnPts === 0)}>{state.turnPts > 0 ? `${pts} eintragen` : "Weiter"}</Btn></div>;
+  if (card === "stop") return <div className="grid"><Btn primary onClick={() => book(state.turnPts === 0)}>{state.turnPts > 0 ? `Stopp – ${pts} eintragen` : "Stopp – nächster Spieler"}</Btn></div>;
   if (!d || (!d.roll.length && !d.tutto)) {
     // Frisch nach einem Tutto: die sicheren Punkte darf man noch eintragen
     if (freshAfterTutto(state) && state.turnPts > 0) {
       return (
         <div className="grid grid-cols-2 gap-2.5">
           <Btn onClick={() => book()}>{pts} eintragen</Btn>
-          <Btn primary onClick={roll}>🎲 Würfeln</Btn>
+          <Btn primary onClick={roll}>🎲 Weiterzocken</Btn>
         </div>
       );
     }

@@ -35,9 +35,20 @@ export interface FischenState {
   fished: Card | null;
   finished: boolean;
   n: number;
+  /** Echte Karten auf dem Tisch – die App führt nur Zug, Quartette und Wertung */
+  table?: boolean;
+  /** Echte Karten: gelegte Quartette in Reihenfolge (zum Zurücknehmen) */
+  laid?: { owner: string; rank: Rank }[];
 }
 
-export type FischenAction = { type: "ask"; target: string; rank: Rank };
+export type FischenAction =
+  | { type: "ask"; target: string; rank: Rank }
+  /** Echte Karten: Quartett eintragen */
+  | { type: "quartet"; rank: Rank; owner: string }
+  /** Echte Karten: „Geh fischen!“ – der Zug geht weiter (an den Gefragten, falls so eingestellt) */
+  | { type: "fish"; target?: string }
+  /** Echte Karten: letztes Quartett zurücknehmen */
+  | { type: "undo" };
 
 const MAX_EVENTS = 30;
 
@@ -69,6 +80,15 @@ function sync(s: FischenState) {
 
 const totalQuartets = (s: FischenState) => Object.values(s.quartets).reduce((n, q) => n + q.length, 0);
 
+/** Wer ist nach „Geh fischen!“ dran? Standard der linke Nachbar, als Variante der Gefragte. */
+export const askedGoesNext = (options: GameContext["options"]) => options.afterFish === "asked";
+
+/** Echte Karten: Werte, die noch nicht als Quartett liegen */
+export const openRanks = (s: FischenState): Rank[] => {
+  const done = new Set(Object.values(s.quartets).flat());
+  return DECKS[s.deck].ranks.filter((r) => !done.has(r));
+};
+
 /**
  * Sorgt dafür, dass der Spieler am Zug fragen kann: Mit leerer Hand zieht er eine Karte.
  * Kann er gar nicht (Stapel leer), ist der Nächste dran. Sind alle Quartette gelegt, ist Schluss.
@@ -91,6 +111,12 @@ function ensurePlayable(s: FischenState, players: Player[]) {
 
 function setup(ctx: GameContext): FischenState {
   const deck = deckOf(ctx.options, "fr52");
+  if (ctx.options.cards === "table") {
+    return {
+      v: 1, deck: deck.id, hands: {}, counts: {}, pile: [], pileCount: 0, curId: ctx.players[0]?.id ?? null,
+      quartets: Object.fromEntries(ctx.players.map((p) => [p.id, []])), events: [], fished: null, finished: false, n: 0, table: true, laid: [],
+    };
+  }
   const pile = shuffledDeck(deck);
   const n = handSize(ctx.players.length);
   const s: FischenState = {
@@ -107,8 +133,42 @@ function setup(ctx: GameContext): FischenState {
   return s;
 }
 
+/** Echte Karten: Quartette eintragen, Zug weitergeben, zurücknehmen */
+function applyTable(prev: FischenState, a: FischenAction, ctx: GameContext): FischenState {
+  const s = structuredClone(prev);
+  s.laid ??= [];
+  s.n++;
+  switch (a.type) {
+    case "quartet": {
+      if (!ctx.players.some((p) => p.id === a.owner)) throw new GameError("Diesen Spieler gibt es nicht.");
+      if (!openRanks(s).includes(a.rank)) throw new GameError("Dieses Quartett liegt schon.");
+      (s.quartets[a.owner] ??= []).push(a.rank);
+      s.laid.push({ owner: a.owner, rank: a.rank });
+      if (!openRanks(s).length) s.finished = true;
+      return s;
+    }
+    case "fish": {
+      const target = a.target && a.target !== s.curId && ctx.players.some((p) => p.id === a.target) ? a.target : null;
+      s.curId = askedGoesNext(ctx.options) && target ? target : nextPlayerId(ctx.players, s.curId);
+      return s;
+    }
+    case "undo": {
+      const last = s.laid.pop();
+      if (!last) throw new GameError("Es gibt nichts zum Zurücknehmen.");
+      const q = s.quartets[last.owner] ?? [];
+      const i = q.lastIndexOf(last.rank);
+      if (i >= 0) q.splice(i, 1);
+      s.finished = false;
+      return s;
+    }
+    default:
+      throw new GameError("Mit echten Karten fragt ihr am Tisch – die App zählt nur die Quartette.");
+  }
+}
+
 function apply(prev: FischenState, a: FischenAction, ctx: GameContext): FischenState {
-  if (a.type !== "ask") throw new GameError("Unbekannte Aktion.");
+  if (prev.table) return applyTable(prev, a, ctx);
+  if (a.type !== "ask") throw new GameError("Das geht nur mit echten Karten.");
   const s = structuredClone(prev);
   const me = s.curId;
   if (!me || !s.hands[me]) throw new GameError("Es ist niemand am Zug.");
@@ -139,7 +199,8 @@ function apply(prev: FischenState, a: FischenAction, ctx: GameContext): FischenS
   const laid = layQuartets(s, me);
   if (laid.length) ev.quartet = laid[laid.length - 1];
   s.events.push(ev);
-  if (!again) s.curId = nextPlayerId(ctx.players, me);
+  // Standard: der linke Nachbar – als Variante macht der Gefragte weiter (wenn er noch Karten hat)
+  if (!again) s.curId = askedGoesNext(ctx.options) && s.hands[a.target]?.length ? a.target : nextPlayerId(ctx.players, me);
   ensurePlayable(s, ctx.players);
   sync(s);
   return s;
@@ -166,14 +227,28 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
   ownTurnsOnly: true,
   joinMidGame: false,
   settings: [
+    {
+      key: "cards", label: "Karten", type: "choice", default: "app",
+      choices: [
+        { value: "app", label: "📱 In der App", hint: "App mischt und verteilt" },
+        { value: "table", label: "🃏 Echte Karten", hint: "App zählt Quartette" },
+      ],
+    },
     deckSetting("fr52"),
+    {
+      key: "afterFish", label: "Nach „Geh fischen!“ ist dran", type: "choice", default: "next", inGame: true,
+      choices: [
+        { value: "next", label: "Der Nächste", hint: "im Uhrzeigersinn" },
+        { value: "asked", label: "Der Gefragte", hint: "wer „Nein“ sagte" },
+      ],
+    },
     { key: "luckyAgain", label: "Glück beim Fischen: nochmal", type: "toggle", default: true, hint: "wer genau den gefragten Wert zieht, ist nochmal dran" },
   ],
   /** 32 Karten reichen für 6, 52 Karten für 8 Spieler */
   playerLimits: (o) => ({ min: 2, max: deckOf(o, "fr52").ranks.length > 8 ? 8 : 6 }),
   setup,
   apply,
-  actionKind: (a) => (a.type === "ask" ? "turn" : null),
+  actionKind: (a) => (["ask", "quartet", "fish", "undo"].includes(a.type) ? "turn" : null),
   currentPlayerId: (s) => (s.finished ? null : s.curId),
   isOver: (s) => s.finished,
   skipLabel: (s, ctx) => {
@@ -185,12 +260,20 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
     s.fished = null;
     s.curId = nextPlayerId(ctx.players, s.curId);
     s.n++;
-    ensurePlayable(s, ctx.players);
+    if (!s.table) ensurePlayable(s, ctx.players);
     sync(s);
     return s;
   },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
+    if (s.table) {
+      // Seine Quartette werden wieder frei, damit die Partie trotzdem enden kann
+      delete s.quartets[id];
+      s.laid = (s.laid ?? []).filter((x) => x.owner !== id);
+      if (s.curId === id) s.curId = nextPlayerId(ctx.players, id);
+      if (ctx.players.filter((p) => p.id !== id).length < 2) s.finished = true;
+      return s;
+    }
     s.pile.unshift(...(s.hands[id] ?? []));
     delete s.hands[id];
     const rest = ctx.players.filter((p) => p.id !== id);

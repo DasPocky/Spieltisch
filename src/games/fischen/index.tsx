@@ -28,10 +28,16 @@ function Rules() {
           <li>Gespielt wird mit 52 Karten (13 Quartette) oder – einstellbar – mit 32 Karten, französisch oder deutsch. Jeder bekommt 7 Karten (ab 4 Spielern 5), der Rest ist der Teich.</li>
           <li>Wer dran ist, tippt oben einen Mitspieler an und unten einen Stapel aus der eigenen Hand: „Ben, hast du Könige?“ – <b className="text-foreground">man kann nur nach Werten fragen, die man selbst auf der Hand hat.</b></li>
           <li>Hat Ben Könige, muss er <b className="text-foreground">alle</b> abgeben, und du darfst weiterfragen.</li>
-          <li>Hat er keine, heißt es <b className="text-foreground">„Geh fischen!“</b>: Du ziehst eine Karte aus dem Teich. Ist es genau der gefragte Wert, bist du nochmal dran (Einstellung), sonst der Nächste.</li>
+          <li>Hat er keine, heißt es <b className="text-foreground">„Geh fischen!“</b>: Du ziehst eine Karte aus dem Teich. Ist es genau der gefragte Wert, bist du nochmal dran (Einstellung). Sonst ist der linke Nachbar dran – oder, wenn so eingestellt, der Gefragte, der „Geh fischen!“ gesagt hat.</li>
           <li>Vier Gleiche werden sofort als Quartett abgelegt. Wer keine Karten mehr hat, zieht zu Beginn seines Zugs eine aus dem Teich.</li>
         </ol>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Alle Fragen sind öffentlich – merk dir, wer wonach gefragt hat!</p>
+        <h3 className="mt-4 font-semibold">Mit echten Karten</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          Ihr spielt mit eurem eigenen Kartenspiel am Tisch. Die App zeigt, wer dran ist, und zählt die Quartette:
+          Liegt ein Quartett, tippt der Spieler am Zug den Wert an und wählt, wer es gelegt hat (auch Quartette, die schon beim Austeilen liegen).
+          Heißt es „Geh fischen!“, tippt er auf <b className="text-foreground">Geh fischen – Zug vorbei</b>. Sind alle Quartette gelegt, zeigt die App den Sieger.
+        </p>
       </section>
       <h3 className="mt-5 mb-2 font-semibold">Die Quartette (52 Karten)</h3>
       <div className="grid grid-cols-5 gap-2">

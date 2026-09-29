@@ -32,7 +32,7 @@ test("Lokales Tutto mit echten Würfeln", async ({ page }) => {
   // Die Karte ist schon aufgedeckt – bis eine Karte kommt, bei der Würfelpunkte zählen
   const plus500 = page.getByRole("button", { name: "+500", exact: true });
   for (let i = 0; i < 30 && !(await plus500.isVisible()); i++) {
-    await page.getByRole("button", { name: /^(Weiter|Niete)/ }).first().click();
+    await page.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
     await page.waitForTimeout(250);
   }
   const who = await page.getByTestId("current-player").textContent();
@@ -42,10 +42,11 @@ test("Lokales Tutto mit echten Würfeln", async ({ page }) => {
   await expectNoScroll(page);
   await shot(page, "05-local-points");
   // Tutto (falls die Karte eins kennt): Bonus kommt dazu, nächste Karte liegt schon offen
-  const tutto = page.getByRole("button", { name: /^Tutto/ });
+  const tutto = page.getByRole("button", { name: /Tutto geschafft/ });
   if (await tutto.isVisible()) {
     await tutto.click();
     await expect(page.getByTestId("turn-pts")).not.toHaveText("600");
+    await expect(page.getByTestId("tutto-banner")).toBeVisible();
     await shot(page, "05b-local-after-tutto");
   }
   await page.getByRole("button", { name: /eintragen/ }).click();
@@ -69,7 +70,7 @@ test("Lokales Tutto mit App-Würfel", async ({ page }) => {
   for (let i = 0; i < 20; i++) {
     await page.waitForTimeout(500);
     if (await page.getByRole("button", { name: /Würfeln/ }).isVisible()) break;
-    await page.getByRole("button", { name: /Weiter|eintragen/ }).click();
+    await page.getByRole("button", { name: /Weiter|eintragen|ächster Spieler/ }).click();
   }
   await page.getByRole("button", { name: /Würfeln/ }).click();
   await expect(page.getByRole("button", { name: /^Würfel \d$/ }).first()).toBeVisible();

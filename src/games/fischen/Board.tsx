@@ -9,6 +9,7 @@ import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { cn, vibrate } from "@/lib/utils";
+import { TableBoard } from "./TableBoard";
 
 const nameOf = (players: Player[], id: string) => players.find((p) => p.id === id)?.name ?? "?";
 
@@ -61,7 +62,11 @@ function RankStack({ cards, rank, selected, disabled, fished, onPick }: { cards:
 }
 
 /** Fischen: 1. Mitspieler antippen, 2. Wert aus der eigenen Hand antippen, 3. fragen. */
-export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<FischenState, FischenAction>) {
+export function Board(props: BoardProps<FischenState, FischenAction>) {
+  return props.game.table ? <TableBoard {...props} /> : <HandBoard {...props} />;
+}
+
+function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<FischenState, FischenAction>) {
   const players = room.players;
   const local = me === null;
   const [rank, setRank] = useState<Rank | null>(null);
@@ -84,7 +89,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   const targets = players.filter((p) => p.id !== viewer && (s.counts[p.id] ?? 0) > 0);
   const selTarget = target && targets.some((p) => p.id === target) ? target : targets.length === 1 ? targets[0].id : null;
   const last = s.events.at(-1);
-  const older = s.events.slice(-3, -1).reverse();
+  const older = s.events.slice(-7, -1).reverse();
   const myQuartets = viewer ? s.quartets[viewer] ?? [] : [];
   const viewerForText = local ? null : me;
 
@@ -118,7 +123,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
       </div>
 
       {/* Mitte: letzte Fragen */}
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden py-2" aria-live="polite">
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2 overflow-hidden py-2" aria-live="polite">
         <div className="flex shrink-0 items-center justify-between text-sm text-muted-foreground">
           <span>🎣 Teich: <b className="text-foreground tabular-nums">{s.pileCount}</b></span>
           <span className="min-w-0 truncate">★ {myQuartets.length ? myQuartets.map((r) => RANK_PLURAL[r]).join(", ") : "noch kein Quartett"}</span>
@@ -129,7 +134,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
             {myTurn ? "Du fängst an! Frag jemanden nach einem Wert, den du selbst hast." : `${cur?.name} fängt an.`}
           </div>
         )}
-        {older.length > 0 && <ul className="grid gap-0.5 px-1">{older.map((e, i) => <OlderAsk key={i} e={e} players={players} viewer={viewerForText} />)}</ul>}
+        {older.length > 0 && <ul className="grid min-h-0 content-start gap-1 overflow-hidden px-1">{older.map((e, i) => <OlderAsk key={i} e={e} players={players} viewer={viewerForText} />)}</ul>}
       </div>
 
       {/* Schritt 2: Wert aus der eigenen Hand, dann fragen */}

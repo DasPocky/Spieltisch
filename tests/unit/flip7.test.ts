@@ -85,6 +85,24 @@ describe("Flip 7", () => {
     expect(g(q).lines.p3.nums).toEqual(["n:2", "n:10", "n:11", "n:12"]);
   });
 
+  it("Flip 7 mitten in Flip 3: zurückgelegte Aktion geht nicht verloren", () => {
+    const count = (st: F7State) => st.deck.length + st.discard.length + (st.pending ? 1 : 0) + st.queued.length
+      + Object.values(st.lines).reduce((t, l) => t + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
+    let q = start(3);
+    const five: F7Card[] = ["n:1", "n:2", "n:3", "n:4", "n:5"];
+    // Stapel aus dem vollen Deck bauen – ohne die Karten, die gleich auf dem Tisch liegen
+    const deck = buildDeck("classic");
+    for (const c of [...five, "a:flip3", "n:10", "a:freeze", "n:11"] as F7Card[]) deck.splice(deck.indexOf(c), 1);
+    q = { ...q, game: { ...g(q), deck, discard: [] } };
+    const total = 94;
+    q = stack(q, ["a:flip3", "n:10", "a:freeze", "n:11"], { p1: {}, p2: {}, p3: { nums: five } });
+    q = { ...q, game: { ...g(q), curId: "p1" } };
+    expect(count(g(q))).toBe(total);
+    q = game(game(q, { type: "hit" }), { type: "target", target: "p3" });
+    expect(g(q).lastRound?.flip7).toBe("p3");
+    expect(count(g(q))).toBe(total);
+  });
+
   it("Spielende ab Spielziel, höchste Summe gewinnt", () => {
     let r = start(3, { target: 100 });
     r = stack(r, [], { p1: { nums: ["n:12"] }, p2: { nums: ["n:6"] }, p3: { nums: ["n:2"], status: "stayed" } });

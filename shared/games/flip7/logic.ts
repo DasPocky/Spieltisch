@@ -136,6 +136,9 @@ function startRound(s: F7State, players: Player[]) {
   for (let i = 0; i < players.length; i++) { id = nextPlayerId(players, id); if (id) order.push(id); }
   s.dealQueue = order;
   s.curId = null;
+  // Offene oder zurückgelegte Aktionen (z. B. nach Flip 7 mitten in Flip 4) kommen auf den Ablagestapel
+  if (s.pending) s.discard.push(s.pending.card);
+  s.discard.push(...s.queued.map((q) => q.card));
   s.pending = null;
   s.queued = [];
 }
@@ -464,8 +467,9 @@ export const flip7: GameLogic<F7State, F7Action> = {
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
     const rest = ctx.players.filter((p) => p.id !== id);
-    if (s.lines[id]) { s.discard.push(...s.lines[id].nums, ...s.lines[id].mods); delete s.lines[id]; }
+    if (s.lines[id]) { s.discard.push(...s.lines[id].nums, ...s.lines[id].mods, ...(s.lines[id].second ? ["a:second" as F7Card] : [])); delete s.lines[id]; }
     s.dealQueue = s.dealQueue.filter((x) => x !== id);
+    s.discard.push(...s.queued.filter((q) => q.by === id).map((q) => q.card));
     s.queued = s.queued.filter((q) => q.by !== id);
     if (s.pending?.by === id) { s.discard.push(s.pending.card); s.pending = null; }
     if (s.curId === id) { s.curId = null; }
