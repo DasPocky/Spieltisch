@@ -25,15 +25,15 @@ export function Rules({ focus }: { focus?: string }) {
         </p>
       </section>
 
-      {(["Grundspiel", "Neumond", "Charaktere", "Die Gemeinde"] as RoleInfo["from"][]).map((from) => (
+      {(["Grundspiel", "Neumond", "Charaktere", "Die Gemeinde", "Hausregel"] as RoleInfo["from"][]).map((from) => (
       <div key={from}>
-      <h3 className="mt-5 mb-2 font-semibold">Rollen: {from}</h3>
+      <h3 className="mt-5 mb-2 font-semibold">Rollen: {from === "Hausregel" ? "Beliebte Hausregeln" : from}</h3>
       <ul className="grid gap-2">
         {roles.filter((id) => ROLES[id].from === from).map((id) => {
           const r = ROLES[id];
           return (
             <li key={id} data-focused={id === focus} className={cn("scroll-mt-3 rounded-xl px-3 py-2.5", id === focus ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
-              <b>{r.emoji} {r.name}</b> <span className="text-xs text-muted-foreground">· {r.team === "werwolf" ? "Werwölfe" : "Dorf"}</span>
+              <b>{r.emoji} {r.name}</b> <span className="text-xs text-muted-foreground">· {r.team === "werwolf" ? "Werwölfe" : r.team === "solo" ? "spielt allein" : "Dorf"}</span>
               <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{r.help}</p>
             </li>
           );

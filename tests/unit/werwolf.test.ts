@@ -219,6 +219,29 @@ describe("Rollen aus den Erweiterungen", () => {
     expect(g(r).alive.p2).toBe(false);
   });
 
+  describe("Dorfschlampe", () => {
+    const roles = { p1: "schlampe", p2: "dorf", p3: "werwolf", p4: "dorf", p5: "dorf", p6: "werwolf", p7: "dorf" } as Record<string, Role>;
+    it("Wölfe greifen ihr Haus an – sie ist nicht da und überlebt", () => {
+      const r = runNight(night1(roles), { schlampe: { type: "visit", target: "p2" }, werwolf: { type: "wolf", target: "p1" } });
+      expect(g(r).alive.p1).toBe(true);
+      expect(g(r).alive.p2).toBe(true);
+    });
+    it("übernachtet beim Opfer – stirbt mit", () => {
+      const r = runNight(night1(roles), { schlampe: { type: "visit", target: "p2" }, werwolf: { type: "wolf", target: "p2" } });
+      expect(g(r).alive.p2).toBe(false);
+      expect(g(r).news!.deaths.find((d) => d.id === "p1")!.cause).toBe("besuch");
+    });
+    it("übernachtet bei einem Werwolf – wird gefressen", () => {
+      const r = runNight(night1(roles), { schlampe: { type: "visit", target: "p3" }, werwolf: { type: "wolf", target: "p4" } });
+      expect(g(r).alive.p1).toBe(false);
+      expect(g(r).alive.p4).toBe(false);
+    });
+    it("nicht bei sich selbst, und ihre Wahl sieht nur sie", () => {
+      const r = night1(roles);
+      expect(() => runNight(r, { schlampe: { type: "visit", target: "p1" } })).toThrow(/jemand anderen/);
+    });
+  });
+
   it("Ritter: der nächste Wolf stirbt eine Nacht später", () => {
     let r = night1({ p1: "dorf", p2: "ritter", p3: "werwolf", p4: "dorf", p5: "dorf", p6: "werwolf", p7: "dorf" });
     r = runNight(r, { werwolf: { type: "wolf", target: "p2" } });

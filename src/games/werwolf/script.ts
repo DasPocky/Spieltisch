@@ -10,6 +10,7 @@ export const SCRIPT: Record<Step, { title: string; say: string; after?: string }
   wolfshund: { title: "Wolfshund", say: "Der Wolfshund erwacht und entscheidet: Bleibt er beim Dorf – oder läuft er zu den Wölfen?", after: "Der Wolfshund schläft wieder ein." },
   schwestern: { title: "Die Schwestern", say: "Die Schwestern erwachen, erkennen einander – und schlafen wieder ein." },
   beschuetzer: { title: "Heiler", say: "Der Heiler erwacht und wählt, wen er heute Nacht beschützt.", after: "Der Heiler schläft wieder ein." },
+  schlampe: { title: "Dorfschlampe", say: "Die Dorfschlampe erwacht und zeigt, bei wem sie heute Nacht übernachtet.", after: "Die Dorfschlampe schläft wieder ein." },
   werwolf: { title: "Werwölfe", say: "Die Werwölfe erwachen, erkennen sich und einigen sich leise auf ein Opfer.", after: "Die Werwölfe schlafen satt wieder ein." },
   weisserwolf: { title: "Weißer Werwolf", say: "Der weiße Werwolf erwacht noch einmal allein. Will er einen anderen Werwolf fressen?", after: "Der weiße Werwolf schläft wieder ein." },
   urwolf: { title: "Urwolf", say: "Der Urwolf erwacht. Will er das Opfer verwandeln, statt es zu fressen?", after: "Der Urwolf schläft wieder ein." },

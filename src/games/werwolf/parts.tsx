@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export const CAUSE: Record<Death["cause"], string> = {
   wolf: "von den Werwölfen gefressen", gift: "vergiftet", dorf: "vom Dorf verurteilt",
-  weiss: "vom weißen Werwolf gefressen", jaeger: "vom Jäger erschossen", kummer: "aus Liebeskummer gestorben", rost: "am rostigen Schwert gestorben", weg: "hat das Spiel verlassen",
+  weiss: "vom weißen Werwolf gefressen", jaeger: "vom Jäger erschossen", kummer: "aus Liebeskummer gestorben", rost: "am rostigen Schwert gestorben", besuch: "beim nächtlichen Besuch umgekommen", weg: "hat das Spiel verlassen",
 };
 
 export const nameOf = (players: Player[], id: string | null | undefined) => players.find((p) => p.id === id)?.name ?? "?";

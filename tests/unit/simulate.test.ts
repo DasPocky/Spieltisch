@@ -112,7 +112,7 @@ function candidates(r: RoomState, online: boolean): Move[] {
       for (const id of Object.keys(s.roles)) add({ type: "assign", id, role: pick(["werwolf", "dorf", "seherin", "jaeger"]) });
       for (const a of alive) for (const b of alive) if (a < b) add({ type: "enchant", a, b });
       for (const a of alive) add({ type: "amor", a, b: pick(alive.filter((x) => x !== a)) });
-      for (const target of alive) ["protect", "wolf", "wolf2", "white", "see", "fox", "raven", "model", "suspect", "shoot", "vote", "lynch", "elect", "successor"].forEach((type) => add({ type, target }));
+      for (const target of alive) ["protect", "wolf", "wolf2", "white", "see", "fox", "raven", "model", "suspect", "shoot", "vote", "lynch", "elect", "successor", "visit"].forEach((type) => add({ type, target }));
       for (const a of alive) add({ type: "enchant", a });
       add({ type: "witch", heal: Math.random() < 0.3, poison: Math.random() < 0.3 ? t() : null });
       add({ type: "witch", heal: false, poison: null });
@@ -210,7 +210,7 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["werwolf", 6, { cards: "own", captain: true, narrator: "human" }],
   ["werwolf", 20, {
     wolves: "3", seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true, alter: true, dorfdepp: true, suendenbock: true,
-    wildeskind: true, wolfshund: true, fuchs: true, baerenfuehrer: true, ritter: true, schwester: true, urwolf: true, grosserwolf: true, rabe: true,
+    wildeskind: true, wolfshund: true, fuchs: true, baerenfuehrer: true, ritter: true, schwester: true, urwolf: true, grosserwolf: true, rabe: true, schlampe: true,
   }],
 ];
 

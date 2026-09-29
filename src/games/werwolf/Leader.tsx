@@ -165,6 +165,9 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
   } else if (step === "fuchs" && acted) {
     const r = s.fox.at(-1)!;
     body = <p className="text-center text-2xl font-extrabold" data-testid="fox-result">{r.wolf ? `🦊 Wolf in der Nähe von ${nameOf(players, r.target)}!` : "🦊 Kein Wolf dort – der Fuchs verliert seinen Spürsinn."}</p>;
+  } else if (step === "schlampe" && !acted) {
+    body = <Picker ids={alive.filter((id) => s.roles[id] !== "schlampe")} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    confirm = { label: pick.length ? `Übernachtet bei ${nameOf(players, pick[0])}` : "Person wählen", ok: pick.length === 1, run: () => act({ type: "visit", target: pick[0] }) };
   } else if (step === "rabe" && !acted) {
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} extra={{ label: "Niemand", selected: false, onPick: () => act({ type: "raven", target: null }) }} />;
     confirm = { label: pick.length ? `${nameOf(players, pick[0])} markieren` : "Person wählen", ok: pick.length === 1, run: () => act({ type: "raven", target: pick[0] }) };

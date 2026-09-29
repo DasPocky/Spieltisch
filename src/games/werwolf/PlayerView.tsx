@@ -206,6 +206,16 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
       </>
     );
   }
+  if (role === "schlampe" && own("schlampe")) {
+    return (
+      <>
+        <Panel title={title} sub="💋 Bei wem übernachtest du heute? Greifen die Wölfe dein Haus an, bist du nicht da – aber beim Opfer oder bei einem Wolf stirbst du.">
+          <Picker ids={alive.filter((id) => id !== me)} players={players} selected={pick} onPick={one} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "visit", target: pick[0] })}>Hier übernachten</Button>
+      </>
+    );
+  }
   if (role === "rabe" && own("rabe")) {
     return (
       <>
