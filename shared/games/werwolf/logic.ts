@@ -1,5 +1,5 @@
 /**
- * Werwolf (nach „Die Werwölfe von Düsterwald“) – läuft im Browser (lokal) und im Durable Object (online).
+ * Werwolf (nach „Die Werwölfe von Düsterwald“ samt Erweiterungen) – läuft im Browser (lokal) und im Durable Object (online).
  *
  * Zwei Erzähler-Modi:
  * - `human`: Ein Mensch leitet das Spiel (online: der Host, spielt nicht mit). Er sieht alle Rollen,
@@ -11,9 +11,14 @@
  * Ablauf „schrittweise“ (Spielleiter oder lokal): jeder Nachtschritt wird erst ausgeführt, dann mit „Weiter“ abgeschlossen.
  */
 import { randomInt, shuffle } from "../../platform/random";
-import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
+import { GameError, type GameContext, type GameLogic, type Options, type SettingDef } from "../../platform/types";
 
-export type Role = "werwolf" | "dorf" | "seherin" | "hexe" | "jaeger" | "amor" | "beschuetzer";
+export type Role =
+  | "werwolf" | "urwolf" | "grosserwolf"
+  | "dorf" | "seherin" | "hexe" | "jaeger" | "amor" | "beschuetzer"
+  | "alter" | "dorfdepp" | "suendenbock"
+  | "wildeskind" | "wolfshund" | "fuchs" | "baerenfuehrer" | "ritter" | "schwester"
+  | "rabe";
 export type Team = "dorf" | "werwolf";
 
 export interface RoleInfo {
@@ -21,6 +26,8 @@ export interface RoleInfo {
   name: string;
   team: Team;
   emoji: string;
+  /** Herkunft (für die Regelseite) */
+  from: "Grundspiel" | "Neumond" | "Charaktere" | "Die Gemeinde";
   /** kurz für die Rollenkarte */
   short: string;
   /** ausführlich für die Regelseite */
@@ -28,25 +35,50 @@ export interface RoleInfo {
 }
 
 export const ROLES: Record<Role, RoleInfo> = {
-  werwolf: { id: "werwolf", name: "Werwolf", team: "werwolf", emoji: "🐺", short: "Nachts sucht ihr Wölfe gemeinsam ein Opfer aus. Tagsüber tarnt ihr euch.", help: "Die Werwölfe erwachen jede Nacht gemeinsam und einigen sich auf ein Opfer. Sie gewinnen, sobald sie mindestens so viele sind wie alle anderen zusammen." },
-  dorf: { id: "dorf", name: "Dorfbewohner", team: "dorf", emoji: "🧑‍🌾", short: "Keine Fähigkeit – nur deine Menschenkenntnis. Finde die Werwölfe!", help: "Dorfbewohner haben keine Sonderfähigkeit. Tagsüber diskutieren sie und stimmen ab, wen das Dorf verdächtigt." },
-  seherin: { id: "seherin", name: "Seherin", team: "dorf", emoji: "🔮", short: "Jede Nacht erfährst du die Rolle eines Mitspielers.", help: "Die Seherin erwacht jede Nacht und darf sich die Rolle eines Mitspielers ansehen. Klug einsetzen – wer sich zu früh verrät, wird gefressen." },
-  hexe: { id: "hexe", name: "Hexe", team: "dorf", emoji: "🧪", short: "Ein Heiltrank und ein Gifttrank – je einmal im Spiel.", help: "Die Hexe erfährt jede Nacht das Opfer der Werwölfe. Sie hat einen Heiltrank (rettet das Opfer) und einen Gifttrank (tötet jemanden) – jeden nur einmal im ganzen Spiel. Sie darf beide in derselben Nacht benutzen." },
-  jaeger: { id: "jaeger", name: "Jäger", team: "dorf", emoji: "🏹", short: "Wenn du stirbst, nimmst du jemanden mit in den Tod.", help: "Stirbt der Jäger – egal ob nachts oder durch das Dorf –, schießt er sofort auf einen Mitspieler, der ebenfalls stirbt." },
-  amor: { id: "amor", name: "Amor", team: "dorf", emoji: "💘", short: "In der ersten Nacht verliebst du zwei Menschen.", help: "Amor wählt in der ersten Nacht zwei Verliebte (auch sich selbst). Stirbt einer von ihnen, stirbt der andere aus Kummer. Sind die Verliebten ein Werwolf und ein Dorfbewohner, gewinnen sie nur, wenn sie als Letzte übrig bleiben." },
-  beschuetzer: { id: "beschuetzer", name: "Beschützer", team: "dorf", emoji: "🛡️", short: "Jede Nacht schützt du eine Person vor den Werwölfen.", help: "Der Beschützer wählt jede Nacht eine Person (auch sich selbst), die in dieser Nacht nicht von den Werwölfen gefressen werden kann. Nicht zweimal hintereinander dieselbe." },
+  werwolf: { id: "werwolf", name: "Werwolf", team: "werwolf", emoji: "🐺", from: "Grundspiel", short: "Nachts sucht ihr Wölfe gemeinsam ein Opfer aus. Tagsüber tarnt ihr euch.", help: "Die Werwölfe erwachen jede Nacht gemeinsam und einigen sich auf ein Opfer. Sie gewinnen, sobald sie mindestens so viele sind wie alle anderen zusammen." },
+  dorf: { id: "dorf", name: "Dorfbewohner", team: "dorf", emoji: "🧑‍🌾", from: "Grundspiel", short: "Keine Fähigkeit – nur deine Menschenkenntnis. Finde die Werwölfe!", help: "Dorfbewohner haben keine Sonderfähigkeit. Tagsüber diskutieren sie und stimmen ab, wen das Dorf verdächtigt." },
+  seherin: { id: "seherin", name: "Seherin", team: "dorf", emoji: "🔮", from: "Grundspiel", short: "Jede Nacht erfährst du die Rolle eines Mitspielers.", help: "Die Seherin (manchmal Hellseherin genannt) erwacht jede Nacht und darf sich die Rolle eines Mitspielers ansehen. Klug einsetzen – wer sich zu früh verrät, wird gefressen." },
+  hexe: { id: "hexe", name: "Hexe", team: "dorf", emoji: "🧪", from: "Grundspiel", short: "Ein Heiltrank und ein Gifttrank – je einmal im Spiel.", help: "Die Hexe erfährt jede Nacht das Opfer der Werwölfe. Sie hat einen Heiltrank (rettet das Opfer) und einen Gifttrank (tötet jemanden) – jeden nur einmal im ganzen Spiel. Sie darf beide in derselben Nacht benutzen." },
+  jaeger: { id: "jaeger", name: "Jäger", team: "dorf", emoji: "🏹", from: "Grundspiel", short: "Wenn du stirbst, nimmst du jemanden mit in den Tod.", help: "Stirbt der Jäger – egal ob nachts oder durch das Dorf –, schießt er sofort auf einen Mitspieler, der ebenfalls stirbt." },
+  amor: { id: "amor", name: "Amor", team: "dorf", emoji: "💘", from: "Grundspiel", short: "In der ersten Nacht verliebst du zwei Menschen.", help: "Amor wählt in der ersten Nacht zwei Verliebte (auch sich selbst). Stirbt einer von ihnen, stirbt der andere aus Kummer. Sind die Verliebten ein Werwolf und ein Dorfbewohner, gewinnen sie nur, wenn sie als Letzte übrig bleiben." },
+  beschuetzer: { id: "beschuetzer", name: "Heiler", team: "dorf", emoji: "🛡️", from: "Neumond", short: "Jede Nacht schützt du eine Person vor den Werwölfen.", help: "Der Heiler (auch Beschützer oder Leibwächter) wählt jede Nacht eine Person – auch sich selbst –, die in dieser Nacht nicht von Werwölfen gefressen werden kann. Nicht zweimal hintereinander dieselbe." },
+  alter: { id: "alter", name: "Der Alte", team: "dorf", emoji: "👴", from: "Neumond", short: "Den ersten Angriff der Werwölfe überlebst du.", help: "Der Alte ist zäh: Den ersten Angriff der Werwölfe übersteht er. Erst beim zweiten Angriff stirbt er. Gegen Gift, Jäger und Dorf hilft das nicht." },
+  dorfdepp: { id: "dorfdepp", name: "Dorfdepp", team: "dorf", emoji: "🤪", from: "Neumond", short: "Verurteilt dich das Dorf, lacht es nur – du lebst, darfst aber nicht mehr abstimmen.", help: "Wird der Dorfdepp vom Dorf verurteilt, erkennt man ihn und lässt ihn am Leben. Er ist aufgedeckt und darf ab dann nicht mehr abstimmen. Nachts kann er aber gefressen werden." },
+  suendenbock: { id: "suendenbock", name: "Sündenbock", team: "dorf", emoji: "🐐", from: "Neumond", short: "Gibt es bei der Abstimmung Gleichstand, stirbst du.", help: "Endet die Abstimmung des Dorfes unentschieden, stirbt statt niemandem der Sündenbock." },
+  wildeskind: { id: "wildeskind", name: "Wildes Kind", team: "dorf", emoji: "🧒", from: "Charaktere", short: "Wähle ein Vorbild. Stirbt es, wirst du zum Werwolf.", help: "Das wilde Kind wählt in der ersten Nacht ein Vorbild. Solange das Vorbild lebt, gehört es zum Dorf. Stirbt das Vorbild, wird das Kind heimlich zum Werwolf und jagt ab der nächsten Nacht mit." },
+  wolfshund: { id: "wolfshund", name: "Wolfshund", team: "dorf", emoji: "🐕", from: "Charaktere", short: "In der ersten Nacht entscheidest du: Dorf oder Werwolf?", help: "Der Wolfshund entscheidet in der ersten Nacht, ob er ein treuer Dorfbewohner bleibt oder zum Werwolf wird – dann jagt er schon in dieser Nacht mit." },
+  fuchs: { id: "fuchs", name: "Fuchs", team: "dorf", emoji: "🦊", from: "Charaktere", short: "Du erfährst, ob bei einer Person oder ihren Nachbarn ein Wolf ist.", help: "Der Fuchs zeigt nachts auf eine Person. Er erfährt, ob sie oder einer ihrer beiden Sitznachbarn (in Spielerreihenfolge, nur Lebende) ein Werwolf ist. Ist dort keiner, verliert er seine Fähigkeit." },
+  baerenfuehrer: { id: "baerenfuehrer", name: "Bärenführer", team: "dorf", emoji: "🐻", from: "Charaktere", short: "Sitzt ein Wolf neben dir, brummt morgens dein Bär.", help: "Sitzt morgens einer der beiden lebenden Nachbarn des Bärenführers (in Spielerreihenfolge) als Werwolf neben ihm, brummt der Bär – das ganze Dorf hört es." },
+  ritter: { id: "ritter", name: "Ritter mit rostigem Schwert", team: "dorf", emoji: "🗡️", from: "Charaktere", short: "Fressen dich die Wölfe, stirbt einer von ihnen eine Nacht später.", help: "Wird der Ritter von Werwölfen gefressen, verletzt sein rostiges Schwert den nächsten Werwolf nach ihm in der Spielerreihenfolge – dieser stirbt in der folgenden Nacht an Wundstarrkrampf." },
+  schwester: { id: "schwester", name: "Schwester", team: "dorf", emoji: "👭", from: "Charaktere", short: "Du und deine Schwester kennt euch – ihr seid beide sicher vom Dorf.", help: "Zwei Schwestern kennen einander von Anfang an. Sie wissen also sicher, dass die andere zum Dorf gehört." },
+  urwolf: { id: "urwolf", name: "Urwolf", team: "werwolf", emoji: "🌑", from: "Charaktere", short: "Du jagst mit den Wölfen und kannst einmal ein Opfer zum Werwolf machen.", help: "Der Urwolf ist ein Werwolf. Einmal im Spiel kann er das Opfer der Nacht verwandeln, statt es zu fressen: Es stirbt nicht, sondern ist ab sofort ein Werwolf (und verliert seine alte Rolle)." },
+  grosserwolf: { id: "grosserwolf", name: "Großer böser Wolf", team: "werwolf", emoji: "🌕", from: "Charaktere", short: "Du frisst jede Nacht noch ein zweites Opfer – bis der erste Wolf stirbt.", help: "Der große böse Wolf jagt mit den anderen Wölfen und frisst danach allein ein zweites Opfer – solange noch kein Werwolf gestorben ist." },
+  rabe: { id: "rabe", name: "Rabe", team: "dorf", emoji: "🐦‍⬛", from: "Die Gemeinde", short: "Nachts markierst du jemanden: Am Tag hat er zwei Stimmen mehr gegen sich.", help: "Der Rabe markiert nachts einen Mitspieler. Bei der nächsten Abstimmung zählen gegen ihn automatisch zwei Stimmen mehr." },
 };
 
-export const SPECIAL_ROLES = ["seherin", "hexe", "jaeger", "amor", "beschuetzer"] as const;
+/** Zum Werwolf-Team gehören alle Wolfsrollen */
+export const isWolf = (r: Role | undefined) => !!r && ROLES[r].team === "werwolf";
 
-export type Step = "sleep" | "amor" | "lovers" | "beschuetzer" | "werwolf" | "seherin" | "hexe";
-/** Welche Rolle handelt in einem Nachtschritt? */
-export const STEP_ROLE: Partial<Record<Step, Role>> = { amor: "amor", beschuetzer: "beschuetzer", werwolf: "werwolf", seherin: "seherin", hexe: "hexe" };
+export const SPECIAL_ROLES = [
+  "seherin", "hexe", "jaeger", "amor", "beschuetzer", "alter", "dorfdepp", "suendenbock",
+  "wildeskind", "wolfshund", "fuchs", "baerenfuehrer", "ritter", "schwester", "urwolf", "grosserwolf", "rabe",
+] as const satisfies readonly Role[];
+
+export type Step =
+  | "sleep" | "amor" | "lovers" | "wildeskind" | "wolfshund" | "schwestern" | "beschuetzer"
+  | "werwolf" | "urwolf" | "grosserwolf" | "seherin" | "fuchs" | "rabe" | "hexe";
+/** Welche Rolle handelt in einem Nachtschritt? („werwolf“: alle Wölfe) */
+export const STEP_ROLE: Partial<Record<Step, Role>> = {
+  amor: "amor", wildeskind: "wildeskind", wolfshund: "wolfshund", beschuetzer: "beschuetzer", werwolf: "werwolf",
+  urwolf: "urwolf", grosserwolf: "grosserwolf", seherin: "seherin", fuchs: "fuchs", rabe: "rabe", hexe: "hexe",
+};
+/** Schritte, die erst nach anderen möglich sind (wichtig, wenn online alle gleichzeitig handeln) */
+const NEEDS: Partial<Record<Step, Step[]>> = { urwolf: ["werwolf"], grosserwolf: ["werwolf"], hexe: ["werwolf", "urwolf"] };
 
 export type Phase = "reveal" | "night" | "day" | "hunter" | "over";
 export type Winner = "dorf" | "werwolf" | "liebe";
 
-export interface Death { id: string; cause: "wolf" | "gift" | "dorf" | "jaeger" | "kummer" | "weg" }
+export interface Death { id: string; cause: "wolf" | "gift" | "dorf" | "jaeger" | "kummer" | "rost" | "weg" }
 
 export interface WerwolfState {
   v: 1;
@@ -70,18 +102,47 @@ export interface WerwolfState {
   acted: Step[];
   wolfVotes: Record<string, string>;
   victim: string | null;
+  /** zweites Opfer des großen bösen Wolfs */
+  victim2: string | null;
   protectedId: string | null;
   lastProtected: string | null;
   seer: { night: number; target: string; role: Role }[];
+  fox: { night: number; target: string; wolf: boolean }[];
+  foxPower: boolean;
   potions: { heal: boolean; poison: boolean };
   healed: boolean;
   poisoned: string | null;
+  /** Vorbild des wilden Kindes */
+  model: string | null;
+  /** Urwolf: schon verwandelt? und wen heute Nacht */
+  infectUsed: boolean;
+  infected: string | null;
+  /** Rabe: Markierung für den kommenden Tag (+2 Stimmen) */
+  raven: string | null;
+  /** Ritter: dieser Wolf stirbt am nächsten Morgen */
+  rusty: string | null;
+  wolfDied: boolean;
+  elderHit: boolean;
+  /** aufgedeckte Dorfdeppen – dürfen nicht mehr abstimmen */
+  idiots: string[];
   /** Verdacht während der Nacht (App-Modus online, zur Tarnung) */
   suspicions: Record<string, string>;
   /** Abstimmung am Tag (App-Modus online): Stimme oder "" für Enthaltung */
   votes: Record<string, string>;
   /** Ergebnis der letzten Nacht bzw. Abstimmung */
-  news: { kind: "night" | "day"; deaths: Death[]; tally?: Record<string, number> } | null;
+  news: {
+    kind: "night" | "day";
+    deaths: Death[];
+    tally?: Record<string, number>;
+    /** der Bär hat gebrummt */
+    growl?: boolean;
+    /** vom Raben markiert */
+    raven?: string | null;
+    /** Dorfdepp wurde verurteilt und bleibt am Leben */
+    idiot?: string;
+    /** Sündenbock musste bei Gleichstand sterben */
+    scapegoat?: boolean;
+  } | null;
   /** Jäger, die noch schießen müssen */
   hunters: string[];
   /** wohin es nach dem Jägerschuss weitergeht */
@@ -96,9 +157,15 @@ export type WerwolfAction =
   | { type: "ready" }
   | { type: "startNight" }
   | { type: "amor"; a: string; b: string }
+  | { type: "model"; target: string }
+  | { type: "dog"; wolf: boolean }
   | { type: "protect"; target: string }
   | { type: "wolf"; target: string }
+  | { type: "infect"; yes: boolean }
+  | { type: "wolf2"; target: string }
   | { type: "see"; target: string }
+  | { type: "fox"; target: string }
+  | { type: "raven"; target: string | null }
   | { type: "witch"; heal: boolean; poison: string | null }
   | { type: "suspect"; target: string }
   | { type: "next" }
@@ -119,15 +186,31 @@ export const participants = (s: WerwolfState) => Object.keys(s.roles);
 export const aliveIds = (s: WerwolfState) => participants(s).filter((id) => s.alive[id]);
 export const holders = (s: WerwolfState, role: Role) => participants(s).filter((id) => s.roles[id] === role);
 const aliveHolders = (s: WerwolfState, role: Role) => holders(s, role).filter((id) => s.alive[id]);
+export const aliveWolves = (s: WerwolfState) => aliveIds(s).filter((id) => isWolf(s.roles[id]));
+/** Wer darf am Tag abstimmen? (aufgedeckte Dorfdeppen nicht) */
+export const voters = (s: WerwolfState) => aliveIds(s).filter((id) => !s.idiots.includes(id));
+
+/** Die beiden lebenden Sitznachbarn (Spielerreihenfolge, im Kreis) */
+export function neighbors(s: WerwolfState, id: string): string[] {
+  const alive = aliveIds(s);
+  const i = alive.indexOf(id);
+  if (i < 0 || alive.length < 2) return [];
+  const prev = alive[(i - 1 + alive.length) % alive.length];
+  const next = alive[(i + 1) % alive.length];
+  return prev === next ? [prev] : [prev, next];
+}
 
 /** Rollenverteilung aus den Einstellungen */
 export function buildDeck(n: number, o: Options): Role[] {
   const wolves = o.wolves === "auto" || o.wolves === undefined ? autoWolves(n) : Number(o.wolves);
   const specials = SPECIAL_ROLES.filter((r) => o[r] === true);
+  const specialWolves = specials.filter((r) => isWolf(r));
+  const village = specials.filter((r) => !isWolf(r)).flatMap((r) => (r === "schwester" ? [r, r] : [r]));
   if (wolves < 1) throw new GameError("Es braucht mindestens einen Werwolf.");
   if (wolves * 2 >= n) throw new GameError(`${wolves} Werwölfe sind zu viele für ${n} Mitspieler.`);
-  if (wolves + specials.length > n) throw new GameError(`Zu viele Sonderrollen für ${n} Mitspieler – schalte welche ab.`);
-  const deck: Role[] = [...Array(wolves).fill("werwolf"), ...specials];
+  if (specialWolves.length > wolves) throw new GameError("Urwolf und großer böser Wolf zählen als Werwölfe – stell mehr Werwölfe ein.");
+  if (wolves + village.length > n) throw new GameError(`Zu viele Sonderrollen für ${n} Mitspieler – schalte welche ab.`);
+  const deck: Role[] = [...specialWolves, ...Array(wolves - specialWolves.length).fill("werwolf"), ...village];
   while (deck.length < n) deck.push("dorf");
   return deck;
 }
@@ -143,8 +226,10 @@ function setup(ctx: GameContext): WerwolfState {
     v: 1, mode, stepwise: mode === "human" || local, narratorId, revealDead: ctx.options.revealDead !== false,
     roles: Object.fromEntries(ids.map((id, i) => [id, deck[i]])), alive: Object.fromEntries(ids.map((id) => [id, true])),
     lovers: null, phase: "reveal", ready: [], night: 0, pending: [], acted: [],
-    wolfVotes: {}, victim: null, protectedId: null, lastProtected: null, seer: [], potions: { heal: true, poison: true },
-    healed: false, poisoned: null, suspicions: {}, votes: {}, news: null, hunters: [], afterHunter: "day", winner: null, log: [],
+    wolfVotes: {}, victim: null, victim2: null, protectedId: null, lastProtected: null, seer: [], fox: [], foxPower: true,
+    potions: { heal: true, poison: true }, healed: false, poisoned: null, model: null, infectUsed: false, infected: null,
+    raven: null, rusty: null, wolfDied: false, elderHit: false, idiots: [],
+    suspicions: {}, votes: {}, news: null, hunters: [], afterHunter: "day", winner: null, log: [],
   };
 }
 
@@ -156,19 +241,31 @@ function startNight(s: WerwolfState) {
   s.acted = [];
   s.wolfVotes = {};
   s.victim = null;
+  s.victim2 = null;
   s.lastProtected = s.protectedId;
   s.protectedId = null;
   s.healed = false;
   s.poisoned = null;
+  s.infected = null;
+  s.raven = null;
   s.suspicions = {};
   s.votes = {};
   const has = (r: Role) => aliveHolders(s, r).length > 0;
   const steps: Step[] = [];
   if (s.stepwise) steps.push("sleep");
-  if (s.night === 1 && has("amor")) steps.push("amor", ...(s.stepwise ? ["lovers" as const] : []));
+  if (s.night === 1) {
+    if (has("amor")) steps.push("amor", ...(s.stepwise ? ["lovers" as const] : []));
+    if (has("wildeskind")) steps.push("wildeskind");
+    if (has("wolfshund")) steps.push("wolfshund");
+    if (s.stepwise && aliveHolders(s, "schwester").length > 1) steps.push("schwestern");
+  }
   if (has("beschuetzer")) steps.push("beschuetzer");
   steps.push("werwolf");
+  if (has("urwolf") && !s.infectUsed) steps.push("urwolf");
+  if (has("grosserwolf") && !s.wolfDied) steps.push("grosserwolf");
   if (has("seherin")) steps.push("seherin");
+  if (has("fuchs") && s.foxPower) steps.push("fuchs");
+  if (has("rabe")) steps.push("rabe");
   if (has("hexe") && (s.potions.heal || s.potions.poison)) steps.push("hexe");
   s.pending = steps;
 }
@@ -178,6 +275,7 @@ function kill(s: WerwolfState, deaths: Death[], id: string, cause: Death["cause"
   if (!s.alive[id]) return;
   s.alive[id] = false;
   deaths.push({ id, cause });
+  if (isWolf(s.roles[id])) s.wolfDied = true;
   if (s.roles[id] === "jaeger" && cause !== "weg") s.hunters.push(id);
   if (s.lovers?.includes(id)) {
     const other = s.lovers[0] === id ? s.lovers[1] : s.lovers[0];
@@ -185,9 +283,26 @@ function kill(s: WerwolfState, deaths: Death[], id: string, cause: Death["cause"
   }
 }
 
+/** Angriff der Werwölfe: Schutz, Heiltrank und der Alte können retten */
+function attack(s: WerwolfState, deaths: Death[], id: string | null, healable: boolean) {
+  if (!id || !s.alive[id] || id === s.protectedId) return;
+  if (healable && s.healed) return;
+  if (s.roles[id] === "alter" && !s.elderHit) { s.elderHit = true; return; }
+  kill(s, deaths, id, "wolf");
+  // Ritter: der nächste Wolf nach ihm stirbt am folgenden Morgen
+  if (s.roles[id] === "ritter") {
+    const order = participants(s);
+    const i = order.indexOf(id);
+    for (let k = 1; k < order.length; k++) {
+      const cand = order[(i + k) % order.length];
+      if (s.alive[cand] && isWolf(s.roles[cand])) { s.rusty = cand; break; }
+    }
+  }
+}
+
 export function checkWinner(s: WerwolfState): Winner | null {
   const alive = aliveIds(s);
-  const wolves = alive.filter((id) => s.roles[id] === "werwolf").length;
+  const wolves = alive.filter((id) => isWolf(s.roles[id])).length;
   const [a, b] = s.lovers ?? [];
   const mixedLovers = !!s.lovers && ROLES[s.roles[a!]].team !== ROLES[s.roles[b!]].team;
   if (mixedLovers && alive.length === 2 && alive.includes(a!) && alive.includes(b!)) return "liebe";
@@ -196,8 +311,11 @@ export function checkWinner(s: WerwolfState): Winner | null {
   return null;
 }
 
-/** Nach Todesfällen: Jäger, Sieg oder weiter */
+/** Nach Todesfällen: wildes Kind, Sieg, Jäger oder weiter */
 function afterDeaths(s: WerwolfState, next: "day" | "night") {
+  for (const kid of aliveHolders(s, "wildeskind")) {
+    if (s.model && !s.alive[s.model]) s.roles[kid] = "werwolf";
+  }
   s.winner = checkWinner(s);
   if (s.winner) { s.phase = "over"; return; }
   if (s.hunters.length) { s.phase = "hunter"; s.afterHunter = next; return; }
@@ -206,11 +324,18 @@ function afterDeaths(s: WerwolfState, next: "day" | "night") {
 
 function dawn(s: WerwolfState, ctx: GameContext) {
   const deaths: Death[] = [];
-  if (s.victim && s.victim !== s.protectedId && !s.healed) kill(s, deaths, s.victim, "wolf");
+  const rustyTonight = s.rusty;
+  s.rusty = null;
+  if (s.infected && s.alive[s.infected]) s.roles[s.infected] = "werwolf";
+  attack(s, deaths, s.victim, true);
+  attack(s, deaths, s.victim2, false);
   if (s.poisoned) kill(s, deaths, s.poisoned, "gift");
+  if (rustyTonight && s.alive[rustyTonight]) kill(s, deaths, rustyTonight, "rost");
   const tally: Record<string, number> = {};
   for (const t of Object.values(s.suspicions)) tally[t] = (tally[t] ?? 0) + 1;
-  s.news = { kind: "night", deaths, tally: s.stepwise ? undefined : tally };
+  const bear = aliveHolders(s, "baerenfuehrer")[0];
+  const growl = bear ? neighbors(s, bear).some((id) => isWolf(s.roles[id])) : undefined;
+  s.news = { kind: "night", deaths, tally: s.stepwise ? undefined : tally, growl, raven: s.raven && s.alive[s.raven] ? s.raven : null };
   s.log.push(`Nacht ${s.night}: ${deaths.length ? deaths.map((d) => nameOf(ctx, d.id)).join(", ") + " tot" : "niemand gestorben"}`);
   s.votes = {};
   afterDeaths(s, "day");
@@ -225,6 +350,9 @@ function done(s: WerwolfState, step: Step, ctx: GameContext) {
   }
 }
 
+/** Ist ein Schritt noch offen (nicht ausgeführt)? */
+const open = (s: WerwolfState, step: Step) => s.pending.includes(step) && !s.acted.includes(step);
+
 /** Darf der Akteur diesen Schritt ausführen? */
 function assertStep(s: WerwolfState, step: Step, actorId: string | null) {
   if (s.phase !== "night") throw new GameError("Das geht nur nachts.");
@@ -234,8 +362,11 @@ function assertStep(s: WerwolfState, step: Step, actorId: string | null) {
     if (actorId !== null && actorId !== s.narratorId) throw new GameError("Das tippt der Spielleiter ein.");
     return;
   }
-  const role = STEP_ROLE[step];
-  if (actorId !== null && (!role || s.roles[actorId] !== role || !s.alive[actorId])) throw new GameError("Das darf nur die passende Rolle.");
+  if ((NEEDS[step] ?? []).some((n) => open(s, n))) throw new GameError("Warte, bis die Werwölfe gewählt haben.");
+  if (actorId === null) return;
+  const role = s.roles[actorId];
+  const ok = step === "werwolf" ? isWolf(role) : STEP_ROLE[step] === role;
+  if (!ok || !s.alive[actorId]) throw new GameError("Das darf nur die passende Rolle.");
 }
 
 function assertAlive(s: WerwolfState, id: string, what = "Diese Person") {
@@ -244,22 +375,49 @@ function assertAlive(s: WerwolfState, id: string, what = "Diese Person") {
 }
 
 /** Mehrheit; bei Gleichstand null (oder zufällig, wenn `random`) */
-function majority(votes: string[], random: boolean): string | null {
-  const tally = new Map<string, number>();
-  for (const v of votes) if (v) tally.set(v, (tally.get(v) ?? 0) + 1);
+function majority(tally: Map<string, number>, random: boolean): string | null {
   if (!tally.size) return null;
   const max = Math.max(...tally.values());
   const top = [...tally].filter(([, n]) => n === max).map(([id]) => id);
   if (top.length === 1) return top[0];
   return random ? top[randomInt(top.length)] : null;
 }
+const count = (votes: string[]) => {
+  const t = new Map<string, number>();
+  for (const v of votes) if (v) t.set(v, (t.get(v) ?? 0) + 1);
+  return t;
+};
 
-function resolveVote(s: WerwolfState, ctx: GameContext, target: string | null, tally?: Record<string, number>) {
+function resolveVote(s: WerwolfState, ctx: GameContext, target: string | null, tally?: Record<string, number>, scapegoat = false) {
   const deaths: Death[] = [];
-  if (target) kill(s, deaths, target, "dorf");
-  s.news = { kind: "day", deaths, tally };
-  s.log.push(`Tag ${s.night}: ${target ? `${nameOf(ctx, target)} vom Dorf verurteilt` : "niemand verurteilt"}`);
+  let idiot: string | undefined;
+  if (target && s.roles[target] === "dorfdepp" && !s.idiots.includes(target)) {
+    // Das Dorf erkennt den Dorfdepp und lässt ihn leben
+    s.idiots.push(target);
+    idiot = target;
+  } else if (target) kill(s, deaths, target, "dorf");
+  s.news = { kind: "day", deaths, tally, idiot, scapegoat: scapegoat || undefined };
+  s.log.push(`Tag ${s.night}: ${idiot ? `${nameOf(ctx, idiot)} ist der Dorfdepp und bleibt am Leben` : target ? `${nameOf(ctx, target)} vom Dorf verurteilt` : "niemand verurteilt"}`);
   afterDeaths(s, "night");
+}
+
+function closeVote(s: WerwolfState, ctx: GameContext) {
+  const tally = count(Object.values(s.votes));
+  if (s.raven && s.alive[s.raven]) tally.set(s.raven, (tally.get(s.raven) ?? 0) + 2);
+  let target = majority(tally, false);
+  let scapegoat = false;
+  // Gleichstand: der Sündenbock muss sterben
+  const goat = aliveHolders(s, "suendenbock")[0];
+  if (!target && tally.size > 0 && goat) { target = goat; scapegoat = true; }
+  resolveVote(s, ctx, target, Object.fromEntries(tally), scapegoat);
+}
+
+/** Nacht sofort auflösen: offene Wolfsstimmen zählen, alle anderen offenen Aktionen verfallen. */
+function forceNight(s: WerwolfState, ctx: GameContext) {
+  if (!s.victim && open(s, "werwolf")) s.victim = majority(count(Object.values(s.wolfVotes)), true);
+  s.log.push(`Nacht ${s.night} vom Host beendet`);
+  s.pending = [];
+  dawn(s, ctx);
 }
 
 function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfState {
@@ -287,7 +445,7 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
       if (actor !== null && actor !== s.narratorId) throw new GameError("Das darf nur der Spielleiter.");
       if (s.phase !== "night") throw new GameError("Gerade ist keine Nacht.");
       const step = s.pending[0];
-      if (step !== "sleep" && step !== "lovers" && !s.acted.includes(step)) throw new GameError("Erst eine Auswahl treffen.");
+      if (step !== "sleep" && step !== "lovers" && step !== "schwestern" && !s.acted.includes(step)) throw new GameError("Erst eine Auswahl treffen.");
       s.pending.shift();
       if (!s.pending.length) dawn(s, ctx);
       return s;
@@ -301,6 +459,21 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
       done(s, "amor", ctx);
       return s;
     }
+    case "model": {
+      assertStep(s, "wildeskind", actor);
+      assertAlive(s, a.target);
+      if (s.roles[a.target] === "wildeskind") throw new GameError("Wähle jemand anderen als Vorbild.");
+      s.model = a.target;
+      done(s, "wildeskind", ctx);
+      return s;
+    }
+    case "dog": {
+      assertStep(s, "wolfshund", actor);
+      const dog = aliveHolders(s, "wolfshund")[0];
+      if (a.wolf && dog) s.roles[dog] = "werwolf";
+      done(s, "wolfshund", ctx);
+      return s;
+    }
     case "protect": {
       assertStep(s, "beschuetzer", actor);
       assertAlive(s, a.target);
@@ -312,18 +485,38 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
     case "wolf": {
       assertStep(s, "werwolf", actor);
       assertAlive(s, a.target);
-      if (s.roles[a.target] === "werwolf") throw new GameError("Werwölfe fressen keine Werwölfe.");
+      if (isWolf(s.roles[a.target])) throw new GameError("Werwölfe fressen keine Werwölfe.");
       if (s.stepwise || actor === null) {
         s.victim = a.target;
         done(s, "werwolf", ctx);
         return s;
       }
       s.wolfVotes[actor] = a.target;
-      const wolves = aliveHolders(s, "werwolf");
+      const wolves = aliveWolves(s);
       if (wolves.every((w) => s.wolfVotes[w])) {
-        s.victim = majority(wolves.map((w) => s.wolfVotes[w]), true);
+        s.victim = majority(count(wolves.map((w) => s.wolfVotes[w])), true);
         done(s, "werwolf", ctx);
       }
+      return s;
+    }
+    case "infect": {
+      assertStep(s, "urwolf", actor);
+      if (a.yes) {
+        if (!s.victim) throw new GameError("Heute Nacht gibt es kein Opfer zum Verwandeln.");
+        s.infected = s.victim;
+        s.victim = null;
+        s.infectUsed = true;
+      }
+      done(s, "urwolf", ctx);
+      return s;
+    }
+    case "wolf2": {
+      assertStep(s, "grosserwolf", actor);
+      assertAlive(s, a.target);
+      if (isWolf(s.roles[a.target])) throw new GameError("Werwölfe fressen keine Werwölfe.");
+      if (a.target === s.victim || a.target === s.infected) throw new GameError("Wähle ein anderes Opfer als das Rudel.");
+      s.victim2 = a.target;
+      done(s, "grosserwolf", ctx);
       return s;
     }
     case "see": {
@@ -335,9 +528,25 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
       done(s, "seherin", ctx);
       return s;
     }
+    case "fox": {
+      assertStep(s, "fuchs", actor);
+      assertAlive(s, a.target);
+      if (s.fox.some((x) => x.night === s.night)) throw new GameError("Heute Nacht hast du schon geschnüffelt.");
+      const wolf = [a.target, ...neighbors(s, a.target)].some((id) => isWolf(s.roles[id]));
+      s.fox.push({ night: s.night, target: a.target, wolf });
+      if (!wolf) s.foxPower = false;
+      done(s, "fuchs", ctx);
+      return s;
+    }
+    case "raven": {
+      assertStep(s, "rabe", actor);
+      if (a.target) assertAlive(s, a.target);
+      s.raven = a.target || null;
+      done(s, "rabe", ctx);
+      return s;
+    }
     case "witch": {
       assertStep(s, "hexe", actor);
-      if (!s.acted.includes("werwolf") && s.pending.includes("werwolf")) throw new GameError("Warte, bis die Werwölfe gewählt haben.");
       if (a.heal && (!s.potions.heal || !s.victim)) throw new GameError("Der Heiltrank geht gerade nicht.");
       if (a.poison) {
         if (!s.potions.poison) throw new GameError("Der Gifttrank ist verbraucht.");
@@ -361,10 +570,10 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
       if (s.phase !== "day") throw new GameError("Abgestimmt wird tagsüber.");
       if (s.stepwise) throw new GameError("Die Abstimmung trägt der Spielleiter ein.");
       if (!isPlayer || !s.alive[actor!]) throw new GameError("Tote stimmen nicht ab.");
+      if (s.idiots.includes(actor!)) throw new GameError("Als aufgedeckter Dorfdepp darfst du nicht mehr abstimmen.");
       if (a.target) assertAlive(s, a.target);
       s.votes[actor!] = a.target || "";
-      const alive = aliveIds(s);
-      if (alive.every((id) => id in s.votes)) closeVote(s, ctx);
+      if (voters(s).every((id) => id in s.votes)) closeVote(s, ctx);
       return s;
     }
     case "closeVote": {
@@ -389,7 +598,7 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
       s.hunters.shift();
       const deaths: Death[] = [];
       kill(s, deaths, a.target, "jaeger");
-      s.news = { kind: s.news?.kind ?? "day", deaths: [...(s.news?.deaths ?? []), ...deaths], tally: s.news?.tally };
+      s.news = { ...(s.news ?? { kind: "day" }), deaths: [...(s.news?.deaths ?? []), ...deaths] };
       s.log.push(`${nameOf(ctx, hunter)} erschießt ${nameOf(ctx, a.target)}`);
       afterDeaths(s, s.afterHunter);
       return s;
@@ -399,35 +608,21 @@ function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfS
   }
 }
 
-/** Nacht sofort auflösen: offene Wolfsstimmen zählen, alle anderen offenen Aktionen verfallen. */
-function forceNight(s: WerwolfState, ctx: GameContext) {
-  if (!s.victim && s.pending.includes("werwolf") && !s.acted.includes("werwolf")) {
-    s.victim = majority(Object.values(s.wolfVotes), true);
-  }
-  s.log.push(`Nacht ${s.night} vom Host beendet`);
-  s.pending = [];
-  dawn(s, ctx);
-}
-
-function closeVote(s: WerwolfState, ctx: GameContext) {
-  const tally: Record<string, number> = {};
-  for (const t of Object.values(s.votes)) if (t) tally[t] = (tally[t] ?? 0) + 1;
-  resolveVote(s, ctx, majority(Object.values(s.votes), false), tally);
-}
-
 /** Was eine Person sehen darf. Spielleiter, lokales Gerät und das Spielende sehen alles. */
 function view(s: WerwolfState, viewer: string | null): WerwolfState {
   if (viewer === null || viewer === s.narratorId || s.phase === "over") return s;
   const own = s.roles[viewer];
-  const wolf = own === "werwolf";
+  const wolf = isWolf(own);
   const roles: Record<string, Role> = {};
   for (const id of participants(s)) {
-    if (id === viewer || (wolf && s.roles[id] === "werwolf") || (s.revealDead && !s.alive[id])) roles[id] = s.roles[id];
+    const sister = own === "schwester" && s.roles[id] === "schwester";
+    if (id === viewer || (wolf && isWolf(s.roles[id])) || sister || s.idiots.includes(id) || (s.revealDead && !s.alive[id])) roles[id] = s.roles[id];
   }
   // Unbekannte Rollen als "dorf" tarnen, damit die Struktur gleich bleibt – die Oberfläche zeigt nur `known`
   const masked = Object.fromEntries(participants(s).map((id) => [id, roles[id] ?? "dorf"])) as Record<string, Role>;
   const inLove = !!s.lovers && (s.lovers.includes(viewer) || own === "amor");
-  const myStep = (p: Step) => STEP_ROLE[p] === own || (own === "hexe" && p === "werwolf");
+  const myStep = (p: Step) => (p === "werwolf" ? wolf || own === "hexe" || own === "urwolf" || own === "grosserwolf" : STEP_ROLE[p] === own || (own === "hexe" && p === "urwolf"));
+  const seesVictim = wolf || (own === "hexe" && s.alive[viewer]);
   return {
     ...s,
     roles: masked,
@@ -436,11 +631,17 @@ function view(s: WerwolfState, viewer: string | null): WerwolfState {
     pending: s.pending.filter(myStep),
     acted: s.acted.filter(myStep),
     wolfVotes: wolf ? s.wolfVotes : {},
-    victim: wolf || (own === "hexe" && s.alive[viewer]) ? s.victim : null,
+    victim: seesVictim ? s.victim : null,
+    victim2: wolf ? s.victim2 : null,
+    infected: wolf ? s.infected : null,
     protectedId: own === "beschuetzer" ? s.protectedId : null,
     lastProtected: own === "beschuetzer" ? s.lastProtected : null,
     seer: own === "seherin" ? s.seer : [],
+    fox: own === "fuchs" ? s.fox : [],
+    model: own === "wildeskind" ? s.model : null,
     potions: own === "hexe" ? s.potions : { heal: false, poison: false },
+    raven: own === "rabe" ? s.raven : null,
+    rusty: null,
     healed: false,
     poisoned: null,
     suspicions: viewer in s.suspicions ? { [viewer]: s.suspicions[viewer] } : {},
@@ -453,6 +654,9 @@ export function knownRoles(s: WerwolfState): Set<string> {
   return new Set(s.known ?? participants(s));
 }
 
+const roleToggle = (r: Role, def: boolean, group: string, hint: string): SettingDef =>
+  ({ key: r, label: `${ROLES[r].emoji} ${ROLES[r].name}`, type: "toggle", default: def, hint, group });
+
 export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
   info: {
     id: "werwolf",
@@ -463,7 +667,7 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
     maxPlayers: 20,
     duration: "30–60 Min.",
   },
-  version: 1,
+  version: 2,
   turnBased: false,
   joinMidGame: false,
   settings: [
@@ -481,12 +685,24 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
         { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
       ],
     },
-    { key: "seherin", label: "🔮 Seherin", type: "toggle", default: true, hint: "sieht jede Nacht eine Rolle" },
-    { key: "hexe", label: "🧪 Hexe", type: "toggle", default: true, hint: "ein Heil-, ein Gifttrank" },
-    { key: "jaeger", label: "🏹 Jäger", type: "toggle", default: false, hint: "nimmt jemanden mit in den Tod" },
-    { key: "amor", label: "💘 Amor", type: "toggle", default: false, hint: "verliebt zwei Menschen" },
-    { key: "beschuetzer", label: "🛡️ Beschützer", type: "toggle", default: false, hint: "schützt jede Nacht eine Person" },
     { key: "revealDead", label: "Rollen der Toten aufdecken", type: "toggle", default: true, hint: "sonst erst am Spielende" },
+    roleToggle("seherin", true, "Grundspiel", "sieht jede Nacht eine Rolle"),
+    roleToggle("hexe", true, "Grundspiel", "ein Heil-, ein Gifttrank"),
+    roleToggle("jaeger", false, "Grundspiel", "nimmt jemanden mit in den Tod"),
+    roleToggle("amor", false, "Grundspiel", "verliebt zwei Menschen"),
+    roleToggle("beschuetzer", false, "Neumond", "schützt jede Nacht eine Person"),
+    roleToggle("alter", false, "Neumond", "überlebt den ersten Wolfsangriff"),
+    roleToggle("dorfdepp", false, "Neumond", "überlebt die Verurteilung, verliert die Stimme"),
+    roleToggle("suendenbock", false, "Neumond", "stirbt bei Gleichstand"),
+    roleToggle("wildeskind", false, "Charaktere", "wird zum Wolf, wenn sein Vorbild stirbt"),
+    roleToggle("wolfshund", false, "Charaktere", "wählt: Dorf oder Wolf"),
+    roleToggle("fuchs", false, "Charaktere", "wittert Wölfe in einer Dreiergruppe"),
+    roleToggle("baerenfuehrer", false, "Charaktere", "sein Bär brummt neben Wölfen"),
+    roleToggle("ritter", false, "Charaktere", "sein rostiges Schwert tötet einen Wolf"),
+    roleToggle("schwester", false, "Charaktere", "zwei Karten – kennen sich"),
+    roleToggle("urwolf", false, "Charaktere", "Werwolf: verwandelt einmal sein Opfer"),
+    roleToggle("grosserwolf", false, "Charaktere", "Werwolf: frisst ein zweites Opfer"),
+    roleToggle("rabe", false, "Die Gemeinde", "+2 Stimmen gegen einen Verdächtigen"),
   ],
   playerLimits: (o) => (modeOf(o) === "human" ? { min: 5, max: 20, note: "online zählt der Spielleiter zusätzlich" } : { min: 5, max: 20 }),
   setup,
@@ -524,17 +740,18 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
     if (s.winner) { s.phase = "over"; return s; }
     if (s.phase === "night") {
       // Schritte ohne lebende Rolle entfallen, offene Wolfsabstimmung neu prüfen
-      s.pending = s.pending.filter((p) => !STEP_ROLE[p] || aliveHolders(s, STEP_ROLE[p]!).length > 0 || s.acted.includes(p));
+      const actorAlive = (p: Step) => p === "werwolf" ? aliveWolves(s).length > 0 : !STEP_ROLE[p] || aliveHolders(s, STEP_ROLE[p]!).length > 0;
+      s.pending = s.pending.filter((p) => actorAlive(p) || s.acted.includes(p));
       delete s.wolfVotes[id];
-      const wolves = aliveHolders(s, "werwolf");
-      if (!s.stepwise && s.pending.includes("werwolf") && wolves.every((w) => s.wolfVotes[w])) {
-        s.victim = majority(wolves.map((w) => s.wolfVotes[w]), true);
-        done(s, "werwolf", { ...ctx, players: ctx.players.filter((p) => p.id !== id) });
+      const wolves = aliveWolves(s);
+      if (!s.stepwise && open(s, "werwolf") && wolves.every((w) => s.wolfVotes[w])) {
+        s.victim = majority(count(wolves.map((w) => s.wolfVotes[w])), true);
+        done(s, "werwolf", ctx);
       } else if (!s.pending.length) dawn(s, ctx);
     }
     if (s.phase === "day" && !s.stepwise) {
       delete s.votes[id];
-      if (aliveIds(s).every((x) => x in s.votes)) closeVote(s, ctx);
+      if (voters(s).every((x) => x in s.votes)) closeVote(s, ctx);
     }
     return s;
   },
@@ -542,6 +759,6 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
 };
 
 const ACTIONS: Record<WerwolfAction["type"], true> = {
-  ready: true, startNight: true, amor: true, protect: true, wolf: true, see: true, witch: true,
-  suspect: true, next: true, vote: true, closeVote: true, lynch: true, shoot: true,
+  ready: true, startNight: true, amor: true, model: true, dog: true, protect: true, wolf: true, infect: true, wolf2: true,
+  see: true, fox: true, raven: true, witch: true, suspect: true, next: true, vote: true, closeVote: true, lynch: true, shoot: true,
 };

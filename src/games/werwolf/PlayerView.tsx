@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { aliveIds, holders, ROLES, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
+import { aliveIds, holders, isWolf, knownRoles, ROLES, voters, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,11 +23,7 @@ export function PlayerView({ s, players, me, isHost, act }: { s: WerwolfState; p
           <>
             <Panel title="Deine Rolle" sub="Schau sie dir unauffällig an. Niemand darf mitlesen.">
               <RoleCard role={role} />
-              {role === "werwolf" && holders(s, "werwolf").length > 1 && (
-                <p className="mt-3 text-center text-sm text-muted-foreground">
-                  Dein Rudel: {holders(s, "werwolf").filter((id) => id !== me).map((id) => nameOf(players, id)).join(", ")}
-                </p>
-              )}
+              <Allies s={s} players={players} me={me} />
             </Panel>
             {s.ready.includes(me)
               ? <p className="glass shrink-0 rounded-xl py-4 text-center text-muted-foreground">{app ? `Warte auf die anderen (${s.ready.length}/${Object.keys(s.roles).length}) …` : "Warte auf den Spielleiter …"}</p>
@@ -37,6 +33,7 @@ export function PlayerView({ s, players, me, isHost, act }: { s: WerwolfState; p
         ) : (
           <>
             <RoleCard role={role} compact />
+            <Allies s={s} players={players} me={me} compact />
             {s.lovers?.includes(me) && (
               <p className="shrink-0 rounded-xl bg-pink-500/15 px-3 py-2 text-center text-sm font-semibold text-pink-200">
                 💘 Du bist verliebt in {nameOf(players, s.lovers[0] === me ? s.lovers[1] : s.lovers[0])}
@@ -96,7 +93,27 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
       </>
     );
   }
-  if (role === "werwolf" && own("werwolf")) {
+  if (role === "wildeskind" && own("wildeskind")) {
+    return (
+      <>
+        <Panel title={title} sub="🧒 Wähle dein Vorbild. Stirbt es, wirst du zum Werwolf.">
+          <Picker ids={alive.filter((id) => id !== me)} players={players} selected={pick} onPick={one} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "model", target: pick[0] })}>Vorbild wählen</Button>
+      </>
+    );
+  }
+  if (role === "wolfshund" && own("wolfshund")) {
+    return (
+      <Panel title={title} sub="🐕 Bleibst du ein treuer Dorfbewohner – oder läufst du zu den Wölfen?">
+        <div className="grid gap-2">
+          <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: false })}>🏡 Ich bleibe beim Dorf</Button>
+          <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: true })}>🐺 Ich werde Werwolf</Button>
+        </div>
+      </Panel>
+    );
+  }
+  if (isWolf(role) && own("werwolf")) {
     const votes: Record<string, number> = {};
     for (const t of Object.values(s.wolfVotes)) votes[t] = (votes[t] ?? 0) + 1;
     const mine = s.wolfVotes[me];
@@ -106,6 +123,47 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
           <Picker ids={alive.filter((id) => s.roles[id] !== "werwolf")} players={players} selected={mine ? [mine] : pick}
             onPick={(id) => { one(id); act({ type: "wolf", target: id }); }} marks={Object.fromEntries(Object.entries(votes).map(([id, n]) => [id, `🐺${n}`]))} />
         </Panel>
+      </>
+    );
+  }
+  if (role === "urwolf" && own("urwolf") && !s.pending.some((p) => p === "werwolf" && !s.acted.includes(p))) {
+    return (
+      <Panel title={title} sub={s.victim ? <>🌑 Das Rudel hat <b className="text-foreground">{nameOf(players, s.victim)}</b> gewählt. Verwandeln statt fressen? (nur einmal im Spiel)</> : "🌑 Heute Nacht gibt es kein Opfer."}>
+        <div className="grid gap-2">
+          {s.victim && <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: true })}>Verwandeln – wird zum Werwolf</Button>}
+          <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: false })}>{s.victim ? "Nein, fressen" : "Weiter"}</Button>
+        </div>
+      </Panel>
+    );
+  }
+  if (role === "grosserwolf" && own("grosserwolf") && !s.pending.some((p) => p === "werwolf" && !s.acted.includes(p))) {
+    return (
+      <>
+        <Panel title={title} sub="🌕 Such dir allein ein zweites Opfer.">
+          <Picker ids={alive.filter((id) => !isWolf(s.roles[id]) && id !== s.victim && id !== s.infected)} players={players} selected={pick} onPick={one} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "wolf2", target: pick[0] })}>Fressen</Button>
+      </>
+    );
+  }
+  if (role === "fuchs" && own("fuchs")) {
+    return (
+      <>
+        <Panel title={title} sub="🦊 Auf wen zeigst du? Du erfährst, ob dort oder bei den Nachbarn ein Wolf ist.">
+          <Picker ids={alive} players={players} selected={pick} onPick={one} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "fox", target: pick[0] })}>Schnüffeln</Button>
+      </>
+    );
+  }
+  if (role === "rabe" && own("rabe")) {
+    return (
+      <>
+        <Panel title={title} sub="🐦‍⬛ Wen markierst du? Er hat morgen zwei Stimmen mehr gegen sich.">
+          <Picker ids={alive.filter((id) => id !== me)} players={players} selected={pick} onPick={one}
+            extra={{ label: "Niemand", selected: false, onPick: () => act({ type: "raven", target: null }) }} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "raven", target: pick[0] })}>Markieren</Button>
       </>
     );
   }
@@ -120,14 +178,14 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
     );
   }
   if (role === "hexe" && own("hexe")) {
-    if (s.pending.includes("werwolf") && !s.acted.includes("werwolf")) {
+    if ((s.pending.includes("werwolf") && !s.acted.includes("werwolf")) || (s.pending.includes("urwolf") && !s.acted.includes("urwolf"))) {
       return <Suspect s={s} players={players} me={me} act={act} hint="🧪 Die Werwölfe wählen noch. Gib derweil deinen Verdacht ab." />;
     }
     return (
       <>
-        <Panel title={title} sub={<>🧪 Opfer der Werwölfe: <b className="text-foreground">{nameOf(players, s.victim)}</b></>}>
+        <Panel title={title} sub={s.victim ? <>🧪 Opfer der Werwölfe: <b className="text-foreground">{nameOf(players, s.victim)}</b></> : "🧪 Heute Nacht wurde niemand angegriffen."}>
           <label className={cn("mb-3 flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-inset ring-border", !s.potions.heal && "opacity-40")}>
-            <Checkbox checked={heal} disabled={!s.potions.heal} onCheckedChange={(c) => setHeal(c === true)} />Heiltrank benutzen{!s.potions.heal && " (verbraucht)"}
+            <Checkbox checked={heal} disabled={!s.potions.heal || !s.victim} onCheckedChange={(c) => setHeal(c === true)} />Heiltrank benutzen{!s.potions.heal && " (verbraucht)"}
           </label>
           {s.potions.poison ? (
             <>
@@ -141,7 +199,11 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
     );
   }
   const seen = role === "seherin" ? s.seer.filter((x) => x.night === s.night).at(-1) : null;
-  return <Suspect s={s} players={players} me={me} act={act} hint={seen ? `🔮 ${nameOf(players, seen.target)} ist ${ROLES[seen.role].emoji} ${ROLES[seen.role].name}. Gib jetzt noch deinen Verdacht ab.` : undefined} />;
+  const sniff = role === "fuchs" ? s.fox.filter((x) => x.night === s.night).at(-1) : null;
+  const hint = seen ? `🔮 ${nameOf(players, seen.target)} ist ${ROLES[seen.role].emoji} ${ROLES[seen.role].name}. Gib jetzt noch deinen Verdacht ab.`
+    : sniff ? (sniff.wolf ? `🦊 Bei ${nameOf(players, sniff.target)} oder den Nachbarn steckt ein Wolf! Gib jetzt noch deinen Verdacht ab.` : `🦊 Dort ist kein Wolf – dein Spürsinn ist weg. Gib noch deinen Verdacht ab.`)
+    : undefined;
+  return <Suspect s={s} players={players} me={me} act={act} hint={hint} />;
 }
 
 /** Tarn-Aufgabe für alle, die nachts nichts zu tun haben */
@@ -157,10 +219,18 @@ function Suspect({ s, players, me, act, hint }: { s: WerwolfState; players: Play
 function AppVote({ s, players, me, isHost, act }: { s: WerwolfState; players: Player[]; me: string; isHost: boolean; act: (a: WerwolfAction) => void }) {
   const mine = s.votes[me];
   const alive = aliveIds(s);
+  if (s.idiots.includes(me)) {
+    return (
+      <>
+        <Panel title={<>☀️ Tag {s.night}</>} sub="Als aufgedeckter Dorfdepp darfst du nicht mehr abstimmen – aber mitreden!" />
+        {isHost && <CloseVote s={s} act={act} />}
+      </>
+    );
+  }
   const count = Object.keys(s.votes).length;
   return (
     <>
-      <Panel title={<>☀️ Tag {s.night}</>} sub={mine === undefined ? "Diskutiert – dann stimmt jeder ab, wer verurteilt wird." : `Du hast abgestimmt. ${count}/${alive.length} Stimmen sind da.`}>
+      <Panel title={<>☀️ Tag {s.night}</>} sub={mine === undefined ? "Diskutiert – dann stimmt jeder ab, wer verurteilt wird." : `Du hast abgestimmt. ${count}/${voters(s).length} Stimmen sind da.`}>
         <Picker ids={alive.filter((id) => id !== me)} players={players} selected={mine ? [mine] : []} onPick={(id) => act({ type: "vote", target: id })}
           extra={{ label: "Enthaltung", selected: mine === "", onPick: () => act({ type: "vote", target: "" }) }} />
       </Panel>
@@ -194,5 +264,18 @@ function HunterWait({ s, players, me, app, act }: { s: WerwolfState; players: Pl
 /** Der Host kann die Abstimmung beenden – auch wenn er schon tot ist */
 function CloseVote({ s, act }: { s: WerwolfState; act: (a: WerwolfAction) => void }) {
   const count = Object.keys(s.votes).length;
-  return <Button variant="secondary" className="shrink-0" disabled={!count} onClick={() => act({ type: "closeVote" })}>Abstimmung beenden ({count}/{aliveIds(s).length})</Button>;
+  return <Button variant="secondary" className="shrink-0" disabled={!count} onClick={() => act({ type: "closeVote" })}>Abstimmung beenden ({count}/{voters(s).length})</Button>;
+}
+
+/** Wen kennt man sicher? Rudel, Schwester, Vorbild des wilden Kindes */
+function Allies({ s, players, me, compact }: { s: WerwolfState; players: Player[]; me: string; compact?: boolean }) {
+  const role = s.roles[me];
+  const pack = isWolf(role) ? [...knownRoles(s)].filter((id) => id !== me && isWolf(s.roles[id])) : [];
+  const sister = role === "schwester" ? holders(s, "schwester").filter((id) => id !== me && knownRoles(s).has(id)) : [];
+  const lines: string[] = [];
+  if (pack.length) lines.push(`🐺 Dein Rudel: ${pack.map((id) => `${nameOf(players, id)}${s.alive[id] ? "" : " ✝"}`).join(", ")}`);
+  if (sister.length) lines.push(`👭 Deine Schwester: ${sister.map((id) => nameOf(players, id)).join(", ")}`);
+  if (role === "wildeskind" && s.model) lines.push(`🧒 Dein Vorbild: ${nameOf(players, s.model)}`);
+  if (!lines.length) return null;
+  return <div className={compact ? "shrink-0 rounded-xl bg-navy-950/50 px-3 py-1.5 text-sm" : "mt-3 text-center text-sm text-muted-foreground"}>{lines.map((l) => <div key={l}>{l}</div>)}</div>;
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowUp, X } from "lucide-react";
-import { MAX_NAME, playerLimits, type RoomAction, type RoomState } from "@shared/platform/room";
+import { getGame } from "@shared/games";
+import { MAX_NAME, MAX_PLAYERS, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Confirm } from "@/components/Confirm";
@@ -17,7 +18,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
 }) {
   const [name, setName] = useState("");
   const add = () => { if (!name.trim() || !onAddLocal) return; onAddLocal(name); setName(""); };
-  const max = playerLimits(room).max;
+  const max = Math.min(MAX_PLAYERS, getGame(room.gameId).info.maxPlayers);
 
   return (
     <div>

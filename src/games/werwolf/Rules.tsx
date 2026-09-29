@@ -1,4 +1,4 @@
-import { ROLES, SPECIAL_ROLES, type Role } from "@shared/games/werwolf/logic";
+import { ROLES, SPECIAL_ROLES, type Role, type RoleInfo } from "@shared/games/werwolf/logic";
 import { cn } from "@/lib/utils";
 
 /** Regelseite Werwolf: Ablauf, Rollen, Sieg und die beiden Erzähler-Modi. */
@@ -24,9 +24,11 @@ export function Rules({ focus }: { focus?: string }) {
         </p>
       </section>
 
-      <h3 className="mt-5 mb-2 font-semibold">Rollen</h3>
+      {(["Grundspiel", "Neumond", "Charaktere", "Die Gemeinde"] as RoleInfo["from"][]).map((from) => (
+      <div key={from}>
+      <h3 className="mt-5 mb-2 font-semibold">Rollen: {from}</h3>
       <ul className="grid gap-2">
-        {roles.map((id) => {
+        {roles.filter((id) => ROLES[id].from === from).map((id) => {
           const r = ROLES[id];
           return (
             <li key={id} data-focused={id === focus} className={cn("scroll-mt-3 rounded-xl px-3 py-2.5", id === focus ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
@@ -36,6 +38,9 @@ export function Rules({ focus }: { focus?: string }) {
           );
         })}
       </ul>
+      </div>
+      ))}
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Welche Rollen mitspielen, legt der Host in den Einstellungen fest. Der Urwolf und der große böse Wolf zählen zu den Werwölfen.</p>
 
       <section className="glass mt-5 rounded-2xl p-4">
         <h3 className="font-semibold">Erzähler: die App</h3>

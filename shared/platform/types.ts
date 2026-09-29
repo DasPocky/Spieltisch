@@ -20,6 +20,8 @@ interface SettingBase {
   label: string;
   /** Darf der Host die Einstellung auch während des Spiels ändern? */
   inGame?: boolean;
+  /** Zwischenüberschrift, unter der die Einstellung erscheint (z. B. „Neumond“) */
+  group?: string;
 }
 
 /** Einstellungen werden deklarativ beschrieben – die Plattform zeigt sie an und prüft die Werte. */

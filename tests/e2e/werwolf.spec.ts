@@ -138,3 +138,46 @@ test("Werwolf online mit Spielleiter – sechs Handys", async ({ browser }) => {
   await shot(lead, "50-ww-leader-day");
   await shot(phones[2], "51-ww-player-day");
 });
+
+/** Einen Nachtschritt am Gerät erledigen – egal welche Rolle dran ist */
+async function doStep(page: Page) {
+  for (const name of [/Bleibt beim Dorf/, /Nein, fressen/, /Kein Opfer – weiter/]) {
+    const b = page.getByRole("button", { name });
+    if (await b.isVisible()) { await b.click(); return; }
+  }
+  const confirm = page.getByRole("button", { name: /fressen|wählen|ansehen|Bestätigen|Beschützen|Schnüffeln|markieren|Vorbild|Zwei Personen/ }).last();
+  if (!(await confirm.isVisible())) return;
+  const options = page.getByRole("group").locator("button:not([disabled])");
+  for (let i = 0; i < 3 && !(await confirm.isEnabled()); i++) await options.nth(i).click();
+  await confirm.click();
+}
+
+test("Werwolf lokal mit Rollen aus allen Erweiterungen", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/spiel/werwolf/lokal");
+  const names = ["Anna", "Ben", "Cem", "Dora", "Emil", "Finn", "Gina", "Hugo", "Ida", "Jan", "Kim", "Lea"];
+  for (const n of names) {
+    await page.getByLabel("Name des Spielers").fill(n);
+    await page.getByRole("button", { name: "Hinzufügen" }).click();
+  }
+  await page.getByRole("radio", { name: /^2$/ }).click();
+  for (const role of [/Wildes Kind/, /Wolfshund/, /Fuchs/, /Rabe/, /Urwolf/, /Heiler/, /Der Alte/]) {
+    await page.getByRole("checkbox", { name: role }).click();
+  }
+  await shot(page, "52-ww-roles-settings");
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await page.getByRole("button", { name: /Nacht beginnen/ }).click();
+  await expect(page.getByTestId("ww-phase")).toHaveText("🌙 Nacht 1");
+  for (let i = 0; i < 25 && (await page.getByTestId("ww-phase").textContent())?.includes("Nacht"); i++) {
+    await doStep(page);
+    if (i === 3) await shot(page, "53-ww-roles-step");
+    const next = page.getByRole("button", { name: "Weiter" });
+    if (await next.isVisible()) await next.click();
+    await page.waitForTimeout(250);
+  }
+  await expect(page.getByTestId("ww-phase")).toHaveText(/Tag 1|Ende/);
+  await expectNoScroll(page);
+  await shot(page, "54-ww-roles-day");
+});

@@ -62,8 +62,11 @@ function candidates(r: RoomState, online: boolean): Move[] {
       const alive = Object.keys(s.roles).filter((id) => s.alive[id]);
       const t = () => pick(alive.length ? alive : ids);
       ["ready", "startNight", "next", "closeVote"].forEach((type) => add({ type }));
+      add({ type: "dog", wolf: Math.random() < 0.5 });
+      add({ type: "infect", yes: Math.random() < 0.5 });
+      add({ type: "raven", target: null });
       for (const a of alive) add({ type: "amor", a, b: pick(alive.filter((x) => x !== a)) });
-      for (const target of alive) ["protect", "wolf", "see", "suspect", "shoot", "vote", "lynch"].forEach((type) => add({ type, target }));
+      for (const target of alive) ["protect", "wolf", "wolf2", "see", "fox", "raven", "model", "suspect", "shoot", "vote", "lynch"].forEach((type) => add({ type, target }));
       add({ type: "witch", heal: Math.random() < 0.3, poison: Math.random() < 0.3 ? t() : null });
       add({ type: "witch", heal: false, poison: null });
       add({ type: "vote", target: "" });
@@ -120,7 +123,8 @@ function playOut(start: RoomState, online: boolean, maxSteps = 4000) {
 }
 
 function setupRoom(gameId: string, n: number, options: Record<string, unknown>, online: boolean) {
-  let r = act(roomWith(["Anna", "Ben", "Cem", "Dora", "Emil", "Finn", "Gina", "Hugo"].slice(0, n)), { type: "selectGame", gameId });
+  const names = Array.from({ length: n }, (_, i) => `Spieler${i + 1}`);
+  let r = roomWith(names, gameId);
   for (const [key, value] of Object.entries(options)) r = act(r, { type: "setOption", key, value: value as never });
   if (online && gameId !== "werwolf") r = act(r, { type: "setEntry", mode: "turn" });
   return act(r, { type: "start" }, online ? "p1" : null);
@@ -139,6 +143,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["fischen", 8, { deck: "fr52" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
+  ["werwolf", 20, {
+    wolves: "3", seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true, alter: true, dorfdepp: true, suendenbock: true,
+    wildeskind: true, wolfshund: true, fuchs: true, baerenfuehrer: true, ritter: true, schwester: true, urwolf: true, grosserwolf: true, rabe: true,
+  }],
 ];
 
 describe("Nichts bleibt hängen – Zufallspartien", () => {

@@ -88,8 +88,9 @@ export function addPlayer(prev: RoomState, p: { id: string; name: string }): Roo
   const logic = roomGame(prev);
   if (!name) throw new GameError("Bitte gib einen Namen ein.");
   if (prev.players.length >= MAX_PLAYERS) throw new GameError(`Maximal ${MAX_PLAYERS} Spieler.`);
-  if (prev.players.length >= playerLimits(prev).max)
-    throw new GameError(`${logic.info.name} geht mit höchstens ${playerLimits(prev).max} Spielern.`);
+  // Beim Beitritt zählt das absolute Maximum des Spiels – das genaue (je nach Einstellung) prüft der Start
+  const max = Math.min(MAX_PLAYERS, logic.info.maxPlayers);
+  if (prev.players.length >= max) throw new GameError(`${logic.info.name} geht mit höchstens ${max} Spielern.`);
   if (prev.players.some((x) => x.name.toLowerCase() === name.toLowerCase()))
     throw new GameError(`„${name}“ spielt schon mit. Nimm einen anderen Namen.`);
   if (prev.phase === "playing" && !logic.joinMidGame)

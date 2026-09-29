@@ -28,9 +28,14 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
         <h3 className="font-semibold">Einstellungen</h3>
         {!editable && <span className="text-xs text-muted-foreground">legt der Host fest</span>}
       </div>
-      {logic.settings.map((def) => (
-        <Setting key={def.key} def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}
-          onChange={(value) => dispatch({ type: "setOption", key: def.key, value })} />
+      {logic.settings.map((def, i) => (
+        <div key={def.key} className="grid gap-4">
+          {def.group && def.group !== logic.settings[i - 1]?.group && (
+            <h4 className="-mb-1 border-t border-border pt-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">{def.group}</h4>
+          )}
+          <Setting def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}
+            onChange={(value) => dispatch({ type: "setOption", key: def.key, value })} />
+        </div>
       ))}
       {online && logic.turnBased && !logic.ownTurnsOnly && (
         <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}

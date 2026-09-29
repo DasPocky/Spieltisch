@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
-import { aliveIds, holders, participants, ROLES, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
+import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -92,7 +92,8 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
   const [pick, setPick] = useState<string[]>([]);
   const [heal, setHeal] = useState(false);
   const alive = aliveIds(s);
-  const who = (role: Role) => holders(s, role).filter((id) => s.alive[id]).map((id) => nameOf(players, id)).join(", ");
+  const who = (ids: string[]) => ids.map((id) => nameOf(players, id)).join(", ");
+  const awake = step === "werwolf" ? aliveWolves(s) : step === "schwestern" ? holders(s, "schwester") : STEP_ROLE[step] ? holders(s, STEP_ROLE[step]!).filter((id) => s.alive[id]) : [];
   const toggle = (id: string, max: number) => setPick((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id].slice(-max)));
 
   let body: React.ReactNode = null;
@@ -106,9 +107,41 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
   } else if (step === "beschuetzer" && !acted) {
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} disabled={(id) => id === s.lastProtected} />;
     confirm = { label: "Beschützen", ok: pick.length === 1, run: () => act({ type: "protect", target: pick[0] }) };
+  } else if (step === "wildeskind" && !acted) {
+    body = <Picker ids={alive.filter((id) => s.roles[id] !== "wildeskind")} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    confirm = { label: pick.length ? `${nameOf(players, pick[0])} als Vorbild` : "Vorbild wählen", ok: pick.length === 1, run: () => act({ type: "model", target: pick[0] }) };
+  } else if (step === "wolfshund" && !acted) {
+    body = (
+      <div className="grid gap-2">
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: false })}>🏡 Bleibt beim Dorf</Button>
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: true })}>🐺 Wird zum Werwolf</Button>
+      </div>
+    );
+  } else if (step === "schwestern") {
+    body = <p className="text-center text-2xl font-extrabold">👭 {who(holders(s, "schwester"))}</p>;
   } else if (step === "werwolf" && !acted) {
-    body = <Picker ids={alive.filter((id) => s.roles[id] !== "werwolf")} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    body = <Picker ids={alive.filter((id) => !isWolf(s.roles[id]))} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf", target: pick[0] }) };
+  } else if (step === "urwolf" && !acted) {
+    body = s.victim ? (
+      <div className="grid gap-2">
+        <p className="rounded-xl bg-navy-950/50 p-3 text-center">Opfer: <b className="text-lg">{nameOf(players, s.victim)}</b></p>
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: true })}>🌑 Verwandeln – wird zum Werwolf</Button>
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: false })}>Nein, fressen</Button>
+      </div>
+    ) : <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: false })}>Kein Opfer – weiter</Button>;
+  } else if (step === "grosserwolf" && !acted) {
+    body = <Picker ids={alive.filter((id) => !isWolf(s.roles[id]) && id !== s.victim && id !== s.infected)} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Zweites Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf2", target: pick[0] }) };
+  } else if (step === "fuchs" && !acted) {
+    body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    confirm = { label: "Schnüffeln", ok: pick.length === 1, run: () => act({ type: "fox", target: pick[0] }) };
+  } else if (step === "fuchs" && acted) {
+    const r = s.fox.at(-1)!;
+    body = <p className="text-center text-2xl font-extrabold" data-testid="fox-result">{r.wolf ? `🦊 Wolf in der Nähe von ${nameOf(players, r.target)}!` : "🦊 Kein Wolf dort – der Fuchs verliert seinen Spürsinn."}</p>;
+  } else if (step === "rabe" && !acted) {
+    body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} extra={{ label: "Niemand", selected: false, onPick: () => act({ type: "raven", target: null }) }} />;
+    confirm = { label: pick.length ? `${nameOf(players, pick[0])} markieren` : "Person wählen", ok: pick.length === 1, run: () => act({ type: "raven", target: pick[0] }) };
   } else if (step === "seherin" && !acted) {
     body = <Picker ids={alive.filter((id) => s.roles[id] !== "seherin")} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: "Rolle ansehen", ok: pick.length === 1, run: () => act({ type: "see", target: pick[0] }) };
@@ -124,7 +157,7 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
   } else if (step === "hexe" && !acted) {
     body = (
       <div className="grid gap-3">
-        <p className="rounded-xl bg-navy-950/50 p-3 text-center">Opfer der Werwölfe: <b className="text-lg">{nameOf(players, s.victim)}</b></p>
+        <p className="rounded-xl bg-navy-950/50 p-3 text-center">{s.victim ? <>Opfer der Werwölfe: <b className="text-lg">{nameOf(players, s.victim)}</b></> : "Heute Nacht wurde niemand angegriffen."}</p>
         <label className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-inset ring-border", !s.potions.heal && "opacity-40")}>
           <Checkbox checked={heal} disabled={!s.potions.heal || !s.victim} onCheckedChange={(c) => setHeal(c === true)} />
           🧪 Heiltrank benutzen{!s.potions.heal && " (verbraucht)"}
@@ -142,7 +175,7 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
     body = <p className="text-center text-lg font-semibold text-muted-foreground">✓ Erledigt</p>;
   }
 
-  const actorHint = showRoles && step !== "sleep" && step !== "lovers" ? who(step) : "";
+  const actorHint = showRoles && awake.length ? who(awake) : "";
   return (
     <>
       <Panel title={<>🌙 Nacht {s.night} · {script.title}</>} sub={<><span className="italic">„{acted && script.after ? script.after : script.say}“</span>{actorHint && <span className="block not-italic">Wach: {actorHint}</span>}</>}>

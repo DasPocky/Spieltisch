@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export const CAUSE: Record<Death["cause"], string> = {
   wolf: "von den Werwölfen gefressen", gift: "vergiftet", dorf: "vom Dorf verurteilt",
-  jaeger: "vom Jäger erschossen", kummer: "aus Liebeskummer gestorben", weg: "hat das Spiel verlassen",
+  jaeger: "vom Jäger erschossen", kummer: "aus Liebeskummer gestorben", rost: "am rostigen Schwert gestorben", weg: "hat das Spiel verlassen",
 };
 
 export const nameOf = (players: Player[], id: string | null | undefined) => players.find((p) => p.id === id)?.name ?? "?";
@@ -125,6 +125,11 @@ export function News({ s, players }: { s: WerwolfState; players: Player[] }) {
           ))}
         </ul>
       ) : <p className="mt-1 font-semibold">{kind === "night" ? "Niemand ist gestorben." : "Niemand wurde verurteilt."}</p>}
+      {s.news.idiot && <p className="mt-1 font-semibold">🤪 {nameOf(players, s.news.idiot)} ist der Dorfdepp – das Dorf lacht und lässt ihn leben. Er darf nicht mehr abstimmen.</p>}
+      {s.news.scapegoat && <p className="mt-1 text-sm text-muted-foreground">🐐 Gleichstand – der Sündenbock musste sterben.</p>}
+      {s.news.growl && <p className="mt-1 font-semibold text-gold">🐻 Der Bär brummt! Neben dem Bärenführer sitzt ein Werwolf.</p>}
+      {s.news.growl === false && <p className="mt-1 text-sm text-muted-foreground">🐻 Der Bär bleibt still.</p>}
+      {s.news.raven && <p className="mt-1 text-sm text-muted-foreground">🐦‍⬛ Der Rabe hat {nameOf(players, s.news.raven)} markiert: +2 Stimmen bei der Abstimmung.</p>}
       {top.length > 0 && kind === "night" && (
         <p className="mt-1 text-sm text-muted-foreground">Verdacht der Nacht: {top.map(([id, n]) => `${nameOf(players, id)} (${n})`).join(", ")}</p>
       )}

@@ -5,7 +5,7 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 **Spiele:**
 
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
-- **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor, Beschützer.
+- **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen aus Grundspiel und Erweiterungen, einzeln zuschaltbar: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor · Neumond: Heiler, der Alte, Dorfdepp, Sündenbock · Charaktere: Wildes Kind, Wolfshund, Fuchs, Bärenführer, Ritter mit rostigem Schwert, zwei Schwestern, Urwolf, großer böser Wolf · Die Gemeinde: Rabe.
 - **Mau-Mau** – französisches (32/52) oder deutsches Blatt, 2–8 Spieler je nach Blatt. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
 - **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar.
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
@@ -102,7 +102,8 @@ tests/
 - **Die Plattform** (`shared/platform/room.ts`) verwaltet alles, was für jedes Spiel gleich ist: Spieler und Zugreihenfolge, Host, Lobby ↔ Partie, Neue Runde, Spielwechsel, Einstellungen und die Rechteprüfung. Das Spiel sieht nur seinen eigenen Zustand und bekommt Spieler, Host, Akteur und Einstellungen als `GameContext`.
 - **Rechte** deklariert jedes Spiel pro Aktion: `host` (nur Host), `turn` (für den Spieler am Zug – wer das darf, regelt die Raumeinstellung) oder `player` (jeder für sich selbst). Die Plattform prüft, bevor das Spiel die Aktion sieht.
 - **Versteckte Informationen:** Über `view(state, viewerId)` filtert ein Spiel, was ein Spieler sehen darf. Tutto verbirgt so die Reihenfolge des Kartenstapels (Clients sehen nur, welche Karten noch drin sind), Werwolf schickt jedem nur die eigene Rolle (Wölfe kennen ihr Rudel, der Spielleiter sieht alles).
-- **Spielerzahl:** Jedes Spiel hat `minPlayers`/`maxPlayers`, optional abhängig von Einstellungen über `playerLimits(options)`. Die Plattform prüft das Maximum schon beim Beitritt, das Minimum beim Start, und zeigt beides in der Lobby.
+- **Spielerzahl:** Jedes Spiel hat `minPlayers`/`maxPlayers`, optional abhängig von Einstellungen über `playerLimits(options)`. Beim Beitritt gilt das absolute Maximum des Spiels, beim Start das genaue Minimum und Maximum zu den Einstellungen; die Lobby zeigt beides an.
+- **Einstellungen gruppieren:** Mit `group` bekommen Einstellungen Zwischenüberschriften (Werwolf: Grundspiel, Neumond, Charaktere, Die Gemeinde).
 
 ### Damit nichts hängen bleibt
 
