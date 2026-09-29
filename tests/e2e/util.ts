@@ -1,6 +1,7 @@
 import { expect, type Browser, type Page } from "@playwright/test";
 
-export const SHOTS = "test-results/screens";
+/** Eigener Ordner – Playwright leert test-results bei jedem Lauf */
+export const SHOTS = "screenshots";
 
 export async function shot(page: Page, name: string) {
   await page.screenshot({ path: `${SHOTS}/${name}.png` });

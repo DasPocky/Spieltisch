@@ -35,7 +35,7 @@ npm run dev -- --host  # zum Testen mit dem Handy im selben WLAN
 | --- | --- |
 | `npm run build` | Typprüfung (App, Worker, Tests) und Produktions-Build |
 | `npm test` | Unit-Tests der gemeinsamen Logik (Vitest) |
-| `npm run test:e2e` | Ende-zu-Ende-Tests im Handy-Format mit Playwright, inkl. Online-Raum mit zwei Browsern. Screenshots landen in `test-results/screens/`. |
+| `npm run test:e2e` | Ende-zu-Ende-Tests im Handy-Format mit Playwright, inkl. Online-Raum mit zwei Browsern. Screenshots landen in `screenshots/`. |
 | `npm run check` | Build + Unit-Tests |
 | `npm run deploy` | Build und Deploy per Wrangler |
 

@@ -1,23 +1,28 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+
+/** Kurzer Klick: Online kann sich der Tisch zwischen Abfrage und Klick ändern – dann einfach neu schauen */
+async function tap(loc: Locator) {
+  await loc.click({ timeout: 1500 }).catch(() => {});
+}
 
 /** Einen Entscheidungsschritt machen – egal ob Ziel wählen, Karte antippen oder ziehen/aufhören */
 async function step(page: Page, stayChance = 0.35) {
-  const target = page.getByText("wen trifft's?");
+  const target = page.locator(".glass").filter({ hasText: "wen trifft's?" });
   if (await target.isVisible()) {
-    await page.locator(".glass").filter({ hasText: "wen trifft's?" }).getByRole("button").first().click();
+    await tap(target.getByRole("button").first());
     return;
   }
   const pickable = page.getByTestId("table").locator("button:not([disabled])");
   if (await pickable.count()) {
-    await pickable.first().click();
-    if (await pickable.count()) await pickable.last().click();
+    await tap(pickable.first());
+    if (await pickable.count()) await tap(pickable.last());
     return;
   }
   const hit = page.getByRole("button", { name: "Noch eine!" });
   if (await hit.isVisible()) {
-    if (Math.random() < stayChance) await page.getByRole("button", { name: /Aufhören/ }).click();
-    else await hit.click();
+    if (Math.random() < stayChance) await tap(page.getByRole("button", { name: /Aufhören/ }));
+    else await tap(hit);
   }
 }
 
