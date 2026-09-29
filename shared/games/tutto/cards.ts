@@ -1,7 +1,7 @@
 /** Karten und Würfelwertung von Tutto – reine Daten, von Logik und Oberfläche genutzt. */
 export type CardId =
   | "b200" | "b300" | "b400" | "b500" | "b600"
-  | "x2" | "fire" | "street" | "pm" | "stop" | "clover";
+  | "x2" | "fire" | "street" | "pm" | "stop" | "clover" | "torte";
 
 export interface CardType {
   id: CardId;
@@ -18,6 +18,8 @@ export interface CardType {
   quick?: number;
   /** Punktwert, einheitlich auf der Karte angezeigt (wo es einen gibt) */
   value?: string;
+  /** Promokarte – nur im Stapel, wenn sie in den Einstellungen an ist */
+  promo?: boolean;
 }
 
 const BONUS_HELP = (n: number) =>
@@ -42,6 +44,8 @@ export const CARDS: CardType[] = [
     help: "Pech gehabt: Du darfst in diesem Zug nicht würfeln, der Nächste ist dran. Tippe einfach auf „Weiter“." },
   { id: "clover", name: "Kleeblatt", big: "☘", sub: "Kleeblatt", count: 1, color: "#4f8a5e", rule: "Zweimal hintereinander Tutto – dann ist das Spiel sofort gewonnen.",
     help: "Die seltenste Karte (nur einmal im Stapel). Schaffst du zweimal hintereinander ein Tutto, ohne zwischendurch eine Niete zu werfen, hast du das Spiel sofort gewonnen – egal wie viele Punkte du hast. Aufhören geht nicht. Bei einer Niete gibt es nichts." },
+  { id: "torte", value: "1.500", name: "Torte", big: "🎂", sub: "1.500 Punkte", count: 1, color: "#c0607e", promo: true, rule: "Drilling, zwei Fünfen und eine Eins auslegen – dann gibt es 1.500 Punkte.",
+    help: "Promokarte zum 30. Geburtstag von Tutto. Du musst mit deinen 6 Würfeln eine „Geburtstagstorte“ auslegen: drei Gleiche, zwei Fünfen und eine Eins. Gelingt das (ein Tutto), bekommst du 1.500 Punkte – die normalen Würfelpunkte zählen hier nicht. Aufhören geht nicht, bei einer Niete gibt es nichts." },
 ];
 
 /** Allgemeine Würfelwertung, für die Regelübersicht */
@@ -53,5 +57,6 @@ export const DICE_RULES = [
 ] as const;
 
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c])) as Record<CardId, CardType>;
-export const DECK_SIZE = CARDS.reduce((s, c) => s + c.count, 0); // 56
-export const POINT_STEPS = [50, 100, 200, 300, 400, 500, 600, 1000, 2000, -50] as const;
+export const DECK_SIZE = CARDS.reduce((s, c) => s + (c.promo ? 0 : c.count), 0); // 56
+/** Würfelpunkte, die man mit echten Würfeln eintippen kann (Kartenboni rechnet die App selbst) */
+export const POINT_STEPS = [50, 100, 200, 300, 400, 500, 600, 1000, -50] as const;

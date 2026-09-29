@@ -9,8 +9,22 @@ export async function shot(page: Page, name: string) {
 
 /** Die Seite darf auf dem Handy nicht scrollen. */
 export async function expectNoScroll(page: Page) {
-  const { scroll, height } = await page.evaluate(() => ({ scroll: document.documentElement.scrollHeight, height: window.innerHeight }));
+  const { scroll, height, scrollW, width } = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollHeight, height: window.innerHeight,
+    scrollW: document.documentElement.scrollWidth, width: window.innerWidth,
+  }));
   expect(scroll, "Seite ist höher als der Bildschirm").toBeLessThanOrEqual(height + 1);
+  expect(scrollW, "Seite ist breiter als der Bildschirm").toBeLessThanOrEqual(width + 1);
+}
+
+/** Element liegt vollständig im sichtbaren Bereich (nichts abgeschnitten) */
+export async function expectInView(page: Page, locator: import("@playwright/test").Locator) {
+  const box = await locator.boundingBox();
+  const vp = page.viewportSize()!;
+  expect(box, "Element nicht sichtbar").not.toBeNull();
+  expect(box!.y + box!.height, "Element unten abgeschnitten").toBeLessThanOrEqual(vp.height + 1);
+  expect(box!.x + box!.width, "Element rechts abgeschnitten").toBeLessThanOrEqual(vp.width + 1);
+  expect(box!.y, "Element oben abgeschnitten").toBeGreaterThanOrEqual(-1);
 }
 
 /** Lokales Tutto mit Spielern starten */

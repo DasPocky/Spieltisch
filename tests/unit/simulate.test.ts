@@ -31,9 +31,16 @@ function candidates(r: RoomState, online: boolean): Move[] {
   const add = (a: { type: string } & Record<string, unknown>) => moves.push(...anyone(g(a)));
   switch (r.gameId) {
     case "tutto":
-      ["draw", "roll", "book", "clearPts", "double", "clover"].forEach((type) => add({ type }));
+      ["draw", "roll", "book", "clearPts", "tutto"].forEach((type) => add({ type }));
       add({ type: "book", zero: true });
-      for (let i = 0; i < 6; i++) add({ type: "toggleDie", i });
+      {
+        // Würfel antippen: bevorzugt wertbare, damit die Partien in vernünftiger Zeit enden
+        const d = (r.game as { dice: { roll: number[]; sel: boolean[] } | null }).dice;
+        for (let i = 0; i < 6; i++) {
+          add({ type: "toggleDie", i });
+          if (d && (d.roll[i] === 1 || d.roll[i] === 5) && !d.sel[i]) for (let k = 0; k < 3; k++) add({ type: "toggleDie", i });
+        }
+      }
       add({ type: "addPts", delta: pick(POINT_STEPS) });
       break;
     case "kniffel": {
@@ -130,7 +137,7 @@ function checkCards(r: RoomState) {
   }
 }
 
-function playOut(start: RoomState, online: boolean, maxSteps = 4000) {
+function playOut(start: RoomState, online: boolean, maxSteps = 15000) {
   let r = start;
   for (let step = 0; step < maxSteps; step++) {
     const logic = roomGame(r);

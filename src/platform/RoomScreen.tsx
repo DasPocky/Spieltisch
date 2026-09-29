@@ -30,10 +30,11 @@ export function RoomScreen(props: Props) {
   const ui = getGameUI(room.gameId);
   const info = getGame(room.gameId).info;
   const isHost = me === null || me === room.hostId;
+  const hostTools = me === null || (isHost && !!room.hostTools);
   const playing = room.phase === "playing" && room.game !== null;
 
   const board: BoardProps | null = playing
-    ? { room, game: room.game, me, online, isHost, canAct: canPlayTurn(room, me), mode, act: (action) => dispatch({ type: "game", action: action as never }), dispatch }
+    ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: (action) => dispatch({ type: "game", action: action as never }), dispatch }
     : null;
   const { Board, HeaderExtra, Icon } = ui;
 

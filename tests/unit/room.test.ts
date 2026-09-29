@@ -101,6 +101,15 @@ describe("Rechte bei Spielzügen", () => {
     expect(() => game(r, { type: "draw" }, other)).toThrow(/ist am Zug/);
   });
 
+  it("Host spielt normal mit, außer mit Spielleiter-Funktionen", () => {
+    let r = game(started(), { type: "book", zero: true }, "p1"); // Ben ist dran
+    expect(canPlayTurn(r, "p1")).toBe(false);
+    expect(() => game(r, { type: "book", zero: true }, "p1")).toThrow(/ist am Zug/);
+    expect(() => act(r, { type: "setHostTools", on: true }, "p2")).toThrow(/nur der Host/);
+    r = act(r, { type: "setHostTools", on: true }, "p1");
+    expect(canPlayTurn(r, "p1")).toBe(true);
+  });
+
   it("„Alle“ und „Nur Host“", () => {
     let r = act(started(), { type: "setEntry", mode: "all" });
     expect(canPlayTurn(r, "p3")).toBe(true);

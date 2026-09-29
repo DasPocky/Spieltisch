@@ -30,10 +30,10 @@ function HeaderExtra({ game, room }: BoardProps<KniffelState, KniffelAction>) {
   );
 }
 
-function MenuExtras({ game, isHost, act }: BoardProps<KniffelState, KniffelAction>) {
+function MenuExtras({ game, hostTools, act }: BoardProps<KniffelState, KniffelAction>) {
   return (
     <>
-      {isHost && (
+      {hostTools && (
         <div className="mt-2 grid gap-2">
           <Button variant="secondary" className="justify-start" disabled={!game.log.length} onClick={() => act({ type: "undo" })}>
             Letzten Eintrag zurücknehmen

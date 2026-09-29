@@ -15,6 +15,8 @@ export interface RoomState {
   players: Player[];
   hostId: string | null;
   entry: EntryMode;
+  /** Host hat die Spielleiter-Funktionen an (für andere handeln, überspringen …) – sonst spielt er ganz normal mit */
+  hostTools?: boolean;
   /** Einstellungen des gewählten Spiels */
   options: Options;
   phase: "lobby" | "playing";
@@ -31,6 +33,7 @@ export type RoomAction =
   | { type: "selectGame"; gameId: string }
   | { type: "setOption"; key: string; value: OptionValue }
   | { type: "setEntry"; mode: EntryMode }
+  | { type: "setHostTools"; on: boolean }
   | { type: "removePlayer"; id: string }
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
   /** Host: das auflösen, worauf die Partie gerade wartet */
@@ -110,7 +113,7 @@ export function currentPlayerId(room: RoomState): string | null {
 export function canPlayTurn(room: RoomState, actorId: string | null): boolean {
   if (actorId === null) return true;
   if (roomGame(room).ownTurnsOnly) return currentPlayerId(room) === actorId;
-  if (actorId === room.hostId) return true;
+  if (actorId === room.hostId && (room.hostTools || room.entry === "host")) return true;
   if (room.entry === "host") return false;
   if (room.entry === "all") return room.players.some((p) => p.id === actorId);
   return currentPlayerId(room) === actorId;
@@ -168,6 +171,10 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     case "setEntry": {
       hostOnly();
       return { ...structuredClone(prev), entry: a.mode === "all" || a.mode === "host" ? a.mode : "turn" };
+    }
+    case "setHostTools": {
+      hostOnly();
+      return { ...structuredClone(prev), hostTools: a.on === true };
     }
     case "removePlayer": {
       hostOnly();

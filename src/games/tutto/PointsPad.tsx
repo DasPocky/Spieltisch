@@ -1,90 +1,125 @@
-import { CARD_BY_ID, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+import { canStop, CARD_BY_ID, NO_DICE_POINTS, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Confirm } from "@/components/Confirm";
 import type { ViewMode } from "@/hooks/useViewMode";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
-const BASE = [50, 100, 200, 500];
+const KEYS = [50, 100, 200, 300, 400, 500, 600, 1000];
+
+/** Was ein Tutto mit dieser Karte bringt – steht groß auf dem Knopf, darüber die Überschrift */
+function tuttoLabel(card: CardId, tuttos: number): [string, string] {
+  switch (card) {
+    case "x2": return ["Tutto", "×2"];
+    case "street": return ["Straße geschafft", "+2.000"];
+    case "torte": return ["Torte geschafft", "+1.500"];
+    case "pm": return ["Tutto", "±1.000"];
+    case "clover": return ["Tutto", `${tuttos + 1} von 2`];
+    default: return ["Tutto", `+${fmt(CARD_BY_ID[card].quick ?? 0)}`];
+  }
+}
+
+/** Hinweis statt Tasten, wenn die Würfelpunkte mit dieser Karte nicht zählen */
+const NO_PAD: Partial<Record<CardId, string>> = {
+  street: "Würfle 1 bis 6 – Würfelpunkte zählen nicht.",
+  pm: "Nur das Tutto zählt: +1.000, der Führende −1.000.",
+  clover: "Zweimal Tutto ohne Niete – dann Sofort-Sieg.",
+  torte: "Drilling + zwei Fünfen + eine Eins = 1.500.",
+  stop: "Stopp – dieser Zug ist vorbei.",
+};
 
 /**
- * Punkte-Eingabe per großer Tasten – passend zur gezogenen Karte gibt es Extra-Tasten.
- * Einfach: 3 große Tasten pro Reihe. Voll: 4 kleinere Tasten mit −50 und Löschen.
+ * Echte Würfel: Würfelpunkte über kompakte Tasten eintippen. Kartenboni gibt es nur über „Tutto“ –
+ * vorher lässt sich nichts gutschreiben.
  */
 export function PointsPad({ state, onAction, disabled, mode }: { state: TuttoState; onAction: (a: TuttoAction) => void; disabled: boolean; mode: ViewMode }) {
-  const simple = mode === "simple";
-  const base = BASE;
-  const latest = state.turnCards[state.turnCards.length - 1];
-  const extra = latest ? CARD_BY_ID[latest].quick : undefined;
-  const showExtra = extra !== undefined && !base.includes(extra) && extra !== 1000;
-  const canDouble = state.turnCards.includes("x2") && state.turnPts > 0;
-
-  const keyCls = cn(
-    "rounded-xl font-bold outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40",
-    simple ? "h-14 text-xl" : "h-12 text-[1.05rem]",
-  );
-  const key = (delta: number, label: string, hl = false) => (
-    <button
-      key={label}
-      type="button"
-      disabled={disabled}
-      onClick={() => { vibrate(8); onAction({ type: "addPts", delta }); }}
-      className={cn(keyCls, hl ? "bg-gold text-navy-950" : "bg-navy-700/80 ring-1 ring-inset ring-border active:bg-navy-600")}
-    >
-      {label}
-    </button>
-  );
-  const quiet = cn(keyCls, "text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border active:bg-accent");
+  const card = state.turnCards[state.turnCards.length - 1];
+  const safe = state.cardStart ?? 0;
+  const open = !!card && !NO_DICE_POINTS.has(card) && !state.afterTutto;
+  const add = (delta: number) => { vibrate(8); onAction({ type: "addPts", delta }); };
+  const small = "rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground ring-1 ring-inset ring-border disabled:opacity-40";
 
   return (
-    <section className="glass rounded-2xl p-2.5">
-      <div className="mb-2 flex items-center justify-between px-1.5">
-        <span className="text-sm text-muted-foreground">Punkte dieser Runde</span>
-        <div className="flex items-center gap-2">
-          {simple && state.turnPts > 0 && (
-            <button type="button" disabled={disabled} onClick={() => onAction({ type: "clearPts" })}
-              className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground ring-1 ring-inset ring-border disabled:opacity-40">
-              Löschen
-            </button>
+    <section className="glass rounded-2xl p-2">
+      <div className="flex items-center justify-between gap-2 px-1">
+        <span className="text-sm text-muted-foreground">
+          Punkte{safe > 0 && <span className="ml-1.5 text-xs">(sicher {fmt(safe)})</span>}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {open && state.turnPts > safe && (
+            <>
+              <button type="button" disabled={disabled} onClick={() => add(-50)} className={small}>−50</button>
+              <button type="button" disabled={disabled} onClick={() => onAction({ type: "clearPts" })} className={small}>Löschen</button>
+            </>
           )}
-          <b className="text-3xl font-extrabold tracking-tight tabular-nums">{fmt(state.turnPts)}</b>
+          <b className="ml-1 text-2xl font-extrabold tracking-tight tabular-nums" data-testid="turn-pts">{fmt(state.turnPts)}</b>
         </div>
       </div>
-      <div className={cn("grid gap-2", simple ? "grid-cols-3" : "grid-cols-4")}>
-        {base.map((v) => key(v, `+${v}`))}
-        {showExtra && key(extra!, `+${fmt(extra!)}`, true)}
-        {key(1000, "+1.000", latest === "pm")}
-        {canDouble && (
-          <button
-            type="button" disabled={disabled}
-            onClick={() => { vibrate(15); onAction({ type: "double" }); }}
-            className={cn(keyCls, "bg-gold text-navy-950")}
-          >×2</button>
-        )}
-        {!simple && (
-          <>
-            <button type="button" disabled={disabled} onClick={() => onAction({ type: "addPts", delta: -50 })} className={quiet}>−50</button>
-            <button type="button" disabled={disabled} onClick={() => onAction({ type: "clearPts" })} className={quiet}>Löschen</button>
-          </>
-        )}
-      </div>
-
-      {state.turnCards.includes("pm") && (
-        <label className="mt-2.5 flex items-center gap-3 px-1.5 text-sm">
-          <Checkbox checked={state.pmOn} disabled={disabled} onCheckedChange={(c) => onAction({ type: "setPm", on: c === true })} />
-          Tutto geschafft: Führendem 1.000 abziehen
-        </label>
-      )}
-      {latest === "clover" && (
-        <Confirm
-          title="Kleeblatt geschafft?"
-          description="Zweimal hintereinander Tutto – damit ist das Spiel sofort gewonnen."
-          confirmLabel="Sieg eintragen"
-          onConfirm={() => { vibrate([30, 60, 30]); onAction({ type: "clover" }); }}
-        >
-          <Button variant="secondary" className="mt-2.5 h-11 w-full" disabled={disabled}>☘ Zweimal Tutto – Sieg eintragen</Button>
-        </Confirm>
+      {open ? (
+        <div className="mt-1.5 grid grid-cols-4 gap-1.5">
+          {KEYS.map((v) => (
+            <button key={v} type="button" disabled={disabled} onClick={() => add(v)}
+              className={cn("rounded-xl bg-navy-700/80 font-bold ring-1 ring-inset ring-border outline-none transition active:scale-95 active:bg-navy-600 focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40",
+                mode === "simple" ? "h-12 text-lg" : "h-10 text-base")}>
+              +{fmt(v)}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="px-1 pt-1 pb-0.5 text-sm text-muted-foreground">
+          {state.afterTutto ? "Tutto geschafft! Neue Karte oder aufhören?" : card ? NO_PAD[card] : "Karte ziehen, dann würfeln."}
+        </p>
       )}
     </section>
+  );
+}
+
+/** Aktionsknöpfe für echte Würfel – je nach Karte nur das, was gerade erlaubt ist. */
+export function RealActions({ state, onAction }: { state: TuttoState; onAction: (a: TuttoAction) => void }) {
+  const card = state.turnCards[state.turnCards.length - 1];
+  const pts = fmt(state.turnPts);
+  const book = (zero = false) => onAction({ type: "book", zero });
+  /** Knopf mit kleiner Überschrift und großem Wert – passt auch auf schmale Handys */
+  const Btn = ({ children, sub, onClick, kind = "plain" }: { children: React.ReactNode; sub?: string; onClick?: () => void; kind?: "primary" | "gold" | "plain" }) => (
+    <button type="button" onClick={onClick}
+      className={cn(
+        "flex h-13 min-w-0 flex-col items-center justify-center rounded-xl px-1.5 leading-tight font-bold outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring",
+        kind === "primary" ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]"
+          : kind === "gold" ? "bg-gold text-navy-950 shadow-[0_6px_20px_rgb(214_176_92/0.3)]" : "bg-secondary ring-1 ring-inset ring-border",
+      )}>
+      {sub && <span className="max-w-full truncate text-[0.7rem] font-semibold opacity-80">{sub}</span>}
+      <span className="max-w-full truncate text-base">{children}</span>
+    </button>
+  );
+  const niete = state.turnPts > 0 ? (
+    <Confirm title="Wirklich Niete?" description={`Die ${pts} Punkte dieses Zugs verfallen.`} confirmLabel="Niete" onConfirm={() => book(true)}>
+      <Btn>Niete</Btn>
+    </Confirm>
+  ) : <Btn onClick={() => book(true)}>Niete</Btn>;
+
+  if (!card) return <div className="grid"><Btn kind="primary" onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
+  if (state.afterTutto) {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        <Btn sub="Aufhören" onClick={() => book()}>{pts} eintragen</Btn>
+        <Btn sub="Weiterspielen" kind="primary" onClick={() => onAction({ type: "draw" })}>Neue Karte</Btn>
+      </div>
+    );
+  }
+  if (card === "stop") return <div className="grid"><Btn kind="primary" onClick={() => book(state.turnPts === 0)}>{state.turnPts > 0 ? `${pts} eintragen` : "Weiter"}</Btn></div>;
+  if (card === "fire") return <div className="grid"><Btn sub="Niete geworfen – Punkte zählen trotzdem" kind="primary" onClick={() => book()}>{pts} eintragen</Btn></div>;
+
+  const tutto = () => { vibrate([20, 40, 20]); onAction({ type: "tutto" }); };
+  const tuttoBtn = card === "clover" && (state.cardTuttos ?? 0) >= 1 ? (
+    <Confirm title="Zweites Tutto geschafft?" description="Zweimal hintereinander Tutto – damit ist das Spiel sofort gewonnen." confirmLabel="Sieg!" onConfirm={tutto}>
+      <Btn sub="☘ Tutto" kind="gold">2 von 2</Btn>
+    </Confirm>
+  ) : <Btn sub={tuttoLabel(card, state.cardTuttos ?? 0)[0]} kind="gold" onClick={tutto}>{tuttoLabel(card, state.cardTuttos ?? 0)[1]}</Btn>;
+  const stop = canStop(state) && state.turnPts > 0;
+
+  return (
+    <div className={cn("grid gap-2", stop ? "grid-cols-[0.75fr_1.15fr_1fr]" : "grid-cols-2")}>
+      {niete}
+      {stop && <Btn sub="Aufhören, eintragen" kind="primary" onClick={() => book()}>{pts}</Btn>}
+      {tuttoBtn}
+    </div>
   );
 }

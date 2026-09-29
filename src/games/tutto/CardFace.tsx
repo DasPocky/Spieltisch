@@ -76,6 +76,21 @@ function Art({ card }: { card: CardType }) {
           <text x="60" y="58" textAnchor="middle" fontSize="32" fontWeight="800" fill={c}>×2</text>
         </g>
       );
+    case "torte":
+      return (
+        <g>
+          <circle cx="50" cy="50" r="44" fill={tint(c, 0.1)} />
+          <rect x="22" y="56" width="56" height="22" rx="4" fill={c} />
+          <rect x="30" y="38" width="40" height="18" rx="3.5" fill={tint(c, 0.55)} stroke={c} strokeWidth="2" />
+          <path d="M22 62 q7 6 14 0 t14 0 t14 0 t14 0" stroke="#fdfdfb" strokeWidth="2.5" fill="none" />
+          {[38, 50, 62].map((x) => (
+            <g key={x}>
+              <rect x={x - 1.8} y="25" width="3.6" height="13" rx="1.2" fill={c} />
+              <path d={`M${x} 17 q4 5 0 8 q-4 -3 0 -8 Z`} fill="#e0a13a" />
+            </g>
+          ))}
+        </g>
+      );
     case "pm":
       return (
         <g>

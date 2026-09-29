@@ -29,14 +29,14 @@ function HeaderExtra({ game }: BoardProps<TuttoState, TuttoAction>) {
 }
 
 /** Verlauf, Kartenstapel und Host-Werkzeuge im Menü */
-function MenuExtras({ room, game, isHost, act }: BoardProps<TuttoState, TuttoAction>) {
+function MenuExtras({ room, game, hostTools, act }: BoardProps<TuttoState, TuttoAction>) {
   const counts = new Map<string, number>();
   for (const id of game.pile) counts.set(id, (counts.get(id) ?? 0) + 1);
   const nameOf = (id: string) => room.players.find((p) => p.id === id)?.name ?? "?";
 
   return (
     <>
-      {isHost && (
+      {hostTools && (
         <div className="mt-2 grid gap-2">
           <Button variant="secondary" className="justify-start" disabled={!game.log.length} onClick={() => act({ type: "undo" })}>
             Letzten Eintrag zurücknehmen

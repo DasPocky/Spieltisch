@@ -1,4 +1,4 @@
-import { MUST_PLAY, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { freshAfterTutto, MUST_PLAY, NO_DICE_POINTS, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
@@ -7,16 +7,17 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   const d = state.dice;
   const card = state.turnCards[state.turnCards.length - 1];
   const sel = d && d.roll.length && !d.bust ? selectionValue(d, card) : null;
-  const scoresHere = card !== "street" && card !== "pm" && card !== "clover";
+  const scoresHere = !!card && !NO_DICE_POINTS.has(card);
 
   let status: string;
   if (!card) status = "Zieh zuerst eine Karte.";
   else if (card === "stop") status = "Stopp – dieser Zug ist vorbei.";
+  else if (freshAfterTutto(state) && state.turnPts > 0) status = `Tutto! ${fmt(state.turnPts)} sicher – weiter oder aufhören.`;
   else if (!d || (!d.roll.length && !d.tutto)) status = "Tippe auf „Würfeln“.";
   else if (d.bust) status = card === "fire" ? "Niete – deine Punkte zählen trotzdem." : "Niete! Keine wertbaren Würfel.";
   else if (d.tutto) status = card === "clover" ? "Erstes Tutto! Noch eins zum Sieg." : card === "fire" ? "Tutto! Weiter mit allen Würfeln." : "Tutto! Neue Karte oder eintragen.";
   else if (!d.sel.some(Boolean)) status = "Tippe die Würfel an, die du behalten willst.";
-  else if (sel === null) status = card === "street" ? "Nur Zahlen, die dir noch fehlen." : "Nur 1, 5 oder drei Gleiche zählen.";
+  else if (sel === null) status = card === "street" ? "Nur Zahlen, die dir noch fehlen." : card === "torte" ? "Nur Würfel, die in die Torte passen." : "Nur 1, 5 oder drei Gleiche zählen.";
   else status = scoresHere ? `Auswahl: +${fmt(sel)}` : "Gute Auswahl.";
 
   return (
@@ -81,7 +82,18 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
 
   if (!card) return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
   if (card === "stop") return <div className="grid"><Btn primary onClick={() => book(state.turnPts === 0)}>{state.turnPts > 0 ? `${pts} eintragen` : "Weiter"}</Btn></div>;
-  if (!d || (!d.roll.length && !d.tutto)) return <div className="grid"><Btn primary onClick={roll}>🎲 Würfeln</Btn></div>;
+  if (!d || (!d.roll.length && !d.tutto)) {
+    // Frisch nach einem Tutto: die sicheren Punkte darf man noch eintragen
+    if (freshAfterTutto(state) && state.turnPts > 0) {
+      return (
+        <div className="grid grid-cols-2 gap-2.5">
+          <Btn onClick={() => book()}>{pts} eintragen</Btn>
+          <Btn primary onClick={roll}>🎲 Würfeln</Btn>
+        </div>
+      );
+    }
+    return <div className="grid"><Btn primary onClick={roll}>🎲 Würfeln</Btn></div>;
+  }
   if (d.bust) {
     return <div className="grid">{card === "fire"
       ? <Btn primary onClick={() => book()}>{pts} eintragen</Btn>

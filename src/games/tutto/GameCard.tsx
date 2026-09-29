@@ -6,15 +6,17 @@ import { CardFace } from "./CardFace";
 const reduceMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Die Tutto-Karte mit Umdreh-Animation. Zeigt immer die zuletzt gezogene Karte des Zugs. */
-export function GameCard({ cards, onDraw, disabled }: { cards: CardId[]; onDraw?: () => void; disabled?: boolean }) {
+export function GameCard({ cards, turn, onDraw, disabled }: { cards: CardId[]; /** wechselt bei jedem neuen Zug */ turn: number; onDraw?: () => void; disabled?: boolean }) {
   const latest = cards.length ? cards[cards.length - 1] : null;
   const [shown, setShown] = useState<CardId | null>(latest);
   const [flipped, setFlipped] = useState(!!latest);
-  const prevCount = useRef(cards.length);
+  // Neuer Zug oder neue Karte – auch wenn beim Spielerwechsel gleich wieder genau eine Karte offen liegt
+  const sig = `${turn}:${cards.length}`;
+  const prevSig = useRef(sig);
 
   useEffect(() => {
-    const changed = cards.length !== prevCount.current;
-    prevCount.current = cards.length;
+    const changed = sig !== prevSig.current;
+    prevSig.current = sig;
     if (!changed) return;
     if (!latest) { setFlipped(false); return; }
     if (latest === "stop") vibrate([40, 50, 40]);
@@ -27,7 +29,7 @@ export function GameCard({ cards, onDraw, disabled }: { cards: CardId[]; onDraw?
     const r = requestAnimationFrame(() => setFlipped(true));
     return () => cancelAnimationFrame(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards.length, latest]);
+  }, [sig, latest]);
 
   const t = shown ? CARD_BY_ID[shown] : null;
 

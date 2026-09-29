@@ -30,7 +30,7 @@ export function Rules({ focus }: { focus?: string }) {
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Drei Gleiche zählen nur, wenn sie in einem Wurf fallen. 2, 3, 4 und 6 zählen einzeln nichts.</p>
         <h3 className="mt-4 font-semibold">In der App</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Mit <b className="text-foreground">echten Würfeln</b> tippst du deine Punkte über die Tasten ein. Mit dem <b className="text-foreground">App-Würfel</b> würfelt die App (online der Server, alle sehen denselben Wurf), prüft deine Auswahl und wertet die Karten automatisch.
+          Mit <b className="text-foreground">echten Würfeln</b> tippst du nur die Würfelpunkte ein. Schaffst du ein Tutto, tippst du auf den goldenen <b className="text-foreground">Tutto</b>-Knopf – den Kartenbonus rechnet die App dann selbst dazu und deckt (wenn eingestellt) gleich die nächste Karte auf. Mit dem <b className="text-foreground">App-Würfel</b> würfelt die App (online der Server, alle sehen denselben Wurf), prüft deine Auswahl und wertet die Karten automatisch.
         </p>
       </section>
 
@@ -42,7 +42,7 @@ export function Rules({ focus }: { focus?: string }) {
             <div className="min-w-0">
               <h4 className="font-bold">
                 {c.id === "b300" ? "Bonus 200 – 600" : c.name}
-                <span className="block text-xs font-normal text-muted-foreground">{c.id === "b300" ? "25×" : `${c.count}×`} im Stapel</span>
+                <span className="block text-xs font-normal text-muted-foreground">{c.id === "b300" ? "25×" : `${c.count}×`} im Stapel{c.promo ? " – Promokarte, in den Einstellungen zuschaltbar" : ""}</span>
               </h4>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{c.id === "b300" ? c.help.replace("300", "200 bis 600") : c.help}</p>
             </div>

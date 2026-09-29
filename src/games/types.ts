@@ -13,6 +13,8 @@ export interface BoardProps<S = unknown, A = { type: string }> {
   /** wer gerade verbunden ist, null im lokalen Modus */
   online: Set<string> | null;
   isHost: boolean;
+  /** Host mit eingeschalteten Spielleiter-Funktionen (lokal immer) */
+  hostTools: boolean;
   /** Darf dieses Gerät gerade für den Spieler am Zug handeln? */
   canAct: boolean;
   mode: ViewMode;

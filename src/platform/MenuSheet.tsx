@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox";
 import type { ReactNode } from "react";
 import { BookOpen, Menu } from "lucide-react";
 import { getGame } from "@shared/games";
@@ -31,6 +32,7 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
   const name = getGame(room.gameId).info.name;
   const Extras = ui.MenuExtras;
   const playing = room.phase === "playing";
+  // Überspringen bleibt für den Host immer da – sonst könnte eine Partie hängen bleiben
   const skip = isHost ? skipLabel(room) : null;
   const hostAway = !!online && !!room.hostId && !online.has(room.hostId) && !isHost;
 
@@ -63,6 +65,16 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
           {code && <ShareCode code={code} gameName={name} />}
 
           <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} className="mt-5" />
+
+          {code && isHost && (
+            <label className="mt-4 flex items-center gap-3 rounded-xl bg-navy-950/40 p-3 text-sm ring-1 ring-inset ring-border">
+              <Checkbox checked={!!room.hostTools} onCheckedChange={(c) => dispatch({ type: "setHostTools", on: c === true })} />
+              <span>
+                <span className="font-semibold">🛠 Spielleiter-Funktionen</span>
+                <span className="block text-xs text-muted-foreground">Für andere spielen, Einträge zurücknehmen, Stapel mischen. Aus: Du spielst ganz normal mit.</span>
+              </span>
+            </label>
+          )}
 
           {hostAway && onClaimHost && (
             <Button variant="gold" className="mt-4 w-full justify-start" onClick={onClaimHost}>👑 Host ist offline – Host übernehmen</Button>

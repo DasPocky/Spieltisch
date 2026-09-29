@@ -55,19 +55,21 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
   await expect(host.getByTestId("current-player")).toHaveText("Du");
   await expect(guest.getByText("Warte auf Anna")).toBeVisible();
 
-  // Der Host zieht (er darf für jeden), bis eine Karte zum Würfeln kommt – der Gast sieht denselben Wurf
-  const rollBtn = host.getByRole("button", { name: /Würfeln/ });
-  for (let i = 0; i < 12 && !(await rollBtn.isVisible()); i++) {
-    await host.getByRole("button", { name: "Karte ziehen" }).last().click();
-    await host.waitForTimeout(600);
-    if (!(await rollBtn.isVisible())) await host.getByRole("button", { name: "Weiter" }).click(); // Stopp-Karte
+  // Die Karte liegt offen – bei Stopp macht der Spieler am Zug weiter, bis gewürfelt werden kann
+  const actor = async () => ((await host.getByTestId("current-player").textContent()) === "Du" ? host : guest);
+  for (let i = 0; i < 12; i++) {
+    await host.waitForTimeout(500);
+    const p = await actor();
+    if (await p.getByRole("button", { name: /Würfeln/ }).isVisible()) break;
+    await p.getByRole("button", { name: "Weiter" }).click();
   }
-  await rollBtn.click();
+  const roller = await actor();
+  await roller.getByRole("button", { name: /Würfeln/ }).click();
   const dice = (p: Page) => p.getByRole("img", { name: /^Würfel \d$/ }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
-  await expect(host.getByRole("img", { name: /^Würfel \d$/ }).first()).toBeVisible();
-  const rolled = await dice(host);
+  await expect(roller.getByRole("img", { name: /^Würfel \d$/ }).first()).toBeVisible();
+  const rolled = await dice(roller);
   expect(rolled.length).toBe(6);
-  await expect.poll(() => dice(guest)).toEqual(rolled);
+  await expect.poll(() => dice(roller === host ? guest : host)).toEqual(rolled);
   await host.waitForTimeout(500);
   await expectNoScroll(host);
   await expectNoScroll(guest);
@@ -135,4 +137,25 @@ test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
 test("Unbekannter Raum", async ({ page }) => {
   await page.goto("/r/ZZZZZ");
   await expect(page.getByRole("heading", { name: "Raum ZZZZZ gibt es nicht" })).toBeVisible();
+});
+
+test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", async ({ browser }) => {
+  const host = await newPhone(browser);
+  const guest = await newPhone(browser);
+  const code = await createRoom(host, "Anna", "5151");
+  await joinRoom(guest, code, "Ben", "5151");
+  await host.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(guest.getByTestId("current-player")).toBeVisible();
+  // Anna beendet ihren Zug, Ben ist dran – Anna sieht nur „Warte auf Ben“
+  await host.getByRole("button", { name: /^(Weiter|Niete)/ }).first().click();
+  await expect(host.getByText("Warte auf Ben")).toBeVisible();
+  await host.getByRole("button", { name: "Menü" }).click();
+  await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(0);
+  await host.getByRole("checkbox", { name: /Spielleiter-Funktionen/ }).click();
+  await expect(host.getByRole("button", { name: /zurücknehmen/ })).toBeVisible();
+  await host.keyboard.press("Escape");
+  await expect(host.getByText("Warte auf Ben")).toHaveCount(0);
+  // Gast hat den Schalter nicht
+  await guest.getByRole("button", { name: "Menü" }).click();
+  await expect(guest.getByRole("checkbox", { name: /Spielleiter-Funktionen/ })).toHaveCount(0);
 });
