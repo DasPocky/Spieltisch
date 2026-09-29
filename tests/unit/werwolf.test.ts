@@ -448,3 +448,14 @@ describe("Hausregeln, eigene Karten, Solo-Rollen, Dieb", () => {
     expect(g(r).winner).toBe("engel");
   });
 });
+
+describe("Randfälle", () => {
+  it("Leben nur noch Wölfe samt weißem Werwolf, hängt die Nacht nicht", () => {
+    let r = start(5, { weisserwolf: true, wolves: "2" });
+    r = { ...r, game: { ...g(r), roles: { p1: "weisserwolf", p2: "werwolf", p3: "dorf", p4: "dorf", p5: "dorf" }, alive: { p1: true, p2: true, p3: false, p4: false, p5: false } } };
+    r = w(r, { type: "startNight" });
+    expect(g(r).pending).not.toContain("werwolf");
+    while (g(r).phase === "night") r = w(r, { type: "next" });
+    expect(g(r).phase).toBe("day");
+  });
+});

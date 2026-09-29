@@ -9,6 +9,7 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 - **Eine Nacht** – Werwolf in zehn Minuten für 3–10: eine Nacht mit heimlich getauschten Karten (Werwölfe, Günstling, Freimaurer, Seherin, Räuber, Unruhestifter, Betrunkener, Schlaflose, Jäger, Gerber), dann Diskussion mit Timer und eine gleichzeitige Abstimmung. Online handelt jeder am eigenen Handy, lokal führt ein Handy mit Vorlesen durch die Nacht.
 - **Mau-Mau** – französisches (32/52) oder deutsches Blatt, 2–8 Spieler je nach Blatt. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
 - **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar.
+- **Flip 7** – Drück-dein-Glück mit Zahlenkarten für 3–18: noch eine Karte oder aufhören, doppelte Zahl heißt raus, sieben verschiedene bringen +15. Klassisch (Einfrieren, Flip 3, zweite Chance, Plus/×2) oder „Voll fies“ angelehnt an die fiese Ausgabe (bis 13, Glücks-13, Unglücks-7, Nur noch eine, Flip 4, Tauschen, Klauen, Abwerfen, Minus und ÷2 zum Verschenken).
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
 
 Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
@@ -71,6 +72,7 @@ shared/                       Logik für Browser UND Server
     index.ts                  Verzeichnis aller Spiele (Logik)
     tutto/                    Tutto: Karten-Daten und Spiellogik
     kniffel/                  Kniffel: Wertung und Spiellogik
+    flip7/                    Flip 7: Stapel beider Varianten, Aktionen, Wertung
     werwolf/                  Werwolf: Rollen, Nacht/Tag, geheime Sicht pro Spieler
     einenacht/                Eine Nacht: Karten, Tausch-Reihenfolge, Abstimmung
     maumau/                   Mau-Mau: Hausregeln, geheime Hände
@@ -84,6 +86,7 @@ src/
     index.ts                  Verzeichnis aller Spiel-Oberflächen
     tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Menü-Extras
     kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
+    flip7/                    Tisch mit allen Reihen, Ziel- und Kartenauswahl
     werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
     einenacht/                Gerät in der Mitte, Handy-Ansicht, Timer, Auflösung
     maumau/                   Tisch, Hand, Farbwunsch, Weitergeben mit Sichtschutz
@@ -112,7 +115,7 @@ tests/
 
 - **Host offline:** Ist der Host nicht verbunden, sehen alle anderen „Host übernehmen“. Der Server prüft, dass der Host wirklich weg ist.
 - **Spieler offline oder reagiert nicht:** Jedes Spiel beschreibt mit `skipTurn`/`skipLabel`, wie der Host auflöst, worauf gerade gewartet wird (Tutto: Niete, Kniffel: erstes freies Feld wird gestrichen, Mau-Mau: Karte ziehen, Fischen: nächster Spieler, Werwolf: Nacht bzw. Abstimmung beenden, Jäger überspringen). Ist der Spieler am Zug offline, erscheint dafür ein Balken, sonst steht es im Menü.
-- **Geprüft per Simulation:** `tests/unit/simulate.test.ts` lässt Zufalls-Bots je Spiel und Einstellung 25 komplette Partien lokal und online spielen. In jedem Zustand muss ein erlaubter Zug existieren, jede Partie muss enden, und Karten dürfen nicht verloren gehen.
+- **Geprüft per Simulation:** `tests/unit/simulate.test.ts` lässt Zufalls-Bots je Spiel und Einstellung 25 komplette Partien lokal und online spielen (gründlicher: `SIM_ROUNDS=200 npm test`). In jedem Zustand muss ein erlaubter Zug existieren, jede Partie muss enden, und Karten dürfen nicht verloren gehen.
 
 ### Zugang und Sicherheit
 

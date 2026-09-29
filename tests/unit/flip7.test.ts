@@ -1,0 +1,123 @@
+import { describe, expect, it } from "vitest";
+import { buildDeck, linePoints, type F7Card, type F7State, type Line } from "@shared/games/flip7/logic";
+import { playerLimits, type RoomState } from "@shared/platform/room";
+import { act, game, roomWith } from "./helpers";
+
+const g = (r: RoomState) => r.game as F7State;
+function start(n = 3, options: Record<string, unknown> = {}) {
+  let r = roomWith(["Anna", "Ben", "Cem", "Dora"].slice(0, n), "flip7");
+  for (const [key, value] of Object.entries(options)) r = act(r, { type: "setOption", key, value: value as never });
+  return act(r, { type: "start" });
+}
+/** Stapel so legen, dass als Nächstes `cards` gezogen werden (erste zuerst) */
+function stack(r: RoomState, cards: F7Card[], lines?: Record<string, Partial<Line>>): RoomState {
+  const s = g(r);
+  const newLines = { ...s.lines };
+  for (const [id, l] of Object.entries(lines ?? {})) newLines[id] = { nums: [], mods: [], second: false, status: "active", flip7: false, ...l };
+  return { ...r, game: { ...s, deck: [...s.deck, ...cards.slice().reverse()], lines: newLines, pending: null, queued: [], dealQueue: [] } };
+}
+const line = (l: Partial<Line>): Line => ({ nums: [], mods: [], second: false, status: "active", flip7: false, ...l });
+
+describe("Flip 7", () => {
+  it("Kartenstapel: klassisch 94, Voll fies bis 13", () => {
+    expect(buildDeck("classic")).toHaveLength(94);
+    expect(buildDeck("fies").filter((c) => c === "n:13")).toHaveLength(13);
+    expect(buildDeck("fies")).not.toContain("a:second");
+  });
+
+  it("3–18 Spieler", () => {
+    const r = roomWith(["A", "B"], "flip7");
+    expect(playerLimits(r)).toEqual({ min: 3, max: 18 });
+    expect(() => act(r, { type: "start" })).toThrow(/mindestens 3/);
+  });
+
+  it("Punkte: Summe, ×2 vor Plus, Flip-7-Bonus, Niete = 0", () => {
+    expect(linePoints(line({ nums: ["n:5", "n:12"], mods: ["m:x2", "m:+4"] }))).toBe(38);
+    expect(linePoints(line({ nums: ["n:1", "n:2", "n:3", "n:4", "n:5", "n:6", "n:7"], flip7: true }))).toBe(28 + 15);
+    expect(linePoints(line({ nums: ["n:9"], status: "bust" }))).toBe(0);
+    expect(linePoints(line({ nums: ["n:9", "n:4"], mods: ["m:/2", "m:-8"] }))).toBe(0);
+  });
+
+  it("Austeilen: jeder bekommt eine Karte, dann ist jemand dran", () => {
+    const s = g(start(3));
+    const dealt = Object.values(s.lines).reduce((n, l) => n + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
+    expect(dealt).toBeGreaterThanOrEqual(1);
+    expect(s.curId || s.pending).toBeTruthy();
+  });
+
+  it("Doppelte Zahl: raus; zweite Chance rettet", () => {
+    let r = start(3);
+    r = stack(r, ["n:5"], { p1: { nums: ["n:5"] }, p2: { nums: ["n:3"] }, p3: { nums: ["n:2"] } });
+    r = { ...r, game: { ...g(r), curId: "p1" } };
+    r = game(r, { type: "hit" });
+    expect(g(r).lines.p1.status).toBe("bust");
+    let q = start(3);
+    q = stack(q, ["n:5"], { p1: { nums: ["n:5"], second: true }, p2: { nums: ["n:3"] }, p3: { nums: ["n:2"] } });
+    q = { ...q, game: { ...g(q), curId: "p1" } };
+    q = game(q, { type: "hit" });
+    expect(g(q).lines.p1.status).toBe("active");
+    expect(g(q).lines.p1.second).toBe(false);
+  });
+
+  it("Flip 7 beendet die Runde sofort mit +15", () => {
+    let r = start(3);
+    r = stack(r, ["n:7"], { p1: { nums: ["n:1", "n:2", "n:3", "n:4", "n:5", "n:6"] }, p2: { nums: ["n:9"] }, p3: { nums: ["n:8"] } });
+    r = { ...r, game: { ...g(r), curId: "p1" } };
+    r = game(r, { type: "hit" });
+    expect(g(r).lastRound!.flip7).toBe("p1");
+    expect(g(r).scores.p1).toBe(21 + 7 + 15);
+    expect(g(r).round).toBe(2);
+  });
+
+  it("Einfrieren und Flip 3 mit Ziel", () => {
+    let r = start(3);
+    r = stack(r, ["a:freeze"], { p1: { nums: ["n:4"] }, p2: { nums: ["n:6"] }, p3: { nums: ["n:2"] } });
+    r = { ...r, game: { ...g(r), curId: "p1" } };
+    r = game(r, { type: "hit" });
+    expect(g(r).pending).toMatchObject({ kind: "target", by: "p1" });
+    r = game(r, { type: "target", target: "p2" });
+    expect(g(r).lines.p2.status).toBe("frozen");
+
+    let q = start(3);
+    q = stack(q, ["a:flip3", "n:10", "n:11", "n:12"], { p1: { nums: ["n:4"] }, p2: { nums: ["n:6"] }, p3: { nums: ["n:2"] } });
+    q = { ...q, game: { ...g(q), curId: "p1" } };
+    q = game(game(q, { type: "hit" }), { type: "target", target: "p3" });
+    expect(g(q).lines.p3.nums).toEqual(["n:2", "n:10", "n:11", "n:12"]);
+  });
+
+  it("Spielende ab Spielziel, höchste Summe gewinnt", () => {
+    let r = start(3, { target: 100 });
+    r = stack(r, [], { p1: { nums: ["n:12"] }, p2: { nums: ["n:6"] }, p3: { nums: ["n:2"], status: "stayed" } });
+    r = { ...r, game: { ...g(r), curId: "p1", scores: { p1: 95, p2: 10, p3: 0 } } };
+    r = game(game(r, { type: "stay" }), { type: "stay" });
+    expect(g(r).winners).toEqual(["p1"]);
+  });
+
+  it("Voll fies: Klauen, Minus verschenken, Glücks-13, Unglücks-7", () => {
+    let r = start(3, { variant: "fies" });
+    r = stack(r, ["a:steal"], { p1: { nums: ["n:4"] }, p2: { nums: ["n:9"] }, p3: { nums: ["n:2"] } });
+    r = { ...r, game: { ...g(r), curId: "p1" } };
+    r = game(game(r, { type: "hit" }), { type: "pick", owner: "p2", index: 0 });
+    expect(g(r).lines.p1.nums).toContain("n:9");
+    expect(g(r).lines.p2.nums).toEqual([]);
+
+    let q = start(3, { variant: "fies" });
+    q = stack(q, ["m:-6"], { p1: { nums: ["n:4"] }, p2: { nums: ["n:9"] }, p3: { nums: ["n:2"] } });
+    q = { ...q, game: { ...g(q), curId: "p1" } };
+    q = game(game(q, { type: "hit" }), { type: "target", target: "p3" });
+    expect(g(q).lines.p3.mods).toContain("m:-6");
+
+    let l = start(3, { variant: "fies" });
+    l = stack(l, ["n:13"], { p1: { nums: ["n:13L"] }, p2: { nums: ["n:9"] }, p3: { nums: ["n:2"] } });
+    l = { ...l, game: { ...g(l), curId: "p1" } };
+    l = game(l, { type: "hit" });
+    expect(g(l).lines.p1.status).toBe("active");
+
+    let u = start(3, { variant: "fies" });
+    u = stack(u, ["n:7U"], { p1: { nums: ["n:4", "n:10"], mods: ["m:x2"] }, p2: { nums: ["n:9"] }, p3: { nums: ["n:2"] } });
+    u = { ...u, game: { ...g(u), curId: "p1" } };
+    u = game(u, { type: "hit" });
+    expect(g(u).lines.p1.nums).toEqual(["n:7U"]);
+    expect(g(u).lines.p1.mods).toEqual([]);
+  });
+});

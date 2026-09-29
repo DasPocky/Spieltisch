@@ -33,16 +33,16 @@ export function Home() {
 
       <h2 className="mt-5 mb-2.5 shrink-0 text-xl font-extrabold tracking-tight">Spiel auswählen</h2>
       {/* Nur die Liste scrollt, falls es einmal mehr Spiele werden, als auf den Bildschirm passen */}
-      <ul className="no-scrollbar grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto pb-1">
+      <ul className="no-scrollbar grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pb-1">
         {GAME_LIST.map(({ id, info, ui: { Icon } }) => (
           <li key={id}>
             <button type="button" onClick={() => navigate(`/spiel/${id}`)} aria-label={`${info.name} – ${info.category}, ${info.minPlayers}–${info.maxPlayers} Spieler`}
-              className="glass flex h-full w-full flex-col items-start gap-2.5 rounded-2xl p-3.5 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring">
-              <IconTile className="size-12 rounded-2xl"><Icon className="size-8" /></IconTile>
+              className="glass flex h-full w-full items-center gap-2.5 rounded-2xl p-2.5 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring">
+              <IconTile className="size-11 rounded-xl"><Icon className="size-7" /></IconTile>
               <span className="min-w-0">
-                <span className="block text-lg font-bold leading-tight">{info.name}</span>
-                <span className="block text-xs text-muted-foreground">{info.category} · {info.minPlayers}–{info.maxPlayers} Spieler</span>
-                <span className="block text-xs text-muted-foreground">{info.duration}</span>
+                <span className="block truncate font-bold leading-tight">{info.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">{info.minPlayers}–{info.maxPlayers} Spieler</span>
+                <span className="block truncate text-xs text-muted-foreground">{info.category} · {info.duration}</span>
               </span>
             </button>
           </li>

@@ -334,12 +334,14 @@ function startNight(s: WerwolfState) {
     if (s.stepwise && aliveHolders(s, "schwester").length > 1) steps.push("schwestern");
   }
   if (has("beschuetzer")) steps.push("beschuetzer");
-  if (!peaceful) {
+  // Kein mögliches Opfer (nur noch Wölfe am Leben): der Rudel-Schritt entfällt, sonst hinge die Nacht
+  const prey = aliveIds(s).some((id) => !isWolf(s.roles[id]));
+  if (!peaceful && prey) {
     steps.push("werwolf");
     if (has("weisserwolf") && s.night % 2 === 0) steps.push("weisserwolf");
     if (has("urwolf") && !s.infectUsed) steps.push("urwolf");
     if (has("grosserwolf") && !s.wolfDied) steps.push("grosserwolf");
-  }
+  } else if (!peaceful && has("weisserwolf") && s.night % 2 === 0) steps.push("weisserwolf");
   if (has("seherin")) steps.push("seherin");
   if (has("fuchs") && s.foxPower) steps.push("fuchs");
   if (has("rabe")) steps.push("rabe");

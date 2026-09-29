@@ -4,17 +4,14 @@ import { Section } from "@/platform/MenuSheet";
 import { Board } from "./Board";
 import { Rules } from "./Rules";
 
-/** Symbol: zwei Karten mit Herz und Eichel */
+/** Symbol: zwei Karten mit Herz und Pik */
 function Icon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
       <rect x="6" y="8" width="17" height="25" rx="3" fill="#fdfdfb" transform="rotate(-12 14.5 20.5)" />
-      <path d="M13 23 C 9.5 20.2, 8 18.5, 8 16.6 A 2.4 2.4 0 0 1 13 15.5 A 2.4 2.4 0 0 1 18 16.6 C 18 18.5, 16.5 20.2, 13 23 Z" fill="#b8323f" transform="rotate(-12 14.5 20.5)" />
+      <path d="M13 23 C 9.5 20.2, 8 18.5, 8 16.6 A 2.4 2.4 0 0 1 13 15.5 A 2.4 2.4 0 0 1 18 16.6 C 18 18.5, 16.5 20.2, 13 23 Z" fill="#c8283a" transform="rotate(-12 14.5 20.5)" />
       <rect x="17" y="7" width="17" height="25" rx="3" fill="#fdfdfb" transform="rotate(10 25.5 19.5)" />
-      <g transform="rotate(10 25.5 19.5)">
-        <ellipse cx="25.5" cy="21" rx="3.4" ry="4.4" fill="#8a5a1f" />
-        <path d="M21.2 18.3 C 21.2 15.7, 29.8 15.7, 29.8 18.3 C 29.8 19.3, 21.2 19.3, 21.2 18.3 Z" fill="#5a3a12" />
-      </g>
+      <path d="M25.5 14 C 24 16, 21 17.8, 21 20 A 2.2 2.2 0 0 0 24.8 21.4 L 24 24 H 27 L 26.2 21.4 A 2.2 2.2 0 0 0 30 20 C 30 17.8, 27 16, 25.5 14 Z" fill="#1a2233" transform="rotate(10 25.5 19.5)" />
     </svg>
   );
 }

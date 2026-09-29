@@ -57,6 +57,18 @@ function candidates(r: RoomState, online: boolean): Move[] {
     case "fischen":
       for (const target of ids) for (const rank of DECKS[(r.game as FischenState).deck].ranks) add({ type: "ask", target, rank });
       break;
+    case "flip7": {
+      const st = r.game as { lines: Record<string, { nums: string[]; mods: string[] }> };
+      ["hit", "stay"].forEach((type) => add({ type }));
+      for (const id of Object.keys(st.lines)) {
+        add({ type: "target", target: id });
+        const l = st.lines[id];
+        for (let i = 0; i < l.nums.length + l.mods.length; i++) add({ type: "pick", owner: id, index: i });
+        for (const id2 of Object.keys(st.lines)) if (id < id2) for (let i = 0; i < l.nums.length; i++) for (let j = 0; j < st.lines[id2].nums.length; j++)
+          add({ type: "swap", a: { owner: id, index: i }, b: { owner: id2, index: j } });
+      }
+      break;
+    }
     case "einenacht": {
       const ids2 = r.players.map((p) => p.id);
       ["ready", "startNight", "next", "nightDone", "closeVote"].forEach((type) => add({ type }));
@@ -104,6 +116,12 @@ function checkCards(r: RoomState) {
     const all = [...s.pile, ...s.discard, ...Object.values(s.hands).flat()];
     expect(new Set(all).size).toBe(all.length);
     expect(all.length).toBe(DECKS[s.deck].suits.length * DECKS[s.deck].ranks.length);
+  }
+  if (r.gameId === "flip7") {
+    const s = r.game as { deck: string[]; discard: string[]; lines: Record<string, { nums: string[]; mods: string[]; second: boolean }>; pending: { card: string } | null; queued: { card: string }[]; variant: string };
+    const n = s.deck.length + s.discard.length + (s.pending ? 1 : 0) + s.queued.length
+      + Object.values(s.lines).reduce((t, l) => t + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
+    expect(n).toBe(s.variant === "fies" ? 112 : 94);
   }
   if (r.gameId === "fischen") {
     const s = r.game as FischenState;
@@ -167,6 +185,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["fischen", 8, { deck: "fr52" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
+  ["flip7", 3, { target: 100 }],
+  ["flip7", 6, { variant: "fies", target: 100 }],
   ["einenacht", 9, { seherin: true, raeuber: true, unruhestifter: true, betrunkener: true, schlaflose: true, jaeger: true, gerber: true, guenstling: true, freimaurer: true }],
   ["einenacht", 3, { wolves: "1" }],
   ["werwolf", 9, { captain: true, tie: "runoff", aura: true, peaceful: true, selfHeal: false, hexe: true, jaeger: true, dieb: true, floetenspieler: true, engel: true, weisserwolf: true, wolves: "3" }],
@@ -177,15 +197,18 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   }],
 ];
 
+/** Partien je Szenario – für gründliche Läufe z. B. SIM_ROUNDS=200 npm test */
+const ROUNDS = Number(process.env.SIM_ROUNDS) || 25;
+
 describe("Nichts bleibt hängen – Zufallspartien", () => {
   for (const [gameId, n, options] of SCENARIOS) {
     for (const online of [false, true]) {
       it(`${gameId} · ${n} Spieler · ${online ? "online" : "lokal"} · ${JSON.stringify(options)}`, () => {
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < ROUNDS; i++) {
           const { r } = playOut(setupRoom(gameId, n + (online && options.narrator === "human" ? 1 : 0), options, online), online);
           expect(roomGame(r).isOver(r.game)).toBe(true);
         }
-      }, 120_000);
+      }, 120_000 * Math.max(1, ROUNDS / 25));
     }
   }
 });
