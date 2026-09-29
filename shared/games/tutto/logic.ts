@@ -11,6 +11,8 @@ export * from "./cards";
 
 const MAX_LOG = 200;
 const MAX_TURN = 100000;
+/** Kleinste Würfelsumme eines Tuttos: alle sechs Würfel gewertet, jeder mindestens 50 */
+export const MIN_TUTTO = 300;
 
 export interface LogEntry {
   playerId: string;
@@ -268,6 +270,8 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       if (!card) throw new GameError("Zieh zuerst eine Karte.");
       if (card === "stop") throw new GameError("Stopp – in diesem Zug wird nicht gewürfelt.");
       if (s.afterTutto) throw new GameError("Zieh eine neue Karte oder trag die Punkte ein.");
+      // Sechs gewertete Würfel bringen mindestens 300 Punkte (sechsmal eine einzelne Fünf) – weniger kann kein Tutto sein
+      if (!NO_DICE_POINTS.has(card) && s.turnPts - (s.cardStart ?? 0) < MIN_TUTTO) throw new GameError(`Für ein Tutto erst die Würfelpunkte eintragen (mindestens ${MIN_TUTTO}).`);
       applyTutto(s, card, ctx);
       return s;
     }

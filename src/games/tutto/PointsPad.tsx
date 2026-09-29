@@ -1,4 +1,4 @@
-import { canStop, CARD_BY_ID, NO_DICE_POINTS, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Confirm } from "@/components/Confirm";
 import type { ViewMode } from "@/hooks/useViewMode";
 import { cn, fmt, vibrate } from "@/lib/utils";
@@ -78,9 +78,9 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
   const pts = fmt(state.turnPts);
   const book = (zero = false) => onAction({ type: "book", zero });
   /** Knopf mit kleiner Überschrift und großem Wert – passt auch auf schmale Handys */
-  const Btn = ({ children, sub, onClick, kind = "plain" }: { children: React.ReactNode; sub?: string; onClick?: () => void; kind?: "primary" | "gold" | "plain" }) => (
-    <button type="button" onClick={onClick}
-      className={cn(
+  const Btn = ({ children, sub, onClick, disabled, kind = "plain" }: { children: React.ReactNode; sub?: string; onClick?: () => void; disabled?: boolean; kind?: "primary" | "gold" | "plain" }) => (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className={cn("disabled:opacity-40",
         "flex h-13 min-w-0 flex-col items-center justify-center rounded-xl px-1.5 leading-tight font-bold outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring",
         kind === "primary" ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]"
           : kind === "gold" ? "bg-gold text-navy-950 shadow-[0_6px_20px_rgb(214_176_92/0.3)]" : "bg-secondary ring-1 ring-inset ring-border",
@@ -114,11 +114,13 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
   if (card === "fire") return <div className="grid"><Btn sub="Niete geworfen – Punkte zählen trotzdem" kind="primary" onClick={() => book()}>{pts} eintragen</Btn></div>;
 
   const tutto = () => { vibrate([20, 40, 20]); onAction({ type: "tutto" }); };
+  // Tutto erst, wenn die Würfelpunkte dafür eingetragen sind (bei Straße, Plus/Minus, Kleeblatt, Torte zählen sie nicht)
+  const tuttoReady = NO_DICE_POINTS.has(card) || state.turnPts - (state.cardStart ?? 0) >= MIN_TUTTO;
   const tuttoBtn = card === "clover" && (state.cardTuttos ?? 0) >= 1 ? (
     <Confirm title="Zweites Tutto geschafft?" description="Zweimal hintereinander Tutto – damit ist das Spiel sofort gewonnen." confirmLabel="Sieg!" onConfirm={tutto}>
       <Btn sub="☘ Tutto" kind="gold">2 von 2</Btn>
     </Confirm>
-  ) : <Btn sub={tuttoLabel(card, state.cardTuttos ?? 0)[0]} kind="gold" onClick={tutto}>{tuttoLabel(card, state.cardTuttos ?? 0)[1]}</Btn>;
+  ) : <Btn sub={tuttoLabel(card, state.cardTuttos ?? 0)[0]} kind="gold" disabled={!tuttoReady} onClick={tutto}>{tuttoLabel(card, state.cardTuttos ?? 0)[1]}</Btn>;
   const stop = canStop(state) && state.turnPts > 0;
 
   return (

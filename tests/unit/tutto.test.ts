@@ -58,15 +58,23 @@ describe("Echte Würfel", () => {
     expect(g(r).afterTutto).toBe(true);
     expect(() => pts(r, 100)).toThrow(/neue Karte/);
     r = draw(r, "x2");
-    r = game(pts(r, 100), { type: "tutto" });
-    expect(g(r).turnPts).toBe(1800);
+    expect(() => game(pts(r, 100), { type: "tutto" })).toThrow(/mindestens 300/);
+    r = game(pts(r, 300), { type: "tutto" });
+    expect(g(r).turnPts).toBe(2200);
+  });
+
+  it("Tutto ohne eingetragene Würfelpunkte geht nicht", () => {
+    const r = draw(start(), "b500");
+    expect(() => game(r, { type: "tutto" })).toThrow(/mindestens 300/);
+    expect(() => game(pts(pts(r, 200), 50), { type: "tutto" })).toThrow(/mindestens 300/);
+    expect(g(game(pts(pts(pts(r, 200), 50), 50), { type: "tutto" })).turnPts).toBe(800);
   });
 
   it("gesicherte Punkte lassen sich nicht wegkorrigieren", () => {
-    let r = game(pts(draw(start(), "b200"), 100), { type: "tutto" });
+    let r = game(pts(draw(start(), "b200"), 300), { type: "tutto" });
     r = draw(r, "b400");
     r = game(pts(r, -50), { type: "clearPts" });
-    expect(g(r).turnPts).toBe(300);
+    expect(g(r).turnPts).toBe(500);
   });
 
   it("Pflichtkarten: kein Aufhören und keine Würfelpunkte", () => {
@@ -104,20 +112,20 @@ describe("Echte Würfel", () => {
   it("Plus/Minus ohne Tutto bestraft niemanden", () => {
     let r = start();
     r = game(pts(draw(r, "b200"), 1000), { type: "book" });
-    r = game(pts(draw(r, "b200"), 100), { type: "tutto" });
+    r = game(pts(draw(r, "b200"), 300), { type: "tutto" });
     r = game(draw(r, "pm"), { type: "book" }); // frisch nach Tutto aufgehört
-    expect(g(r).scores).toMatchObject({ p1: 1000, p2: 300 });
+    expect(g(r).scores).toMatchObject({ p1: 1000, p2: 500 });
   });
 
   it("automatisch aufdecken: zu Zugbeginn und nach Tutto", () => {
     let r = act(roomWith(["Anna", "Ben"]), { type: "start" });
     expect(g(r).turnCards).toHaveLength(1);
     r = { ...r, game: { ...g(r), turnCards: ["b200"], cardStart: 0 } };
-    r = game(pts(r, 100), { type: "tutto" });
+    r = game(pts(r, 300), { type: "tutto" });
     expect(g(r).turnCards).toHaveLength(2);
-    expect(g(r).cardStart).toBe(300);
+    expect(g(r).cardStart).toBe(500);
     r = game(r, { type: "book" });
-    expect(g(r).scores.p1).toBe(300);
+    expect(g(r).scores.p1).toBe(500);
     expect(g(r).curId).toBe("p2");
     expect(g(r).turnCards).toHaveLength(1);
   });
