@@ -1,4 +1,4 @@
-import { participants, ROLES, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
+import { participants, ROLES, SPECIAL_ROLES, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,9 @@ import { nameOf } from "./parts";
 import { PlayerView } from "./PlayerView";
 
 const WIN: Record<string, { title: string; emoji: string; text: string }> = {
+  weisserwolf: { title: "Der weiße Werwolf gewinnt", emoji: "🐺", text: "Er ist als Einziger übrig." },
+  floete: { title: "Der Flötenspieler gewinnt", emoji: "🪈", text: "Alle Lebenden sind verzaubert." },
+  engel: { title: "Der Engel gewinnt", emoji: "😇", text: "Er ist schon in der ersten Runde in den Himmel gekommen." },
   dorf: { title: "Das Dorf gewinnt", emoji: "🏡", text: "Alle Werwölfe sind besiegt." },
   werwolf: { title: "Die Werwölfe gewinnen", emoji: "🐺", text: "Das Dorf ist in der Hand der Wölfe." },
   liebe: { title: "Die Liebe gewinnt", emoji: "💘", text: "Das Liebespaar bleibt als Letztes übrig." },
@@ -24,7 +27,7 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
         <p className="text-muted-foreground">{w.text}</p>
         <ul className="mt-6 grid gap-1.5 text-left">
           {participants(s).map((id) => (
-            <li key={id} className={cn("flex items-center justify-between rounded-xl px-4 py-2.5", s.winner && (s.winner === "liebe" ? s.lovers?.includes(id) : ROLES[s.roles[id]].team === s.winner) ? "bg-navy-600" : "glass")}>
+            <li key={id} className={cn("flex items-center justify-between rounded-xl px-4 py-2.5", s.winner && (s.winner === "liebe" ? s.lovers?.includes(id) : s.winner === "weisserwolf" ? s.roles[id] === "weisserwolf" : s.winner === "floete" ? s.roles[id] === "floetenspieler" : s.winner === "engel" ? s.roles[id] === "engel" : ROLES[s.roles[id]].team === s.winner) ? "bg-navy-600" : "glass")}>
               <span className={cn("font-semibold", !s.alive[id] && "text-muted-foreground line-through")}>{nameOf(players, id)}{s.lovers?.includes(id) && " 💘"}</span>
               <span className="text-sm">{ROLES[s.roles[id]].emoji} {ROLES[s.roles[id]].name}</span>
             </li>
@@ -40,7 +43,9 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
     );
   }
   const leader = me === null || me === s.narratorId;
+  // Im Spiel aktive Rollen (für „eigene Karten“ zuerst anbieten)
+  const enabled: Role[] = ["werwolf", "dorf", ...SPECIAL_ROLES.filter((r) => room.options[r] === true)];
   return leader
-    ? <Leader s={s} players={players} act={act} online={me !== null} />
-    : <PlayerView s={s} players={players} me={me!} isHost={isHost} act={act} />;
+    ? <Leader s={s} players={players} act={act} online={me !== null} enabled={enabled} />
+    : <PlayerView s={s} players={players} me={me!} isHost={isHost} act={act} enabled={enabled} />;
 }

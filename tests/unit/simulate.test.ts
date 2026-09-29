@@ -65,8 +65,15 @@ function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "dog", wolf: Math.random() < 0.5 });
       add({ type: "infect", yes: Math.random() < 0.5 });
       add({ type: "raven", target: null });
+      add({ type: "assignDone" });
+      for (const p of [0, 1, null]) add({ type: "steal", pick: p });
+      add({ type: "white", target: null });
+      add({ type: "claim", role: pick(["werwolf", "dorf", "seherin", "hexe"]) });
+      for (const id of Object.keys(s.roles)) add({ type: "assign", id, role: pick(["werwolf", "dorf", "seherin", "jaeger"]) });
+      for (const a of alive) for (const b of alive) if (a < b) add({ type: "enchant", a, b });
       for (const a of alive) add({ type: "amor", a, b: pick(alive.filter((x) => x !== a)) });
-      for (const target of alive) ["protect", "wolf", "wolf2", "see", "fox", "raven", "model", "suspect", "shoot", "vote", "lynch"].forEach((type) => add({ type, target }));
+      for (const target of alive) ["protect", "wolf", "wolf2", "white", "see", "fox", "raven", "model", "suspect", "shoot", "vote", "lynch", "elect", "successor"].forEach((type) => add({ type, target }));
+      for (const a of alive) add({ type: "enchant", a });
       add({ type: "witch", heal: Math.random() < 0.3, poison: Math.random() < 0.3 ? t() : null });
       add({ type: "witch", heal: false, poison: null });
       add({ type: "vote", target: "" });
@@ -99,7 +106,11 @@ function playOut(start: RoomState, online: boolean, maxSteps = 4000) {
     if (r.phase !== "playing" || logic.isOver(r.game)) return { r, steps: step };
     // Ab und zu hängt jemand – dann überspringt der Host
     if (Math.random() < 0.02 && skipLabel(r)) {
-      r = applyRoomAction(r, { type: "skip" }, online ? r.hostId : null);
+      try {
+        r = applyRoomAction(r, { type: "skip" }, online ? r.hostId : null);
+      } catch (e) {
+        if (!(e instanceof GameError)) throw e; // z. B. „mindestens ein Werwolf“ – der Host muss erst zuordnen
+      }
       checkCards(r);
       continue;
     }
@@ -143,6 +154,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["fischen", 8, { deck: "fr52" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
+  ["werwolf", 9, { captain: true, tie: "runoff", aura: true, peaceful: true, selfHeal: false, hexe: true, jaeger: true, dieb: true, floetenspieler: true, engel: true, weisserwolf: true, wolves: "3" }],
+  ["werwolf", 6, { cards: "own", captain: true, narrator: "human" }],
   ["werwolf", 20, {
     wolves: "3", seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true, alter: true, dorfdepp: true, suendenbock: true,
     wildeskind: true, wolfshund: true, fuchs: true, baerenfuehrer: true, ritter: true, schwester: true, urwolf: true, grosserwolf: true, rabe: true,

@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { knownRoles, participants, ROLES, type Death, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
+import { ALL_ROLES, knownRoles, participants, ROLES, type Death, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
 import { cn } from "@/lib/utils";
 
 export const CAUSE: Record<Death["cause"], string> = {
   wolf: "von den Werwölfen gefressen", gift: "vergiftet", dorf: "vom Dorf verurteilt",
-  jaeger: "vom Jäger erschossen", kummer: "aus Liebeskummer gestorben", rost: "am rostigen Schwert gestorben", weg: "hat das Spiel verlassen",
+  weiss: "vom weißen Werwolf gefressen", jaeger: "vom Jäger erschossen", kummer: "aus Liebeskummer gestorben", rost: "am rostigen Schwert gestorben", weg: "hat das Spiel verlassen",
 };
 
 export const nameOf = (players: Player[], id: string | null | undefined) => players.find((p) => p.id === id)?.name ?? "?";
@@ -98,7 +98,9 @@ export function AliveStrip({ s, players, me, showAll }: { s: WerwolfState; playe
             id === me && "ring-navy-300")}>
             {show && <span aria-label={ROLES[s.roles[id]].name}>{ROLES[s.roles[id]].emoji}</span>}
             {nameOf(players, id)}
+            {s.captain === id && <span aria-label="Hauptmann">👑</span>}
             {s.lovers?.includes(id) && <span aria-label="verliebt">💘</span>}
+            {s.enchanted.includes(id) && <span aria-label="verzaubert">🪈</span>}
           </span>
         );
       })}
@@ -136,6 +138,22 @@ export function News({ s, players }: { s: WerwolfState; players: Player[] }) {
       {top.length > 0 && kind === "day" && (
         <p className="mt-1 text-sm text-muted-foreground">Stimmen: {top.map(([id, n]) => `${nameOf(players, id)} ${n}`).join(" · ")}</p>
       )}
+    </div>
+  );
+}
+
+/** Rollen zum Antippen (eigene Karten, Dieb) – die im Spiel aktiven zuerst */
+export function RolePicker({ selected, onPick, prefer }: { selected: Role | null; onPick: (r: Role) => void; prefer?: Role[] }) {
+  const order = [...new Set<Role>([...(prefer ?? []), ...ALL_ROLES])];
+  return (
+    <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Rolle">
+      {order.map((r) => (
+        <button key={r} type="button" aria-pressed={selected === r} onClick={() => onPick(r)}
+          className={cn("flex h-11 min-w-0 items-center gap-2 rounded-xl px-2.5 text-left text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+            selected === r ? "bg-gold text-navy-950" : "bg-navy-700/70 ring-1 ring-inset ring-border")}>
+          <span aria-hidden="true">{ROLES[r].emoji}</span><span className="truncate">{ROLES[r].name}</span>
+        </button>
+      ))}
     </div>
   );
 }

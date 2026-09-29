@@ -321,3 +321,130 @@ describe("Rollen aus den Erweiterungen", () => {
     });
   });
 });
+
+describe("Hausregeln, eigene Karten, Solo-Rollen, Dieb", () => {
+  function onlineDay(roles: Record<string, Role>, options: Record<string, string | boolean> = {}) {
+    let r = start(Object.keys(roles).length, options, true);
+    r = withRoles(r, roles);
+    r = w(r, { type: "startNight" }, "p1");
+    const wolves = Object.keys(roles).filter((id) => roles[id] === "werwolf");
+    const target = Object.keys(roles).reverse().find((id) => roles[id] === "dorf")!;
+    for (const id of wolves) r = w(r, { type: "wolf", target }, id);
+    return r;
+  }
+  const seven = { p1: "dorf", p2: "dorf", p3: "dorf", p4: "werwolf", p5: "dorf", p6: "dorf", p7: "dorf" } as Record<string, Role>;
+
+  it("Hauptmann: Wahl am ersten Tag, doppelte Stimme, Nachfolger", () => {
+    let r = onlineDay(seven, { captain: true });
+    expect(g(r).phase).toBe("election");
+    for (const id of ["p1", "p2", "p3", "p4", "p5", "p6"]) r = w(r, { type: "vote", target: "p2" }, id);
+    expect(g(r).captain).toBe("p2");
+    expect(g(r).phase).toBe("day");
+    // p2 (doppelt) gegen p4, p1 gegen p3: p4 hat 2, p3 hat 1
+    r = w(w(r, { type: "vote", target: "p4" }, "p2"), { type: "vote", target: "p3" }, "p1");
+    r = w(r, { type: "closeVote" }, "p1");
+    expect(g(r).winner).toBe("dorf");
+  });
+
+  it("Stichwahl bei Gleichstand", () => {
+    let r = onlineDay(seven, { tie: "runoff" });
+    r = w(w(r, { type: "vote", target: "p4" }, "p1"), { type: "vote", target: "p3" }, "p2");
+    r = w(r, { type: "closeVote" }, "p1");
+    expect(g(r).runoff!.sort()).toEqual(["p3", "p4"]);
+    expect(() => w(r, { type: "vote", target: "p1" }, "p2")).toThrow(/Stichwahl/);
+    r = w(r, { type: "vote", target: "p4" }, "p2");
+    r = w(r, { type: "closeVote" }, "p1");
+    expect(g(r).winner).toBe("dorf");
+  });
+
+  it("Seherin sieht nur gut/böse", () => {
+    let r = start(6, { aura: true });
+    r = withRoles(r, { p1: "urwolf", p2: "seherin", p3: "dorf", p4: "jaeger", p5: "dorf", p6: "dorf" });
+    r = w(r, { type: "startNight" });
+    while (g(r).pending[0] !== "seherin") {
+      if (g(r).pending[0] === "werwolf") r = w(r, { type: "wolf", target: "p3" });
+      if (g(r).pending[0] === "urwolf") r = w(r, { type: "infect", yes: false });
+      r = w(r, { type: "next" });
+    }
+    r = w(r, { type: "see", target: "p1" });
+    expect(g(r).seer.at(-1)!.role).toBe("werwolf");
+  });
+
+  it("Erste Nacht ohne Opfer", () => {
+    let r = start(5, { peaceful: true });
+    r = w(r, { type: "startNight" });
+    expect(g(r).pending).not.toContain("werwolf");
+  });
+
+  it("Hexe darf sich nach Hausregel nicht selbst heilen", () => {
+    let r = start(5, { selfHeal: false });
+    r = withRoles(r, { p1: "werwolf", p2: "hexe", p3: "dorf", p4: "dorf", p5: "dorf" });
+    r = w(r, { type: "startNight" });
+    r = w(r, { type: "next" });
+    r = w(w(r, { type: "wolf", target: "p2" }), { type: "next" });
+    expect(() => w(r, { type: "witch", heal: true, poison: null })).toThrow(/Hausregeln/);
+  });
+
+  it("Eigene Karten: Spielleiter ordnet zu, online wählt jeder seine Karte", () => {
+    let r = start(5, { cards: "own" });
+    expect(g(r).phase).toBe("assign");
+    expect(() => w(r, { type: "assignDone" })).toThrow(/Werwolf/);
+    r = w(r, { type: "assign", id: "p3", role: "werwolf" });
+    r = w(r, { type: "assign", id: "p1", role: "seherin" });
+    r = w(r, { type: "assignDone" });
+    expect(g(r).phase).toBe("night");
+    expect(g(r).roles).toMatchObject({ p1: "seherin", p3: "werwolf", p2: "dorf" });
+
+    let o = start(5, { cards: "own" }, true);
+    for (const [id, role] of [["p1", "dorf"], ["p2", "werwolf"], ["p3", "hexe"], ["p4", "dorf"]] as const) o = w(o, { type: "claim", role }, id);
+    expect(g(o).phase).toBe("assign");
+    o = w(o, { type: "claim", role: "dorf" }, "p5");
+    expect(g(o).phase).toBe("night");
+    expect(g(o).roles.p3).toBe("hexe");
+  });
+
+  it("Dieb tauscht mit einer übrigen Karte", () => {
+    let r = start(5, { dieb: true });
+    r = { ...r, game: { ...g(r), roles: { p1: "dieb", p2: "werwolf", p3: "dorf", p4: "dorf", p5: "dorf" }, extra: ["seherin", "dorf"] as Role[] } };
+    r = w(r, { type: "startNight" });
+    r = w(r, { type: "next" });
+    expect(g(r).pending[0]).toBe("dieb");
+    r = w(r, { type: "steal", pick: 0 });
+    expect(g(r).roles.p1).toBe("seherin");
+    expect(g(r).extra).toEqual(["dieb", "dorf"]);
+  });
+
+  it("Weißer Werwolf gewinnt nur allein", () => {
+    const s = g(start(5));
+    expect(checkWinner({ ...s, roles: { a: "weisserwolf", b: "dorf" }, alive: { a: true, b: false }, lovers: null, winner: null })).toBe("weisserwolf");
+    expect(checkWinner({ ...s, roles: { a: "weisserwolf", b: "werwolf", c: "dorf" }, alive: { a: true, b: true, c: true }, lovers: null, winner: null })).toBeNull();
+  });
+
+  it("Flötenspieler verzaubert und gewinnt, wenn alle verzaubert sind", () => {
+    let r = start(5, { floetenspieler: true });
+    r = withRoles(r, { p1: "werwolf", p2: "floetenspieler", p3: "dorf", p4: "dorf", p5: "dorf" });
+    r = w(r, { type: "startNight" });
+    r = w(r, { type: "next" });
+    r = w(w(r, { type: "wolf", target: "p5" }), { type: "next" });
+    r = w(r, { type: "enchant", a: "p1", b: "p3" });
+    r = w(w(r, { type: "next" }), { type: "next" });
+    expect(g(r).enchanted.sort()).toEqual(["p1", "p3"]);
+    r = w(r, { type: "lynch", target: null });
+    r = w(r, { type: "next" });
+    r = w(w(r, { type: "wolf", target: "p3" }), { type: "next" });
+    expect(() => w(r, { type: "enchant", a: "p1", b: "p4" })).toThrow(/verzaubert/);
+    r = w(r, { type: "enchant", a: "p4" });
+    r = w(w(r, { type: "next" }), { type: "next" });
+    expect(g(r).winner).toBe("floete");
+  });
+
+  it("Engel gewinnt, wenn er am ersten Tag verurteilt wird", () => {
+    let r = start(5, { engel: true });
+    r = withRoles(r, { p1: "werwolf", p2: "engel", p3: "dorf", p4: "dorf", p5: "dorf" });
+    r = w(r, { type: "startNight" });
+    r = w(r, { type: "next" });
+    r = w(w(r, { type: "wolf", target: "p5" }), { type: "next" });
+    r = w(r, { type: "lynch", target: "p2" });
+    expect(g(r).winner).toBe("engel");
+  });
+});

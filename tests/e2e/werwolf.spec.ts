@@ -181,3 +181,64 @@ test("Werwolf lokal mit Rollen aus allen Erweiterungen", async ({ page }) => {
   await expectNoScroll(page);
   await shot(page, "54-ww-roles-day");
 });
+
+test("Werwolf lokal mit eigenen Karten und Hauptmann", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/spiel/werwolf/lokal");
+  for (const n of ["Anna", "Ben", "Cem", "Dora", "Emil", "Finn"]) {
+    await page.getByLabel("Name des Spielers").fill(n);
+    await page.getByRole("button", { name: "Hinzufügen" }).click();
+  }
+  await page.getByRole("radio", { name: /Spielleiter/ }).click();
+  await page.getByRole("radio", { name: /Eigene Karten/ }).click();
+  await page.getByRole("checkbox", { name: /Hauptmann/ }).click();
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(page.getByText("Eigene Karten zuordnen")).toBeVisible();
+  await page.getByRole("button", { name: "Cem", exact: true }).click();
+  await page.getByRole("group", { name: "Rolle" }).getByRole("button", { name: /Werwolf$/ }).first().click();
+  await page.getByRole("button", { name: "Anna", exact: true }).click();
+  await page.getByRole("group", { name: "Rolle" }).getByRole("button", { name: /Seherin/ }).click();
+  await expectNoScroll(page);
+  await shot(page, "55-ww-own-cards");
+  await page.getByRole("button", { name: /Fertig – Nacht beginnen/ }).click();
+  for (let i = 0; i < 12 && (await page.getByTestId("ww-phase").textContent())?.includes("Nacht"); i++) {
+    await doStep(page);
+    const next = page.getByRole("button", { name: "Weiter" });
+    if (await next.isVisible()) await next.click();
+    await page.waitForTimeout(250);
+  }
+  await expect(page.getByTestId("ww-phase")).toHaveText("👑 Wahl");
+  await page.getByRole("group").getByRole("button", { name: "Dora" }).click();
+  await shot(page, "56-ww-captain-election");
+  await page.getByRole("button", { name: /wird Hauptmann/ }).click();
+  await expect(page.getByTestId("ww-phase")).toHaveText("☀️ Tag 1");
+  await expect(page.getByLabel("Hauptmann")).toBeVisible();
+});
+
+test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const phones = await Promise.all(NAMES.map(() => newPhone(browser)));
+  const [host] = phones;
+  const code = await createRoom(host, "werwolf", "Anna", "8080");
+  await host.getByRole("checkbox", { name: /Hauptmann/ }).click();
+  await host.getByRole("radio", { name: /Stichwahl/ }).click();
+  await host.getByRole("checkbox", { name: /🧪 Hexe/ }).click();
+  await host.getByRole("checkbox", { name: /🔮 Seherin/ }).click();
+  for (let i = 1; i < 5; i++) await joinRoom(phones[i], code, NAMES[i], "8080");
+  await host.getByRole("button", { name: "Spiel starten" }).click();
+  for (const p of phones) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+  await expect(host.getByTestId("ww-phase")).toHaveText("🌙 Nacht 1");
+  // Der Host beendet die Nacht (so bleibt nichts hängen, falls jemand nicht reagiert)
+  await host.getByRole("button", { name: "Menü" }).click();
+  await host.getByRole("button", { name: /Nacht beenden/ }).click();
+  await host.getByRole("button", { name: "Ja, weiter" }).click();
+  await host.keyboard.press("Escape");
+  await expect(host.getByTestId("ww-phase")).toHaveText("👑 Wahl");
+  const alivePhones = [];
+  for (const p of phones) if (await p.getByText("👑 Hauptmannwahl").isVisible()) alivePhones.push(p);
+  await shot(alivePhones[0], "57-ww-online-election");
+  for (const p of alivePhones) await p.getByRole("group").getByRole("button").first().click();
+  await expect(host.getByTestId("ww-phase")).toHaveText("☀️ Tag 1");
+  await expect(host.getByLabel("Hauptmann")).toBeVisible();
+});

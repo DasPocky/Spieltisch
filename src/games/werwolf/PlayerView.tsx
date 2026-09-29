@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { aliveIds, holders, isWolf, knownRoles, ROLES, voters, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
+import { aliveIds, holders, isWolf, knownRoles, participants, ROLES, voters, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { AliveStrip, nameOf, News, Panel, Picker, RoleCard } from "./parts";
+import { AliveStrip, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
 
 /**
  * Ansicht eines Mitspielers am eigenen Handy (online). Im Modus „App erzählt“ handelt jede Rolle hier geheim.
  * Wer nachts nichts zu tun hat, gibt einen Verdacht ab – so sieht jeder Bildschirm gleich beschäftigt aus.
  */
-export function PlayerView({ s, players, me, isHost, act }: { s: WerwolfState; players: Player[]; me: string; isHost: boolean; act: (a: WerwolfAction) => void }) {
+export function PlayerView({ s, players, me, isHost, act, enabled }: { s: WerwolfState; players: Player[]; me: string; isHost: boolean; act: (a: WerwolfAction) => void; enabled: Role[] }) {
   const role = s.roles[me];
   const alive = s.alive[me];
   const app = s.mode === "app";
@@ -19,7 +19,16 @@ export function PlayerView({ s, players, me, isHost, act }: { s: WerwolfState; p
     <>
       <AliveStrip s={s} players={players} me={me} />
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {s.phase === "reveal" ? (
+        {s.phase === "assign" ? (
+          app ? (
+            <>
+              <Panel title="Welche Karte hast du gezogen?" sub={s.ready.includes(me) ? `Danke! Warte auf die anderen (${s.ready.length}/${participants(s).length}) …` : "Ihr spielt mit echten Karten. Tippe deine Rolle an – niemand sonst sieht sie."}>
+                <RolePicker selected={s.ready.includes(me) ? role : null} prefer={enabled} onPick={(r) => act({ type: "claim", role: r })} />
+              </Panel>
+              {isHost && <Button variant="secondary" className="shrink-0" onClick={() => act({ type: "assignDone" })}>Alle fertig – Nacht beginnen</Button>}
+            </>
+          ) : <Panel title="Karten ziehen" sub="Zieh eine echte Karte und zeig sie nur dem Spielleiter. Er trägt die Rollen ein." />
+        ) : s.phase === "reveal" ? (
           <>
             <Panel title="Deine Rolle" sub="Schau sie dir unauffällig an. Niemand darf mitlesen.">
               <RoleCard role={role} />
@@ -44,11 +53,20 @@ export function PlayerView({ s, players, me, isHost, act }: { s: WerwolfState; p
             ) : !alive ? (
               <>
                 {s.phase === "day" && <News s={s} players={players} />}
-                <Panel title="Du bist tot ✝" sub="Du darfst zuschauen – aber nichts verraten!" />
-                {app && isHost && s.phase === "day" && <CloseVote s={s} act={act} />}
+                <Panel title="Du bist tot ✝" sub={s.rules.deadTalk ? "Nach euren Hausregeln darfst du weiter mitreden – aber keine Rollen verraten!" : "Du darfst zuschauen – aber nichts verraten!"} />
+                {app && isHost && (s.phase === "day" || s.phase === "election") && <CloseVote s={s} act={act} />}
+                {s.phase === "successor" && <SuccessorPick s={s} players={players} me={me} app={app} isHost={isHost} act={act} />}
               </>
             ) : s.phase === "night" ? (
               app ? <AppNight s={s} players={players} me={me} act={act} /> : <Panel title={<>🌙 Nacht {s.night}</>} sub="Augen zu! Der Spielleiter ruft die Rollen auf. Öffne sie nur, wenn du gerufen wirst." />
+            ) : s.phase === "successor" ? (
+              <SuccessorPick s={s} players={players} me={me} app={app} isHost={isHost} act={act} />
+            ) : s.phase === "election" ? (
+              <>
+                <News s={s} players={players} />
+                {app ? <AppVote s={s} players={players} me={me} isHost={isHost} act={act} />
+                  : <Panel title="👑 Hauptmannwahl" sub="Wählt per Handzeichen einen Hauptmann – seine Stimme zählt doppelt. Der Spielleiter trägt ihn ein." />}
+              </>
             ) : s.phase === "day" ? (
               <>
                 <News s={s} players={players} />
@@ -91,6 +109,16 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
         </Panel>
         <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "protect", target: pick[0] })}>Beschützen</Button>
       </>
+    );
+  }
+  if (role === "dieb" && own("dieb")) {
+    return (
+      <Panel title={title} sub="🥷 Die zwei übrigen Karten – willst du tauschen?">
+        <div className="grid gap-2">
+          {s.extra.map((r, i) => <Button key={i} size="lg" variant="secondary" onClick={() => act({ type: "steal", pick: i })}>{ROLES[r].emoji} {ROLES[r].name} nehmen</Button>)}
+          {!s.extra.every((r) => isWolf(r)) && <Button variant="ghost" onClick={() => act({ type: "steal", pick: null })}>Dieb bleiben</Button>}
+        </div>
+      </Panel>
     );
   }
   if (role === "wildeskind" && own("wildeskind")) {
@@ -143,6 +171,28 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
           <Picker ids={alive.filter((id) => !isWolf(s.roles[id]) && id !== s.victim && id !== s.infected)} players={players} selected={pick} onPick={one} />
         </Panel>
         <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "wolf2", target: pick[0] })}>Fressen</Button>
+      </>
+    );
+  }
+  if (role === "weisserwolf" && own("weisserwolf")) {
+    return (
+      <>
+        <Panel title={title} sub="❄️ Heute darfst du allein einen Werwolf fressen – oder niemanden.">
+          <Picker ids={alive.filter((id) => id !== me && isWolf(s.roles[id]))} players={players} selected={pick} onPick={one}
+            extra={{ label: "Niemand", selected: false, onPick: () => act({ type: "white", target: null }) }} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== 1} onClick={() => act({ type: "white", target: pick[0] })}>Fressen</Button>
+      </>
+    );
+  }
+  if (role === "floetenspieler" && own("floetenspieler")) {
+    const open = alive.filter((id) => id !== me && !s.enchanted.includes(id));
+    return (
+      <>
+        <Panel title={title} sub="🪈 Verzaubere zwei Menschen. Sind alle verzaubert, gewinnst du.">
+          <Picker ids={open} players={players} selected={pick} onPick={two} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={pick.length !== Math.min(2, open.length)} onClick={() => act({ type: "enchant", a: pick[0], b: pick[1] })}>Verzaubern</Button>
       </>
     );
   }
@@ -230,8 +280,11 @@ function AppVote({ s, players, me, isHost, act }: { s: WerwolfState; players: Pl
   const count = Object.keys(s.votes).length;
   return (
     <>
-      <Panel title={<>☀️ Tag {s.night}</>} sub={mine === undefined ? "Diskutiert – dann stimmt jeder ab, wer verurteilt wird." : `Du hast abgestimmt. ${count}/${voters(s).length} Stimmen sind da.`}>
-        <Picker ids={alive.filter((id) => id !== me)} players={players} selected={mine ? [mine] : []} onPick={(id) => act({ type: "vote", target: id })}
+      <Panel title={s.phase === "election" ? "👑 Hauptmannwahl" : s.runoff ? <>⚖️ Stichwahl</> : <>☀️ Tag {s.night}</>}
+        sub={mine === undefined
+          ? s.phase === "election" ? "Wen wählt ihr zum Hauptmann? Seine Stimme zählt doppelt." : s.runoff ? "Gleichstand – jetzt nur zwischen diesen Personen." : "Diskutiert – dann stimmt jeder ab, wer verurteilt wird."
+          : `Du hast abgestimmt. ${count}/${voters(s).length} Stimmen sind da.`}>
+        <Picker ids={(s.runoff ?? alive).filter((id) => id !== me || s.phase === "election")} players={players} selected={mine ? [mine] : []} onPick={(id) => act({ type: "vote", target: id })}
           extra={{ label: "Enthaltung", selected: mine === "", onPick: () => act({ type: "vote", target: "" }) }} />
       </Panel>
       {isHost && <CloseVote s={s} act={act} />}
@@ -276,6 +329,23 @@ function Allies({ s, players, me, compact }: { s: WerwolfState; players: Player[
   if (pack.length) lines.push(`🐺 Dein Rudel: ${pack.map((id) => `${nameOf(players, id)}${s.alive[id] ? "" : " ✝"}`).join(", ")}`);
   if (sister.length) lines.push(`👭 Deine Schwester: ${sister.map((id) => nameOf(players, id)).join(", ")}`);
   if (role === "wildeskind" && s.model) lines.push(`🧒 Dein Vorbild: ${nameOf(players, s.model)}`);
+  if (role !== "floetenspieler" && s.enchanted.includes(me)) lines.push(`🪈 Du bist verzaubert – mit dir: ${s.enchanted.filter((id) => id !== me).map((id) => nameOf(players, id)).join(", ") || "noch niemand"}`);
   if (!lines.length) return null;
   return <div className={compact ? "shrink-0 rounded-xl bg-navy-950/50 px-3 py-1.5 text-sm" : "mt-3 text-center text-sm text-muted-foreground"}>{lines.map((l) => <div key={l}>{l}</div>)}</div>;
+}
+
+/** Der gestorbene Hauptmann bestimmt seinen Nachfolger (online), sonst warten */
+function SuccessorPick({ s, players, me, app, isHost, act }: { s: WerwolfState; players: Player[]; me: string; app: boolean; isHost: boolean; act: (a: WerwolfAction) => void }) {
+  const [pick, setPick] = useState<string | null>(null);
+  if (app && s.captain === me) {
+    return (
+      <>
+        <Panel title="👑 Bestimme deinen Nachfolger" sub="Du bist gestorben. Wer wird neuer Hauptmann?">
+          <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={setPick} />
+        </Panel>
+        <Button size="lg" className="shrink-0" disabled={!pick} onClick={() => pick && act({ type: "successor", target: pick })}>Nachfolger bestimmen</Button>
+      </>
+    );
+  }
+  return <Panel title="👑 Neuer Hauptmann" sub={`${nameOf(players, s.captain)} bestimmt einen Nachfolger …${isHost && app ? " (Hängt es? Im Menü kannst du ihn zufällig bestimmen.)" : ""}`} />;
 }

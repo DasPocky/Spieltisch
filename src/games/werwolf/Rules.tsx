@@ -21,6 +21,7 @@ export function Rules({ focus }: { focus?: string }) {
         <h3 className="mt-4 font-semibold">Sieg</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           Das Dorf gewinnt, wenn alle Werwölfe tot sind. Die Werwölfe gewinnen, sobald sie mindestens so viele sind wie alle anderen. Ein gemischtes Liebespaar gewinnt, wenn es als Letztes übrig bleibt.
+          Solo-Rollen haben eigene Ziele: Der weiße Werwolf will als Einziger überleben, der Flötenspieler alle verzaubern, der Engel in der ersten Runde sterben.
         </p>
       </section>
 
@@ -41,6 +42,24 @@ export function Rules({ focus }: { focus?: string }) {
       </div>
       ))}
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Welche Rollen mitspielen, legt der Host in den Einstellungen fest. Der Urwolf und der große böse Wolf zählen zu den Werwölfen.</p>
+
+      <section className="glass mt-5 rounded-2xl p-4">
+        <h3 className="font-semibold">Hausregeln – so spielt jeder ein bisschen anders</h3>
+        <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
+          <li><b className="text-foreground">👑 Hauptmann:</b> Am ersten Tag wählt das Dorf einen Hauptmann. Seine Stimme zählt doppelt, bei Gleichstand zählt, wen er gewählt hat. Stirbt er, bestimmt er einen Nachfolger.</li>
+          <li><b className="text-foreground">Gleichstand:</b> niemand stirbt – oder Stichwahl zwischen den Gleichstehenden. Der Sündenbock stirbt bei einem Gleichstand am Ende immer.</li>
+          <li><b className="text-foreground">Seherin nur gut/böse:</b> Sie erfährt nicht die Rolle, nur ob jemand zu den Werwölfen gehört.</li>
+          <li><b className="text-foreground">Hexe heilt sich selbst:</b> in vielen Runden erlaubt, in manchen nicht.</li>
+          <li><b className="text-foreground">Erste Nacht ohne Opfer:</b> Die Wölfe lernen sich nur kennen.</li>
+          <li><b className="text-foreground">Tote dürfen mitreden</b> – oder sie schweigen.</li>
+          <li><b className="text-foreground">Rollen der Toten aufdecken</b> – oder erst am Ende.</li>
+        </ul>
+        <h3 className="mt-4 font-semibold">Mit echten Karten spielen</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          Stellt „Rollen: Eigene Karten“ ein, wenn ihr euer Kartenspiel (z. B. Die Werwölfe von Düsterwald) benutzt. Jeder zieht eine Karte.
+          Mit Spielleiter tippt er ein, wer was hat; erzählt die App, wählt online jeder seine gezogene Karte am eigenen Handy. Danach führt die App wie gewohnt durch Nacht und Tag.
+        </p>
+      </section>
 
       <section className="glass mt-5 rounded-2xl p-4">
         <h3 className="font-semibold">Erzähler: die App</h3>
