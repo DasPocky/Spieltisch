@@ -147,20 +147,13 @@ export const KEEP_CARD = new Set<CardId>(["fire", "clover"]);
 
 const latestCard = (s: TuttoState): CardId | undefined => s.turnCards[s.turnCards.length - 1];
 
-/**
- * Gerade frisch nach einem Tutto eine neue Karte, aber noch nichts damit gemacht?
- * Dann darf man die sicheren Punkte noch eintragen – auch bei Pflichtkarten.
- */
-export function freshAfterTutto(s: TuttoState): boolean {
-  if (s.turnCards.length < 2 || s.turnPts !== (s.cardStart ?? 0) || (s.cardTuttos ?? 0) > 0) return false;
-  return !s.dice || (!s.dice.roll.length && !s.dice.aside.length && !s.dice.tutto);
-}
+/** Stopp-Karte nach einem Tutto: wer weitergezockt hat, verliert alle Punkte dieses Zugs */
+export const stopAfterTutto = (s: TuttoState): boolean => s.turnCards.length > 1 && s.turnCards[s.turnCards.length - 1] === "stop";
 
 /** Darf man jetzt aufhören und die Punkte eintragen? */
 export function canStop(s: TuttoState): boolean {
   const card = latestCard(s);
   if (!card || s.afterTutto || card === "stop") return true;
-  if (freshAfterTutto(s)) return true;
   if (s.dice?.tutto && !KEEP_CARD.has(card)) return true;
   return !MUST_PLAY.has(card);
 }
@@ -239,9 +232,8 @@ function applyTutto(s: TuttoState, card: CardId, ctx: GameContext): void {
       return;
     default: add(CARD_BY_ID[card].quick ?? 0);
   }
-  // Nach dem Tutto: automatisch weiter mit neuer Karte – oder erst fragen
-  if (autoDrawOf(ctx)) drawCard(s, ctx);
-  else if (diceModeOf(ctx) === "real") s.afterTutto = true;
+  // Nach dem Tutto entscheidet der Spieler: aufhören oder weiterzocken (erst dann kommt die neue Karte)
+  if (diceModeOf(ctx) === "real") s.afterTutto = true;
 }
 
 function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
@@ -338,14 +330,15 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
         const d = appDice ? s.dice : null;
         if (d?.bust) zero = card !== "fire";
         else if (!canStop(s)) throw new GameError("Mit dieser Karte darfst du nicht aufhören – spiel weiter.");
-        else if (d && !d.tutto && d.roll.length && !freshAfterTutto(s)) {
+        else if (d && !d.tutto && d.roll.length) {
           // offene Auswahl noch mitnehmen
           const v = selectionValue(d, card);
           if (v === null) throw new GameError("Wähle zuerst wertbare Würfel aus.");
           if (!NO_DICE_POINTS.has(card)) s.turnPts = Math.min(MAX_TURN, s.turnPts + v);
         }
       }
-      const pts = zero ? 0 : s.turnPts;
+      // Stopp nach einem Tutto: alle Punkte des Zugs sind weg
+      const pts = zero || stopAfterTutto(s) ? 0 : s.turnPts;
       const penalized: string[] = [];
       if (s.pmOn && pts > 0) {
         const max = Math.max(...ctx.players.map((x) => score(s, x.id)));
@@ -409,7 +402,7 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
       ],
     },
     { key: "target", label: "Spielziel", type: "number", default: 6000, min: 1000, max: 50000, step: 1000, inGame: true },
-    { key: "autoDraw", label: "Karten automatisch aufdecken", hint: "Zu Zugbeginn und nach jedem Tutto", type: "toggle", default: true, inGame: true },
+    { key: "autoDraw", label: "Karte zu Zugbeginn automatisch aufdecken", hint: "nach einem Tutto entscheidet ihr selbst: aufhören oder weiterzocken", type: "toggle", default: true, inGame: true },
     { key: "torte", label: "Promokarte „Torte“", hint: "1× im Stapel: Drilling + zwei Fünfen + eine Eins = 1.500", type: "toggle", default: false },
   ],
   setup,

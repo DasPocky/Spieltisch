@@ -1,4 +1,4 @@
-import { canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, stopAfterTutto, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Confirm } from "@/components/Confirm";
 import type { ViewMode } from "@/hooks/useViewMode";
 import { cn, fmt, vibrate } from "@/lib/utils";
@@ -65,7 +65,7 @@ export function PointsPad({ state, onAction, disabled, mode }: { state: TuttoSta
         </div>
       ) : (
         <p className="px-1 pt-1 pb-0.5 text-sm text-muted-foreground">
-          {state.afterTutto ? "Tutto geschafft! Neue Karte oder aufhören?" : card ? NO_PAD[card] : "Karte ziehen, dann würfeln."}
+          {state.afterTutto ? "Tutto geschafft! Aufhören oder weiterzocken?" : card ? NO_PAD[card] : "Karte ziehen, dann würfeln."}
         </p>
       )}
     </section>
@@ -99,15 +99,15 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
   if (state.afterTutto) {
     return (
       <div className="grid grid-cols-2 gap-2">
-        <Btn sub="Aufhören" onClick={() => book()}>{pts} eintragen</Btn>
-        <Btn sub="Weiterspielen" kind="primary" onClick={() => onAction({ type: "draw" })}>Neue Karte</Btn>
+        <Btn sub="Aufhören" kind="primary" onClick={() => book()}>{pts} eintragen</Btn>
+        <Btn sub="Neue Karte – Risiko" onClick={() => onAction({ type: "draw" })}>🎲 Weiterzocken</Btn>
       </div>
     );
   }
   if (card === "stop") {
     return (
       <div className="grid">
-        <Btn sub={state.turnPts > 0 ? `Stopp – ${pts} eintragen` : "Stopp – kein Wurf"} kind="primary" onClick={() => book(state.turnPts === 0)}>Nächster Spieler</Btn>
+        <Btn sub={stopAfterTutto(state) && state.turnPts > 0 ? `Stopp – ${pts} Punkte verfallen` : "Stopp – kein Wurf"} kind="primary" onClick={() => book(true)}>Nächster Spieler</Btn>
       </div>
     );
   }

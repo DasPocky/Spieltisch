@@ -111,19 +111,35 @@ describe("Echte Würfel", () => {
 
   it("Plus/Minus ohne Tutto bestraft niemanden", () => {
     let r = start();
-    r = game(pts(draw(r, "b200"), 1000), { type: "book" });
-    r = game(pts(draw(r, "b200"), 300), { type: "tutto" });
-    r = game(draw(r, "pm"), { type: "book" }); // frisch nach Tutto aufgehört
-    expect(g(r).scores).toMatchObject({ p1: 1000, p2: 500 });
+    r = game(pts(draw(r, "b200"), 1000), { type: "book" }); // Anna 1000
+    r = game(draw(r, "pm"), { type: "book", zero: true });
+    expect(g(r).scores).toMatchObject({ p1: 1000, p2: 0 });
+    expect(g(r).log.at(-1)!.penalized).toEqual([]);
   });
 
-  it("automatisch aufdecken: zu Zugbeginn und nach Tutto", () => {
+  it("Stopp nach einem Tutto: alle Punkte des Zugs verfallen", () => {
+    let r = game(pts(draw(start(), "b300"), 500), { type: "tutto" });
+    expect(g(r).turnPts).toBe(800);
+    r = draw(r, "stop"); // weitergezockt
+    expect(() => pts(r, 100)).toThrow(/Stopp/);
+    r = game(r, { type: "book" });
+    expect(g(r).scores.p1).toBe(0);
+    expect(g(r).curId).toBe("p2");
+  });
+
+  it("nach einem Tutto aufhören behält die Punkte", () => {
+    let r = game(pts(draw(start(), "b300"), 500), { type: "tutto" });
+    r = game(r, { type: "book" });
+    expect(g(r).scores.p1).toBe(800);
+  });
+
+  it("automatisch aufdecken: zu Zugbeginn – nach einem Tutto entscheidet der Spieler", () => {
     let r = act(roomWith(["Anna", "Ben"]), { type: "start" });
     expect(g(r).turnCards).toHaveLength(1);
     r = { ...r, game: { ...g(r), turnCards: ["b200"], cardStart: 0 } };
     r = game(pts(r, 300), { type: "tutto" });
-    expect(g(r).turnCards).toHaveLength(2);
-    expect(g(r).cardStart).toBe(500);
+    expect(g(r).turnCards).toHaveLength(1); // keine neue Karte ohne Entscheidung
+    expect(g(r).afterTutto).toBe(true);
     r = game(r, { type: "book" });
     expect(g(r).scores.p1).toBe(500);
     expect(g(r).curId).toBe("p2");
@@ -185,18 +201,18 @@ describe("App-Würfel", () => {
     expect(g(r).dice!.bust).toBe(true);
   });
 
-  it("nach Tutto automatisch neue Karte, sichere Punkte eintragbar", () => {
-    let r = draw(start(["Anna", "Ben"], { diceMode: "app" }), "b300");
-    r = act(r, { type: "setOption", key: "autoDraw", value: true });
+  it("App-Würfel: nach Tutto aufhören oder weiterzocken, Stopp danach kostet alles", () => {
+    let r = draw(app(), "b300");
     fixDice([1, 1, 1, 5, 5, 5]);
     r = game(r, { type: "roll" });
     for (let i = 0; i < 6; i++) r = game(r, { type: "toggleDie", i });
-    r = { ...r, game: stackCard(g(r), "street") };
     r = game(r, { type: "roll" });
-    expect(g(r).turnCards).toEqual(["b300", "street"]);
+    expect(g(r).dice!.tutto).toBe(true);
+    expect(g(r).turnCards).toEqual(["b300"]);
     expect(g(r).turnPts).toBe(1800);
+    r = draw(r, "stop");
     r = game(r, { type: "book" });
-    expect(g(r).scores.p1).toBe(1800);
+    expect(g(r).scores.p1).toBe(0);
   });
 
   it("würfeln, auswählen, eintragen", () => {

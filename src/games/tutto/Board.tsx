@@ -1,4 +1,4 @@
-import { CARD_BY_ID, diceModeOf, freshAfterTutto, score, targetOf, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { CARD_BY_ID, diceModeOf, KEEP_CARD, stopAfterTutto, score, targetOf, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
@@ -77,12 +77,16 @@ function TurnHint({ state, canAct, full, gameId }: { state: TuttoState; canAct: 
   const card = latest ? CARD_BY_ID[latest] : null;
   const idle = canAct ? "Karte antippen, dann würfeln." : "Gleich wird eine Karte gezogen.";
   // Gerade ein Tutto geschafft und die nächste Karte liegt schon offen
-  const fresh = (freshAfterTutto(state) && state.turnPts > 0) || !!state.afterTutto;
+  const d = state.dice;
+  const fresh = !!state.afterTutto || (!!d?.tutto && !!latest && !KEEP_CARD.has(latest));
+  const lost = stopAfterTutto(state) && state.turnPts > 0;
   return (
     <div className="mx-auto mb-2 flex w-full max-w-[40ch] shrink-0 items-start gap-2 px-2 text-sm leading-snug text-muted-foreground">
       <div className="min-w-0 flex-1 text-center">
         <p className={cn("min-h-[2lh]", full ? "line-clamp-3" : "line-clamp-2")}>
-          {fresh ? <b className="text-gold" data-testid="tutto-banner">🎉 Tutto! {fmt(state.turnPts)} sicher – weiterzocken oder aufhören?</b> : card ? card.rule : idle}
+          {fresh ? <b className="text-gold" data-testid="tutto-banner">🎉 Tutto! {fmt(state.turnPts)} Punkte – aufhören oder weiterzocken? Bei Stopp oder Niete ist alles weg.</b>
+            : lost ? <b className="text-destructive" data-testid="stop-lost">💥 Stopp nach dem Tutto – die {fmt(state.turnPts)} Punkte verfallen.</b>
+            : card ? card.rule : idle}
         </p>
         {full && state.turnCards.length > 1 && (
           <div className="no-scrollbar mt-1.5 flex justify-center gap-1.5 overflow-x-auto">

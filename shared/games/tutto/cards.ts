@@ -24,7 +24,7 @@ export interface CardType {
 
 const BONUS_HELP = (n: number) =>
   `Würfle ganz normal. Schaffst du ein Tutto (alle 6 Würfel gewertet), bekommst du deine Würfelpunkte plus ${n} Bonus. ` +
-  "Danach darfst du aufhören oder eine neue Karte ziehen und weiterspielen. Hörst du vor dem Tutto auf, zählen nur die Würfelpunkte. Bei einer Niete sind alle Punkte dieses Zugs weg.";
+  "Danach darfst du aufhören oder weiterzocken: Dann gibt es eine neue Karte – kommt eine Stopp-Karte oder wirfst du eine Niete, sind alle Punkte dieses Zugs weg. Hörst du vor dem Tutto auf, zählen nur die Würfelpunkte.";
 
 export const CARDS: CardType[] = [
   { id: "b200", value: "+200", name: "Bonus 200", big: "200", sub: "Bonus", count: 5, color: "#b8913a", quick: 200, rule: "Bei einem Tutto gibt es 200 Punkte extra.", help: BONUS_HELP(200) },
@@ -40,8 +40,8 @@ export const CARDS: CardType[] = [
     help: "Du brauchst eine Straße: Lege aus jedem Wurf mindestens einen Würfel mit einer Zahl beiseite, die du noch nicht hast, bis 1, 2, 3, 4, 5 und 6 vollständig sind. Gelingt es, gibt es 2.000 Punkte (normale Würfelpunkte zählen hier nicht). Bringt ein Wurf keine neue Zahl, ist es eine Niete." },
   { id: "pm", value: "±1.000", name: "Plus/Minus", big: "±", sub: "1.000 Punkte", count: 5, color: "#5a6478", quick: 1000, rule: "Bei einem Tutto: 1.000 Punkte für dich, der Führende verliert 1.000.",
     help: "Du musst ein Tutto würfeln. Gelingt es, bekommst du 1.000 Punkte – die Würfelpunkte zählen dabei nicht. Gleichzeitig verliert der Führende 1.000 Punkte (bei Gleichstand alle Führenden). Bist du selbst vorn, verliert niemand etwas. Bei einer Niete gibt es nichts." },
-  { id: "stop", name: "Stopp", big: "STOP", sub: "Zug vorbei", count: 10, color: "#a84a57", rule: "Der Zug ist sofort vorbei. Der Nächste ist dran.",
-    help: "Pech gehabt: Du darfst in diesem Zug nicht würfeln, der Nächste ist dran. Tippe einfach auf „Weiter“." },
+  { id: "stop", name: "Stopp", big: "STOP", sub: "Zug vorbei", count: 10, color: "#a84a57", rule: "Der Zug ist sofort vorbei. Nach einem Tutto sind alle Punkte des Zugs weg.",
+    help: "Pech gehabt: Du darfst nicht würfeln, der Nächste ist dran. Hast du vorher ein Tutto geschafft und weitergezockt, verfallen alle Punkte dieses Zugs – deshalb gut überlegen, ob man nach einem Tutto lieber aufhört." },
   { id: "clover", name: "Kleeblatt", big: "☘", sub: "Kleeblatt", count: 1, color: "#4f8a5e", rule: "Zweimal hintereinander Tutto – dann ist das Spiel sofort gewonnen.",
     help: "Die seltenste Karte (nur einmal im Stapel). Schaffst du zweimal hintereinander ein Tutto, ohne zwischendurch eine Niete zu werfen, hast du das Spiel sofort gewonnen – egal wie viele Punkte du hast. Aufhören geht nicht. Bei einer Niete gibt es nichts." },
   { id: "torte", value: "1.500", name: "Torte", big: "🎂", sub: "1.500 Punkte", count: 1, color: "#c0607e", promo: true, rule: "Drilling, zwei Fünfen und eine Eins auslegen – dann gibt es 1.500 Punkte.",
