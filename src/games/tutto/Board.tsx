@@ -1,4 +1,5 @@
-import { CARD_BY_ID, diceModeOf, KEEP_CARD, stopAfterTutto, score, targetOf, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { useState } from "react";
+import { CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, stopAfterTutto, score, targetOf, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
@@ -6,6 +7,7 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { cn, fmt } from "@/lib/utils";
 import { DiceActions, DicePanel } from "./Dice";
+import { CardPicker } from "./CardPicker";
 import { GameCard } from "./GameCard";
 import { PointsPad, RealActions } from "./PointsPad";
 
@@ -16,6 +18,10 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
   const cur = room.players.find((p) => p.id === state.curId);
   const winner = state.winnerId ? room.players.find((p) => p.id === state.winnerId) : null;
   const entries = room.players.map((p) => ({ id: p.id, name: p.name, score: score(state, p.id), progress: score(state, p.id) / target }));
+  // Echte Karten: „Karte ziehen“ öffnet die Auswahl, welche Karte am Tisch gezogen wurde
+  const [picking, setPicking] = useState(false);
+  const realCards = realCardsOf(room);
+  const onAction = (a: TuttoAction) => (a.type === "draw" && realCards && !a.card ? setPicking(true) : act(a));
 
   if (winner) {
     return (
@@ -47,20 +53,20 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
           <span className="text-xl font-extrabold tracking-tight" data-testid="current-player">{cur?.id === me ? "Du" : cur?.name}</span>
         </div>
         <div className="flex min-h-0 w-full flex-1 items-center justify-center py-2">
-          <GameCard cards={state.turnCards} turn={state.log.length} onDraw={() => act({ type: "draw" })} disabled={!canAct || !canDraw} />
+          <GameCard cards={state.turnCards} turn={state.log.length} onDraw={() => onAction({ type: "draw" })} disabled={!canAct || !canDraw} />
         </div>
         <TurnHint state={state} canAct={canAct} full={mode === "full"} gameId={room.gameId} />
       </div>
 
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {appDice
-          ? <DicePanel state={state} onAction={act} disabled={!canAct} />
-          : <PointsPad state={state} onAction={act} disabled={!canAct} mode={mode} />}
+          ? <DicePanel state={state} onAction={onAction} disabled={!canAct} />
+          : <PointsPad state={state} onAction={onAction} disabled={!canAct} mode={mode} />}
         <div className="mt-2">
           {canAct && appDice ? (
-            <DiceActions state={state} onAction={act} />
+            <DiceActions state={state} onAction={onAction} />
           ) : canAct ? (
-            <RealActions state={state} onAction={act} />
+            <RealActions state={state} onAction={onAction} />
           ) : (
             <div className="glass rounded-xl py-4 text-center text-muted-foreground">
               {room.entry === "host" ? <>Der Host spielt für <b className="text-foreground">{cur?.name}</b></> : <>Warte auf <b className="text-foreground">{cur?.name}</b></>}
@@ -68,6 +74,7 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
           )}
         </div>
       </div>
+      {picking && <CardPicker torte={room.options.torte === true} onClose={() => setPicking(false)} onPick={(card) => { setPicking(false); act({ type: "draw", card }); }} />}
     </>
   );
 }

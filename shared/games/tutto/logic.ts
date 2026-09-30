@@ -67,7 +67,8 @@ export interface TuttoState {
 }
 
 export type TuttoAction =
-  | { type: "draw" }
+  /** `card`: bei echten Karten die Karte, die gezogen wurde */
+  | { type: "draw"; card?: CardId }
   | { type: "addPts"; delta: number }
   | { type: "clearPts" }
   | { type: "tutto" }
@@ -83,7 +84,9 @@ const HOST_ACTIONS = new Set<string>(["undo", "shuffle"]);
 export const score = (s: TuttoState, id: string) => s.scores[id] ?? 0;
 export const diceModeOf = (ctx: { options: GameContext["options"] }): DiceMode => (ctx.options.diceMode === "app" ? "app" : "real");
 export const targetOf = (ctx: { options: GameContext["options"] }) => Number(ctx.options.target) || 6000;
-export const autoDrawOf = (ctx: { options: GameContext["options"] }) => ctx.options.autoDraw !== false;
+/** Echte Karten: gezogen wird am Tisch, in der App wird die Karte nur angetippt */
+export const realCardsOf = (ctx: { options: GameContext["options"] }) => ctx.options.cards === "real";
+export const autoDrawOf = (ctx: { options: GameContext["options"] }) => ctx.options.autoDraw !== false && !realCardsOf(ctx);
 
 /** Punkte einer Würfelauswahl nach Tutto-Regeln, null wenn ein Würfel nicht wertbar ist. */
 export function scoreDice(dice: number[]): number | null {
@@ -172,9 +175,16 @@ export function freshPile(options: GameContext["options"] = {}): CardId[] {
 }
 
 /** Neue Karte aufdecken – der Punktestand davor ist ab jetzt sicher */
-function drawCard(s: TuttoState, ctx: GameContext) {
+function drawCard(s: TuttoState, ctx: GameContext, pick?: CardId) {
   if (!s.pile.length) s.pile = freshPile(ctx.options);
-  s.turnCards.push(s.pile.pop()!);
+  if (realCardsOf(ctx)) {
+    if (!pick || !CARD_BY_ID[pick] || (pick === "torte" && !ctx.options.torte)) throw new GameError("Welche Karte hast du gezogen?");
+    // Den Stapel in der App mitführen, damit „noch im Stapel“ zum echten Stapel passt
+    let i = s.pile.lastIndexOf(pick);
+    if (i < 0) { s.pile = freshPile(ctx.options); i = s.pile.lastIndexOf(pick); }
+    if (i >= 0) s.pile.splice(i, 1);
+    s.turnCards.push(pick);
+  } else s.turnCards.push(s.pile.pop()!);
   s.cardStart = s.turnPts;
   s.cardTuttos = 0;
   s.afterTutto = false;
@@ -254,7 +264,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
           if (KEEP_CARD.has(card)) throw new GameError("Mit dieser Karte würfelst du weiter.");
         } else if (!s.afterTutto) throw new GameError("Eine neue Karte gibt es erst nach einem Tutto.");
       }
-      drawCard(s, ctx);
+      drawCard(s, ctx, a.card);
       return s;
     }
     case "tutto": {
@@ -401,8 +411,15 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
         { value: "app", label: "App-Würfel", hint: "App würfelt und zählt" },
       ],
     },
+    {
+      key: "cards", label: "Karten", type: "choice", default: "app", inGame: true,
+      choices: [
+        { value: "app", label: "App-Karten", hint: "App mischt und deckt auf" },
+        { value: "real", label: "Echte Karten", hint: "gezogene Karte antippen" },
+      ],
+    },
     { key: "target", label: "Spielziel", type: "number", default: 6000, min: 1000, max: 50000, step: 1000, inGame: true },
-    { key: "autoDraw", label: "Karte zu Zugbeginn automatisch aufdecken", hint: "nach einem Tutto entscheidet ihr selbst: aufhören oder weiterzocken", type: "toggle", default: true, inGame: true },
+    { key: "autoDraw", showIf: (o) => o.cards !== "real", label: "Karte zu Zugbeginn automatisch aufdecken", hint: "nach einem Tutto entscheidet ihr selbst: aufhören oder weiterzocken", type: "toggle", default: true, inGame: true },
     { key: "torte", label: "Promokarte „Torte“", hint: "1× im Stapel: Drilling + zwei Fünfen + eine Eins = 1.500", type: "toggle", default: false },
   ],
   setup,

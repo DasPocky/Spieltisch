@@ -5,10 +5,16 @@
 import { deckOf, deckSetting, DECKS, drawCards, isCardOf, isJack, rankOf, shuffledDeck, sortHand, suitOf, type Card, type DeckId, type Suit } from "../../cards/deck";
 import { shuffle } from "../../platform/random";
 import { nextPlayerId } from "../../platform/turns";
+import { applyPad, isPadAction, newPad, padRemove, type Pad, type PadAction } from "../../platform/pad";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 export interface MauMauState {
   v: 1;
+  /** „table“: echte Karten, die App zählt nur Rundensiege */
+  mode?: "app" | "table";
+  pad?: Pad | null;
+  /** Siege bis zum Gesamtsieg (echte Karten) */
+  goal?: number;
   deck: DeckId;
   hands: Record<string, Card[]>;
   /** Anzahl Karten je Spieler (öffentlich) */
@@ -31,6 +37,7 @@ export interface MauMauState {
 }
 
 export type MauMauAction =
+  | PadAction
   | { type: "play"; card: Card; wish?: Suit; mau?: boolean }
   | { type: "draw" }
   | { type: "pass" };
@@ -86,6 +93,12 @@ function step(players: Player[], id: string | null, dir: 1 | -1): string | null 
 
 function setup(ctx: GameContext): MauMauState {
   const r = rulesOf(ctx.options);
+  if (ctx.options.mode === "table") {
+    return {
+      v: 1, mode: "table", pad: newPad(ctx.players.map((p) => p.id)), goal: Number(ctx.options.goal) || 5, deck: r.deck, hands: {}, counts: {}, pile: [], pileCount: 0,
+      discard: [], curId: null, dir: 1, wish: null, pendingDraw: 0, drawn: null, winnerId: null, n: 0, log: [],
+    };
+  }
   const deck = DECKS[r.deck];
   const pile = shuffledDeck(deck);
   const hands: Record<string, Card[]> = {};
@@ -102,10 +115,20 @@ function setup(ctx: GameContext): MauMauState {
   return s;
 }
 
+const APP = (o: Options) => o.mode !== "table";
 const nameOf = (ctx: GameContext, id: string | null) => ctx.players.find((p) => p.id === id)?.name ?? "?";
 
 function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauState {
   const s = structuredClone(prev);
+  if (s.mode === "table") {
+    if (!isPadAction(a) || !s.pad) throw new GameError("Mit echten Karten zählt die App nur die Siege.");
+    if (s.winnerId) throw new GameError("Die Partie ist vorbei.");
+    applyPad(s.pad, a, ctx);
+    const champ = ctx.players.find((p) => (s.pad!.scores[p.id] ?? 0) >= (s.goal ?? 5));
+    if (champ) s.winnerId = champ.id;
+    return s;
+  }
+  if (isPadAction(a)) throw new GameError("Das geht nur mit echten Karten.");
   const r = rulesOf(ctx.options);
   const me = s.curId;
   if (!me || !s.hands[me]) throw new GameError("Es ist niemand am Zug.");
@@ -196,14 +219,25 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   ownTurnsOnly: true,
   joinMidGame: false,
   settings: [
-    deckSetting("fr32"),
-    { key: "hand", label: "Karten pro Spieler", type: "choice", default: "5", choices: [{ value: "5", label: "5 Karten" }, { value: "6", label: "6 Karten" }] },
-    { key: "stack7", label: "Siebenen stapeln", type: "toggle", default: true, hint: "7 heißt zwei ziehen – wer selbst eine 7 hat, legt drauf und der Nächste zieht alles" },
-    { key: "skip8", label: "8: Nächster setzt aus", type: "toggle", default: true },
-    { key: "unterOnUnter", label: "Bube auf Bube erlaubt", type: "toggle", default: false, hint: "im deutschen Blatt: Unter auf Unter" },
-    { key: "reverse9", label: "9: Richtungswechsel", type: "toggle", default: false },
-    { key: "againA", label: "Ass: nochmal legen", type: "toggle", default: false },
-    { key: "mau", label: "„Mau“ sagen", type: "toggle", default: true, hint: "vor der vorletzten Karte, sonst eine Strafkarte" },
+    {
+      key: "mode", label: "Karten", type: "choice", default: "app",
+      choices: [
+        { value: "app", label: "In der App", hint: "App mischt und teilt aus" },
+        { value: "table", label: "Echte Karten", hint: "App zählt die Rundensiege" },
+      ],
+    },
+    {
+      key: "goal", label: "Gewonnen hat, wer zuerst …", type: "choice", default: "5", showIf: (o) => o.mode === "table",
+      choices: [{ value: "3", label: "3 Siege" }, { value: "5", label: "5 Siege" }, { value: "10", label: "10 Siege" }],
+    },
+    { ...deckSetting("fr32"), showIf: APP },
+    { key: "hand", showIf: APP, label: "Karten pro Spieler", type: "choice", default: "5", choices: [{ value: "5", label: "5 Karten" }, { value: "6", label: "6 Karten" }] },
+    { key: "stack7", showIf: APP, label: "Siebenen stapeln", type: "toggle", default: true, hint: "7 heißt zwei ziehen – wer selbst eine 7 hat, legt drauf und der Nächste zieht alles" },
+    { key: "skip8", showIf: APP, label: "8: Nächster setzt aus", type: "toggle", default: true },
+    { key: "unterOnUnter", showIf: APP, label: "Bube auf Bube erlaubt", type: "toggle", default: false, hint: "im deutschen Blatt: Unter auf Unter" },
+    { key: "reverse9", showIf: APP, label: "9: Richtungswechsel", type: "toggle", default: false },
+    { key: "againA", showIf: APP, label: "Ass: nochmal legen", type: "toggle", default: false },
+    { key: "mau", showIf: APP, label: "„Mau“ sagen", type: "toggle", default: true, hint: "vor der vorletzten Karte, sonst eine Strafkarte" },
   ],
   /** Es muss nach dem Austeilen genug zum Ziehen bleiben */
   playerLimits: (o) => {
@@ -213,11 +247,12 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   },
   setup,
   apply,
-  actionKind: (a) => (a.type === "play" || a.type === "draw" || a.type === "pass" ? "turn" : null),
+  actionKind: (a) => (a.type === "play" || a.type === "draw" || a.type === "pass" ? "turn" : isPadAction(a) ? "host" : null),
   currentPlayerId: (s) => (s.winnerId ? null : s.curId),
   isOver: (s) => s.winnerId !== null,
-  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId })),
+  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId, ...(s.pad ? { score: s.pad.scores[p.id] ?? 0 } : {}) })),
   skipLabel: (s, ctx) => {
+    if (s.mode === "table") return null;
     const cur = ctx.players.find((p) => p.id === s.curId);
     return cur && !s.winnerId ? `Zug von ${cur.name} überspringen (zieht ${s.drawn ? "nichts mehr" : s.pendingDraw || 1})` : null;
   },
@@ -239,6 +274,7 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
+    if (s.pad) { padRemove(s.pad, id); return s; }
     // Karten des Spielers kommen unter den Ziehstapel
     s.pile.unshift(...(s.hands[id] ?? []));
     delete s.hands[id];

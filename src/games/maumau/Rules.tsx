@@ -26,6 +26,8 @@ export function Rules({ focus }: { focus?: string }) {
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           Bevor du deine vorletzte Karte legst, tippst du auf <b className="text-foreground">Mau!</b>. Vergessen? Dann gibt es eine Strafkarte.
         </p>
+        <h3 className="mt-4 font-semibold">Mit echten Karten</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Ihr spielt mit eurem Kartenspiel am Tisch, die App zählt nur, wer wie viele Runden gewonnen hat (bis 3, 5 oder 10 Siege).</p>
         <div className="mt-3 flex justify-center gap-2">
           {FR_SUITS.map((s) => <PlayingCard key={s} card={`${s}-A`} className="w-14" />)}
         </div>

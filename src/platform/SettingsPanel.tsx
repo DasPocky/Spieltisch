@@ -30,9 +30,9 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
         <h3 className="font-semibold">Einstellungen</h3>
         {!editable && <span className="text-xs text-muted-foreground">legt der Host fest</span>}
       </div>
-      {logic.settings.map((def, i) => (
+      {logic.settings.filter((def) => !def.showIf || def.showIf(room.options)).map((def, i, shown) => (
         <div key={def.key} className="grid gap-4">
-          {def.group && def.group !== logic.settings[i - 1]?.group && (
+          {def.group && def.group !== shown[i - 1]?.group && (
             <h4 className="-mb-1 border-t border-border pt-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">{def.group}</h4>
           )}
           <Setting def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}

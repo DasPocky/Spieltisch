@@ -321,3 +321,25 @@ describe("Spieler während der Partie", () => {
     expect(g(r).curId).toBe("p9");
   });
 });
+
+describe("Echte Karten", () => {
+  it("Karte wird angetippt statt gezogen, kein automatisches Aufdecken", () => {
+    let r = roomWith(["Anna", "Ben"]);
+    r = act(r, { type: "setOption", key: "cards", value: "real" });
+    r = act(r, { type: "start" });
+    expect(g(r).turnCards).toEqual([]);
+    const before = g(r).pile.filter((c) => c === "b300").length;
+    expect(() => game(r, { type: "draw" })).toThrow(/Welche Karte/);
+    expect(() => game(r, { type: "draw", card: "torte" })).toThrow(/Welche Karte/);
+    r = game(r, { type: "draw", card: "b300" });
+    expect(g(r).turnCards).toEqual(["b300"]);
+    expect(g(r).pile.filter((c) => c === "b300").length).toBe(before - 1);
+    r = pts(r, 300);
+    r = game(r, { type: "tutto" });
+    r = game(r, { type: "draw", card: "stop" });
+    r = game(r, { type: "book" });
+    expect(g(r).scores.p1 ?? 0).toBe(0);
+    expect(g(r).curId).toBe("p2");
+    expect(g(r).turnCards).toEqual([]);
+  });
+});

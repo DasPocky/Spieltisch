@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildONDeck, resolveNight, type ONRole, type ONState } from "@shared/games/einenacht/logic";
 import { viewRoom, type RoomState } from "@shared/platform/room";
+import { getGame } from "@shared/games";
 import { act, game, roomWith } from "./helpers";
 
 const g = (r: RoomState) => r.game as ONState;
@@ -95,5 +96,27 @@ describe("Eine Nacht", () => {
     expect(g(r).final!.p1).toBe("seherin");
     r = w(r, { type: "lynch", targets: ["p2"] });
     expect(g(r).winners).toEqual(["dorf"]);
+  });
+});
+
+describe("Eine Nacht mit eigenen Karten", () => {
+  it("App erzählt nur: Schritte aus den Einstellungen, Host trägt Gewinner ein", () => {
+    let r = act(roomWith(["Anna", "Ben", "Cem"]), { type: "selectGame", gameId: "einenacht" });
+    r = act(r, { type: "setOption", key: "cards", value: "own" });
+    r = act(r, { type: "setOption", key: "schlaflose", value: true });
+    r = act(r, { type: "start" }, "p1");
+    const s = () => r.game as ONState;
+    expect(s().own).toBe(true);
+    r = game(r, { type: "startNight" }, "p1");
+    expect(s().pending).toEqual(["sleep", "werwolf", "seherin", "raeuber", "unruhestifter", "schlaflose"]);
+    expect(() => game(r, { type: "next" }, "p2")).toThrow(/Host/);
+    while (s().phase === "night") r = game(r, { type: "next" }, "p1");
+    expect(s().phase).toBe("day");
+    expect(() => game(r, { type: "lynch", targets: ["p2"] }, "p1")).toThrow(/eigenen/);
+    expect(() => game(r, { type: "settle", team: "dorf", winners: ["p1"] }, "p2")).toThrow();
+    r = game(r, { type: "settle", team: "werwolf", winners: ["p2"] }, "p1");
+    expect(s().phase).toBe("over");
+    const res = getGame("einenacht").results!(r.game, { players: r.players, hostId: r.hostId, actorId: null, options: r.options, now: 0 });
+    expect(res.filter((x) => x.won).map((x) => x.id)).toEqual(["p2"]);
   });
 });

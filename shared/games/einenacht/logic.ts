@@ -34,6 +34,10 @@ const STEP_ORDER: ONStep[] = ["werwolf", "guenstling", "freimaurer", "seherin", 
 
 export interface ONState {
   v: 1;
+  /** Eigene Karten: die App erzählt nur (Nacht, Timer), Rollen kennt sie nicht */
+  own?: boolean;
+  /** Eigene Karten: wer laut Host gewonnen hat */
+  ownWinners?: string[];
   /** lokal: schrittweise am Gerät; online: jeder am eigenen Handy */
   stepwise: boolean;
   /** Karten zu Beginn (so handeln alle nachts) */
@@ -74,7 +78,9 @@ export type ONAction =
   | { type: "nightDone" }
   | { type: "vote"; target: string }
   | { type: "closeVote" }
-  | { type: "lynch"; targets: string[] };
+  | { type: "lynch"; targets: string[] }
+  /** Eigene Karten: Host trägt nach dem Aufdecken ein, wer gewonnen hat */
+  | { type: "settle"; team: "dorf" | "werwolf" | "gerber" | null; winners: string[] };
 
 const isWolfTeam = (r: ONRole) => r === "werwolf";
 
@@ -114,6 +120,15 @@ const needsAction = (s: ONState, id: string) => s.start[id] === "betrunkener";
 
 function setup(ctx: GameContext): ONState {
   const ids = ctx.players.map((p) => p.id);
+  if (ctx.options.cards === "own") {
+    // Rollen kennt die App nicht – Platzhalter, damit die Spielerliste stimmt
+    return {
+      v: 1, own: true, ownWinners: [], stepwise: true, start: Object.fromEntries(ids.map((id) => [id, "dorf" as ONRole])), center: ["dorf", "dorf", "dorf"],
+      phase: "reveal", ready: [], pending: [], done: [], wolfPeek: null, seer: null, robber: null, robberSkip: false,
+      trouble: null, troubleSkip: false, drunk: null, final: null, finalCenter: null, dayStartedAt: null,
+      minutes: Number(ctx.options.minutes) || 5, votes: {}, dead: [], winners: [],
+    };
+  }
   const deck = shuffle(buildONDeck(ids.length, ctx.options));
   const local = ctx.actorId === null;
   return {
@@ -125,8 +140,13 @@ function setup(ctx: GameContext): ONState {
 }
 
 
-function startNight(s: ONState) {
+function startNight(s: ONState, o: Options) {
   s.phase = "night";
+  if (s.own) {
+    // Eigene Karten: alle eingestellten Rollen werden aufgerufen
+    s.pending = ["sleep", ...STEP_ORDER.filter((step) => step === "werwolf" || o[step] === true)];
+    return;
+  }
   // Schritte gibt es auch für Rollen in der Mitte – sonst würde man am Ablauf erkennen, was fehlt
   const enabled = (step: ONStep) => step === "werwolf" || [...Object.values(s.start), ...s.center].includes(step as ONRole);
   s.pending = s.stepwise ? ["sleep", ...STEP_ORDER.filter(enabled)] : [];
@@ -195,16 +215,17 @@ function apply(prev: ONState, a: ONAction, ctx: GameContext): ONState {
     case "ready": {
       if (s.phase !== "reveal" || !me) throw new GameError("Gerade nicht.");
       if (!s.ready.includes(me)) s.ready.push(me);
-      if (Object.keys(s.start).every((id) => s.ready.includes(id))) startNight(s);
+      if (Object.keys(s.start).every((id) => s.ready.includes(id))) startNight(s, ctx.options);
       return s;
     }
     case "startNight": {
       if (s.phase !== "reveal" || !leader) throw new GameError("Das darf nur der Host.");
-      startNight(s);
+      startNight(s, ctx.options);
       return s;
     }
     case "next": {
       if (!s.stepwise || s.phase !== "night") throw new GameError("Gerade nicht.");
+      if (s.own && !leader) throw new GameError("Durch die Nacht führt das Handy des Hosts.");
       const step = s.pending[0];
       // Schritte mit Pflichtaktion erst nach der Aktion weiter (wenn die Rolle mitspielt)
       if (step === "betrunkener" && holder("betrunkener") && s.drunk === null) throw new GameError("Der Betrunkene muss tauschen.");
@@ -279,7 +300,17 @@ function apply(prev: ONState, a: ONAction, ctx: GameContext): ONState {
       closeVote(s);
       return s;
     }
+    case "settle": {
+      if (!s.own || s.phase !== "day" || !leader) throw new GameError("Gerade nicht.");
+      if (!Array.isArray(a.winners) || a.winners.some((id) => !(id in s.start))) throw new GameError("Ungültige Auswahl.");
+      if (a.team !== null && !["dorf", "werwolf", "gerber"].includes(a.team)) throw new GameError("Ungültiges Team.");
+      s.winners = a.team ? [a.team] : [];
+      s.ownWinners = [...new Set(a.winners)];
+      s.phase = "over";
+      return s;
+    }
     case "lynch": {
+      if (s.own) throw new GameError("Mit eigenen Karten tragt ihr nur ein, wer gewonnen hat.");
       if (s.phase !== "day" || !s.stepwise) throw new GameError("Gerade nicht.");
       if (!Array.isArray(a.targets) || a.targets.some((t) => !(t in s.start))) throw new GameError("Ungültige Auswahl.");
       finishVote(s, [...new Set(a.targets)]);
@@ -336,7 +367,14 @@ export const einenacht: GameLogic<ONState, ONAction> = {
   turnBased: false,
   joinMidGame: false,
   settings: [
-    { key: "wolves", label: "Werwölfe", type: "choice", default: "2", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
+    {
+      key: "cards", label: "Karten", type: "choice", default: "app",
+      choices: [
+        { value: "app", label: "In der App", hint: "App verteilt und tauscht" },
+        { value: "own", label: "Eigene Karten", hint: "App erzählt die Nacht und stoppt die Zeit" },
+      ],
+    },
+    { key: "wolves", showIf: (o: Options) => o.cards !== "own", label: "Werwölfe", type: "choice", default: "2", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
     { key: "minutes", label: "Diskussion (Minuten)", type: "number", default: 5, min: 1, max: 15, step: 1 },
     ...ON_SPECIALS.map((r) => ({
       key: r, label: `${ON_ROLES[r].name}${r === "freimaurer" ? " (zwei Karten)" : ""}`, type: "toggle" as const,
@@ -345,11 +383,12 @@ export const einenacht: GameLogic<ONState, ONAction> = {
   ],
   setup,
   apply,
-  actionKind: (a) => (["ready", "startNight", "next", "peek", "see", "rob", "trouble", "drunk", "nightDone", "vote", "closeVote", "lynch"].includes(a.type) ? "player" : null),
+  actionKind: (a) => (["ready", "startNight", "next", "peek", "see", "rob", "trouble", "drunk", "nightDone", "vote", "closeVote", "lynch", "settle"].includes(a.type) ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
   silent: (s) => s.phase === "night",
   results: (s) => {
+    if (s.own) return Object.keys(s.start).map((id) => ({ id, won: (s.ownWinners ?? []).includes(id) }));
     const final = s.final ?? s.start;
     const team = (r: ONRole) => (r === "werwolf" || r === "guenstling" ? "werwolf" : r === "gerber" ? "gerber" : "dorf");
     return Object.keys(final).map((id) => ({ id, won: s.winners.includes(team(final[id])) }));
@@ -357,7 +396,7 @@ export const einenacht: GameLogic<ONState, ONAction> = {
   skipLabel: (s) => (s.phase === "reveal" ? "Nacht beginnen" : s.phase === "night" && !s.stepwise ? "Nacht beenden (offene Aktionen verfallen)" : s.phase === "day" && !s.stepwise ? "Abstimmung beenden" : null),
   skipTurn(prev, ctx) {
     const s = structuredClone(prev);
-    if (s.phase === "reveal") startNight(s);
+    if (s.phase === "reveal") startNight(s, ctx.options);
     else if (s.phase === "night") dawn(s, ctx);
     else if (s.phase === "day") closeVote(s);
     return s;

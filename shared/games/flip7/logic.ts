@@ -5,6 +5,7 @@
  */
 import { shuffle } from "../../platform/random";
 import { nextPlayerId } from "../../platform/turns";
+import { applyPad, isPadAction, newPad, padLeaders, padRemove, type Pad, type PadAction } from "../../platform/pad";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 /**
@@ -34,6 +35,9 @@ export type Pending =
 
 export interface F7State {
   v: 1;
+  /** „app“: Karten in der App; „table“: echte Karten, die App ist nur der Punkteblock */
+  mode: "app" | "table";
+  pad: Pad | null;
   variant: Variant;
   target: number;
   deck: F7Card[];
@@ -56,6 +60,7 @@ export interface F7State {
 }
 
 export type F7Action =
+  | PadAction
   | { type: "hit" }
   | { type: "stay" }
   | { type: "target"; target: string }
@@ -290,19 +295,35 @@ function passTurn(s: F7State, ctx: GameContext) {
 
 function setup(ctx: GameContext): F7State {
   const variant = variantOf(ctx.options);
+  const mode = ctx.options.mode === "table" ? "table" : "app";
   const s: F7State = {
-    v: 1, variant, target: Number(ctx.options.target) || 200, deck: shuffle(buildDeck(variant)), deckCount: 0, discard: [],
+    v: 1, mode, pad: mode === "table" ? newPad(ctx.players.map((p) => p.id)) : null, variant, target: Number(ctx.options.target) || 200, deck: shuffle(buildDeck(variant)), deckCount: 0, discard: [],
     scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), round: 0, dealerId: null, lines: {}, dealQueue: [],
     curId: null, pending: null, queued: [], lastRound: null, winners: [], log: [], n: 0,
   };
+  if (mode === "table") return s;
   startRound(s, ctx.players);
   advance(s, ctx);
   s.deckCount = s.deck.length;
   return s;
 }
 
+/** Echte Karten: Rundenpunkte eintragen; wer nach einer Runde das Ziel erreicht hat und vorne liegt, gewinnt */
+function applyTable(s: F7State, a: F7Action, ctx: GameContext): F7State {
+  if (!isPadAction(a) || !s.pad) throw new GameError("Mit echten Karten tragt ihr nur die Punkte ein.");
+  if (s.winners.length) throw new GameError("Die Partie ist vorbei.");
+  applyPad(s.pad, a, ctx, { min: 0, max: 500 });
+  s.scores = { ...s.pad.scores };
+  s.round = s.pad.round;
+  const ids = ctx.players.map((p) => p.id);
+  if (a.type === "padFinish" && ids.some((id) => (s.scores[id] ?? 0) >= s.target)) s.winners = padLeaders(s.pad, ids);
+  return s;
+}
+
 function apply(prev: F7State, a: F7Action, ctx: GameContext): F7State {
   const s = structuredClone(prev);
+  if (s.mode === "table") return applyTable(s, a, ctx);
+  if (isPadAction(a)) throw new GameError("Das geht nur mit echten Karten.");
   s.n++;
   const me = s.pending ? s.pending.by : s.curId;
   if (!me) throw new GameError("Gerade ist niemand dran.");
@@ -438,6 +459,13 @@ export const flip7: GameLogic<F7State, F7Action> = {
   joinMidGame: false,
   settings: [
     {
+      key: "mode", label: "Karten", type: "choice", default: "app",
+      choices: [
+        { value: "app", label: "In der App", hint: "App mischt und teilt aus" },
+        { value: "table", label: "Echte Karten", hint: "App ist der Punkteblock" },
+      ],
+    },
+    {
       key: "variant", label: "Variante", type: "choice", default: "classic",
       choices: [
         { value: "classic", label: "Klassisch", hint: "Einfrieren, Flip 3, zweite Chance" },
@@ -448,11 +476,12 @@ export const flip7: GameLogic<F7State, F7Action> = {
   ],
   setup,
   apply,
-  actionKind: (a) => (["hit", "stay", "target", "pick", "swap"].includes(a.type) ? "turn" : null),
-  currentPlayerId: (s) => (s.winners.length ? null : s.pending ? s.pending.by : s.curId),
+  actionKind: (a) => (["hit", "stay", "target", "pick", "swap"].includes(a.type) ? "turn" : isPadAction(a) ? "player" : null),
+  currentPlayerId: (s) => (s.winners.length || s.mode === "table" ? null : s.pending ? s.pending.by : s.curId),
   isOver: (s) => s.winners.length > 0,
   results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: s.winners.includes(p.id), score: s.scores[p.id] ?? 0 })),
   skipLabel: (s, ctx) => {
+    if (s.mode === "table") return null;
     const id = s.pending ? s.pending.by : s.curId;
     const p = ctx.players.find((x) => x.id === id);
     return p && !s.winners.length ? (s.pending ? `Karte von ${p.name} verfallen lassen` : `${p.name} hört auf`) : null;
@@ -467,6 +496,7 @@ export const flip7: GameLogic<F7State, F7Action> = {
   },
   onPlayerRemoved(prev, id, ctx) {
     const s = structuredClone(prev);
+    if (s.pad) { padRemove(s.pad, id); return s; }
     const rest = ctx.players.filter((p) => p.id !== id);
     if (s.lines[id]) { s.discard.push(...s.lines[id].nums, ...s.lines[id].mods, ...(s.lines[id].second ? ["a:second" as F7Card] : [])); delete s.lines[id]; }
     s.dealQueue = s.dealQueue.filter((x) => x !== id);

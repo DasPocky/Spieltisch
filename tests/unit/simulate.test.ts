@@ -36,6 +36,7 @@ function candidates(r: RoomState, online: boolean): Move[] {
     case "tutto":
       ["draw", "roll", "book", "clearPts", "tutto"].forEach((type) => add({ type }));
       add({ type: "book", zero: true });
+      add({ type: "draw", card: pick(["b200", "b300", "b500", "x2", "fire", "street", "pm", "stop", "stop", "clover"]) });
       {
         // Würfel antippen: bevorzugt wertbare, damit die Partien in vernünftiger Zeit enden
         const d = (r.game as { dice: { roll: number[]; sel: boolean[] } | null }).dice;
@@ -162,6 +163,7 @@ function candidates(r: RoomState, online: boolean): Move[] {
       for (const a of ids2) for (const b of ids2) if (a < b) add({ type: "trouble", a, b });
       add({ type: "lynch", targets: [pick(ids2)] });
       add({ type: "lynch", targets: [] });
+      add({ type: "settle", team: pick(["dorf", "werwolf", null]), winners: [pick(ids2)] });
       break;
     }
     case "werwolf": {
@@ -188,12 +190,19 @@ function candidates(r: RoomState, online: boolean): Move[] {
       break;
     }
   }
+  // Punkteblock (echte Karten), gemeinsam für alle Spiele, die ihn nutzen
+  if ((r.game as { pad?: unknown }).pad) {
+    for (const id of ids) add({ type: "padEnter", player: id, points: Math.floor(Math.random() * 60) });
+    add({ type: "padFinish" });
+    add({ type: "padWin", player: pick(ids) });
+    if (Math.random() < 0.05) add({ type: "padUndo" });
+  }
   return moves;
 }
 
 /** Karten müssen erhalten bleiben (32 bzw. 52) */
 function checkCards(r: RoomState) {
-  if (r.gameId === "maumau") {
+  if (r.gameId === "maumau" && (r.game as MauMauState).mode !== "table") {
     const s = r.game as MauMauState;
     const all = [...s.pile, ...s.discard, ...Object.values(s.hands).flat()];
     expect(new Set(all).size).toBe(all.length);
@@ -277,6 +286,7 @@ function setupRoom(gameId: string, n: number, options: Record<string, unknown>, 
 const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["tutto", 3, { target: 1000 }],
   ["tutto", 2, { target: 1000, diceMode: "app" }],
+  ["tutto", 3, { target: 1000, cards: "real" }],
   ["kniffel", 3, {}],
   ["kniffel", 2, { diceMode: "real", extraKniffel: true }],
   ["maumau", 4, {}],
@@ -293,6 +303,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["phase10", 2, { goal: "5" }],
   ["phase10", 5, { goal: "5" }],
   ["phase10", 4, { mode: "table" }],
+  ["flip7", 4, { mode: "table", target: 100 }],
+  ["maumau", 3, { mode: "table", goal: "3" }],
   ["skyjo", 2, {}],
   ["skyjo", 6, { target: 60 }],
   ["skyjo", 4, { mode: "table" }],
@@ -310,6 +322,7 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["flip7", 6, { variant: "fies", target: 100 }],
   ["einenacht", 9, { seherin: true, raeuber: true, unruhestifter: true, betrunkener: true, schlaflose: true, jaeger: true, gerber: true, guenstling: true, freimaurer: true }],
   ["einenacht", 3, { wolves: "1" }],
+  ["einenacht", 5, { cards: "own", betrunkener: true }],
   ["werwolf", 9, { captain: true, tie: "runoff", aura: true, peaceful: true, selfHeal: false, hexe: true, jaeger: true, dieb: true, floetenspieler: true, engel: true, weisserwolf: true, wolves: "3" }],
   ["werwolf", 6, { cards: "own", captain: true, narrator: "human" }],
   ["werwolf", 20, {

@@ -53,6 +53,8 @@ function Rules() {
           <li><b className="text-foreground">Flip 7:</b> Sieben verschiedene Zahlen bringen +15 und beenden die Runde sofort für alle.</li>
           <li>Die Runde endet, wenn niemand mehr aktiv ist. Dann gibt es die nächste Karte, und der Geber wechselt.</li>
         </ol>
+        <h3 className="mt-4 font-semibold">Mit echten Karten</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Ihr spielt mit eurem Flip 7 am Tisch, die App ist der Punkteblock: Jeder trägt nach der Runde seine Punkte ein, der Host schließt ab. Wer das Ziel erreicht, beendet die Partie.</p>
         <p className="mt-2 text-sm text-muted-foreground">Der Stapel: von jeder Zahl so viele Karten, wie sie wert ist (zwölf 12er … eine 1), dazu eine 0.</p>
       </section>
       <h3 className="mt-5 mb-2 font-semibold">Klassisch</h3>

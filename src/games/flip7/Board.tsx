@@ -3,6 +3,7 @@ import { useState } from "react";
 import { cardLabel, linePoints, numValue, type F7Action, type F7Card, type F7State } from "@shared/games/flip7/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
+import { ScorePad } from "@/platform/ScorePad";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -38,6 +39,11 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   if (s.winners.length) {
     const names = s.winners.map((id) => players.find((p) => p.id === id)?.name ?? "?");
     return <ResultScreen winner={names.join(" & ")} subtitle={`mit ${s.scores[s.winners[0]]} Punkten`} ranking={[...entries].sort((a, b) => b.score - a.score)} isHost={isHost} dispatch={dispatch} scoreLabel="Punkte" />;
+  }
+  if (s.mode === "table" && s.pad) {
+    return <ScorePad pad={s.pad} players={players} me={me} isHost={isHost} online={online} act={act} gameId={room.gameId}
+      info={`Runde ${s.pad.round} · bis ${s.target}`}
+      hint="Jeder trägt seine Rundenpunkte ein (Zahlen, Plus-Karten, ×2 und +15 für Flip 7 schon eingerechnet; raus = 0)." />;
   }
 
   const nameOf = (id: string | null) => (id === me ? "Du" : players.find((p) => p.id === id)?.name ?? "?");

@@ -50,6 +50,8 @@ function Rules() {
           Es zählt die Karte, die man <b className="text-foreground">am Ende</b> hat. Stirbt mindestens ein Werwolf, gewinnt das Dorf. Stirbt keiner, gewinnen die Werwölfe (mit Günstling).
           Sind keine Werwölfe unter den Spielern und niemand stirbt, gewinnt das Dorf. Der Gerber gewinnt, wenn er stirbt.
         </p>
+        <h3 className="mt-4 font-semibold">Mit eigenen Karten</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Ihr teilt eure echten Karten aus. Das Handy des Hosts liest die Nacht vor und schaltet von selbst weiter, damit alle die Augen zu lassen können. Danach laufen Timer und Abstimmung am Tisch; nach dem Aufdecken trägt der Host ein, wer gewonnen hat.</p>
       </section>
       <h3 className="mt-5 mb-2 font-semibold">Rollen</h3>
       <ul className="grid gap-2">

@@ -8,6 +8,7 @@ import { Ico, IconTitle, nameOf, Panel, Picker } from "@/games/werwolf/parts";
 import { setSpeech, speechSupported, useSpeak, useSpeechEnabled } from "@/games/werwolf/useSpeech";
 import { cn } from "@/lib/utils";
 import { CenterCards, Countdown, ONCard } from "./parts";
+import { OwnNarrator, OwnPhone } from "./Own";
 import { RoleIcon } from "./RoleIcon";
 import { ON_DAWN, ON_SCRIPT } from "./script";
 
@@ -17,6 +18,7 @@ const ids = (s: ONState) => Object.keys(s.start);
 export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<ONState, ONAction>) {
   const players = room.players;
   if (s.phase === "over") return <Result s={s} players={players} isHost={isHost} dispatch={dispatch} />;
+  if (s.own) return me === null || isHost ? <OwnNarrator s={s} players={players} options={room.options} act={act} /> : <OwnPhone s={s} />;
   return me === null ? <Device s={s} players={players} act={act} /> : <Phone s={s} players={players} me={me} isHost={isHost} act={act} />;
 }
 
@@ -254,6 +256,9 @@ function Result({ s, players, isHost, dispatch }: { s: ONState; players: Player[
       <h2 className="bg-gradient-to-b from-white to-navy-200 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent" data-testid="winner">
         {winLine(s.winners)}
       </h2>
+      {s.own ? (
+        <p className="mt-1 text-muted-foreground" data-testid="own-winners">{s.ownWinners?.length ? `Gewonnen: ${s.ownWinners.map((id) => nameOf(players, id)).join(", ")}` : "Mit euren eigenen Karten gespielt."}</p>
+      ) : <>
       <p className="mt-1 text-muted-foreground">{s.dead.length ? `Gestorben: ${s.dead.map((id) => nameOf(players, id)).join(", ")}` : "Niemand ist gestorben."}</p>
       <ul className="mt-5 grid gap-1.5 text-left">
         {Object.keys(final).map((id) => (
@@ -267,6 +272,7 @@ function Result({ s, players, isHost, dispatch }: { s: ONState; players: Player[
         ))}
       </ul>
       <p className="mt-3 text-sm text-muted-foreground">Mitte: {(s.finalCenter ?? s.center).map((r, i) => <span key={i}>{i > 0 && " · "}<span className="whitespace-nowrap"><RoleIcon role={r} className="mr-1" />{ON_ROLES[r].name}</span></span>)}</p>
+      </>}
       {isHost ? (
         <div className="mt-6 grid gap-2.5">
           <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Noch eine Nacht</Button>

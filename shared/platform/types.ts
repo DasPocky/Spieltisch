@@ -22,6 +22,8 @@ interface SettingBase {
   inGame?: boolean;
   /** Zwischenüberschrift, unter der die Einstellung erscheint (z. B. „Neumond“) */
   group?: string;
+  /** Nur anzeigen, wenn das zutrifft (z. B. Hausregeln nur beim Spielen in der App) */
+  showIf?: (options: Options) => boolean;
 }
 
 /** Einstellungen werden deklarativ beschrieben – die Plattform zeigt sie an und prüft die Werte. */

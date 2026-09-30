@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { CardBack, PlayingCard, SuitIcon } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
+import { ScorePad } from "@/platform/ScorePad";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { cn, vibrate } from "@/lib/utils";
@@ -18,6 +19,15 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   // Lokal: Hand erst zeigen, wenn der Richtige das Handy hat
   const { covered, reveal } = useHandoff(local, s.curId, players.length);
 
+  if (s.winnerId && s.pad) {
+    const winner = players.find((p) => p.id === s.winnerId);
+    const ranking = players.map((p) => ({ id: p.id, name: p.name, score: s.pad!.scores[p.id] ?? 0 })).sort((a, b) => b.score - a.score);
+    return <ResultScreen winner={winner?.name ?? "?"} subtitle={`hat ${s.goal} Runden gewonnen`} ranking={ranking} isHost={isHost} dispatch={dispatch} scoreLabel="Siege" />;
+  }
+  if (s.mode === "table" && s.pad) {
+    return <ScorePad pad={s.pad} players={players} me={me} isHost={isHost} online={online} act={act} gameId={room.gameId} mode="wins"
+      info={`Runde ${s.pad.round} · bis ${s.goal} Siege`} hint="Ihr spielt mit echten Karten. Wer eine Runde gewinnt, wird hier angetippt." />;
+  }
   if (s.winnerId) {
     const winner = players.find((p) => p.id === s.winnerId);
     const ranking = players.map((p) => ({ id: p.id, name: p.name, score: s.counts[p.id] ?? 0 })).sort((a, b) => a.score - b.score);
