@@ -19,6 +19,8 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 
 Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
 
+**Halb offline:** Jedes Spiel geht auch mit echtem Material am Tisch – die App hilft nur: Tutto (echte Würfel und/oder echte Karten antippen), Kniffel (digitaler Block), Flip 7, Skyjo, Uno, Skip-Bo, Phase 10 (Punkteblock), Mau-Mau (Rundensiege), Fischen (Zug und Quartette), Codenames (Schlüsselkarte zum Brettspiel), Werwolf und Eine Nacht (eigene Karten, die App erzählt). Der gemeinsame Punkteblock steckt in `shared/platform/pad.ts` und `src/platform/ScorePad.tsx`.
+
 **Gestaltung:** schlicht in Marineblau mit Abstufungen, Eisblau als Akzent. Farben nur dort, wo ein Spiel sie als Regel braucht (Kartenfarben, Teams), und dann gedämpft (`src/lib/palette.ts`). Symbole kommen aus lucide-react statt bunter Emojis.
 
 - **Online-Räume:** Auf der Seite eines Spiels erstellt der Host einen Raum mit PIN. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
