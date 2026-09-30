@@ -43,6 +43,8 @@ test("Skyjo online: jeder sein Raster, offene Karten für alle", async ({ browse
   await anna.getByRole("button", { name: "Spiel starten" }).click();
   for (const p of [anna, ben]) for (let k = 0; k < 2; k++) await flipOne(p);
   // wer beginnt, zieht vom Stapel und legt ab, dreht eine um
+  // Erst wenn beide Handys den Stand nach dem Aufdecken haben, steht fest, wer beginnt
+  await expect.poll(async () => [await anna.getByTestId("hint").textContent(), await ben.getByTestId("hint").textContent()].some((h) => h?.includes("Ziehe"))).toBe(true);
   const starter = (await anna.getByTestId("hint").textContent())!.includes("Ziehe") ? anna : ben;
   const other = starter === anna ? ben : anna;
   await expect(other.getByTestId("hint")).toContainText("Warte");

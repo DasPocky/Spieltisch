@@ -272,7 +272,7 @@ function playOut(start: RoomState, online: boolean, maxSteps = 15000) {
     if (!moved) throw new Error(`Festgefahren in ${r.gameId} (${[...errors].filter((m) => !m.includes("schon eingetragen")).slice(0, 20).join(" | ")}): ${JSON.stringify(r.game).slice(0, 800)}`);
     checkCards(r);
   }
-  throw new Error(`${start.gameId}: Partie nach ${maxSteps} Schritten nicht beendet`);
+  throw new Error(`${start.gameId}: Partie nach ${maxSteps} Schritten nicht beendet: ${JSON.stringify(r.game).slice(0, 3000)}`);
 }
 
 function setupRoom(gameId: string, n: number, options: Record<string, unknown>, online: boolean) {

@@ -116,3 +116,25 @@ describe("Phase 10", () => {
     expect(g(r).step).toBe("enter");
   });
 });
+
+describe("Phase 10 – Sackgasse", () => {
+  it("Alle liegen und alle Folgen sind voll: Runde endet von selbst", () => {
+    const full = (col: string) => Array.from({ length: 12 }, (_, i) => `${col}-${i + 1}` as P10Card);
+    let r = act(roomWith(["Anna", "Ben"]), { type: "selectGame", gameId: "phase10" });
+    r = act(r, { type: "start" });
+    const s = r.game as P10State;
+    const hand = [...full("b"), "W", "S", "y-3"];
+    r = { ...r, game: { ...s, phase: { p1: 6, p2: 5 }, curId: "p1", step: "play", hands: { p1: hand, p2: ["y-5", "g-9"] }, laid: { p2: [{ kind: "run", cards: full("r"), lo: 1, hi: 12 }] } } };
+    // Folge aus 9 mit Joker: noch nicht voll – es geht weiter
+    r = game(r, { type: "lay", groups: [[...full("b").slice(0, 8), "W"]] });
+    expect((r.game as P10State).step).toBe("play");
+    r = game(r, { type: "hit", card: "b-10", owner: "p1", g: 0 });
+    r = game(r, { type: "hit", card: "b-11", owner: "p1", g: 0 });
+    r = game(r, { type: "hit", card: "b-12", owner: "p1", g: 0 });
+    expect((r.game as P10State).laid.p1[0]).toMatchObject({ lo: 1, hi: 12 });
+    const after = r.game as P10State;
+    expect(after.step).toBe("roundEnd");
+    expect(after.phase).toEqual({ p1: 7, p2: 6 });
+    expect(after.scores).toEqual({ p1: 5 + 15 + 5, p2: 5 + 5 });
+  });
+});

@@ -247,6 +247,17 @@ function finishAppRound(s: P10State, ctx: GameContext, winner: string) {
   endRound(s, ctx, points, ctx.players.filter((p) => s.laid[p.id]).map((p) => p.id));
 }
 
+/** Alle liegen und jede Gruppe ist eine volle Folge 1–12: niemand kann mehr anlegen oder rauskommen */
+function deadEnd(s: P10State, ctx: GameContext): boolean {
+  return ctx.players.every((p) => s.laid[p.id]) && Object.values(s.laid).flat().every((g) => g.kind === "run" && g.lo === 1 && g.hi === 12);
+}
+function checkDeadEnd(s: P10State, ctx: GameContext) {
+  if ((s.step !== "draw" && s.step !== "play") || !deadEnd(s, ctx)) return;
+  s.log.push("Niemand kann mehr anlegen – Runde vorbei");
+  const points = Object.fromEntries(ctx.players.map((p) => [p.id, (s.hands[p.id] ?? []).reduce((t, c) => t + cardPoints(c), 0)]));
+  endRound(s, ctx, points, ctx.players.map((p) => p.id));
+}
+
 function removeCards(hand: P10Card[], cards: P10Card[]): boolean {
   const h = hand.slice();
   for (const c of cards) { const i = h.indexOf(c); if (i < 0) return false; h.splice(i, 1); }
@@ -308,6 +319,7 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
       s.laid[me] = groups;
       s.log.push(`${nameOf(ctx, me)} legt Phase ${s.phase[me]} aus`);
       if (!hand.length) finishAppRound(s, ctx, me);
+      else checkDeadEnd(s, ctx);
       sync(s);
       return s;
     }
@@ -321,6 +333,7 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
       removeCards(hand, [a.card]);
       s.laid[a.owner][a.g] = ng;
       if (!hand.length) finishAppRound(s, ctx, me);
+      else checkDeadEnd(s, ctx);
       sync(s);
       return s;
     }
