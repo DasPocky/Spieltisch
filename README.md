@@ -19,6 +19,7 @@ Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittst
 - **Ein Raum, mehrere Spiele:** Nach einer Partie geht der Host zurück in die Lobby und wählt ein anderes Spiel – alle bleiben im Raum.
 - **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **Spielleiter-Funktionen** (Menü) darf er für andere spielen, zurücknehmen und mischen.
 - **Profil und Statistik:** ohne Registrierung. Jedes Gerät bekommt eine zufällige Profil-ID; unter `/profil` stehen Partien, Siege, Quote, Bestwert und Durchschnitt je Spiel. Online zählt jede Partie im Raum, lokal der Spieler, der so heißt wie das Profil. Mit dem Profil-Code lässt sich das Profil auf ein anderes Handy übernehmen.
+- **Sprach- und Videochat (online):** über Cloudflare Realtime. Im Raum oben auf 📞 tippen, „Nur Sprache“ oder „Mit Video“. In der Werwolf- und Eine-Nacht-Nacht sind die Mikros automatisch aus (nur ein menschlicher Spielleiter darf sprechen).
 - **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „🔒 mit Zugangscode“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
 - **Fairer Zufall:** `crypto.getRandomValues` mit Verwerfungsmethode (keine Modulo-Verzerrung). Online würfelt und mischt ausschließlich der Server.
 - **Ansicht „Einfach“ oder „Voll“** (im Menü, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
@@ -53,6 +54,14 @@ Cloudflare Workers Builds baut und deployt jeden Push auf `main` automatisch:
 Die App ist dann unter `https://spieltisch.<dein-subdomain>.workers.dev` erreichbar (Name in `wrangler.jsonc`). Zusätzlich prüft GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push und Pull Request Build, Unit-Tests und die Playwright-Tests.
 
 Manuell geht es mit `npx wrangler login` und `npm run deploy`.
+
+**Sprachchat einrichten (Cloudflare Realtime):**
+
+1. Im Cloudflare-Dashboard **Realtime → Serverless SFU → Create application** (Name z. B. `spieltisch`).
+2. Die angezeigte **App ID** und das **App Token** (API-Token der App) kopieren.
+3. Unter **Workers & Pages → spieltisch → Settings → Variables and Secrets** zwei Secrets anlegen: `REALTIME_APP_ID` und `REALTIME_APP_TOKEN` (oder `npx wrangler secret put …`).
+
+Ohne diese Secrets ist der Knopf 📞 einfach nicht da. Das Token bleibt auf dem Server: Die App spricht nur mit unserem Worker (`/api/rooms/<CODE>/call`), der prüft, dass nur Mitspieler des Raums eine Sitzung anlegen, nur eigene Sitzungen benutzen und nur Spuren von Mitspielern desselben Raums abholen. Ton und Bild laufen über das SFU von Cloudflare und werden nicht gespeichert. Für die Playwright-Tests simuliert der Worker das SFU (`REALTIME_FAKE=1` in `.dev.vars`, legt `scripts/test-env.mjs` an).
 
 **Admin-Passwort setzen:** im Cloudflare-Dashboard unter **Workers & Pages → spieltisch → Settings → Variables and Secrets → Add** ein Secret `ADMIN_PASSWORD` anlegen (oder `npx wrangler secret put ADMIN_PASSWORD`). Ohne dieses Secret ist `/admin` gesperrt und alles bleibt offen. Lokal steht das Passwort in `.dev.vars` (`ADMIN_PASSWORD=…`, wird nicht eingecheckt; die Playwright-Tests legen die Datei mit `test-admin` an).
 

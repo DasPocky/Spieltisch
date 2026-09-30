@@ -995,6 +995,7 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
   actionKind: (a) => (a.type in ACTIONS ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
+  silent: (s, viewer) => s.phase === "night" && viewer !== s.narratorId,
   results: (s) => Object.keys(s.roles).map((id) => {
     const r = s.roles[id];
     const won =

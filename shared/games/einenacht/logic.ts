@@ -348,6 +348,7 @@ export const einenacht: GameLogic<ONState, ONAction> = {
   actionKind: (a) => (["ready", "startNight", "next", "peek", "see", "rob", "trouble", "drunk", "nightDone", "vote", "closeVote", "lynch"].includes(a.type) ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
+  silent: (s) => s.phase === "night",
   results: (s) => {
     const final = s.final ?? s.start;
     const team = (r: ONRole) => (r === "werwolf" || r === "guenstling" ? "werwolf" : r === "gerber" ? "gerber" : "dorf");

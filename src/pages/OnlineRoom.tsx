@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { PIN_RE } from "@shared/platform/protocol";
-import { cleanName, MAX_NAME } from "@shared/platform/room";
+import { cleanName, MAX_NAME, roomGame } from "@shared/platform/room";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,11 +11,18 @@ import { Label } from "@/components/ui/label";
 import { useRoom, type JoinData } from "@/hooks/useRoom";
 import { navigate } from "@/hooks/useRoute";
 import { credsKey, NAME_KEY, remove, takePendingJoin } from "@/lib/storage";
+import { callEnabled, useCall } from "@/platform/call/useCall";
 
 export function OnlineRoom({ code }: { code: string }) {
   const [join, setJoin] = useState<JoinData | null>(() => takePendingJoin(code));
   const [attempt, setAttempt] = useState(0);
   const room = useRoom(code, join, attempt);
+  const [chat, setChat] = useState(false);
+  useEffect(() => { void callEnabled().then(setChat); }, []);
+  // Werwolf-Nacht & Co.: das eigene Mikro bleibt aus
+  const s = room.state;
+  const silent = !!s && s.phase === "playing" && !!s.game && !!roomGame(s).silent?.(s.game, room.me);
+  const call = useCall(code, room.me, room.call, room.announceCall, silent);
 
   const leave = () => { remove(credsKey(code)); navigate("/"); };
 
@@ -76,6 +83,7 @@ export function OnlineRoom({ code }: { code: string }) {
       onLeave={leave}
       onCloseRoom={room.closeRoom}
       onClaimHost={room.claimHost}
+      call={chat ? { ...call, peers: room.call, silent } : undefined}
     />
   );
 }

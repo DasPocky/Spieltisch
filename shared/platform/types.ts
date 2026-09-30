@@ -102,6 +102,8 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
    * Nur aufgerufen, wenn `isOver` true ist. Spieler ohne Ergebnis (z. B. Spielleiter) fehlen einfach.
    */
   results?(state: S, ctx: GameContext): PlayerResult[];
+  /** Muss das Mikro dieser Person gerade aus sein? (z. B. Werwolf-Nacht – nur der Spielleiter spricht) */
+  silent?(state: S, viewerId: string | null): boolean;
 
   /** Spielerzahl abhängig von den Einstellungen (z. B. Spielleiter zählt mit). Ohne: info.minPlayers/maxPlayers. */
   playerLimits?(options: Options): { min: number; max: number; note?: string };

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
@@ -51,19 +52,8 @@ function Setting({ def, value, editable, onChange }: { def: SettingDef; value: u
     case "choice":
       if (def.visual === "deck") return <DeckPicker label={def.label} value={String(value ?? def.default)} options={def.choices} editable={editable} onChange={onChange} />;
       return <Segmented label={def.label} value={String(value ?? def.default)} options={def.choices} editable={editable} onChange={onChange} />;
-    case "number": {
-      const n = Number(value ?? def.default);
-      return (
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">{def.label}</span>
-          <div className="flex items-center gap-1">
-            <Button variant="secondary" size="icon" disabled={!editable || n <= def.min} aria-label={`${def.label} verringern`} onClick={() => onChange(n - def.step)}><Minus /></Button>
-            <b className="min-w-[5.5ch] text-center text-lg tabular-nums">{fmt(n)}</b>
-            <Button variant="secondary" size="icon" disabled={!editable || n >= def.max} aria-label={`${def.label} erhöhen`} onClick={() => onChange(n + def.step)}><Plus /></Button>
-          </div>
-        </div>
-      );
-    }
+    case "number":
+      return <NumberSetting def={def} value={Number(value ?? def.default)} editable={editable} onChange={onChange} />;
     case "toggle":
       return (
         <label className="flex items-center gap-3 text-sm">
@@ -72,4 +62,31 @@ function Setting({ def, value, editable, onChange }: { def: SettingDef; value: u
         </label>
       );
   }
+}
+
+/**
+ * Zahl mit −/+. Online dauert die Bestätigung des Servers einen Moment – damit schnelles Tippen
+ * nicht mehrfach denselben alten Wert schickt, zählt die Anzeige sofort lokal weiter.
+ */
+function NumberSetting({ def, value, editable, onChange }: { def: Extract<SettingDef, { type: "number" }>; value: number; editable: boolean; onChange: (v: number) => void }) {
+  const [pending, setPending] = useState<number | null>(null);
+  useEffect(() => { if (pending === value) setPending(null); }, [value, pending]);
+  // Kommt eine andere Antwort (z. B. abgelehnt), nach kurzer Zeit wieder dem Server glauben
+  useEffect(() => {
+    if (pending === null) return;
+    const t = setTimeout(() => setPending(null), 3000);
+    return () => clearTimeout(t);
+  }, [pending]);
+  const n = pending ?? value;
+  const set = (v: number) => { setPending(v); onChange(v); };
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-semibold">{def.label}</span>
+      <div className="flex items-center gap-1">
+        <Button variant="secondary" size="icon" disabled={!editable || n <= def.min} aria-label={`${def.label} verringern`} onClick={() => set(n - def.step)}><Minus /></Button>
+        <b className="min-w-[5.5ch] text-center text-lg tabular-nums" data-testid={`setting-${def.key}`}>{fmt(n)}</b>
+        <Button variant="secondary" size="icon" disabled={!editable || n >= def.max} aria-label={`${def.label} erhöhen`} onClick={() => set(n + def.step)}><Plus /></Button>
+      </div>
+    </div>
+  );
 }

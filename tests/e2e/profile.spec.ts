@@ -5,13 +5,20 @@ import { createRoom, shot } from "./util";
 async function winTutto(page: Page) {
   const target = page.getByRole("button", { name: "Spielziel verringern" });
   for (let i = 0; i < 5; i++) await target.click();
+  await expect(page.getByTestId("setting-target")).toHaveText("1.000");
   await page.getByRole("button", { name: "Spiel starten" }).click();
   const k = page.getByRole("button", { name: "+1.000", exact: true });
+  // Karten im Stapel (Kopfzeile) – ändert sich erst, wenn der Server die nächste Karte gezogen hat
+  const pile = () => page.getByRole("banner").getByText(/Karten/).textContent();
   for (let i = 0; i < 40 && !(await k.isVisible()); i++) {
+    const before = await pile();
     await page.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
-    await page.waitForTimeout(150);
+    await expect.poll(pile).not.toBe(before);
+    await page.waitForTimeout(100);
   }
   await k.click();
+  // online erst weiter, wenn der Server die Punkte bestätigt hat
+  await expect(page.getByTestId("turn-pts")).toHaveText("1.000");
   await page.getByRole("button", { name: /eintragen/ }).click();
   await expect(page.getByText(/mit 1\.000 Punkten/)).toBeVisible();
 }

@@ -5,8 +5,8 @@ import { ACCESS_CODE_RE, accessFor, DEFAULT_CONFIG, sanitizeConfig, type SiteCon
 import { addPlayer, applyRoomAction, cleanName, createRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
-  PIN_RE, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
-  type ClientMessage, type RoomInfo, type ServerMessage,
+  CALL_SESSION_RE, CALL_TRACK_RE, PIN_RE, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
+  type CallPeer, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
 
 interface Env {
@@ -15,6 +15,11 @@ interface Env {
   PROFILES: DurableObjectNamespace<ProfileStore>;
   /** Admin-Passwort – als Secret in Cloudflare gesetzt. Fehlt es, ist der Admin-Bereich aus. */
   ADMIN_PASSWORD?: string;
+  /** Cloudflare Realtime (Sprach-/Videochat): App-ID und App-Token. Fehlen sie, ist der Chat aus. */
+  REALTIME_APP_ID?: string;
+  REALTIME_APP_TOKEN?: string;
+  /** Nur für lokale Tests: SFU-Antworten simulieren statt Cloudflare zu fragen */
+  REALTIME_FAKE?: string;
 }
 
 interface RoomData {
@@ -29,6 +34,9 @@ interface RoomData {
   createdAt: number;
   /** playerId → Profil-ID (nur auf dem Server, nie an andere Spieler) */
   profiles?: Record<string, string>;
+  /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
+  call?: Record<string, CallPeer>;
+  callSessions?: Record<string, string>;
 }
 
 interface Attachment {
@@ -142,6 +150,20 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    if (msg.type === "call") {
+      const call = (this.room.call ??= {});
+      if (msg.session === null) delete call[playerId];
+      else {
+        // Nur Sitzungen, die dieser Spieler über unseren Server angelegt hat
+        if (typeof msg.session !== "string" || !CALL_SESSION_RE.test(msg.session) || this.room.callSessions?.[msg.session] !== playerId) return;
+        const track = (t: unknown) => (typeof t === "string" && CALL_TRACK_RE.test(t) ? t : undefined);
+        call[playerId] = { session: msg.session, audio: track(msg.audio), video: track(msg.video), mic: msg.mic !== false, cam: msg.cam === true };
+      }
+      await this.persist();
+      this.broadcast();
+      return;
+    }
+
     if (msg.type === "claimHost") {
       const host = this.room.state.hostId;
       if (host === playerId) return;
@@ -191,7 +213,36 @@ export class GameRoom extends DurableObject<Env> {
 
   async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
     try { ws.close(code, reason); } catch { /* bereits geschlossen */ }
+    // Ohne Verbindung auch raus aus dem Sprachchat (beim Wiederverbinden meldet sich das Handy neu an)
+    const att = ws.deserializeAttachment() as Attachment | null;
+    if (att?.playerId && this.room?.call?.[att.playerId] && !this.onlineIds().has(att.playerId)) {
+      delete this.room.call[att.playerId];
+      await this.persist();
+    }
     this.broadcast();
+  }
+
+  /** Darf dieser Spieler den Sprachchat nutzen? Optional: gehört ihm die Sitzung? */
+  async callAuth(playerId: string, token: string, session: string | null): Promise<boolean> {
+    const room = this.room;
+    if (!room || !playerId || room.tokens[playerId] !== token) return false;
+    return session === null || room.callSessions?.[session] === playerId;
+  }
+
+  /** Neue SFU-Sitzung merken (höchstens eine Handvoll pro Spieler, alte fallen raus) */
+  async callRegister(playerId: string, session: string): Promise<void> {
+    if (!this.room) return;
+    const map = (this.room.callSessions ??= {});
+    const mine = Object.keys(map).filter((s) => map[s] === playerId);
+    for (const old of mine.slice(0, Math.max(0, mine.length - 3))) delete map[old];
+    map[session] = playerId;
+    await this.persist();
+  }
+
+  /** Gehören alle Sitzungen zu diesem Raum? (man darf nur Spuren der eigenen Mitspieler abholen) */
+  async callSessionsKnown(sessions: string[]): Promise<boolean> {
+    const map = this.room?.callSessions ?? {};
+    return sessions.every((s) => s in map);
   }
 
   async webSocketError(): Promise<void> {
@@ -265,6 +316,7 @@ export class GameRoom extends DurableObject<Env> {
     if (!this.room) return;
     delete this.room.tokens[playerId];
     if (this.room.profiles) delete this.room.profiles[playerId];
+    if (this.room.call) delete this.room.call[playerId];
     for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.playerId === playerId) {
@@ -292,7 +344,7 @@ export class GameRoom extends DurableObject<Env> {
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {} });
     }
   }
 
@@ -417,6 +469,72 @@ export class ProfileStore extends DurableObject<Env> {
 
 const profileOf = (env: Env, id: string) => env.PROFILES.get(env.PROFILES.idFromName(id));
 
+const REALTIME_API = "https://rtc.live.cloudflare.com/v1/apps";
+const MAX_CALL_BODY = 64_000;
+
+type CallOp = "new" | "tracks" | "renegotiate" | "close";
+
+/**
+ * Leitet eine Chat-Anfrage an das Cloudflare-SFU weiter. Das App-Token bleibt auf dem Server;
+ * der Raum prüft Token des Spielers, Besitz der Sitzung und dass abgeholte Spuren aus diesem Raum stammen.
+ */
+async function handleCall(request: Request, env: Env, code: string): Promise<Response> {
+  if (!env.REALTIME_APP_ID || !env.REALTIME_APP_TOKEN) return json({ error: "Der Sprachchat ist nicht eingerichtet." }, 503);
+  if (!ROOM_CODE_RE.test(code)) return json({ error: "Ungültiger Raumcode." }, 400);
+  const text = await request.text();
+  if (text.length > MAX_CALL_BODY) return json({ error: "Zu groß." }, 413);
+  let body: { playerId?: unknown; token?: unknown; op?: unknown; session?: unknown; payload?: unknown };
+  try { body = JSON.parse(text); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+  const op = body.op as CallOp;
+  if (!["new", "tracks", "renegotiate", "close"].includes(op)) return json({ error: "Unbekannt." }, 400);
+  const session = op === "new" ? null : typeof body.session === "string" && CALL_SESSION_RE.test(body.session) ? body.session : undefined;
+  if (session === undefined) return json({ error: "Ungültige Sitzung." }, 400);
+
+  const room = env.ROOMS.get(env.ROOMS.idFromName(code));
+  if (!(await room.callAuth(String(body.playerId ?? ""), String(body.token ?? ""), session))) return json({ error: "Nicht erlaubt." }, 403);
+
+  const payload = (body.payload && typeof body.payload === "object" ? body.payload : {}) as { tracks?: { location?: string; sessionId?: string }[] };
+  if (op === "tracks") {
+    const remote = (payload.tracks ?? []).filter((t) => t.location === "remote").map((t) => String(t.sessionId ?? ""));
+    if (remote.length && !(await room.callSessionsKnown(remote))) return json({ error: "Nicht erlaubt." }, 403);
+  }
+
+  if (env.REALTIME_FAKE === "1") {
+    const data = fakeSfu(op, payload);
+    if (op === "new") await room.callRegister(String(body.playerId), data.sessionId as string);
+    return json(data);
+  }
+
+  const base = `${REALTIME_API}/${env.REALTIME_APP_ID}/sessions`;
+  const target = op === "new" ? `${base}/new` : op === "tracks" ? `${base}/${session}/tracks/new` : op === "renegotiate" ? `${base}/${session}/renegotiate` : `${base}/${session}/tracks/close`;
+  const res = await fetch(target, {
+    method: op === "new" || op === "tracks" ? "POST" : "PUT",
+    headers: { authorization: `Bearer ${env.REALTIME_APP_TOKEN}`, "content-type": "application/json" },
+    body: op === "new" ? undefined : JSON.stringify(payload),
+  });
+  const data = (await res.json().catch(() => ({}))) as { sessionId?: string };
+  if (op === "new" && res.ok && data.sessionId) await room.callRegister(String(body.playerId), data.sessionId);
+  return json(data, res.status);
+}
+
+/** Test-SFU: antwortet wie Cloudflare Realtime, ohne Medien zu übertragen (nur mit REALTIME_FAKE=1) */
+function fakeSfu(op: CallOp, payload: { tracks?: { location?: string; sessionId?: string; trackName?: string; mid?: string }[] }): Record<string, unknown> {
+  const tracks = payload.tracks ?? [];
+  if (op === "new") return { sessionId: crypto.randomUUID().replace(/-/g, "") };
+  if (op === "tracks" && tracks.some((t) => t.location === "remote")) {
+    return {
+      requiresImmediateRenegotiation: true,
+      ...(() => {
+        const out = tracks.map((t) => ({ sessionId: t.sessionId, trackName: t.trackName, mid: crypto.randomUUID().slice(0, 6) }));
+        // Die Test-Gegenstelle liest die Kennungen aus dem SDP und meldet dafür Spuren
+        return { tracks: out, sessionDescription: { type: "offer", sdp: `v=0 fake mids=${out.map((t) => t.mid).join(",")}` } };
+      })(),
+    };
+  }
+  if (op === "tracks") return { sessionDescription: { type: "answer", sdp: "v=0 fake" }, tracks: tracks.map((t) => ({ trackName: t.trackName, mid: t.mid })) };
+  return {};
+}
+
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
@@ -487,6 +605,13 @@ export default {
       }
       return json({ error: "Gerade ist kein Raumcode frei. Versuch es gleich nochmal." }, 503);
     }
+
+    // Sprach-/Videochat eingerichtet?
+    if (url.pathname === "/api/call" && request.method === "GET") return json({ enabled: !!(env.REALTIME_APP_ID && env.REALTIME_APP_TOKEN) });
+
+    // Sprach-/Videochat: Anfragen an Cloudflare Realtime weiterreichen – nur für Mitspieler des Raums
+    const callMatch = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)\/call$/);
+    if (callMatch && request.method === "POST") return handleCall(request, env, callMatch[1]);
 
     const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)(\/ws)?$/);
     if (match) {

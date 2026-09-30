@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { RoomAction, RoomState } from "@shared/platform/room";
-import type { ClientMessage, RoomInfo, ServerMessage } from "@shared/platform/protocol";
+import type { CallPeer, ClientMessage, RoomInfo, ServerMessage } from "@shared/platform/protocol";
 import { credsKey, readJSON, remove, writeJSON, type RoomCreds } from "@/lib/storage";
 import { myProfile } from "@/lib/profile";
 
@@ -20,6 +20,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const [online, setOnline] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
+  const [call, setCall] = useState<Record<string, CallPeer>>({});
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           setState(msg.state);
           setMe(msg.you);
           setOnline(new Set(msg.online));
+          setCall(msg.call ?? {});
           setStatus("ready");
           setError(null);
         } else if (msg.type === "error") {
@@ -105,6 +107,11 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const send = useCallback((action: RoomAction) => post({ type: "action", action }), [post]);
   const closeRoom = useCallback(() => post({ type: "closeRoom" }), [post]);
   const claimHost = useCallback(() => post({ type: "claimHost" }), [post]);
+  /** Sprachchat an-/abmelden – still, ohne Hinweis, falls die Verbindung gerade weg ist */
+  const announceCall = useCallback((msg: Extract<ClientMessage, { type: "call" }>) => {
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+  }, []);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost, call, announceCall };
 }

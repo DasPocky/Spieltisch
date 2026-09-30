@@ -29,8 +29,8 @@ export default defineConfig({
     { name: "admin", testMatch: /admin\.spec\.ts/, dependencies: ["spiele"] },
   ],
   webServer: {
-    // Admin-Passwort für den Test-Server (.dev.vars wird nicht eingecheckt)
-    command: `node -e "require('fs').existsSync('.dev.vars')||require('fs').writeFileSync('.dev.vars','ADMIN_PASSWORD=test-admin\\n')" && npx vite --port ${PORT} --strictPort`,
+    // Test-Geheimnisse für den Dev-Server (Admin-Passwort, Fake-Sprachchat) – .dev.vars wird nicht eingecheckt
+    command: `node scripts/test-env.mjs && npx vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -11,13 +11,27 @@ export type ClientMessage =
   /** Nur Host: Raum sofort und endgültig löschen */
   | { type: "closeRoom" }
   /** Host-Rolle übernehmen – nur, wenn der Host gerade nicht verbunden ist */
-  | { type: "claimHost" };
+  | { type: "claimHost" }
+  /** Sprach-/Videochat: eigene Sitzung und Spuren bekanntgeben (session null = verlassen) */
+  | { type: "call"; session: string | null; audio?: string; video?: string; mic?: boolean; cam?: boolean };
+
+/** Wer im Sprach-/Videochat ist und welche Spuren er beim SFU veröffentlicht hat */
+export interface CallPeer {
+  session: string;
+  audio?: string;
+  video?: string;
+  mic: boolean;
+  cam: boolean;
+}
+
+export const CALL_SESSION_RE = /^[A-Za-z0-9_-]{8,128}$/;
+export const CALL_TRACK_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 export type ErrorCode = "bad_pin" | "locked" | "kicked" | "not_joined" | "rejected" | "closed";
 
 export type ServerMessage =
   | { type: "joined"; playerId: string; token: string }
-  | { type: "state"; state: RoomState; you: string; online: string[] }
+  | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer> }
   | { type: "error"; message: string; code?: ErrorCode; fatal?: boolean };
 
 /** Antwort auf GET /api/rooms/:code */

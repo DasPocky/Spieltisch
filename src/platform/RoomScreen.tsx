@@ -13,6 +13,7 @@ import { MenuSheet, type MenuProps } from "./MenuSheet";
 import { PlayerManager } from "./PlayerManager";
 import { SettingsPanel } from "./SettingsPanel";
 import { ShareCode } from "./ShareCode";
+import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
 
 interface Props extends Omit<MenuProps, "board"> {
   room: RoomState;
@@ -21,6 +22,8 @@ interface Props extends Omit<MenuProps, "board"> {
   online: Set<string> | null;
   reconnecting?: boolean;
   dispatch: (a: RoomAction) => void;
+  /** Sprach-/Videochat (nur online und wenn eingerichtet) */
+  call?: CallControls;
 }
 
 /** Gemeinsamer Rahmen für lokales und Online-Spiel: Kopfzeile, Lobby oder das Spielbrett des Moduls. */
@@ -51,10 +54,12 @@ export function RoomScreen(props: Props) {
         <div className="flex items-center gap-2.5">
           {reconnecting && <span className="animate-pulse text-sm font-semibold text-gold">Verbinde …</span>}
           {board && HeaderExtra && <HeaderExtra {...board} />}
+          {props.call && <CallButton call={props.call} />}
           <MenuSheet {...props} isHost={isHost} board={board} />
         </div>
       </header>
 
+      {props.call && <CallStrip call={props.call} players={room.players} me={me} />}
       <StuckBar {...props} isHost={isHost} />
       {board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}
     </div>
