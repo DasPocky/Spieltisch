@@ -175,10 +175,10 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
                 <div className="no-scrollbar -mx-4 flex items-end overflow-x-auto px-4 pt-2.5 pb-1" data-testid="hand">
                   <div className="mx-auto flex items-end">
                     {hand.map((c, i) => inSlots.has(i) ? null : (
-                      <button key={`${c}-${i}`} type="button" disabled={!myTurn || s.step !== "play"} onClick={() => toggle(i)} aria-pressed={sel.includes(i)}
+                      <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!myTurn || s.step !== "play"} onClick={() => toggle(i)} aria-pressed={sel.includes(i)}
                         className={cn("w-[min(13vw,3.4rem)] shrink-0 rounded-[12%] outline-none transition-transform disabled:cursor-default", i > 0 && hand.length > 7 && "-ml-[min(5.5vw,1.3rem)]",
                           sel.includes(i) && "-translate-y-2.5 ring-[3px] ring-ice")}>
-                        <P10CardView card={c} />
+                        <P10CardView card={c} className="card-in" />
                       </button>
                     ))}
                   </div>

@@ -22,8 +22,8 @@ export function Tile({ card, selectable, selected, onClick }: { card: F7Card; se
   const Special = card === "n:13L" ? Clover : card === "n:7U" ? Skull : null;
   return (
     <button type="button" disabled={!selectable} onClick={onClick} aria-label={cardLabel(card)} aria-pressed={selected}
-      className={cn("flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-extrabold leading-none shadow outline-none disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
-        num ? "text-lg" : "text-[0.62rem] leading-tight", cls, selectable && "ring-2 ring-ice/70", selected && "-translate-y-1 ring-[3px] ring-ice")}
+      className={cn("card-in flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-extrabold leading-none shadow outline-none transition disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
+        num ? "text-lg" : "text-[0.62rem] leading-tight", cls, selectable && "target-glow", selected && "-translate-y-1 ring-[3px] ring-ice")}
       style={style}>
       {num ? <>{v}{Special && <Special className="size-2.5" aria-hidden="true" />}</> : <span className="max-w-14 text-center">{cardLabel(card)}</span>}
     </button>

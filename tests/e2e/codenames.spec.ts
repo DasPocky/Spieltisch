@@ -28,7 +28,8 @@ test("Codenames lokal: Teams, Hinweis, raten – auch auf 320 px", async ({ page
   await page.getByRole("button", { name: "Geben" }).click();
   await expect(page.getByTestId("clue")).toContainText("Quatsch");
   await page.getByRole("group", { name: "Wörter" }).getByRole("button").first().click();
-  await expect(page.getByRole("group", { name: "Wörter" }).getByRole("button", { name: /\(/ })).toHaveCount(1);
+  // Zufällig der Attentäter (1 von 25)? Dann ist die Partie sofort vorbei
+  await expect(page.getByRole("group", { name: "Wörter" }).getByRole("button", { name: /\(/ }).or(page.getByText("hat den Attentäter erwischt"))).toHaveCount(1);
   await shot(page, "84-cn-play-320");
 });
 
@@ -58,9 +59,10 @@ test("Codenames online: Chef sieht Farben, Agent nicht", async ({ browser }) => 
   await expect(agent.getByTestId("clue")).toContainText("Reise");
   await shot(chief, "85-cn-chief");
   await shot(agent, "86-cn-agent");
-  await agent.getByRole("group", { name: "Wörter" }).getByRole("button").nth(3).click();
-  await expect(chief.getByRole("group", { name: "Wörter" }).getByRole("button", { name: /\(/ })).toHaveCount(1);
   await expectNoScroll(agent);
+  await agent.getByRole("group", { name: "Wörter" }).getByRole("button").nth(3).click();
+  // Erwischt der Agent zufällig den Attentäter (1 von 25), ist die Partie sofort vorbei
+  await expect(chief.getByRole("group", { name: "Wörter" }).getByRole("button", { name: /\(/ }).or(chief.getByText("hat den Attentäter erwischt"))).toHaveCount(1);
 });
 
 test("Codenames als Brettspiel-Hilfe: Schlüsselkarte", async ({ page }) => {

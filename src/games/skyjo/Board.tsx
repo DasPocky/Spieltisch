@@ -64,6 +64,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
   const needFlips = s.phase === "flip" && !!focus && (grid?.filter((c) => c?.up).length ?? 2) < 2;
   const deckCount = s.deck.length || s.deckCount;
   const top = s.discard[s.discard.length - 1];
+  const canDraw = myTurn && s.drawn === null && !s.mustFlip;
 
   const tap = (i: number) => {
     if (!focus) return;
@@ -103,13 +104,13 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
         </div>
       )}
 
-      {/* Stapel, Ablage, gezogene Karte */}
+      {/* Stapel, Ablage, gezogene Karte – leuchten, solange gezogen werden muss */}
       <div className="flex shrink-0 items-center justify-center gap-3 py-1.5 [--pile:clamp(3.25rem,10vh,5rem)]">
         <button type="button" disabled={!myTurn || s.drawn !== null || s.mustFlip} onClick={() => { vibrate(10); act({ type: "draw", from: "deck" }); }}
-          aria-label={`Vom Stapel ziehen (${deckCount})`} className="card-back grid h-(--pile) w-[calc(var(--pile)*0.714)] place-items-center rounded-xl text-sm font-bold text-paper shadow outline-none disabled:cursor-default">
+          aria-label={`Vom Stapel ziehen (${deckCount})`} className={cn("card-back grid h-(--pile) w-[calc(var(--pile)*0.714)] place-items-center rounded-xl text-sm font-bold text-paper shadow outline-none transition disabled:cursor-default", canDraw && "target-glow")}>
           {deckCount}
         </button>
-        <div className="aspect-[5/7] h-(--pile)">
+        <div key={`d${s.discard.length}`} className={cn("card-in aspect-[5/7] h-(--pile) rounded-xl", canDraw && top !== undefined && "target-glow")}>
           {top !== undefined
             ? <SkCard cell={{ v: top, up: true }} onClick={myTurn && s.drawn === null && !s.mustFlip ? () => act({ type: "draw", from: "discard" }) : undefined} label={`Offene Karte ${top} nehmen`} />
             : <div className="h-full rounded-xl border border-dashed border-border" />}
@@ -117,7 +118,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
         {s.drawn !== null && (
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">→</span>
-            <div className="aspect-[5/7] h-(--pile)" data-testid="drawn"><SkCard cell={{ v: s.drawn, up: true }} pick label={`Gezogen: ${s.drawn}`} /></div>
+            <div className="card-in aspect-[5/7] h-(--pile)" data-testid="drawn"><SkCard cell={{ v: s.drawn, up: true }} pick label={`Gezogen: ${s.drawn}`} /></div>
           </div>
         )}
       </div>

@@ -4,6 +4,8 @@ import { expect, type Browser, type Page } from "@playwright/test";
 export const SHOTS = "screenshots";
 
 export async function shot(page: Page, name: string) {
+  // Kurze Animationen (Karten gleiten, Texte blenden) erst ausklingen lassen
+  await page.waitForTimeout(400);
   await page.screenshot({ path: `${SHOTS}/${name}.png` });
 }
 

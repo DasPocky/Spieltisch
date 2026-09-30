@@ -53,7 +53,7 @@ function RankStack({ cards, rank, selected, disabled, fished, onPick }: { cards:
       <div className="relative h-[calc(2.7rem*1.6)]" style={{ width: `calc(2.7rem + ${(cards.length - 1) * step}rem)` }}>
         {cards.map((c, i) => (
           <div key={c} className={cn("absolute top-0 w-[2.7rem] rounded-[10%]", c === fished && "ring-[3px] ring-ice")} style={{ left: `${i * step}rem` }}>
-            <PlayingCard card={c} />
+            <PlayingCard card={c} className="card-in" />
           </div>
         ))}
       </div>

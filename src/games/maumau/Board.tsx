@@ -42,6 +42,8 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   const playable = (c: Card) => myTurn && (!s.drawn || c === s.drawn) && canPlay(s, c, room.options);
   const mauRule = room.options.mau !== false;
 
+  // Nichts passt: der Stapel leuchtet, damit klar ist, was zu tun ist
+  const mustDraw = myTurn && !s.drawn && !covered && !hand.some(playable);
   const play = (c: Card, wish?: Suit) => {
     vibrate(10);
     act({ type: "play", card: c, wish, mau });
@@ -72,16 +74,18 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
 
       {/* Mitte: Stapel und Ablage */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
-        <div className="flex h-full max-h-60 min-h-0 w-full items-center justify-center gap-5">
+        <div className="flex h-full max-h-60 min-h-0 w-full items-start justify-center gap-5 pt-5">
           <button type="button" disabled={!myTurn || !!s.drawn || covered} onClick={() => { vibrate(8); act({ type: "draw" }); }}
             aria-label={s.pendingDraw ? `${s.pendingDraw} Karten ziehen` : "Karte ziehen"}
-            className="relative h-[72%] rounded-[10%] outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
+            className={cn("relative h-[68%] rounded-[10%] outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", mustDraw && "target-glow")}>
             <CardBack className="h-full">
               <span className="text-[14cqw] font-bold text-paper/85">{s.pileCount}</span>
             </CardBack>
             {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-extrabold text-navy-950">+{s.pendingDraw}</span>}
+            <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Stapel</span>
           </button>
-          <div className="relative h-full" key={s.discard.length}>
+          <div className="relative h-[86%]" key={s.discard.length}>
+            <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Ablage</span>
             <PlayingCard card={top(s)} className="card-in h-full" />
             {s.wish && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="wish">
@@ -126,7 +130,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
                       className={cn("w-[min(19vw,5rem)] shrink-0 rounded-[10%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                         i > 0 && (hand.length > 5 ? "-ml-[min(9vw,2.4rem)]" : "-ml-[min(3vw,0.8rem)]"),
                         ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-ice")}>
-                      <PlayingCard card={c} dim={myTurn && !ok} />
+                      <PlayingCard card={c} dim={myTurn && !ok} className="card-in" />
                     </button>
                   );
                 })}
