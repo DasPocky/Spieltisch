@@ -8,6 +8,7 @@ import { DECKS } from "@shared/cards/deck";
 import { ALL_CATS, type KniffelState } from "@shared/games/kniffel/logic";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
+import { fits as sbFits, type SbState } from "@shared/games/skipbo/logic";
 import { canPlay as unoCanPlay, COLORS, type UnoState } from "@shared/games/uno/logic";
 import type { WerwolfState } from "@shared/games/werwolf/logic";
 import { POINT_STEPS } from "@shared/games/tutto/logic";
@@ -70,6 +71,25 @@ function candidates(r: RoomState, online: boolean): Move[] {
       if (s.phase !== "play" || !hand.some((c) => unoCanPlay(s, c, r.options, hand)) || Math.random() < 0.1) add({ type: "draw" });
       ["pass", "nextRound", "finishRound"].forEach((type) => add({ type }));
       for (const id of ids) add({ type: "enter", player: id, points: Math.floor(Math.random() * 120) });
+      add({ type: "setWinner", player: pick(ids) });
+      break;
+    }
+    case "skipbo": {
+      const s = r.game as SbState;
+      const me = s.curId ?? "";
+      const stockTop = s.stocks[me]?.[s.stocks[me].length - 1];
+      // Wie echte Spieler: Vorratskarte zuerst, sonst meist aufbauen, dann ablegen – sonst wird der Vorrat nie kleiner
+      const stockTo = stockTop === undefined ? -1 : s.builds.findIndex((b) => sbFits(b, stockTop));
+      if (stockTo >= 0 && Math.random() < 0.9) { add({ type: "play", from: "stock", to: stockTo }); break; }
+      const tops = [...(s.hands[me] ?? []), ...(s.discards[me] ?? []).map((d) => d[d.length - 1])];
+      const canBuild = s.builds.some((b) => tops.some((c) => c !== undefined && sbFits(b, c)));
+      for (let to = 0; to < 4; to++) {
+        for (const card of s.hands[me] ?? []) add({ type: "play", from: "hand", card, to });
+        for (let i = 0; i < 4; i++) add({ type: "play", from: "discard", i, to });
+        if (!canBuild || Math.random() < 0.1) for (const card of [...(s.hands[me] ?? []), -1]) add({ type: "discard", card, to });
+      }
+      add({ type: "nextRound" }); add({ type: "finishRound" });
+      for (const id of ids) add({ type: "enter", player: id, points: Math.floor(Math.random() * 20) });
       add({ type: "setWinner", player: pick(ids) });
       break;
     }
@@ -168,6 +188,12 @@ function checkCards(r: RoomState) {
     const s = r.game as UnoState;
     expect(s.pile.length + s.discard.length + Object.values(s.hands).flat().length).toBe(108);
   }
+  if (r.gameId === "skipbo" && (r.game as SbState).mode === "app") {
+    const s = r.game as SbState;
+    const n = s.pile.length + s.done.length + s.builds.flat().length + Object.values(s.hands).flat().length
+      + Object.values(s.stocks).flat().length + Object.values(s.discards).flat(2).length;
+    expect(n).toBe(162);
+  }
   if (r.gameId === "flip7") {
     const s = r.game as { deck: string[]; discard: string[]; lines: Record<string, { nums: string[]; mods: string[]; second: boolean }>; pending: { card: string } | null; queued: { card: string }[]; variant: string };
     const n = s.deck.length + s.discard.length + (s.pending ? 1 : 0) + s.queued.length
@@ -240,6 +266,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["uno", 5, { stack: true, plus4Any: true, uno: false, target: "round" }],
   ["uno", 8, { target: "round" }],
   ["uno", 4, { mode: "table" }],
+  ["skipbo", 2, {}],
+  ["skipbo", 6, { stock: "10" }],
+  ["skipbo", 5, { target: "500", stock: "10" }],
+  ["skipbo", 4, { mode: "table", target: "500" }],
   ["skyjo", 2, {}],
   ["skyjo", 6, { target: 60 }],
   ["skyjo", 4, { mode: "table" }],
