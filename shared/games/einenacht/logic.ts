@@ -348,6 +348,11 @@ export const einenacht: GameLogic<ONState, ONAction> = {
   actionKind: (a) => (["ready", "startNight", "next", "peek", "see", "rob", "trouble", "drunk", "nightDone", "vote", "closeVote", "lynch"].includes(a.type) ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
+  results: (s) => {
+    const final = s.final ?? s.start;
+    const team = (r: ONRole) => (r === "werwolf" || r === "guenstling" ? "werwolf" : r === "gerber" ? "gerber" : "dorf");
+    return Object.keys(final).map((id) => ({ id, won: s.winners.includes(team(final[id])) }));
+  },
   skipLabel: (s) => (s.phase === "reveal" ? "Nacht beginnen" : s.phase === "night" && !s.stepwise ? "Nacht beenden (offene Aktionen verfallen)" : s.phase === "day" && !s.stepwise ? "Abstimmung beenden" : null),
   skipTurn(prev, ctx) {
     const s = structuredClone(prev);

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import type { ClientMessage, RoomInfo, ServerMessage } from "@shared/platform/protocol";
 import { credsKey, readJSON, remove, writeJSON, type RoomCreds } from "@/lib/storage";
+import { myProfile } from "@/lib/profile";
 
 export type RoomStatus = "checking" | "missing" | "needsJoin" | "connecting" | "ready" | "failed" | "closed";
 
@@ -36,7 +37,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       ws.onopen = () => {
         retry = 0;
         const creds = readJSON<RoomCreds>(credsKey(code));
-        const msg: ClientMessage = { type: "join", ...(creds ?? {}), ...(join ?? {}) };
+        const msg: ClientMessage = { type: "join", ...(creds ?? {}), ...(join ?? {}), profile: myProfile().id };
         ws.send(JSON.stringify(msg));
       };
 

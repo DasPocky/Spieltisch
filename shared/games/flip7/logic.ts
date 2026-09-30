@@ -451,6 +451,7 @@ export const flip7: GameLogic<F7State, F7Action> = {
   actionKind: (a) => (["hit", "stay", "target", "pick", "swap"].includes(a.type) ? "turn" : null),
   currentPlayerId: (s) => (s.winners.length ? null : s.pending ? s.pending.by : s.curId),
   isOver: (s) => s.winners.length > 0,
+  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: s.winners.includes(p.id), score: s.scores[p.id] ?? 0 })),
   skipLabel: (s, ctx) => {
     const id = s.pending ? s.pending.by : s.curId;
     const p = ctx.players.find((x) => x.id === id);

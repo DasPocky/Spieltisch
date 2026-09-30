@@ -224,6 +224,11 @@ describe("Nichts bleibt hängen – Zufallspartien", () => {
         for (let i = 0; i < ROUNDS; i++) {
           const { r } = playOut(setupRoom(gameId, n + (online && options.narrator === "human" ? 1 : 0), options, online), online);
           expect(roomGame(r).isOver(r.game)).toBe(true);
+          // Ergebnis für die Statistik: nur echte Spieler, jeder höchstens einmal, meist ein Sieger
+          const res = roomGame(r).results!(r.game, { players: r.players, hostId: r.hostId, actorId: null, options: r.options, now: 0 });
+          const ids = r.players.map((p) => p.id);
+          expect(res.every((x) => ids.includes(x.id))).toBe(true);
+          expect(new Set(res.map((x) => x.id)).size).toBe(res.length);
         }
       }, 120_000 * Math.max(1, ROUNDS / 25));
     }

@@ -251,6 +251,10 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
   actionKind: (a) => (["ask", "quartet", "fish", "undo"].includes(a.type) ? "turn" : null),
   currentPlayerId: (s) => (s.finished ? null : s.curId),
   isOver: (s) => s.finished,
+  results: (s, ctx) => {
+    const win = leaders(s, ctx.players);
+    return ctx.players.map((p) => ({ id: p.id, won: win.includes(p.id), score: s.quartets[p.id]?.length ?? 0 }));
+  },
   skipLabel: (s, ctx) => {
     const cur = ctx.players.find((p) => p.id === s.curId);
     return cur && !s.finished ? `Zug von ${cur.name} überspringen` : null;

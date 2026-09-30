@@ -6,7 +6,7 @@ export const ROOM_CODE_RE = /^[A-HJ-NP-Z2-9]{5}$/;
 export const PIN_RE = /^\d{4,8}$/;
 
 export type ClientMessage =
-  | { type: "join"; name?: string; pin?: string; playerId?: string; token?: string }
+  | { type: "join"; name?: string; pin?: string; playerId?: string; token?: string; /** Profil-ID für die Statistik (optional) */ profile?: string }
   | { type: "action"; action: RoomAction }
   /** Nur Host: Raum sofort und endgültig löschen */
   | { type: "closeRoom" }

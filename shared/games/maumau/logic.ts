@@ -216,6 +216,7 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   actionKind: (a) => (a.type === "play" || a.type === "draw" || a.type === "pass" ? "turn" : null),
   currentPlayerId: (s) => (s.winnerId ? null : s.curId),
   isOver: (s) => s.winnerId !== null,
+  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId })),
   skipLabel: (s, ctx) => {
     const cur = ctx.players.find((p) => p.id === s.curId);
     return cur && !s.winnerId ? `Zug von ${cur.name} überspringen (zieht ${s.drawn ? "nichts mehr" : s.pendingDraw || 1})` : null;

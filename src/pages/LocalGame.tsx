@@ -1,11 +1,34 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { addPlayer, applyRoomAction, createRoom, type RoomAction, type RoomState } from "@shared/platform/room";
+import { addPlayer, applyRoomAction, createRoom, roomGame, type RoomAction, type RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
 import { GameError } from "@shared/platform/types";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { navigate } from "@/hooks/useRoute";
 import { localKey, readJSON, writeJSON } from "@/lib/storage";
+import { myName, reportLocal } from "@/lib/profile";
+
+const isOver = (r: RoomState) => r.phase === "playing" && !!r.game && roomGame(r).isOver(r.game);
+
+/**
+ * Lokale Partie zu Ende: Das Ergebnis des Spielers, der so heißt wie das eigene Profil, kommt in die Statistik.
+ * Nur beim Übergang zu „vorbei“ – nicht beim Neuladen einer schon beendeten Partie.
+ */
+function useLocalStats(room: RoomState) {
+  const was = useRef(isOver(room));
+  useEffect(() => {
+    const over = isOver(room);
+    if (over && !was.current) {
+      const logic = roomGame(room);
+      const name = myName().trim().toLowerCase();
+      const me = name ? room.players.find((p) => p.name.trim().toLowerCase() === name) : undefined;
+      const results = logic.results?.(room.game, { players: room.players, hostId: room.hostId, actorId: null, options: room.options, now: Date.now() });
+      const mine = me && results?.find((r) => r.id === me.id);
+      if (mine) void reportLocal({ gameId: room.gameId, won: mine.won, score: mine.score, players: results!.length });
+    }
+    was.current = over;
+  }, [room]);
+}
 
 /** Ist ein gespeicherter Spielstand noch mit dem aktuellen Code verträglich? */
 function load(gameId: string): RoomState {
@@ -19,6 +42,7 @@ export function LocalGame({ gameId }: { gameId: string }) {
   const [room, setRoom] = useState<RoomState>(() => load(gameId));
 
   useEffect(() => writeJSON(localKey(room.gameId), { ...room, gameVersion: getGame(room.gameId).version }), [room]);
+  useLocalStats(room);
 
   const run = useCallback((fn: (s: RoomState) => RoomState) => {
     setRoom((s) => {

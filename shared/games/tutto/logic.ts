@@ -410,6 +410,7 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
   actionKind: (a) => (TURN_ACTIONS.has(a.type) ? "turn" : HOST_ACTIONS.has(a.type) ? "host" : null),
   currentPlayerId: (s) => s.curId,
   isOver: (s) => s.winnerId !== null,
+  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId, score: score(s, p.id) })),
   skipLabel: (s, ctx) => {
     const cur = ctx.players.find((p) => p.id === s.curId);
     return cur && !s.winnerId ? `Zug von ${cur.name} überspringen (Niete)` : null;

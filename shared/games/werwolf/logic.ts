@@ -995,6 +995,18 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
   actionKind: (a) => (a.type in ACTIONS ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
+  results: (s) => Object.keys(s.roles).map((id) => {
+    const r = s.roles[id];
+    const won =
+      s.winner === "dorf" ? teamOf(r) === "dorf"
+      : s.winner === "werwolf" ? ROLES[r].team === "werwolf"
+      : s.winner === "liebe" ? !!s.lovers?.includes(id)
+      : s.winner === "weisserwolf" ? r === "weisserwolf"
+      : s.winner === "floete" ? r === "floetenspieler"
+      : s.winner === "engel" ? r === "engel"
+      : false;
+    return { id, won };
+  }),
   skipLabel: (s) => {
     if (s.phase === "assign") return "Zuordnung abschließen (Rest: Dorfbewohner)";
     if (s.phase === "election") return s.stepwise ? null : "Hauptmannwahl beenden";

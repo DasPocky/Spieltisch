@@ -30,6 +30,14 @@ export type SettingDef =
   | (SettingBase & { type: "number"; default: number; min: number; max: number; step: number })
   | (SettingBase & { type: "toggle"; default: boolean; hint?: string });
 
+/** Ergebnis eines Spielers in einer beendeten Partie (für Profile und Statistik) */
+export interface PlayerResult {
+  id: string;
+  won: boolean;
+  /** Punkte, Quartette o. Ä. – höher ist besser; fehlt bei Spielen ohne Punkte */
+  score?: number;
+}
+
 /** Was ein Spiel beim Ausführen einer Aktion über den Raum erfährt. */
 export interface GameContext {
   /** Spieler in Zugreihenfolge */
@@ -89,6 +97,11 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
   currentPlayerId(state: S): string | null;
   /** Ist die Partie entschieden? Dann sind keine Zug-Aktionen mehr möglich. */
   isOver(state: S): boolean;
+  /**
+   * Ergebnis einer beendeten Partie für die Statistik: wer hat gewonnen, optional mit Punkten.
+   * Nur aufgerufen, wenn `isOver` true ist. Spieler ohne Ergebnis (z. B. Spielleiter) fehlen einfach.
+   */
+  results?(state: S, ctx: GameContext): PlayerResult[];
 
   /** Spielerzahl abhängig von den Einstellungen (z. B. Spielleiter zählt mit). Ohne: info.minPlayers/maxPlayers. */
   playerLimits?(options: Options): { min: number; max: number; note?: string };

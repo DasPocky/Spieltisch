@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 import { GAMES, isGameId } from "../shared/games";
+import { addResult, emptyStats, PROFILE_ID_RE, sanitizeResult, type ProfileStats, type RecentGame } from "../shared/platform/profile";
 import { ACCESS_CODE_RE, accessFor, DEFAULT_CONFIG, sanitizeConfig, type SiteConfig } from "../shared/platform/access";
-import { addPlayer, applyRoomAction, createRoom, viewRoom, type RoomState } from "../shared/platform/room";
+import { addPlayer, applyRoomAction, cleanName, createRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
   PIN_RE, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
@@ -11,6 +12,7 @@ import {
 interface Env {
   ROOMS: DurableObjectNamespace<GameRoom>;
   SETTINGS: DurableObjectNamespace<SiteSettings>;
+  PROFILES: DurableObjectNamespace<ProfileStore>;
   /** Admin-Passwort – als Secret in Cloudflare gesetzt. Fehlt es, ist der Admin-Bereich aus. */
   ADMIN_PASSWORD?: string;
 }
@@ -25,6 +27,8 @@ interface RoomData {
   fails: number;
   lockUntil: number;
   createdAt: number;
+  /** playerId → Profil-ID (nur auf dem Server, nie an andere Spieler) */
+  profiles?: Record<string, string>;
 }
 
 interface Attachment {
@@ -152,6 +156,7 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     if (msg.type === "action" && msg.action && typeof msg.action === "object") {
+      const before = this.room.state;
       try {
         this.room.state = applyRoomAction(this.room.state, msg.action, playerId);
       } catch (e) {
@@ -161,7 +166,27 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.action.type === "removePlayer") this.kick(msg.action.id);
       await this.persist();
       this.broadcast();
+      await this.recordIfFinished(before);
     }
+  }
+
+  /** Partie gerade zu Ende gegangen: Ergebnisse in die Profile der Mitspieler schreiben */
+  private async recordIfFinished(before: RoomState): Promise<void> {
+    const room = this.room;
+    const now = room?.state;
+    if (!room || !now || now.phase !== "playing" || !now.game || !room.profiles) return;
+    const logic = roomGame(now);
+    const was = before.phase === "playing" && before.game && before.gameId === now.gameId && before.round === now.round && logic.isOver(before.game);
+    if (was || !logic.isOver(now.game) || !logic.results) return;
+    const ctx = { players: now.players, hostId: now.hostId, actorId: null, options: now.options, now: Date.now() };
+    const results = logic.results(now.game, ctx);
+    const players = results.length;
+    await Promise.all(results.map(async (r) => {
+      const pid = room.profiles?.[r.id];
+      if (!pid) return;
+      const entry: RecentGame = { gameId: now.gameId, at: Date.now(), won: r.won, score: r.score, players, online: true };
+      try { await this.env.PROFILES.get(this.env.PROFILES.idFromName(pid)).record(entry); } catch { /* Statistik ist nur ein Extra */ }
+    }));
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
@@ -196,6 +221,10 @@ export class GameRoom extends DurableObject<Env> {
     if (msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token
         && room.state.players.some((p) => p.id === msg.playerId)) {
       ws.serializeAttachment({ playerId: msg.playerId } satisfies Attachment);
+      if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile) && room.profiles?.[msg.playerId] !== msg.profile) {
+        (room.profiles ??= {})[msg.playerId] = msg.profile;
+        await this.persist();
+      }
       this.send(ws, { type: "joined", playerId: msg.playerId, token: msg.token });
       this.broadcast();
       return;
@@ -225,6 +254,7 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
     room.tokens[playerId] = token;
+    if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile)) (room.profiles ??= {})[playerId] = msg.profile;
     ws.serializeAttachment({ playerId } satisfies Attachment);
     await this.persist();
     this.send(ws, { type: "joined", playerId, token });
@@ -234,6 +264,7 @@ export class GameRoom extends DurableObject<Env> {
   private kick(playerId: string): void {
     if (!this.room) return;
     delete this.room.tokens[playerId];
+    if (this.room.profiles) delete this.room.profiles[playerId];
     for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.playerId === playerId) {
@@ -344,6 +375,48 @@ export class SiteSettings extends DurableObject<Env> {
 
 const settingsOf = (env: Env) => env.SETTINGS.get(env.SETTINGS.idFromName("site"));
 
+/** Ein Durable Object pro Profil: Name und Statistik. Ohne Aktivität nach einem Jahr gelöscht. */
+const PROFILE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+export class ProfileStore extends DurableObject<Env> {
+  private stats: ProfileStats | null = null;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.blockConcurrencyWhile(async () => { this.stats = (await ctx.storage.get<ProfileStats>("stats")) ?? null; });
+  }
+
+  async get(): Promise<ProfileStats> {
+    return this.stats ?? emptyStats(Date.now());
+  }
+
+  async record(entry: RecentGame): Promise<ProfileStats> {
+    this.stats = addResult(this.stats ?? emptyStats(Date.now()), entry);
+    await this.save();
+    return this.stats;
+  }
+
+  async rename(name: string): Promise<ProfileStats> {
+    this.stats = { ...(this.stats ?? emptyStats(Date.now())), name: cleanName(name) };
+    await this.save();
+    return this.stats;
+  }
+
+  async remove(): Promise<void> {
+    this.stats = null;
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+  }
+
+  async alarm(): Promise<void> { await this.remove(); }
+
+  private async save() {
+    await this.ctx.storage.put("stats", this.stats);
+    await this.ctx.storage.setAlarm(Date.now() + PROFILE_TTL_MS);
+  }
+}
+
+const profileOf = (env: Env, id: string) => env.PROFILES.get(env.PROFILES.idFromName(id));
+
 export default {
   async fetch(request, env): Promise<Response> {
     const url = new URL(request.url);
@@ -357,6 +430,28 @@ export default {
       try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
       const ok = typeof body.code === "string" && await settingsOf(env).checkCode(body.code);
       return json({ ok }, ok ? 200 : 403);
+    }
+
+    // Profil: Statistik lesen, Namen setzen, lokale Partie eintragen, löschen
+    const prof = url.pathname.match(/^\/api\/profile\/([A-Z0-9]+)(\/result)?$/);
+    if (prof) {
+      const id = prof[1];
+      if (!PROFILE_ID_RE.test(id)) return json({ error: "Ungültiges Profil." }, 400);
+      const store = profileOf(env, id);
+      if (prof[2] && request.method === "POST") {
+        let body: unknown;
+        try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+        const entry = sanitizeResult(body, GAME_IDS, Date.now());
+        if (!entry) return json({ error: "Ungültiges Ergebnis." }, 400);
+        return json(await store.record(entry));
+      }
+      if (!prof[2] && request.method === "GET") return json(await store.get());
+      if (!prof[2] && request.method === "PUT") {
+        let body: { name?: unknown };
+        try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+        return json(await store.rename(String(body.name ?? "")));
+      }
+      if (!prof[2] && request.method === "DELETE") { await store.remove(); return json({ ok: true }); }
     }
 
     // Admin: anmelden oder Einstellungen speichern

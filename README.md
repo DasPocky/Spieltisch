@@ -18,6 +18,7 @@ Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittst
 - **Lokal:** Alle spielen an einem Gerät, ohne Server. Der Spielstand bleibt im Browser, getrennt pro Spiel.
 - **Ein Raum, mehrere Spiele:** Nach einer Partie geht der Host zurück in die Lobby und wählt ein anderes Spiel – alle bleiben im Raum.
 - **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **Spielleiter-Funktionen** (Menü) darf er für andere spielen, zurücknehmen und mischen.
+- **Profil und Statistik:** ohne Registrierung. Jedes Gerät bekommt eine zufällige Profil-ID; unter `/profil` stehen Partien, Siege, Quote, Bestwert und Durchschnitt je Spiel. Online zählt jede Partie im Raum, lokal der Spieler, der so heißt wie das Profil. Mit dem Profil-Code lässt sich das Profil auf ein anderes Handy übernehmen.
 - **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „🔒 mit Zugangscode“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
 - **Fairer Zufall:** `crypto.getRandomValues` mit Verwerfungsmethode (keine Modulo-Verzerrung). Online würfelt und mischt ausschließlich der Server.
 - **Ansicht „Einfach“ oder „Voll“** (im Menü, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
@@ -134,9 +135,10 @@ tests/
 
 | Ort | Inhalt | Wann gelöscht |
 | --- | --- | --- |
-| Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, Wiederverbindungs-Tokens, Fehlversuche | 48 h nach der letzten Aktion oder sofort über „Raum löschen“ |
+| Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, Wiederverbindungs-Tokens, Fehlversuche, Profil-ID je Spieler (nur serverseitig, für die Statistik) | 48 h nach der letzten Aktion oder sofort über „Raum löschen“ |
+| Durable Object `ProfileStore` (eines pro Profil-ID) | Profilname, Zähler je Spiel (Partien, Siege, Bestwert, Punktesumme), die letzten 30 Partien (Spiel, Datum, Sieg, Punkte, Spielerzahl) | ein Jahr nach der letzten Partie oder sofort über „Profil löschen“ |
 | Durable Object `SiteSettings` (genau eines) | Admin-Freigaben, Hinweistext, Hash + Salt des Zugangscodes, Fehlversuche | bis der Admin es ändert |
-| `localStorage` im Browser | Zugangscode nach richtiger Eingabe (`spieltisch:access`), eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
+| `localStorage` im Browser | Profil-ID (`spieltisch:profile`), Zugangscode nach richtiger Eingabe (`spieltisch:access`), eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
 | `sessionStorage` im Browser | Name + PIN für genau einen Beitritt | direkt nach dem Beitritt |
 
 IP-Adressen oder Konten speichert die App nicht. Cloudflare selbst protokolliert Anfragen (Observability ist in `wrangler.jsonc` aktiv).

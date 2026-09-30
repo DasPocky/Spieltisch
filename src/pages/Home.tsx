@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn } from "lucide-react";
+import { LogIn, UserRound } from "lucide-react";
 import { ROOM_CODE_RE } from "@shared/platform/protocol";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,11 @@ export function Home() {
     <main className="mx-auto flex h-dvh-safe max-w-md flex-col overflow-hidden px-4 pt-[3vh] pb-[calc(1rem+env(safe-area-inset-bottom))]">
       <div className="flex shrink-0 items-center gap-3.5">
         <Logo className="size-14 shrink-0 -rotate-6 rounded-2xl" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="bg-gradient-to-b from-white to-navy-300 bg-clip-text text-4xl font-extrabold leading-none tracking-tighter text-transparent">Spieltisch</h1>
           <p className="mt-1 text-sm leading-snug text-muted-foreground">Spiele für euren Spieleabend – jeder am eigenen Handy oder alle an einem.</p>
         </div>
+        <Button variant="secondary" size="icon" className="shrink-0 self-start" aria-label="Dein Profil" onClick={() => navigate("/profil")}><UserRound /></Button>
       </div>
 
       <form className="glass mt-5 shrink-0 rounded-2xl p-3.5" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>

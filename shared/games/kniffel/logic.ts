@@ -271,6 +271,11 @@ export const kniffel: GameLogic<KniffelState, KniffelAction> = {
   actionKind: (a) => (a.type === "undo" ? "host" : a.type === "roll" || a.type === "hold" || a.type === "score" ? "turn" : null),
   currentPlayerId: (s) => (s.finished ? null : s.curId),
   isOver: (s) => s.finished,
+  results: (s, ctx) => {
+    const ids = ctx.players.map((p) => p.id);
+    const win = winners(s, ids);
+    return ids.map((id) => ({ id, won: win.includes(id), score: totals(s, id).total }));
+  },
   skipLabel: (s, ctx) => {
     const cur = ctx.players.find((p) => p.id === s.curId);
     return cur && !s.finished ? `Zug von ${cur.name} überspringen (erstes freies Feld wird gestrichen)` : null;
