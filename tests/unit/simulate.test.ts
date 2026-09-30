@@ -8,6 +8,7 @@ import { DECKS } from "@shared/cards/deck";
 import { ALL_CATS, type KniffelState } from "@shared/games/kniffel/logic";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
+import { extend as p10Extend, findPhase, type P10State } from "@shared/games/phase10/logic";
 import { fits as sbFits, type SbState } from "@shared/games/skipbo/logic";
 import { canPlay as unoCanPlay, COLORS, type UnoState } from "@shared/games/uno/logic";
 import type { WerwolfState } from "@shared/games/werwolf/logic";
@@ -91,6 +92,20 @@ function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "nextRound" }); add({ type: "finishRound" });
       for (const id of ids) add({ type: "enter", player: id, points: Math.floor(Math.random() * 20) });
       add({ type: "setWinner", player: pick(ids) });
+      break;
+    }
+    case "phase10": {
+      const s = r.game as P10State;
+      const me = s.curId ?? "";
+      const hand = s.hands[me] ?? [];
+      add({ type: "draw", from: "pile" }); add({ type: "draw", from: "discard" });
+      const found = !s.laid[me] && findPhase(hand, s.phase[me] ?? 1);
+      if (found) { add({ type: "lay", groups: found }); break; }
+      if (s.laid[me]) for (const c of hand) for (const [owner, gs] of Object.entries(s.laid)) gs.forEach((gr, k) => { if (p10Extend(gr, c)) add({ type: "hit", card: c, owner, g: k }); });
+      if (!moves.some((m) => m.action.type === "game" && (m.action.action as { type: string }).type === "hit") || Math.random() < 0.3)
+        for (const c of hand) add({ type: "discard", card: c, skip: pick(ids) });
+      add({ type: "nextRound" }); add({ type: "finishRound" });
+      for (const id of ids) { add({ type: "enter", player: id, points: 5 * Math.floor(Math.random() * 20) }); add({ type: "setDone", player: id, done: Math.random() < 0.5 }); }
       break;
     }
     case "skyjo": {
@@ -194,6 +209,11 @@ function checkCards(r: RoomState) {
       + Object.values(s.stocks).flat().length + Object.values(s.discards).flat(2).length;
     expect(n).toBe(162);
   }
+  if (r.gameId === "phase10" && (r.game as P10State).mode === "app") {
+    const s = r.game as P10State;
+    const laid = Object.values(s.laid).flat().reduce((t, gr) => t + gr.cards.length, 0);
+    expect(s.pile.length + s.discard.length + Object.values(s.hands).flat().length + laid).toBe(108);
+  }
   if (r.gameId === "flip7") {
     const s = r.game as { deck: string[]; discard: string[]; lines: Record<string, { nums: string[]; mods: string[]; second: boolean }>; pending: { card: string } | null; queued: { card: string }[]; variant: string };
     const n = s.deck.length + s.discard.length + (s.pending ? 1 : 0) + s.queued.length
@@ -270,6 +290,9 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["skipbo", 6, { stock: "10" }],
   ["skipbo", 5, { target: "500", stock: "10" }],
   ["skipbo", 4, { mode: "table", target: "500" }],
+  ["phase10", 2, { goal: "5" }],
+  ["phase10", 5, { goal: "5" }],
+  ["phase10", 4, { mode: "table" }],
   ["skyjo", 2, {}],
   ["skyjo", 6, { target: 60 }],
   ["skyjo", 4, { mode: "table" }],
