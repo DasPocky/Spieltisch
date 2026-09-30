@@ -100,7 +100,7 @@ async function clippedButtons(page: import("@playwright/test").Page) {
   });
 }
 
-const GAMES: [string, number][] = [["tutto", 3], ["kniffel", 3], ["flip7", 4], ["werwolf", 6], ["einenacht", 4], ["maumau", 4], ["fischen", 3]];
+const GAMES: [string, number][] = [["codenames", 4], ["tutto", 3], ["kniffel", 3], ["flip7", 4], ["werwolf", 6], ["einenacht", 4], ["maumau", 4], ["fischen", 3]];
 for (const size of [{ width: 320, height: 568 }, { width: 1280, height: 720 }]) {
   for (const [game, n] of GAMES) {
     test(`${game} ohne Scrollen und Abschneiden: ${size.width}×${size.height}`, async ({ page }) => {

@@ -61,6 +61,13 @@ function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "pass" });
       break;
     }
+    case "codenames": {
+      for (const id of ids) for (const team of ["rot", "blau", null]) add({ type: "join", player: id, team, chief: Math.random() < 0.3 });
+      ["shuffleTeams", "begin", "pass"].forEach((type) => add({ type }));
+      add({ type: "clue", word: pick(["Tier", "Wasser", "Musik", "Reise"]), count: Math.floor(Math.random() * 4) });
+      for (let i = 0; i < 25; i++) { add({ type: "guess", i }); add({ type: "mark", i }); }
+      break;
+    }
     case "fischen": {
       const st = r.game as FischenState;
       for (const target of ids) for (const rank of DECKS[st.deck].ranks) {
@@ -195,6 +202,9 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["maumau", 4, {}],
   ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
   ["maumau", 7, { deck: "fr52", hand: "6" }],
+  ["codenames", 4, {}],
+  ["codenames", 7, {}],
+  ["codenames", 2, { mode: "key" }],
   ["fischen", 2, {}],
   ["fischen", 5, { luckyAgain: false, deck: "de32" }],
   ["fischen", 8, { deck: "fr52" }],

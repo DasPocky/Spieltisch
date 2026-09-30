@@ -3,6 +3,7 @@
  */
 import { GAME_IDS, getGame, isGameId, type GameId } from "@shared/games";
 import type { GameUI } from "./types";
+import { codenamesUI } from "./codenames";
 import { einenachtUI } from "./einenacht";
 import { fischenUI } from "./fischen";
 import { flip7UI } from "./flip7";
@@ -17,6 +18,7 @@ const UIS: Record<GameId, GameUI<never, never>> = {
   flip7: flip7UI as unknown as GameUI<never, never>,
   werwolf: werwolfUI as unknown as GameUI<never, never>,
   einenacht: einenachtUI as unknown as GameUI<never, never>,
+  codenames: codenamesUI as unknown as GameUI<never, never>,
   maumau: maumauUI as unknown as GameUI<never, never>,
   fischen: fischenUI as unknown as GameUI<never, never>,
 };
