@@ -8,6 +8,7 @@ import { DECKS } from "@shared/cards/deck";
 import { ALL_CATS, type KniffelState } from "@shared/games/kniffel/logic";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
+import { canPlay as unoCanPlay, COLORS, type UnoState } from "@shared/games/uno/logic";
 import type { WerwolfState } from "@shared/games/werwolf/logic";
 import { POINT_STEPS } from "@shared/games/tutto/logic";
 import { applyRoomAction, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
@@ -59,6 +60,17 @@ function candidates(r: RoomState, online: boolean): Move[] {
       for (const card of hand) add({ type: "play", card, wish: pick(DECKS[s.deck].suits), mau: Math.random() < 0.8 });
       add({ type: "draw" });
       add({ type: "pass" });
+      break;
+    }
+    case "uno": {
+      const s = r.game as UnoState;
+      const hand = s.hands[s.curId ?? ""] ?? [];
+      for (const card of hand) add({ type: "play", card, color: pick(COLORS), uno: Math.random() < 0.9 });
+      // Wie echte Spieler: meist legen, wenn etwas passt – sonst wachsen die Hände endlos
+      if (s.phase !== "play" || !hand.some((c) => unoCanPlay(s, c, r.options, hand)) || Math.random() < 0.1) add({ type: "draw" });
+      ["pass", "nextRound", "finishRound"].forEach((type) => add({ type }));
+      for (const id of ids) add({ type: "enter", player: id, points: Math.floor(Math.random() * 120) });
+      add({ type: "setWinner", player: pick(ids) });
       break;
     }
     case "skyjo": {
@@ -152,6 +164,10 @@ function checkCards(r: RoomState) {
     expect(new Set(all).size).toBe(all.length);
     expect(all.length).toBe(DECKS[s.deck].suits.length * DECKS[s.deck].ranks.length);
   }
+  if (r.gameId === "uno" && (r.game as UnoState).mode === "app") {
+    const s = r.game as UnoState;
+    expect(s.pile.length + s.discard.length + Object.values(s.hands).flat().length).toBe(108);
+  }
   if (r.gameId === "flip7") {
     const s = r.game as { deck: string[]; discard: string[]; lines: Record<string, { nums: string[]; mods: string[]; second: boolean }>; pending: { card: string } | null; queued: { card: string }[]; variant: string };
     const n = s.deck.length + s.discard.length + (s.pending ? 1 : 0) + s.queued.length
@@ -220,6 +236,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["maumau", 4, {}],
   ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
   ["maumau", 7, { deck: "fr52", hand: "6" }],
+  ["uno", 2, {}],
+  ["uno", 5, { stack: true, plus4Any: true, uno: false, target: "round" }],
+  ["uno", 8, { target: "round" }],
+  ["uno", 4, { mode: "table" }],
   ["skyjo", 2, {}],
   ["skyjo", 6, { target: 60 }],
   ["skyjo", 4, { mode: "table" }],

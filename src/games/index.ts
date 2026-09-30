@@ -11,6 +11,7 @@ import { kniffelUI } from "./kniffel";
 import { maumauUI } from "./maumau";
 import { skyjoUI } from "./skyjo";
 import { tuttoUI } from "./tutto";
+import { unoUI } from "./uno";
 import { werwolfUI } from "./werwolf";
 
 const UIS: Record<GameId, GameUI<never, never>> = {
@@ -22,6 +23,7 @@ const UIS: Record<GameId, GameUI<never, never>> = {
   einenacht: einenachtUI as unknown as GameUI<never, never>,
   codenames: codenamesUI as unknown as GameUI<never, never>,
   maumau: maumauUI as unknown as GameUI<never, never>,
+  uno: unoUI as unknown as GameUI<never, never>,
   fischen: fischenUI as unknown as GameUI<never, never>,
 };
 
