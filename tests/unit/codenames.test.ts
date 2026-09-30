@@ -24,7 +24,7 @@ function start(mode = "app") {
   return game(r, { type: "begin" }, "p1");
 }
 
-describe("Codenamen", () => {
+describe("Codenames", () => {
   it("Brett: 25 verschiedene Wörter, 9/8/7/1 verteilt", () => {
     let r = act(roomWith(["A", "B", "C", "D"]), { type: "selectGame", gameId: "codenames" });
     r = act(r, { type: "start" });

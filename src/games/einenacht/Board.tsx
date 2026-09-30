@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Check, Coffee, Eye, Handshake, Moon, PawPrint, Skull, Sun, VenetianMask, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { ON_ROLES, resolveNight, type ONAction, type ONRole, type ONState } from "@shared/games/einenacht/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
-import { nameOf, Panel, Picker } from "@/games/werwolf/parts";
+import { Ico, IconTitle, nameOf, Panel, Picker } from "@/games/werwolf/parts";
 import { setSpeech, speechSupported, useSpeak, useSpeechEnabled } from "@/games/werwolf/useSpeech";
 import { cn } from "@/lib/utils";
 import { CenterCards, Countdown, ONCard } from "./parts";
+import { RoleIcon } from "./RoleIcon";
 import { ON_DAWN, ON_SCRIPT } from "./script";
 
 const ids = (s: ONState) => Object.keys(s.start);
@@ -59,9 +60,9 @@ function PassAround({ s, players, act }: { s: ONState; players: Player[]; act: (
   return (
     <>
       <Panel title="Karten ansehen" sub="Reicht das Handy herum – jeder tippt auf seinen Namen.">
-        <Picker ids={ids(s)} players={players} selected={[]} onPick={setPeek} marks={Object.fromEntries(seen.map((id) => [id, "✓"]))} />
+        <Picker ids={ids(s)} players={players} selected={[]} onPick={setPeek} marks={Object.fromEntries(seen.map((id) => [id, <Check aria-label="gesehen" className="size-4" />]))} />
       </Panel>
-      <Button size="lg" className="shrink-0" onClick={() => act({ type: "startNight" })}>🌙 Nacht beginnen</Button>
+      <Button size="lg" className="shrink-0" onClick={() => act({ type: "startNight" })}><Moon />Nacht beginnen</Button>
     </>
   );
 }
@@ -79,7 +80,7 @@ function DeviceStep({ s, players, act }: { s: ONState; players: Player[]; act: (
   if (step === "werwolf") {
     body = (
       <div className="grid gap-3">
-        <p className="text-center text-xl font-extrabold">🐺 {names(wolves)}</p>
+        <p className="text-center text-xl font-extrabold"><Ico icon={PawPrint} className="mr-2 size-6 text-ice" />{names(wolves)}</p>
         {wolves.length === 1 && (
           <>
             <p className="text-sm text-muted-foreground">Einsamer Werwolf: eine Karte aus der Mitte ansehen?</p>
@@ -91,12 +92,12 @@ function DeviceStep({ s, players, act }: { s: ONState; players: Player[]; act: (
   } else if (step === "guenstling") {
     body = <p className="text-center text-xl font-extrabold">Die Werwölfe: {names(wolves)}</p>;
   } else if (step === "freimaurer") {
-    body = <p className="text-center text-xl font-extrabold">🤝 {names(holder("freimaurer"))}</p>;
+    body = <p className="text-center text-xl font-extrabold"><Ico icon={Handshake} className="mr-2 size-6 text-ice" />{names(holder("freimaurer"))}</p>;
   } else if (step === "seherin") {
     const me = holder("seherin")[0];
     body = s.seer ? (
       s.seer.player
-        ? <p className="text-center text-xl font-extrabold">{nameOf(players, s.seer.player)} ist {ON_ROLES[s.start[s.seer.player]].emoji} {ON_ROLES[s.start[s.seer.player]].name}</p>
+        ? <p className="text-center text-xl font-extrabold">{nameOf(players, s.seer.player)} ist <RoleIcon role={s.start[s.seer.player]} className="mr-1 size-6 text-ice" />{ON_ROLES[s.start[s.seer.player]].name}</p>
         : <CenterCards cards={[0, 1, 2].map(shown)} />
     ) : (
       <div className="grid gap-3">
@@ -111,7 +112,7 @@ function DeviceStep({ s, players, act }: { s: ONState; players: Player[]; act: (
   } else if (step === "raeuber") {
     const me = holder("raeuber")[0];
     body = s.robber || s.robberSkip ? (
-      <p className="text-center text-xl font-extrabold">{s.robber ? `Neue Karte: ${ON_ROLES[s.start[s.robber]].emoji} ${ON_ROLES[s.start[s.robber]].name}` : "Nicht getauscht."}</p>
+      <p className="text-center text-xl font-extrabold">{s.robber ? <>Neue Karte: <RoleIcon role={s.start[s.robber]} className="mr-1 size-6 text-ice" />{ON_ROLES[s.start[s.robber]].name}</> : "Nicht getauscht."}</p>
     ) : (
       <Picker ids={ids(s).filter((id) => id !== me)} players={players} selected={[]} onPick={(id) => act({ type: "rob", target: id })}
         extra={{ label: "Nicht tauschen", selected: false, onPick: () => act({ type: "rob", target: null }) }} />
@@ -131,13 +132,13 @@ function DeviceStep({ s, players, act }: { s: ONState; players: Player[]; act: (
   } else if (step === "schlaflose") {
     const me = holder("schlaflose")[0];
     const final = resolveNight(s).cards;
-    body = me ? <p className="text-center text-xl font-extrabold">Deine Karte jetzt: {ON_ROLES[final[me]].emoji} {ON_ROLES[final[me]].name}</p>
+    body = me ? <p className="text-center text-xl font-extrabold">Deine Karte jetzt: <RoleIcon role={final[me]} className="mr-1 size-6 text-ice" />{ON_ROLES[final[me]].name}</p>
       : <p className="text-center text-muted-foreground">(Die Karte liegt in der Mitte.)</p>;
   }
 
   return (
     <>
-      <Panel title={<>🌙 {ON_SCRIPT[step].title}</>} sub={<span className="italic">„{ON_SCRIPT[step].say}“</span>}>{body}</Panel>
+      <Panel title={<IconTitle icon={Moon}>{ON_SCRIPT[step].title}</IconTitle>} sub={<span className="italic">„{ON_SCRIPT[step].say}“</span>}>{body}</Panel>
       <Button size="lg" className="shrink-0" onClick={() => act({ type: "next" })}>Weiter</Button>
     </>
   );
@@ -148,7 +149,7 @@ function DeviceDay({ s, players, act }: { s: ONState; players: Player[]; act: (a
   return (
     <>
       <Countdown s={s} />
-      <Panel title="☀️ Wer stirbt?" sub="Zeigt alle gleichzeitig auf eine Person. Wer die meisten Finger hat, stirbt (bei Gleichstand alle). Hat jeder nur einen, stirbt niemand. Stirbt der Jäger, wählt auch aus, auf wen er gezeigt hat.">
+      <Panel title={<IconTitle icon={Sun}>Wer stirbt?</IconTitle>} sub="Zeigt alle gleichzeitig auf eine Person. Wer die meisten Finger hat, stirbt (bei Gleichstand alle). Hat jeder nur einen, stirbt niemand. Stirbt der Jäger, wählt auch aus, auf wen er gezeigt hat.">
         <Picker ids={ids(s)} players={players} selected={pick} onPick={(id) => setPick((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))} />
       </Panel>
       <Button size="lg" className="shrink-0" onClick={() => act({ type: "lynch", targets: pick })}>{pick.length ? `${pick.map((id) => nameOf(players, id)).join(" & ")} stirbt` : "Niemand stirbt"}</Button>
@@ -180,15 +181,15 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
 
   if (s.phase === "night") {
     let body: React.ReactNode;
-    let info: string | null = null;
-    if (role === "werwolf" || role === "guenstling") info = `🐺 Werwölfe: ${[...known.filter((id) => s.start[id] === "werwolf"), ...(role === "werwolf" ? [me] : [])].map((id) => (id === me ? "du" : nameOf(players, id))).join(", ") || "keiner unter den Spielern"}`;
-    if (role === "freimaurer") info = `🤝 Freimaurer: ${known.filter((id) => s.start[id] === "freimaurer").map((id) => nameOf(players, id)).join(", ") || "die andere Karte liegt in der Mitte"}`;
+    let info: [LucideIcon, React.ReactNode] | null = null;
+    if (role === "werwolf" || role === "guenstling") info = [PawPrint, `Werwölfe: ${[...known.filter((id) => s.start[id] === "werwolf"), ...(role === "werwolf" ? [me] : [])].map((id) => (id === me ? "du" : nameOf(players, id))).join(", ") || "keiner unter den Spielern"}`];
+    if (role === "freimaurer") info = [Handshake, `Freimaurer: ${known.filter((id) => s.start[id] === "freimaurer").map((id) => nameOf(players, id)).join(", ") || "die andere Karte liegt in der Mitte"}`];
     const lone = role === "werwolf" && !known.some((id) => s.start[id] === "werwolf");
 
     if (doneMe) {
       body = <p className="text-center text-muted-foreground">Erledigt – warte, bis es Tag wird …</p>;
-      if (role === "seherin" && s.seer?.player) info = `🔮 ${nameOf(players, s.seer.player)} ist ${ON_ROLES[s.start[s.seer.player]].emoji} ${ON_ROLES[s.start[s.seer.player]].name}`;
-      if (role === "raeuber" && s.robber && s.final?.[me]) info = `🥷 Deine neue Karte: ${ON_ROLES[s.final[me]].emoji} ${ON_ROLES[s.final[me]].name}`;
+      if (role === "seherin" && s.seer?.player) info = [Eye, <>{nameOf(players, s.seer.player)} ist <RoleIcon role={s.start[s.seer.player]} className="mr-1" />{ON_ROLES[s.start[s.seer.player]].name}</>];
+      if (role === "raeuber" && s.robber && s.final?.[me]) info = [VenetianMask, <>Deine neue Karte: <RoleIcon role={s.final[me]} className="mr-1" />{ON_ROLES[s.final[me]].name}</>];
       if ((role === "seherin" && s.seer?.center) || (lone && s.wolfPeek !== null)) body = <CenterCards cards={s.center} />;
     } else if (lone) {
       body = <><p className="mb-2 text-sm text-muted-foreground">Du bist der einzige Werwolf – willst du eine Karte aus der Mitte ansehen?</p><CenterCards cards={["?", "?", "?"]} pickable onPick={(i) => act({ type: "peek", i })} /></>;
@@ -217,8 +218,8 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
     return (
       <Wrap>
         <ONCard role={role} compact />
-        {info && <p className="shrink-0 rounded-xl bg-navy-950/50 px-3 py-2 text-sm font-semibold">{info}</p>}
-        <Panel title="🌙 Die Nacht" sub={`${s.done.length}/${ids(s).length} sind fertig.`}>{body}</Panel>
+        {info && <p className="shrink-0 rounded-xl bg-navy-950/50 px-3 py-2 text-sm font-semibold"><Ico icon={info[0]} className="mr-1.5 text-ice" />{info[1]}</p>}
+        <Panel title={<IconTitle icon={Moon}>Die Nacht</IconTitle>} sub={`${s.done.length}/${ids(s).length} sind fertig.`}>{body}</Panel>
         {canFinish && <Button size="lg" variant="secondary" className="shrink-0" onClick={() => act({ type: "nightDone" })}>Fertig</Button>}
       </Wrap>
     );
@@ -231,8 +232,8 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
     <Wrap>
       <Countdown s={s} />
       <ONCard role={role} compact label="Deine Startkarte" />
-      {role === "schlaflose" && s.final?.[me] && <p className="shrink-0 rounded-xl bg-navy-950/50 px-3 py-2 text-sm font-semibold">🥱 Deine Karte jetzt: {ON_ROLES[s.final[me]].emoji} {ON_ROLES[s.final[me]].name}</p>}
-      <Panel title="☀️ Wer ist ein Werwolf?" sub={mine ? `Du hast abgestimmt. ${count}/${ids(s).length} Stimmen sind da.` : "Diskutiert und stimmt ab – jeder genau einmal, alle gleichzeitig."}>
+      {role === "schlaflose" && s.final?.[me] && <p className="shrink-0 rounded-xl bg-navy-950/50 px-3 py-2 text-sm font-semibold"><Ico icon={Coffee} className="mr-1.5 text-ice" />Deine Karte jetzt: <RoleIcon role={s.final[me]} className="mr-1" />{ON_ROLES[s.final[me]].name}</p>}
+      <Panel title={<IconTitle icon={Sun}>Wer ist ein Werwolf?</IconTitle>} sub={mine ? `Du hast abgestimmt. ${count}/${ids(s).length} Stimmen sind da.` : "Diskutiert und stimmt ab – jeder genau einmal, alle gleichzeitig."}>
         <Picker ids={others} players={players} selected={mine ? [mine] : []} onPick={(id) => act({ type: "vote", target: id })} />
       </Panel>
       {isHost && <Button variant="secondary" className="shrink-0" disabled={!count} onClick={() => act({ type: "closeVote" })}>Abstimmung beenden ({count}/{ids(s).length})</Button>}
@@ -242,7 +243,7 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
 
 /* ───────────── Auflösung ───────────── */
 
-const WIN_TEXT = { dorf: "🏡 Das Dorf", werwolf: "🐺 Die Werwölfe", gerber: "🪓 Der Gerber" } as const;
+const WIN_TEXT = { dorf: "Das Dorf", werwolf: "Die Werwölfe", gerber: "Der Gerber" } as const;
 const winLine = (w: ONState["winners"]) =>
   !w.length ? "Niemand gewinnt" : `${w.map((x) => WIN_TEXT[x]).join(" und ")} ${w.length > 1 || w[0] === "werwolf" ? "gewinnen" : "gewinnt"}`;
 
@@ -250,22 +251,22 @@ function Result({ s, players, isHost, dispatch }: { s: ONState; players: Player[
   const final = s.final ?? s.start;
   return (
     <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[3vh] pb-6 text-center">
-      <h2 className="bg-gradient-to-b from-gold to-amber-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent" data-testid="winner">
+      <h2 className="bg-gradient-to-b from-white to-navy-200 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent" data-testid="winner">
         {winLine(s.winners)}
       </h2>
       <p className="mt-1 text-muted-foreground">{s.dead.length ? `Gestorben: ${s.dead.map((id) => nameOf(players, id)).join(", ")}` : "Niemand ist gestorben."}</p>
       <ul className="mt-5 grid gap-1.5 text-left">
         {Object.keys(final).map((id) => (
           <li key={id} className={cn("flex items-center justify-between rounded-xl px-4 py-2.5", s.dead.includes(id) ? "bg-destructive/15" : "glass")}>
-            <span className="font-semibold">{nameOf(players, id)}{s.dead.includes(id) && " ✝"}</span>
+            <span className="font-semibold">{nameOf(players, id)}{s.dead.includes(id) && <Ico icon={Skull} className="ml-1.5 text-destructive" />}</span>
             <span className="text-sm">
-              {s.start[id] !== final[id] && <span className="text-muted-foreground">{ON_ROLES[s.start[id]].emoji} → </span>}
-              {ON_ROLES[final[id]].emoji} {ON_ROLES[final[id]].name}
+              {s.start[id] !== final[id] && <span className="text-muted-foreground"><RoleIcon role={s.start[id]} /> → </span>}
+              <RoleIcon role={final[id]} className="mr-1" />{ON_ROLES[final[id]].name}
             </span>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm text-muted-foreground">Mitte: {(s.finalCenter ?? s.center).map((r) => `${ON_ROLES[r].emoji} ${ON_ROLES[r].name}`).join(" · ")}</p>
+      <p className="mt-3 text-sm text-muted-foreground">Mitte: {(s.finalCenter ?? s.center).map((r, i) => <span key={i}>{i > 0 && " · "}<span className="whitespace-nowrap"><RoleIcon role={r} className="mr-1" />{ON_ROLES[r].name}</span></span>)}</p>
       {isHost ? (
         <div className="mt-6 grid gap-2.5">
           <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Noch eine Nacht</Button>

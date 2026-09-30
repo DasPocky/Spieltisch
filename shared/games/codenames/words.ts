@@ -1,5 +1,5 @@
 /**
- * Eigene Wortliste für „Codenamen“: bekannte Begriffe, gern mit mehreren Bedeutungen (Schloss, Bank, Birne …),
+ * Eigene Wortliste für „Codenames“: bekannte Begriffe, gern mit mehreren Bedeutungen (Schloss, Bank, Birne …),
  * damit sich gute Hinweise finden lassen. Keine Kopie der Originalkarten.
  */
 export const WORDS: readonly string[] = [

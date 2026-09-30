@@ -1,3 +1,4 @@
+import { Crown, Moon, Sun } from "lucide-react";
 import { werwolf, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
@@ -11,15 +12,20 @@ function Icon({ className }: { className?: string }) {
       <circle cx="20" cy="20" r="14" fill="#fdfdfb" />
       <circle cx="26" cy="15" r="12" fill="#1f437f" />
       <path d="M9 33 L12 22 L15 25 L18 19 L21 25 L23 21 L25 33 Z" fill="#0a1730" />
-      <circle cx="16.5" cy="26" r="1" fill="#fbbf3c" />
+      <circle cx="16.5" cy="26" r="1" fill="#cfe0fa" />
     </svg>
   );
 }
 
 function HeaderExtra({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
-  const label = s.phase === "assign" ? "Karten" : s.phase === "reveal" ? "Rollen" : s.phase === "night" ? `🌙 Nacht ${s.night}`
-    : s.phase === "over" ? "Ende" : s.phase === "election" ? "👑 Wahl" : `☀️ Tag ${s.night}`;
-  return <span className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold whitespace-nowrap ring-1 ring-inset ring-border" data-testid="ww-phase">{label}</span>;
+  const label = s.phase === "assign" ? "Karten" : s.phase === "reveal" ? "Rollen" : s.phase === "night" ? `Nacht ${s.night}`
+    : s.phase === "over" ? "Ende" : s.phase === "election" ? "Wahl" : `Tag ${s.night}`;
+  const Icon = s.phase === "night" ? Moon : s.phase === "election" ? Crown : ["day", "hunter", "successor"].includes(s.phase) ? Sun : null;
+  return (
+    <span className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm font-semibold whitespace-nowrap ring-1 ring-inset ring-border" data-testid="ww-phase">
+      {Icon && <Icon aria-hidden="true" className="size-4 text-ice" />}{label}
+    </span>
+  );
 }
 
 function MenuExtras({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {

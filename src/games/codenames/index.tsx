@@ -6,7 +6,7 @@ import { Board, COLOR } from "./Board";
 
 /** Symbol: kleine Schlüsselkarte mit roten und blauen Feldern */
 function Icon({ className }: { className?: string }) {
-  const cells = ["#c8283a", "#2f6fd6", "#d9ceb2", "#2f6fd6", "#c8283a", "#d9ceb2", "#15161a", "#c8283a", "#2f6fd6"];
+  const cells = ["#a8454f", "#4b72b0", "#cdc4ae", "#4b72b0", "#a8454f", "#cdc4ae", "#1b1e25", "#a8454f", "#4b72b0"];
   return (
     <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
       <rect x="6" y="6" width="28" height="28" rx="5" fill="#fdfdfb" />

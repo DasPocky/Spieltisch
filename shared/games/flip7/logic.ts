@@ -441,7 +441,7 @@ export const flip7: GameLogic<F7State, F7Action> = {
       key: "variant", label: "Variante", type: "choice", default: "classic",
       choices: [
         { value: "classic", label: "Klassisch", hint: "Einfrieren, Flip 3, zweite Chance" },
-        { value: "fies", label: "😈 Voll fies", hint: "bis 13, Klauen, Tauschen, Minus" },
+        { value: "fies", label: "Voll fies", hint: "bis 13, Klauen, Tauschen, Minus" },
       ],
     },
     { key: "target", label: "Spielziel", type: "number", default: 200, min: 100, max: 500, step: 50 },

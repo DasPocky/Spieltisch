@@ -50,7 +50,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
           <div key={p.id} data-cur={p.id === s.curId}
             className={cn("flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold",
               p.id === s.curId ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass")}>
-            {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-emerald-400" : "bg-current opacity-30")} />}
+            {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
             <span className="max-w-[7rem] truncate">{p.id === me ? "Du" : p.name}</span>
             <span className="flex items-center gap-1 tabular-nums" aria-label={`${s.counts[p.id] ?? 0} Karten`}>
               <span className="inline-block h-3.5 w-2.5 rounded-[2px] bg-navy-300/80 ring-1 ring-white/40" />{s.counts[p.id] ?? 0}
@@ -114,7 +114,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
                       onClick={() => (isJack(c) ? setUnter(c) : play(c))}
                       className={cn("w-[min(19vw,5rem)] shrink-0 rounded-[10%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                         i > 0 && (hand.length > 5 ? "-ml-[min(9vw,2.4rem)]" : "-ml-[min(3vw,0.8rem)]"),
-                        ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-gold")}>
+                        ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-ice")}>
                       <PlayingCard card={c} dim={myTurn && !ok} />
                     </button>
                   );
@@ -126,7 +126,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
                 {s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"}
               </Button>
               {mauRule ? (
-                <Button size="lg" variant={mau ? "gold" : "secondary"} aria-pressed={mau} disabled={!myTurn || hand.length !== 2} onClick={() => { vibrate(20); setMau((m) => !m); }}>
+                <Button size="lg" variant={mau ? "ice" : "secondary"} aria-pressed={mau} disabled={!myTurn || hand.length !== 2} onClick={() => { vibrate(20); setMau((m) => !m); }}>
                   Mau!
                 </Button>
               ) : <span />}

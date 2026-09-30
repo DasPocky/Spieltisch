@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import type { ReactNode } from "react";
-import { BookOpen, Menu } from "lucide-react";
+import { BookOpen, Crown, Menu, Wrench } from "lucide-react";
 import { getGame } from "@shared/games";
 import { skipLabel } from "@shared/platform/room";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -70,14 +70,14 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
             <label className="mt-4 flex items-center gap-3 rounded-xl bg-navy-950/40 p-3 text-sm ring-1 ring-inset ring-border">
               <Checkbox checked={!!room.hostTools} onCheckedChange={(c) => dispatch({ type: "setHostTools", on: c === true })} />
               <span>
-                <span className="font-semibold">🛠 Spielleiter-Funktionen</span>
+                <span className="flex items-center gap-1.5 font-semibold"><Wrench className="size-4 text-navy-300" />Spielleiter-Funktionen</span>
                 <span className="block text-xs text-muted-foreground">Für andere spielen, Einträge zurücknehmen, Stapel mischen. Aus: Du spielst ganz normal mit.</span>
               </span>
             </label>
           )}
 
           {hostAway && onClaimHost && (
-            <Button variant="gold" className="mt-4 w-full justify-start" onClick={onClaimHost}>👑 Host ist offline – Host übernehmen</Button>
+            <Button variant="ice" className="mt-4 w-full justify-start" onClick={onClaimHost}><Crown />Host ist offline – Host übernehmen</Button>
           )}
 
           {isHost && playing && (

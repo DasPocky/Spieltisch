@@ -13,7 +13,7 @@ async function localPlayers(page: Page, names: string[], mode?: RegExp) {
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
 
-test("Codenamen lokal: Teams, Hinweis, raten – auch auf 320 px", async ({ page }) => {
+test("Codenames lokal: Teams, Hinweis, raten – auch auf 320 px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await localPlayers(page, ["Anna", "Ben", "Cem", "Dora"]);
   await expect(page.getByTestId("not-ready")).toContainText("Chef");
@@ -32,7 +32,7 @@ test("Codenamen lokal: Teams, Hinweis, raten – auch auf 320 px", async ({ page
   await shot(page, "84-cn-play-320");
 });
 
-test("Codenamen online: Chef sieht Farben, Agent nicht", async ({ browser }) => {
+test("Codenames online: Chef sieht Farben, Agent nicht", async ({ browser }) => {
   const phones = await Promise.all([0, 1, 2, 3].map(() => newPhone(browser)));
   const [anna, ben, cem, dora] = phones;
   const code = await createRoom(anna, "codenames", "Anna", "4242");
@@ -63,7 +63,7 @@ test("Codenamen online: Chef sieht Farben, Agent nicht", async ({ browser }) => 
   await expectNoScroll(agent);
 });
 
-test("Codenamen als Brettspiel-Hilfe: Schlüsselkarte", async ({ page }) => {
+test("Codenames als Brettspiel-Hilfe: Schlüsselkarte", async ({ page }) => {
   await localPlayers(page, ["Anna", "Ben"], /Brettspiel-Hilfe/);
   await page.getByRole("button", { name: "Anna: Team Rot" }).click();
   await page.getByRole("button", { name: "Anna: Chef" }).click();

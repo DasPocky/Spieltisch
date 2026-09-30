@@ -12,7 +12,7 @@ import { Segmented } from "@/platform/Segmented";
 
 const LEVELS = [
   { value: "on", label: "An", hint: "für alle" },
-  { value: "code", label: "🔒 Code", hint: "mit Zugangscode" },
+  { value: "code", label: "Mit Code", hint: "Zugangscode" },
   { value: "off", label: "Aus", hint: "abgeschaltet" },
 ] as const satisfies readonly { value: Access; label: string; hint: string }[];
 
@@ -94,11 +94,11 @@ export function Admin() {
           <Card className="grid gap-2">
             <Label htmlFor="admin-code">Zugangscode {config.hasCode ? "(gesetzt – leer lassen zum Behalten)" : "(noch keiner)"}</Label>
             <Input id="admin-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="neuer Code, 4–32 Zeichen" autoComplete="off" />
-            {needsCode && !config.hasCode && !code.trim() && <p className="text-sm text-gold">Für „🔒 Code“ braucht ihr einen Zugangscode.</p>}
+            {needsCode && !config.hasCode && !code.trim() && <p className="text-sm text-ice">Für „Mit Code“ braucht ihr einen Zugangscode.</p>}
             {config.hasCode && <Button variant="ghost" className="justify-start text-muted-foreground" onClick={() => save(true)}>Zugangscode löschen</Button>}
           </Card>
 
-          {msg && <p role="status" className={msg.ok ? "font-semibold text-emerald-400" : "font-semibold text-destructive"}>{msg.text}</p>}
+          {msg && <p role="status" className={msg.ok ? "font-semibold text-ok" : "font-semibold text-destructive"}>{msg.text}</p>}
           <Button size="lg" disabled={busy} onClick={() => save()}>{busy && <Loader2 className="animate-spin" />}Speichern</Button>
         </div>
       )}

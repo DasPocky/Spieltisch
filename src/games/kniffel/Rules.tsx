@@ -41,7 +41,7 @@ export function Rules({ focus }: { focus?: string }) {
 
       <h3 className="mt-5 mb-2 font-semibold">Oberer Teil</h3>
       <ul className="grid gap-2">{UPPER.map(row)}</ul>
-      <p className="mt-2 rounded-xl bg-gold/10 px-3 py-2.5 text-sm text-gold">
+      <p className="mt-2 rounded-xl bg-ice/10 px-3 py-2.5 text-sm text-ice">
         <b>Bonus +{UPPER_BONUS}</b>, wenn der obere Teil zusammen mindestens {UPPER_BONUS_AT} Punkte hat (das sind je drei Gleiche).
       </p>
 

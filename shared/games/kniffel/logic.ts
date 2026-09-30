@@ -260,7 +260,7 @@ export const kniffel: GameLogic<KniffelState, KniffelAction> = {
     {
       key: "diceMode", label: "Würfel", type: "choice", default: "app",
       choices: [
-        { value: "app", label: "🎲 App-Würfel", hint: "App würfelt und rechnet" },
+        { value: "app", label: "App-Würfel", hint: "App würfelt und rechnet" },
         { value: "real", label: "Echte Würfel", hint: "digitaler Block" },
       ],
     },

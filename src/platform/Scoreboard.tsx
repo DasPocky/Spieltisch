@@ -65,11 +65,11 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
           >
             <div className="flex items-center gap-1 text-xs font-semibold">
               {online && (
-                <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-emerald-400" : "bg-current opacity-30")}
+                <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")}
                   aria-label={online.has(p.id) ? "online" : "offline"} />
               )}
               <span className={cn("truncate", !cur && "text-muted-foreground")}>{p.name}{p.id === me ? " (du)" : ""}</span>
-              {lead && <span className="ml-auto text-[0.7rem] text-gold" aria-label="Führt">★</span>}
+              {lead && <span className="ml-auto text-[0.7rem] text-ice" aria-label="Führt">★</span>}
             </div>
             <div className="text-lg font-extrabold leading-tight tracking-tight tabular-nums">{fmt(p.score)}</div>
             {p.progress !== undefined && (

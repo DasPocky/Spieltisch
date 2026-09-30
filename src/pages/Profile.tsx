@@ -65,7 +65,7 @@ export function Profile() {
       </Card>
 
       <Card className="grid gap-3" data-testid="stats">
-        <h2 className="flex items-center gap-2 font-bold"><Trophy className="size-4 text-gold" />Statistik</h2>
+        <h2 className="flex items-center gap-2 font-bold"><Trophy className="size-4 text-ice" />Statistik</h2>
         {loading ? <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" /> : !played ? (
           <p className="text-sm text-muted-foreground">Noch keine Partien. Nach dem ersten Spiel steht hier, wie oft du gewonnen hast.</p>
         ) : (
@@ -100,7 +100,7 @@ export function Profile() {
                   {stats!.recent.filter((r) => isGameId(r.gameId)).slice(0, 15).map((r, i) => (
                     <li key={i} className="flex justify-between gap-2 border-b border-border py-1.5">
                       <span>{date(r.at)} · {getGame(r.gameId).info.name} <span className="text-muted-foreground">({r.players} Spieler, {r.online ? "online" : "lokal"})</span></span>
-                      <b className={cn("shrink-0 whitespace-nowrap", r.won ? "text-gold" : "text-muted-foreground")}>{r.won ? "Sieg" : "–"}{r.score !== undefined ? ` · ${fmt(r.score)}` : ""}</b>
+                      <b className={cn("shrink-0 whitespace-nowrap", r.won ? "text-ice" : "text-muted-foreground")}>{r.won ? "Sieg" : "–"}{r.score !== undefined ? ` · ${fmt(r.score)}` : ""}</b>
                     </li>
                   ))}
                 </ul>

@@ -20,7 +20,7 @@ test("Eine Nacht lokal: Karten herumreichen, Nacht am Gerät, Auflösung", async
   for (let i = 0; i < 12 && (await page.getByTestId("on-phase").textContent())?.includes("Nacht"); i++) {
     // Pflicht: der Betrunkene tauscht mit Karte 1
     const drunk = page.getByRole("group", { name: "Karten in der Mitte" }).getByRole("button", { name: "Karte 1" });
-    if ((await page.getByText("🌙 Betrunkener").isVisible()) && (await drunk.isEnabled())) await drunk.click();
+    if ((await page.getByRole("heading", { name: "Betrunkener", exact: true }).isVisible()) && (await drunk.isEnabled())) await drunk.click();
     if (i === 2) await shot(page, "58-on-local-night");
     await page.getByRole("button", { name: "Weiter" }).click();
     await page.waitForTimeout(200);
@@ -41,14 +41,14 @@ test("Eine Nacht online mit vier Handys", async ({ browser }) => {
   for (let i = 1; i < 4; i++) await joinRoom(phones[i], code, NAMES[i], "3333");
   await host.getByRole("button", { name: "Spiel starten" }).click();
   for (const p of phones) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
-  await expect(host.getByTestId("on-phase")).toHaveText("🌙 Nacht");
+  await expect(host.getByTestId("on-phase")).toHaveText("Nacht");
   // Jeder erledigt seine Nacht: Betrunkener tauscht, alle anderen tippen „Fertig“
   for (const p of phones) {
     const drunk = p.getByRole("group", { name: "Karten in der Mitte" }).getByRole("button", { name: "Karte 1" });
     if (await p.getByText("Tausche mit einer Karte aus der Mitte").isVisible()) await drunk.click();
     else await p.getByRole("button", { name: "Fertig" }).click();
   }
-  await expect(host.getByTestId("on-phase")).toHaveText("☀️ Tag");
+  await expect(host.getByTestId("on-phase")).toHaveText("Tag");
   await expectNoScroll(phones[1]);
   await shot(phones[1], "66-on-online-day");
   for (const [i, p] of phones.entries()) await p.getByRole("group").getByRole("button", { name: NAMES[(i + 1) % 4] }).click();

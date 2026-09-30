@@ -30,7 +30,7 @@ export function Rules({ focus }: { focus?: string }) {
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Drei Gleiche zählen nur, wenn sie in einem Wurf fallen. 2, 3, 4 und 6 zählen einzeln nichts.</p>
         <h3 className="mt-4 font-semibold">In der App</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Mit <b className="text-foreground">echten Würfeln</b> tippst du nur die Würfelpunkte ein. Schaffst du ein Tutto, tippst du auf den goldenen <b className="text-foreground">Tutto</b>-Knopf – den Kartenbonus rechnet die App dann selbst dazu und deckt (wenn eingestellt) gleich die nächste Karte auf. Mit dem <b className="text-foreground">App-Würfel</b> würfelt die App (online der Server, alle sehen denselben Wurf), prüft deine Auswahl und wertet die Karten automatisch.
+          Mit <b className="text-foreground">echten Würfeln</b> tippst du nur die Würfelpunkte ein. Schaffst du ein Tutto, tippst du auf den hellen <b className="text-foreground">Tutto</b>-Knopf – den Kartenbonus rechnet die App dann selbst dazu und deckt (wenn eingestellt) gleich die nächste Karte auf. Mit dem <b className="text-foreground">App-Würfel</b> würfelt die App (online der Server, alle sehen denselben Wurf), prüft deine Auswahl und wertet die Karten automatisch.
         </p>
       </section>
 

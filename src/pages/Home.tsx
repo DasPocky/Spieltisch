@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn, UserRound } from "lucide-react";
+import { Lock, LogIn, UserRound } from "lucide-react";
 import { ROOM_CODE_RE } from "@shared/platform/protocol";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,7 @@ export function Home() {
               className="glass flex h-full w-full items-center gap-2.5 rounded-2xl p-2.5 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring">
               <IconTile className="size-11 rounded-xl"><Icon className="size-7" /></IconTile>
               <span className="min-w-0">
-                <span className="block truncate font-bold leading-tight">{info.name}{locked(id) && <span className="ml-1 text-xs" aria-label="mit Zugangscode">🔒</span>}</span>
+                <span className="block truncate font-bold leading-tight">{info.name}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-navy-300" aria-label="mit Zugangscode" />}</span>
                 <span className="block truncate text-xs text-muted-foreground">{info.minPlayers}–{info.maxPlayers} Spieler</span>
                 <span className="block truncate text-xs text-muted-foreground">{info.category} · {info.duration}</span>
               </span>

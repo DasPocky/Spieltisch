@@ -339,7 +339,7 @@ export const skyjo: GameLogic<SkState, SkAction> = {
     {
       key: "mode", label: "Karten", type: "choice", default: "app",
       choices: [
-        { value: "app", label: "📱 In der App", hint: "App mischt und teilt aus" },
+        { value: "app", label: "In der App", hint: "App mischt und teilt aus" },
         { value: "table", label: "🃏 Echte Karten", hint: "App ist der Punkteblock" },
       ],
     },

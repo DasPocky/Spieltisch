@@ -1,5 +1,8 @@
+import { Crown } from "lucide-react";
 import { ROLES, SPECIAL_ROLES, type Role, type RoleInfo } from "@shared/games/werwolf/logic";
 import { cn } from "@/lib/utils";
+import { Ico } from "./parts";
+import { RoleIcon } from "./RoleIcon";
 
 /** Regelseite Werwolf: Ablauf, Rollen, Sieg und die beiden Erzähler-Modi. */
 export function Rules({ focus }: { focus?: string }) {
@@ -33,7 +36,7 @@ export function Rules({ focus }: { focus?: string }) {
           const r = ROLES[id];
           return (
             <li key={id} data-focused={id === focus} className={cn("scroll-mt-3 rounded-xl px-3 py-2.5", id === focus ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
-              <b>{r.emoji} {r.name}</b> <span className="text-xs text-muted-foreground">· {r.team === "werwolf" ? "Werwölfe" : r.team === "solo" ? "spielt allein" : "Dorf"}</span>
+              <b><RoleIcon role={id} className="mr-1.5 text-ice" />{r.name}</b> <span className="text-xs text-muted-foreground">· {r.team === "werwolf" ? "Werwölfe" : r.team === "solo" ? "spielt allein" : "Dorf"}</span>
               <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{r.help}</p>
             </li>
           );
@@ -46,7 +49,7 @@ export function Rules({ focus }: { focus?: string }) {
       <section className="glass mt-5 rounded-2xl p-4">
         <h3 className="font-semibold">Hausregeln – so spielt jeder ein bisschen anders</h3>
         <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
-          <li><b className="text-foreground">👑 Hauptmann:</b> Am ersten Tag wählt das Dorf einen Hauptmann. Seine Stimme zählt doppelt, bei Gleichstand zählt, wen er gewählt hat. Stirbt er, bestimmt er einen Nachfolger.</li>
+          <li><b className="text-foreground"><Ico icon={Crown} className="mr-1" />Hauptmann:</b> Am ersten Tag wählt das Dorf einen Hauptmann. Seine Stimme zählt doppelt, bei Gleichstand zählt, wen er gewählt hat. Stirbt er, bestimmt er einen Nachfolger.</li>
           <li><b className="text-foreground">Gleichstand:</b> niemand stirbt – oder Stichwahl zwischen den Gleichstehenden. Der Sündenbock stirbt bei einem Gleichstand am Ende immer.</li>
           <li><b className="text-foreground">Seherin nur gut/böse:</b> Sie erfährt nicht die Rolle, nur ob jemand zu den Werwölfen gehört.</li>
           <li><b className="text-foreground">Hexe heilt sich selbst:</b> in vielen Runden erlaubt, in manchen nicht.</li>

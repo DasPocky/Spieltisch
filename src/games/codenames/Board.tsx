@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Shuffle } from "lucide-react";
+import { Eye, KeyRound, Shuffle } from "lucide-react";
 import { notReady, other, remaining, TEAM_NAME, type CNAction, type CNState, type Color, type Team } from "@shared/games/codenames/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { cn, vibrate } from "@/lib/utils";
+import { MUTED } from "@/lib/palette";
 
 /** Farben der Karten: Teams kräftig, Passanten beige, Attentäter schwarz */
-export const COLOR: Record<Color, string> = { rot: "#c8283a", blau: "#2f6fd6", neutral: "#d9ceb2", attentaeter: "#15161a" };
+export const COLOR: Record<Color, string> = { rot: MUTED.red, blau: MUTED.blue, neutral: MUTED.sand, attentaeter: MUTED.ink };
 const TEXT_ON: Record<Color, string> = { rot: "#fff", blau: "#fff", neutral: "#2a2418", attentaeter: "#fff" };
 const TEAMS: Team[] = ["rot", "blau"];
 
@@ -61,7 +62,7 @@ function Teams({ room, game: s, me, isHost, act }: BoardProps<CNState, CNAction>
           const editable = local || isHost || p.id === me;
           return (
             <div key={p.id} className="glass flex items-center gap-2 rounded-xl px-2.5 py-1.5" data-testid={`member-${p.name}`}>
-              <span className="min-w-0 flex-1 truncate font-semibold">{p.id === me ? `${p.name} (du)` : p.name}{m.chief && " 🕵️"}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{p.id === me ? `${p.name} (du)` : p.name}{m.chief && <KeyRound className="ml-1 inline size-4 align-[-2px] text-ice" aria-label="Chef" />}</span>
               {TEAMS.map((t) => (
                 <button key={t} type="button" disabled={!editable} onClick={() => set(p.id, m.team === t ? null : t, m.team === t ? false : m.chief)}
                   aria-pressed={m.team === t} aria-label={`${p.name}: Team ${TEAM_NAME[t]}`}
@@ -69,13 +70,13 @@ function Teams({ room, game: s, me, isHost, act }: BoardProps<CNState, CNAction>
                   style={m.team === t ? { background: COLOR[t] } : undefined}>{TEAM_NAME[t]}</button>
               ))}
               <button type="button" disabled={!editable || !m.team} onClick={() => set(p.id, m.team, !m.chief)} aria-pressed={m.chief} aria-label={`${p.name}: Chef`}
-                className={cn("rounded-lg px-2 py-1.5 text-sm font-bold ring-1 ring-inset disabled:opacity-40", m.chief ? "bg-gold text-navy-950 ring-transparent" : "text-muted-foreground ring-border")}>Chef</button>
+                className={cn("rounded-lg px-2 py-1.5 text-sm font-bold ring-1 ring-inset disabled:opacity-40", m.chief ? "bg-ice text-navy-950 ring-transparent" : "text-muted-foreground ring-border")}>Chef</button>
             </div>
           );
         })}
       </div>
       <div className="grid shrink-0 gap-2 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {!local && !mine?.team && <p className="text-center text-sm font-semibold text-gold">Wähle oben dein Team.</p>}
+        {!local && !mine?.team && <p className="text-center text-sm font-semibold text-ice">Wähle oben dein Team.</p>}
         {missing && <p className="text-center text-sm text-muted-foreground" data-testid="not-ready">{missing}</p>}
         {(local || isHost) ? (
           <div className="grid grid-cols-[auto_1fr] gap-2">
@@ -120,7 +121,7 @@ function Play({ room, game: s, me, act }: BoardProps<CNState, CNAction>) {
       <Score s={s} showTurn />
       <div className="flex shrink-0 items-center justify-between gap-2 px-1 pt-1.5 text-sm">
         {s.clue ? (
-          <span className="min-w-0 truncate" data-testid="clue">Hinweis: <b className="text-lg">{s.clue.word}</b> <b className="text-gold">{s.clue.count === 0 ? "∞" : s.clue.count}</b> · noch {s.guessesLeft} {s.guessesLeft === 1 ? "Versuch" : "Versuche"}</span>
+          <span className="min-w-0 truncate" data-testid="clue">Hinweis: <b className="text-lg">{s.clue.word}</b> <b className="text-ice">{s.clue.count === 0 ? "∞" : s.clue.count}</b> · noch {s.guessesLeft} {s.guessesLeft === 1 ? "Versuch" : "Versuche"}</span>
         ) : <span className="text-muted-foreground">Chef {TEAM_NAME[s.turn]} überlegt einen Hinweis …</span>}
         <RulesSheet gameId={room.gameId} />
       </div>

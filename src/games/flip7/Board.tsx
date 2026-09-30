@@ -1,3 +1,4 @@
+import { Clover, LifeBuoy, Skull } from "lucide-react";
 import { useState } from "react";
 import { cardLabel, linePoints, numValue, type F7Action, type F7Card, type F7State } from "@shared/games/flip7/logic";
 import { Button } from "@/components/ui/button";
@@ -13,16 +14,17 @@ const STATUS: Record<string, string> = { active: "", stayed: "aufgehört", bust:
 export function Tile({ card, selectable, selected, onClick }: { card: F7Card; selectable?: boolean; selected?: boolean; onClick?: () => void }) {
   const num = card.startsWith("n:");
   const v = num ? numValue(card) : 0;
-  const hue = 210 - v * 14;
-  const style = num ? { background: v === 0 ? "#dbe3ef" : `hsl(${hue} 70% 88%)`, color: `hsl(${hue} 60% 28%)` } : undefined;
-  const cls = card.startsWith("a:") ? "bg-[#6d3fb8] text-white" : card.startsWith("m:-") || card === "m:/2" ? "bg-destructive text-navy-950" : !num ? "bg-gold text-navy-950" : "";
-  const special = card === "n:13L" ? "🍀" : card === "n:7U" ? "💀" : "";
+  // Zahlen: helles bis dunkles Navy je nach Wert; Aktionen dunkel, Plus-Karten Eisblau, Minus gedämpftes Rot
+  const light = 94 - Math.min(v, 13) * 3.4;
+  const style = num ? { background: `hsl(216 42% ${light}%)`, color: light < 62 ? "#fff" : "#10223d" } : undefined;
+  const cls = card.startsWith("a:") ? "bg-navy-700 text-white ring-1 ring-inset ring-navy-300/40" : card.startsWith("m:-") || card === "m:/2" ? "bg-destructive text-navy-950" : !num ? "bg-ice text-navy-950" : "";
+  const Special = card === "n:13L" ? Clover : card === "n:7U" ? Skull : null;
   return (
     <button type="button" disabled={!selectable} onClick={onClick} aria-label={cardLabel(card)} aria-pressed={selected}
       className={cn("flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-extrabold leading-none shadow outline-none disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
-        num ? "text-lg" : "text-[0.62rem] leading-tight", cls, selectable && "ring-2 ring-gold/70", selected && "-translate-y-1 ring-[3px] ring-gold")}
+        num ? "text-lg" : "text-[0.62rem] leading-tight", cls, selectable && "ring-2 ring-ice/70", selected && "-translate-y-1 ring-[3px] ring-ice")}
       style={style}>
-      {num ? <>{v}{special && <span className="text-[0.6rem]">{special}</span>}</> : <span className="max-w-14 text-center">{cardLabel(card)}</span>}
+      {num ? <>{v}{Special && <Special className="size-2.5" aria-hidden="true" />}</> : <span className="max-w-14 text-center">{cardLabel(card)}</span>}
     </button>
   );
 }
@@ -81,7 +83,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
               <div className="mb-1 flex items-center justify-between gap-2 text-sm">
                 <span className="truncate font-bold">{nameOf(x.id)}{x.id === s.dealerId && <span className="ml-1 text-xs font-normal text-muted-foreground">(Geber)</span>}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs">
-                  {l.second && <span title="Zweite Chance">🛟</span>}
+                  {l.second && <LifeBuoy className="size-4 text-ice" aria-label="Zweite Chance" />}
                   {STATUS[l.status] && <span className="rounded-full bg-navy-950/60 px-2 py-0.5 font-semibold text-muted-foreground">{STATUS[l.status]}</span>}
                   <b className="tabular-nums">{linePoints(l)}</b>
                 </span>
@@ -105,14 +107,14 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
           <div className="glass rounded-xl py-4 text-center text-muted-foreground">Warte auf <b className="text-foreground">{nameOf(decider)}</b>{p ? ` (${cardLabel(p.card)})` : ""}</div>
         ) : p?.kind === "target" ? (
           <div className="glass rounded-2xl p-2.5">
-            <p className="mb-2 text-center text-sm font-semibold">{nameOf(p.by)} zieht <b className="text-gold">{cardLabel(p.card)}</b> – wen trifft's?</p>
+            <p className="mb-2 text-center text-sm font-semibold">{nameOf(p.by)} zieht <b className="text-ice">{cardLabel(p.card)}</b> – wen trifft's?</p>
             <div className="grid grid-cols-2 gap-1.5">
               {targets.map((x) => <Button key={x.id} variant="secondary" onClick={() => act({ type: "target", target: x.id })}>{nameOf(x.id)}</Button>)}
             </div>
           </div>
         ) : p ? (
           <div className="glass rounded-2xl p-3 text-center text-sm font-semibold">
-            <b className="text-gold">{cardLabel(p.card)}:</b> {p.kind === "swap" ? "Tippe zwei Zahlenkarten von verschiedenen Spielern an." : p.card === "a:steal" ? "Tippe die Karte an, die du klaust." : "Tippe die Karte an, die weg soll."}
+            <b className="text-ice">{cardLabel(p.card)}:</b> {p.kind === "swap" ? "Tippe zwei Zahlenkarten von verschiedenen Spielern an." : p.card === "a:steal" ? "Tippe die Karte an, die du klaust." : "Tippe die Karte an, die weg soll."}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2.5">

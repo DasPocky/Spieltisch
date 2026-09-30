@@ -56,7 +56,7 @@ test("Flip 7 online „Voll fies“ mit drei Handys", async ({ browser }) => {
   await joinRoom(phones[1], code, "Ben", "7070");
   await joinRoom(phones[2], code, "Cem", "7070");
   await host.getByRole("button", { name: "Spiel starten" }).click();
-  await expect(host.getByText("😈")).toBeVisible();
+  await expect(host.getByText("· fies")).toBeVisible();
   for (let i = 0; i < 90 && !(await host.getByTestId("last-round").isVisible()); i++) {
     for (const p of phones) await step(p, 0.3);
     await host.waitForTimeout(60);

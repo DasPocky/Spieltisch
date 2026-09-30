@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { ON_ROLES, type ONRole, type ONState } from "@shared/games/einenacht/logic";
 import { cn } from "@/lib/utils";
+import { RoleIcon } from "./RoleIcon";
 
 /** Rollenkarte (verdeckt, bis man sie antippt) */
 export function ONCard({ role, compact, label = "Deine Karte" }: { role: ONRole; compact?: boolean; label?: string }) {
@@ -11,10 +12,10 @@ export function ONCard({ role, compact, label = "Deine Karte" }: { role: ONRole;
   return (
     <button type="button" onClick={() => setHidden((h) => !h)} aria-label={hidden ? `${label} aufdecken` : `${label}: ${r.name}`}
       className={cn("w-full rounded-2xl text-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring", compact ? "px-3 py-2.5" : "px-4 py-5",
-        hidden ? "card-back text-paper" : r.team === "werwolf" ? "bg-gradient-to-b from-[#6b2430] to-[#3a1119] text-white" : "bg-paper text-paper-ink")}>
+        hidden ? "card-back text-paper" : r.team === "werwolf" ? "bg-gradient-to-b from-navy-700 to-navy-950 text-white ring-1 ring-inset ring-destructive/50" : "bg-paper text-paper-ink")}>
       {hidden ? <span className="flex items-center justify-center gap-2 font-bold"><Eye className="size-5" />{label} ansehen</span> : (
         <span className={cn("flex items-center gap-3", compact ? "text-left" : "flex-col")}>
-          <span className={compact ? "text-3xl" : "text-6xl"} aria-hidden="true">{r.emoji}</span>
+          <RoleIcon role={role} className={cn(compact ? "size-8" : "size-14", r.team === "werwolf" ? "text-destructive" : "text-navy-600")} />
           <span>
             <span className={cn("block font-extrabold", compact ? "text-lg" : "text-3xl")} data-testid="on-role">{r.name}</span>
             <span className="block text-sm opacity-75">{r.short}</span>
@@ -33,8 +34,8 @@ export function CenterCards({ cards, selected, onPick, pickable }: { cards: (ONR
       {cards.map((c, i) => (
         <button key={i} type="button" disabled={!pickable} onClick={() => onPick?.(i)} aria-pressed={selected?.includes(i)}
           className={cn("flex aspect-[5/7] flex-col items-center justify-center rounded-xl text-center text-sm font-bold outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-            c === "?" ? "card-back text-paper" : "bg-paper text-paper-ink", selected?.includes(i) && "ring-[3px] ring-gold")}>
-          {c === "?" ? <span>Karte {i + 1}</span> : <><span className="text-3xl">{ON_ROLES[c].emoji}</span><span>{ON_ROLES[c].name}</span></>}
+            c === "?" ? "card-back text-paper" : "bg-paper text-paper-ink", selected?.includes(i) && "ring-[3px] ring-ice")}>
+          {c === "?" ? <span>Karte {i + 1}</span> : <><RoleIcon role={c} className="mb-1 size-8 text-navy-600" /><span>{ON_ROLES[c].name}</span></>}
         </button>
       ))}
     </div>
@@ -49,7 +50,7 @@ export function Countdown({ s }: { s: ONState }) {
   const left = Math.max(0, s.dayStartedAt + s.minutes * 60_000 - now);
   const mm = Math.floor(left / 60000), ss = Math.floor((left % 60000) / 1000);
   return (
-    <div className={cn("shrink-0 rounded-2xl px-4 py-2 text-center", left ? "bg-navy-950/50" : "bg-gold/20 text-gold")} data-testid="countdown">
+    <div className={cn("shrink-0 rounded-2xl px-4 py-2 text-center", left ? "bg-navy-950/50" : "bg-ice/20 text-ice")} data-testid="countdown">
       <span className="text-3xl font-extrabold tabular-nums">{mm}:{String(ss).padStart(2, "0")}</span>
       <span className="ml-2 text-sm">{left ? "Diskussion" : "Zeit ist um – abstimmen!"}</span>
     </div>

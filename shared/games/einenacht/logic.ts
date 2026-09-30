@@ -10,20 +10,20 @@ import { GameError, type GameContext, type GameLogic, type Options } from "../..
 
 export type ONRole = "werwolf" | "guenstling" | "freimaurer" | "seherin" | "raeuber" | "unruhestifter" | "betrunkener" | "schlaflose" | "jaeger" | "gerber" | "dorf";
 
-export interface ONRoleInfo { id: ONRole; name: string; emoji: string; team: "dorf" | "werwolf" | "gerber"; short: string; help: string }
+export interface ONRoleInfo { id: ONRole; name: string; team: "dorf" | "werwolf" | "gerber"; short: string; help: string }
 
 export const ON_ROLES: Record<ONRole, ONRoleInfo> = {
-  werwolf: { id: "werwolf", name: "Werwolf", emoji: "🐺", team: "werwolf", short: "Du siehst die anderen Werwölfe. Bist du allein, darfst du eine Karte aus der Mitte ansehen.", help: "Die Werwölfe erwachen und erkennen einander. Ist nur einer wach, darf er eine der drei Karten in der Mitte ansehen. Sie gewinnen, wenn kein Werwolf stirbt." },
-  guenstling: { id: "guenstling", name: "Günstling", emoji: "🦹", team: "werwolf", short: "Du kennst die Werwölfe – sie dich nicht. Du gewinnst mit ihnen.", help: "Der Günstling sieht, wer die Werwölfe sind, sie kennen ihn aber nicht. Er gewinnt mit den Werwölfen – auch wenn er selbst stirbt. Gibt es keine Werwölfe unter den Spielern, gewinnt er, wenn jemand anderes stirbt." },
-  freimaurer: { id: "freimaurer", name: "Freimaurer", emoji: "🤝", team: "dorf", short: "Du erkennst den anderen Freimaurer.", help: "Die beiden Freimaurer erwachen und erkennen einander. Ist nur einer im Spiel, weiß er, dass die andere Karte in der Mitte liegt." },
-  seherin: { id: "seherin", name: "Seherin", emoji: "🔮", team: "dorf", short: "Sieh dir die Karte eines Mitspielers an – oder zwei aus der Mitte.", help: "Die Seherin darf die Karte eines Mitspielers ansehen oder zwei der drei Karten in der Mitte." },
-  raeuber: { id: "raeuber", name: "Räuber", emoji: "🥷", team: "dorf", short: "Tausche deine Karte mit einem Mitspieler und sieh dir deine neue an.", help: "Der Räuber darf seine Karte mit der eines Mitspielers tauschen und sieht sich dann seine neue Karte an. Er ist ab jetzt diese Rolle, der andere wird Räuber (ohne es zu wissen)." },
-  unruhestifter: { id: "unruhestifter", name: "Unruhestifter", emoji: "🔀", team: "dorf", short: "Vertausche die Karten zweier anderer Spieler, ohne sie anzusehen.", help: "Der Unruhestifter darf die Karten zweier anderer Spieler vertauschen, ohne sie anzusehen. Die beiden erfahren nichts davon." },
-  betrunkener: { id: "betrunkener", name: "Betrunkener", emoji: "🍺", team: "dorf", short: "Du musst deine Karte mit einer aus der Mitte tauschen – ohne hinzusehen.", help: "Der Betrunkene muss seine Karte mit einer aus der Mitte tauschen, ohne die neue anzusehen. Er weiß also nicht, wer er jetzt ist." },
-  schlaflose: { id: "schlaflose", name: "Schlaflose", emoji: "🥱", team: "dorf", short: "Am Ende der Nacht siehst du nach, welche Karte du jetzt hast.", help: "Die Schlaflose erwacht als Letzte und sieht sich ihre Karte noch einmal an – so weiß sie, ob sie getauscht wurde." },
-  jaeger: { id: "jaeger", name: "Jäger", emoji: "🏹", team: "dorf", short: "Stirbst du, stirbt auch, auf wen du gezeigt hast.", help: "Stirbt der Jäger bei der Abstimmung, stirbt auch die Person, für die er gestimmt hat." },
-  gerber: { id: "gerber", name: "Gerber", emoji: "🪓", team: "gerber", short: "Du hasst deinen Job: Du gewinnst nur, wenn du stirbst.", help: "Der Gerber gewinnt, wenn er bei der Abstimmung stirbt. Stirbt er und kein Werwolf, verlieren auch die Werwölfe." },
-  dorf: { id: "dorf", name: "Dorfbewohner", emoji: "🧑‍🌾", team: "dorf", short: "Keine Fähigkeit – finde die Werwölfe!", help: "Dorfbewohner haben keine Fähigkeit." },
+  werwolf: { id: "werwolf", name: "Werwolf", team: "werwolf", short: "Du siehst die anderen Werwölfe. Bist du allein, darfst du eine Karte aus der Mitte ansehen.", help: "Die Werwölfe erwachen und erkennen einander. Ist nur einer wach, darf er eine der drei Karten in der Mitte ansehen. Sie gewinnen, wenn kein Werwolf stirbt." },
+  guenstling: { id: "guenstling", name: "Günstling", team: "werwolf", short: "Du kennst die Werwölfe – sie dich nicht. Du gewinnst mit ihnen.", help: "Der Günstling sieht, wer die Werwölfe sind, sie kennen ihn aber nicht. Er gewinnt mit den Werwölfen – auch wenn er selbst stirbt. Gibt es keine Werwölfe unter den Spielern, gewinnt er, wenn jemand anderes stirbt." },
+  freimaurer: { id: "freimaurer", name: "Freimaurer", team: "dorf", short: "Du erkennst den anderen Freimaurer.", help: "Die beiden Freimaurer erwachen und erkennen einander. Ist nur einer im Spiel, weiß er, dass die andere Karte in der Mitte liegt." },
+  seherin: { id: "seherin", name: "Seherin", team: "dorf", short: "Sieh dir die Karte eines Mitspielers an – oder zwei aus der Mitte.", help: "Die Seherin darf die Karte eines Mitspielers ansehen oder zwei der drei Karten in der Mitte." },
+  raeuber: { id: "raeuber", name: "Räuber", team: "dorf", short: "Tausche deine Karte mit einem Mitspieler und sieh dir deine neue an.", help: "Der Räuber darf seine Karte mit der eines Mitspielers tauschen und sieht sich dann seine neue Karte an. Er ist ab jetzt diese Rolle, der andere wird Räuber (ohne es zu wissen)." },
+  unruhestifter: { id: "unruhestifter", name: "Unruhestifter", team: "dorf", short: "Vertausche die Karten zweier anderer Spieler, ohne sie anzusehen.", help: "Der Unruhestifter darf die Karten zweier anderer Spieler vertauschen, ohne sie anzusehen. Die beiden erfahren nichts davon." },
+  betrunkener: { id: "betrunkener", name: "Betrunkener", team: "dorf", short: "Du musst deine Karte mit einer aus der Mitte tauschen – ohne hinzusehen.", help: "Der Betrunkene muss seine Karte mit einer aus der Mitte tauschen, ohne die neue anzusehen. Er weiß also nicht, wer er jetzt ist." },
+  schlaflose: { id: "schlaflose", name: "Schlaflose", team: "dorf", short: "Am Ende der Nacht siehst du nach, welche Karte du jetzt hast.", help: "Die Schlaflose erwacht als Letzte und sieht sich ihre Karte noch einmal an – so weiß sie, ob sie getauscht wurde." },
+  jaeger: { id: "jaeger", name: "Jäger", team: "dorf", short: "Stirbst du, stirbt auch, auf wen du gezeigt hast.", help: "Stirbt der Jäger bei der Abstimmung, stirbt auch die Person, für die er gestimmt hat." },
+  gerber: { id: "gerber", name: "Gerber", team: "gerber", short: "Du hasst deinen Job: Du gewinnst nur, wenn du stirbst.", help: "Der Gerber gewinnt, wenn er bei der Abstimmung stirbt. Stirbt er und kein Werwolf, verlieren auch die Werwölfe." },
+  dorf: { id: "dorf", name: "Dorfbewohner", team: "dorf", short: "Keine Fähigkeit – finde die Werwölfe!", help: "Dorfbewohner haben keine Fähigkeit." },
 };
 
 export const ON_SPECIALS = ["guenstling", "freimaurer", "seherin", "raeuber", "unruhestifter", "betrunkener", "schlaflose", "jaeger", "gerber"] as const satisfies readonly ONRole[];
@@ -339,7 +339,7 @@ export const einenacht: GameLogic<ONState, ONAction> = {
     { key: "wolves", label: "Werwölfe", type: "choice", default: "2", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
     { key: "minutes", label: "Diskussion (Minuten)", type: "number", default: 5, min: 1, max: 15, step: 1 },
     ...ON_SPECIALS.map((r) => ({
-      key: r, label: `${ON_ROLES[r].emoji} ${ON_ROLES[r].name}${r === "freimaurer" ? " (zwei Karten)" : ""}`, type: "toggle" as const,
+      key: r, label: `${ON_ROLES[r].name}${r === "freimaurer" ? " (zwei Karten)" : ""}`, type: "toggle" as const,
       default: ["seherin", "raeuber", "unruhestifter"].includes(r), hint: ON_ROLES[r].short, group: "Rollen",
     })),
   ],

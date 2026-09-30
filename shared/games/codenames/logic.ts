@@ -1,5 +1,5 @@
 /**
- * Codenamen – zwei Teams, je ein Geheimdienstchef, der mit einem Wort und einer Zahl Hinweise gibt.
+ * Codenames – zwei Teams, je ein Geheimdienstchef, der mit einem Wort und einer Zahl Hinweise gibt.
  * Zwei Varianten:
  *  - „app“: Die 25 Wörter liegen in der App. Chefs sehen die Farben, Agenten tippen Wörter an.
  *  - „key“: Hilfe zum Brettspiel – ihr legt eure eigenen Wortkarten aus, die App erzeugt nur die
@@ -217,7 +217,7 @@ function apply(prev: CNState, a: CNAction, ctx: GameContext): CNState {
 export const codenames: GameLogic<CNState, CNAction> = {
   info: {
     id: "codenames",
-    name: "Codenamen",
+    name: "Codenames",
     tagline: "Zwei Teams, ein Wort, eine Zahl – findet eure Agenten, meidet den Attentäter.",
     category: "Party",
     minPlayers: 2,
@@ -231,8 +231,8 @@ export const codenames: GameLogic<CNState, CNAction> = {
     {
       key: "mode", label: "Variante", type: "choice", default: "app",
       choices: [
-        { value: "app", label: "📱 In der App", hint: "Wörter auf dem Handy" },
-        { value: "key", label: "🎲 Brettspiel-Hilfe", hint: "nur die Schlüsselkarte" },
+        { value: "app", label: "In der App", hint: "Wörter auf dem Handy" },
+        { value: "key", label: "Brettspiel-Hilfe", hint: "nur die Schlüsselkarte" },
       ],
     },
   ],

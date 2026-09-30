@@ -398,7 +398,7 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
       key: "diceMode", label: "Würfel", type: "choice", default: "real", inGame: true,
       choices: [
         { value: "real", label: "Echte Würfel", hint: "Punkte selbst eintippen" },
-        { value: "app", label: "🎲 App-Würfel", hint: "App würfelt und zählt" },
+        { value: "app", label: "App-Würfel", hint: "App würfelt und zählt" },
       ],
     },
     { key: "target", label: "Spielziel", type: "number", default: 6000, min: 1000, max: 50000, step: 1000, inGame: true },

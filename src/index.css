@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Marine-Palette: tiefes Navy mit Abstufungen, Papierkarten, Bernstein-Akzent */
+/* Marine-Palette: tiefes Navy mit Abstufungen, Papierkarten, heller Eisblau-Akzent – bewusst schlicht */
 :root {
   --radius: 1rem;
   --navy-950: #050d1c;
@@ -31,12 +31,15 @@
   --muted-foreground: #93acd1;
   --accent: rgb(134 174 232 / 0.16);
   --accent-foreground: #eef4ff;
-  --destructive: #ff8a8a;
+  --destructive: #d9959b;
   --border: rgb(134 174 232 / 0.16);
   --input: rgb(134 174 232 / 0.24);
   --ring: #86aee8;
 
-  --gold: #fbbf3c;
+  /* Akzent für Hervorhebungen (gewählt, Sieger, wichtiger Knopf) – eine helle Variation des Navy */
+  --ice: #cfe0fa;
+  /* „Online“-Punkt und Erfolg: ruhiges Blaugrün statt Signalgrün */
+  --ok: #8fc7c0;
   --paper: #fdfdfb;
   --paper-ink: #0f1a2e;
   --card-back: var(--navy-600);
@@ -72,7 +75,8 @@
   --color-navy-300: var(--navy-300);
   --color-navy-200: var(--navy-200);
   --color-navy-100: var(--navy-100);
-  --color-gold: var(--gold);
+  --color-ice: var(--ice);
+  --color-ok: var(--ok);
   --color-paper: var(--paper);
   --color-paper-ink: var(--paper-ink);
   --radius-sm: calc(var(--radius) - 4px);

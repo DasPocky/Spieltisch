@@ -52,7 +52,7 @@ export function RoomScreen(props: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2.5">
-          {reconnecting && <span className="animate-pulse text-sm font-semibold text-gold">Verbinde …</span>}
+          {reconnecting && <span className="animate-pulse text-sm font-semibold text-ice">Verbinde …</span>}
           {board && HeaderExtra && <HeaderExtra {...board} />}
           {props.call && <CallButton call={props.call} />}
           <MenuSheet {...props} isHost={isHost} board={board} />
@@ -142,9 +142,9 @@ function StuckBar({ room, online, dispatch, onClaimHost, isHost }: Props & { isH
   const host = room.players.find((p) => p.id === room.hostId);
   if (!isHost && host && !online.has(host.id) && onClaimHost) {
     return (
-      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-gold/15 px-3 py-2 text-sm" role="status">
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-ice/15 px-3 py-2 text-sm" role="status">
         <span><b>{host.name}</b> (Host) ist offline.</span>
-        <Button size="sm" variant="gold" onClick={onClaimHost}>Host übernehmen</Button>
+        <Button size="sm" variant="ice" onClick={onClaimHost}>Host übernehmen</Button>
       </div>
     );
   }
@@ -153,9 +153,9 @@ function StuckBar({ room, online, dispatch, onClaimHost, isHost }: Props & { isH
   const label = isHost ? skipLabel(room) : null;
   if (isHost && cur && !online.has(cur.id) && label) {
     return (
-      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-gold/15 px-3 py-2 text-sm" role="status">
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-ice/15 px-3 py-2 text-sm" role="status">
         <span><b>{cur.name}</b> ist offline.</span>
-        <Button size="sm" variant="gold" onClick={() => dispatch({ type: "skip" })}>Überspringen</Button>
+        <Button size="sm" variant="ice" onClick={() => dispatch({ type: "skip" })}>Überspringen</Button>
       </div>
     );
   }

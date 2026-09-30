@@ -230,7 +230,7 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
     {
       key: "cards", label: "Karten", type: "choice", default: "app",
       choices: [
-        { value: "app", label: "📱 In der App", hint: "App mischt und verteilt" },
+        { value: "app", label: "In der App", hint: "App mischt und verteilt" },
         { value: "table", label: "🃏 Echte Karten", hint: "App zählt Quartette" },
       ],
     },

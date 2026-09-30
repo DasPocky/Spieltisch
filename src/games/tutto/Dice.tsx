@@ -1,3 +1,4 @@
+import { Dices } from "lucide-react";
 import { MUST_PLAY, stopAfterTutto, NO_DICE_POINTS, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
 import { cn, fmt, vibrate } from "@/lib/utils";
@@ -47,11 +48,11 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
             <Die value={v} className="size-full drop-shadow-[0_4px_6px_rgba(0,0,0,.35)]" />
           </button>
         ))}
-        {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "🎉" : "–"}</span>}
+        {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "Tutto!" : "–"}</span>}
       </div>
 
       <div className="mt-2 flex min-h-6 items-center justify-between gap-3 px-1.5">
-        <span className={cn("text-sm", d?.bust ? "font-semibold text-destructive" : d?.tutto ? "font-semibold text-gold" : "text-muted-foreground")}>{status}</span>
+        <span className={cn("text-sm", d?.bust ? "font-semibold text-destructive" : d?.tutto ? "font-semibold text-ice" : "text-muted-foreground")}>{status}</span>
         {d && d.aside.length > 0 && (
           <span className="flex shrink-0 items-center gap-1" aria-label="Beiseitegelegt">
             {d.aside.map((v, i) => <Die key={i} value={v} className="size-5 opacity-70" />)}
@@ -81,18 +82,18 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
 
   if (!card) return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
   if (card === "stop") return <div className="grid"><Btn primary onClick={() => book(true)}>Stopp – nächster Spieler</Btn></div>;
-  if (!d || (!d.roll.length && !d.tutto)) return <div className="grid"><Btn primary onClick={roll}>🎲 Würfeln</Btn></div>;
+  if (!d || (!d.roll.length && !d.tutto)) return <div className="grid"><Btn primary onClick={roll}><Dices className="mr-1.5 inline size-5 align-[-4px]" />Würfeln</Btn></div>;
   if (d.bust) {
     return <div className="grid">{card === "fire"
       ? <Btn primary onClick={() => book()}>{pts} eintragen</Btn>
       : <Btn primary onClick={() => book(true)}>Niete – nächster Spieler</Btn>}</div>;
   }
   if (d.tutto) {
-    if (card === "fire" || card === "clover") return <div className="grid"><Btn primary onClick={roll}>🎲 Weiter würfeln</Btn></div>;
+    if (card === "fire" || card === "clover") return <div className="grid"><Btn primary onClick={roll}><Dices className="mr-1.5 inline size-5 align-[-4px]" />Weiter würfeln</Btn></div>;
     return (
       <div className="grid grid-cols-2 gap-2.5">
         <Btn primary onClick={() => book()}>Aufhören: {pts}</Btn>
-        <Btn onClick={() => onAction({ type: "draw" })}>🎲 Weiterzocken</Btn>
+        <Btn onClick={() => onAction({ type: "draw" })}>Weiterzocken</Btn>
       </div>
     );
   }
@@ -101,7 +102,7 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   const canStop = !MUST_PLAY.has(card) && v !== null;
   return (
     <div className={cn("grid gap-2.5", canStop && !completes ? "grid-cols-[1.2fr_1fr]" : "grid-cols-1")}>
-      <Btn primary disabled={v === null} onClick={roll}>{completes ? "Tutto! 🎉" : "Weiter würfeln"}</Btn>
+      <Btn primary disabled={v === null} onClick={roll}>{completes ? "Tutto!" : "Weiter würfeln"}</Btn>
       {canStop && !completes && <Btn onClick={() => book()}>{fmt(state.turnPts + (v ?? 0))} eintragen</Btn>}
     </div>
   );

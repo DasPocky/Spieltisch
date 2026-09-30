@@ -34,7 +34,7 @@ export const CARDS: CardType[] = [
   { id: "b600", value: "+600", name: "Bonus 600", big: "600", sub: "Bonus", count: 5, color: "#b8913a", quick: 600, rule: "Bei einem Tutto gibt es 600 Punkte extra.", help: BONUS_HELP(600) },
   { id: "x2", value: "×2", name: "x2", big: "×2", sub: "Verdoppeln", count: 5, color: "#6d62a3", rule: "Bei einem Tutto werden die Punkte dieses Zugs verdoppelt.",
     help: "Würfle ganz normal. Schaffst du ein Tutto, werden alle Punkte verdoppelt, die du in diesem Zug bisher gesammelt hast. Danach darfst du aufhören oder eine neue Karte ziehen. Hörst du vorher auf, zählen die Punkte einfach, ohne Verdopplung." },
-  { id: "fire", name: "Feuerwerk", big: "✺", sub: "Feuerwerk", count: 5, color: "#b86a4b", rule: "Würfeln bis zur Niete, Aufhören geht nicht. Alle Punkte bis dahin zählen.",
+  { id: "fire", name: "Feuerwerk", big: "*", sub: "Feuerwerk", count: 5, color: "#b86a4b", rule: "Würfeln bis zur Niete, Aufhören geht nicht. Alle Punkte bis dahin zählen.",
     help: "Du musst so lange weiterwürfeln, bis du eine Niete wirfst – freiwillig aufhören ist nicht erlaubt. Jedes Tutto zwischendurch zählt einfach mit, du würfelst danach mit allen 6 Würfeln weiter. Die Niete kostet dich hier ausnahmsweise nichts: Alle Punkte bis dahin bekommst du gutgeschrieben." },
   { id: "street", value: "2.000", name: "Straße", big: "1–6", sub: "2.000 Punkte", count: 5, color: "#4a7f8c", quick: 2000, rule: "1 bis 6 je einmal auslegen. Gelingt es, gibt es 2.000 Punkte, sonst nichts.",
     help: "Du brauchst eine Straße: Lege aus jedem Wurf mindestens einen Würfel mit einer Zahl beiseite, die du noch nicht hast, bis 1, 2, 3, 4, 5 und 6 vollständig sind. Gelingt es, gibt es 2.000 Punkte (normale Würfelpunkte zählen hier nicht). Bringt ein Wurf keine neue Zahl, ist es eine Niete." },
@@ -42,9 +42,9 @@ export const CARDS: CardType[] = [
     help: "Du musst ein Tutto würfeln. Gelingt es, bekommst du 1.000 Punkte – die Würfelpunkte zählen dabei nicht. Gleichzeitig verliert der Führende 1.000 Punkte (bei Gleichstand alle Führenden). Bist du selbst vorn, verliert niemand etwas. Bei einer Niete gibt es nichts." },
   { id: "stop", name: "Stopp", big: "STOP", sub: "Zug vorbei", count: 10, color: "#a84a57", rule: "Der Zug ist sofort vorbei. Nach einem Tutto sind alle Punkte des Zugs weg.",
     help: "Pech gehabt: Du darfst nicht würfeln, der Nächste ist dran. Hast du vorher ein Tutto geschafft und weitergezockt, verfallen alle Punkte dieses Zugs – deshalb gut überlegen, ob man nach einem Tutto lieber aufhört." },
-  { id: "clover", name: "Kleeblatt", big: "☘", sub: "Kleeblatt", count: 1, color: "#4f8a5e", rule: "Zweimal hintereinander Tutto – dann ist das Spiel sofort gewonnen.",
+  { id: "clover", name: "Kleeblatt", big: "K", sub: "Kleeblatt", count: 1, color: "#4f8a5e", rule: "Zweimal hintereinander Tutto – dann ist das Spiel sofort gewonnen.",
     help: "Die seltenste Karte (nur einmal im Stapel). Schaffst du zweimal hintereinander ein Tutto, ohne zwischendurch eine Niete zu werfen, hast du das Spiel sofort gewonnen – egal wie viele Punkte du hast. Aufhören geht nicht. Bei einer Niete gibt es nichts." },
-  { id: "torte", value: "1.500", name: "Torte", big: "🎂", sub: "1.500 Punkte", count: 1, color: "#c0607e", promo: true, rule: "Drilling, zwei Fünfen und eine Eins auslegen – dann gibt es 1.500 Punkte.",
+  { id: "torte", value: "1.500", name: "Torte", big: "T", sub: "1.500 Punkte", count: 1, color: "#c0607e", promo: true, rule: "Drilling, zwei Fünfen und eine Eins auslegen – dann gibt es 1.500 Punkte.",
     help: "Promokarte zum 30. Geburtstag von Tutto. Du musst mit deinen 6 Würfeln eine „Geburtstagstorte“ auslegen: drei Gleiche, zwei Fünfen und eine Eins. Gelingt das (ein Tutto), bekommst du 1.500 Punkte – die normalen Würfelpunkte zählen hier nicht. Aufhören geht nicht, bei einer Niete gibt es nichts." },
 ];
 

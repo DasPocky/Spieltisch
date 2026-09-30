@@ -10,7 +10,7 @@ function Icon({ className }: { className?: string }) {
       <rect x="6" y="9" width="15" height="22" rx="3" fill="#bcd3f5" transform="rotate(-16 13.5 20)" />
       <rect x="19" y="9" width="15" height="22" rx="3" fill="#86aee8" transform="rotate(16 26.5 20)" />
       <rect x="12.5" y="7" width="15" height="23" rx="3" fill="#fdfdfb" />
-      <text x="20" y="24.5" textAnchor="middle" fontSize="14" fontWeight="800" fill="#c8283a">7</text>
+      <text x="20" y="24.5" textAnchor="middle" fontSize="14" fontWeight="800" fill="#1f437f">7</text>
     </svg>
   );
 }
@@ -18,7 +18,7 @@ function Icon({ className }: { className?: string }) {
 function HeaderExtra({ game }: BoardProps<F7State, F7Action>) {
   return (
     <span className="rounded-full bg-secondary px-3 py-1 text-sm whitespace-nowrap text-muted-foreground ring-1 ring-inset ring-border">
-      <b className="text-foreground tabular-nums">{game.deckCount}</b> Karten{game.variant === "fies" && " · 😈"}
+      <b className="text-foreground tabular-nums">{game.deckCount}</b> Karten{game.variant === "fies" && " · fies"}
     </span>
   );
 }
@@ -62,7 +62,7 @@ function Rules() {
         <Row cards={["a:second"]} title="Zweite Chance" text="Rettet dich einmal vor einer doppelten Zahl. Hast du schon eine, gibst du sie einem anderen aktiven Spieler." />
         <Row cards={["m:+4", "m:x2"]} title="Modifikatoren" text="+2 bis +10 und ×2 (verdoppelt nur die Zahlen)." />
       </ul>
-      <h3 className="mt-5 mb-2 font-semibold">😈 Voll fies</h3>
+      <h3 className="mt-5 mb-2 font-semibold">Voll fies</h3>
       <p className="mb-2 text-sm leading-relaxed text-muted-foreground">Angelehnt an „Flip 7: Voll fies!“ – die genaue Kartenverteilung des Originals kann abweichen. Keine zweite Chance, Zahlen bis 13 (dreizehn 13er).</p>
       <ul className="grid gap-2">
         <Row cards={["n:13L"]} title="Glücks-13" text="Mit ihr darfst du eine zweite 13 haben, ohne rauszufliegen." />

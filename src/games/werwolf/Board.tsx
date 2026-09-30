@@ -1,35 +1,37 @@
+import { Feather, Heart, House, MoonStar, Music, PawPrint, Snowflake, type LucideIcon } from "lucide-react";
 import { participants, ROLES, SPECIAL_ROLES, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { cn } from "@/lib/utils";
 import { Leader } from "./Leader";
-import { nameOf } from "./parts";
+import { Ico, nameOf } from "./parts";
+import { RoleIcon } from "./RoleIcon";
 import { PlayerView } from "./PlayerView";
 
-const WIN: Record<string, { title: string; emoji: string; text: string }> = {
-  weisserwolf: { title: "Der weiße Werwolf gewinnt", emoji: "🐺", text: "Er ist als Einziger übrig." },
-  floete: { title: "Der Flötenspieler gewinnt", emoji: "🪈", text: "Alle Lebenden sind verzaubert." },
-  engel: { title: "Der Engel gewinnt", emoji: "😇", text: "Er ist schon in der ersten Runde in den Himmel gekommen." },
-  dorf: { title: "Das Dorf gewinnt", emoji: "🏡", text: "Alle Werwölfe sind besiegt." },
-  werwolf: { title: "Die Werwölfe gewinnen", emoji: "🐺", text: "Das Dorf ist in der Hand der Wölfe." },
-  liebe: { title: "Die Liebe gewinnt", emoji: "💘", text: "Das Liebespaar bleibt als Letztes übrig." },
+const WIN: Record<string, { title: string; icon: LucideIcon; text: string }> = {
+  weisserwolf: { title: "Der weiße Werwolf gewinnt", icon: Snowflake, text: "Er ist als Einziger übrig." },
+  floete: { title: "Der Flötenspieler gewinnt", icon: Music, text: "Alle Lebenden sind verzaubert." },
+  engel: { title: "Der Engel gewinnt", icon: Feather, text: "Er ist schon in der ersten Runde in den Himmel gekommen." },
+  dorf: { title: "Das Dorf gewinnt", icon: House, text: "Alle Werwölfe sind besiegt." },
+  werwolf: { title: "Die Werwölfe gewinnen", icon: PawPrint, text: "Das Dorf ist in der Hand der Wölfe." },
+  liebe: { title: "Die Liebe gewinnt", icon: Heart, text: "Das Liebespaar bleibt als Letztes übrig." },
 };
 
 /** Werwolf: Spielleiter bzw. lokales Gerät bekommt den geführten Ablauf, Mitspieler ihre Handy-Ansicht. */
 export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<WerwolfState, WerwolfAction>) {
   const players = room.players;
   if (s.phase === "over") {
-    const w = s.winner ? WIN[s.winner] : { title: "Spiel beendet", emoji: "🌘", text: "Das Spiel wurde abgebrochen." };
+    const w = s.winner ? WIN[s.winner] : { title: "Spiel beendet", icon: MoonStar, text: "Das Spiel wurde abgebrochen." };
     return (
       <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[4vh] pb-6 text-center">
-        <div className="text-6xl">{w.emoji}</div>
-        <h2 className="mt-3 bg-gradient-to-b from-gold to-amber-500 bg-clip-text text-4xl font-extrabold leading-tight tracking-tight text-transparent" data-testid="winner">{w.title}</h2>
+        <w.icon aria-hidden="true" className="mx-auto size-14 text-ice" />
+        <h2 className="mt-3 bg-gradient-to-b from-white to-navy-200 bg-clip-text text-4xl font-extrabold leading-tight tracking-tight text-transparent" data-testid="winner">{w.title}</h2>
         <p className="text-muted-foreground">{w.text}</p>
         <ul className="mt-6 grid gap-1.5 text-left">
           {participants(s).map((id) => (
             <li key={id} className={cn("flex items-center justify-between rounded-xl px-4 py-2.5", s.winner && (s.winner === "liebe" ? s.lovers?.includes(id) : s.winner === "weisserwolf" ? s.roles[id] === "weisserwolf" : s.winner === "floete" ? s.roles[id] === "floetenspieler" : s.winner === "engel" ? s.roles[id] === "engel" : ROLES[s.roles[id]].team === s.winner) ? "bg-navy-600" : "glass")}>
-              <span className={cn("font-semibold", !s.alive[id] && "text-muted-foreground line-through")}>{nameOf(players, id)}{s.lovers?.includes(id) && " 💘"}</span>
-              <span className="text-sm">{ROLES[s.roles[id]].emoji} {ROLES[s.roles[id]].name}</span>
+              <span className={cn("font-semibold", !s.alive[id] && "text-muted-foreground line-through")}>{nameOf(players, id)}{s.lovers?.includes(id) && <Ico icon={Heart} className="ml-1.5 text-navy-200" />}</span>
+              <span className="text-sm"><RoleIcon role={s.roles[id]} className="mr-1.5" />{ROLES[s.roles[id]].name}</span>
             </li>
           ))}
         </ul>

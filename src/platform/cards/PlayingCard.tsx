@@ -2,8 +2,9 @@ import { rankOf, RANK_NAME, suitOf, SUIT_NAME, type Card, type Suit } from "@sha
 import { cn } from "@/lib/utils";
 
 export const SUIT_COLOR: Record<Suit, string> = {
-  eichel: "#8a5a1f", gruen: "#3d7a3a", rot: "#b8323f", schellen: "#c98f14",
-  kreuz: "#1a2233", pik: "#1a2233", herz: "#c8283a", karo: "#c8283a",
+  // gedämpft: Rot ist ein ruhiges Weinrot, Schwarz ein tiefes Blauschwarz
+  eichel: "#7a5a3a", gruen: "#4f7560", rot: "#a8454f", schellen: "#b39a5c",
+  kreuz: "#1b1e25", pik: "#1b1e25", herz: "#a8454f", karo: "#a8454f",
 };
 
 /** Farbsymbole beider Blätter */

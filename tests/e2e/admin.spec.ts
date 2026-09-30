@@ -39,7 +39,8 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
   await page.goto("/");
   await expect(page.getByRole("button", { name: /^Tutto/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Kniffel/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Flip 7/ })).toContainText("🔒");
+  await expect(page.getByRole("button", { name: /^Flip 7/ })).toHaveAccessibleName(/Flip 7/);
+  await expect(page.getByRole("button", { name: /^Flip 7/ }).getByLabel("mit Zugangscode")).toBeVisible();
 
   // Kniffel direkt aufgerufen: geschlossen
   await page.goto("/spiel/kniffel");

@@ -1,3 +1,4 @@
+import { Fish, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { DECKS, RANK_PLURAL, type Rank } from "@shared/cards/deck";
 import { askedGoesNext, leaders, openRanks, type FischenAction, type FischenState } from "@shared/games/fischen/logic";
@@ -66,7 +67,7 @@ export function TableBoard({ room, game: s, me, online, isHost, canAct, act, dis
 
       {/* Alle Quartette: offene antippbar, gelegte mit Namen */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-hidden">
-        {canAct && <p className="mb-2 px-1 text-sm font-bold text-gold">Quartett gelegt? Wert antippen</p>}
+        {canAct && <p className="mb-2 px-1 text-sm font-bold text-ice">Quartett gelegt? Wert antippen</p>}
         <div className={cn("grid w-full gap-x-1 gap-y-1.5", deck.ranks.length > 8 ? "grid-cols-7" : "grid-cols-4 px-4")} role="group" aria-label="Quartette">
           {deck.ranks.map((r) => {
             const owner = ownerOf(r);
@@ -75,9 +76,9 @@ export function TableBoard({ room, game: s, me, online, isHost, canAct, act, dis
               <button key={r} type="button" disabled={!canAct || !!owner} onClick={() => setPick(chosen ? null : r)} aria-pressed={chosen}
                 aria-label={owner ? `${RANK_PLURAL[r]}: liegt bei ${nameOf(players, owner)}` : `Quartett ${RANK_PLURAL[r]} eintragen`}
                 className={cn("flex min-w-0 flex-col items-center rounded-xl p-1 outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                  chosen && "-translate-y-1 bg-gold/25 ring-2 ring-gold")}>
+                  chosen && "-translate-y-1 bg-ice/25 ring-2 ring-ice")}>
                 <PlayingCard card={`${deck.suits[2]}-${r}`} dim={!!owner} className={cn("w-full", deck.ranks.length > 8 ? "max-w-[3.4rem]" : "max-w-[4.5rem]", owner && "opacity-40")} />
-                <span className={cn("mt-0.5 h-4 max-w-full truncate text-[0.68rem] leading-4 font-semibold", owner ? "text-gold" : "text-transparent")}>
+                <span className={cn("mt-0.5 h-4 max-w-full truncate text-[0.68rem] leading-4 font-semibold", owner ? "text-ice" : "text-transparent")}>
                   {owner ? me2(owner) : "·"}
                 </span>
               </button>
@@ -92,7 +93,7 @@ export function TableBoard({ room, game: s, me, online, isHost, canAct, act, dis
           <p className="glass rounded-xl py-4 text-center text-muted-foreground">Warte auf <b className="text-foreground">{nameOf(players, cur)}</b></p>
         ) : pick ? (
           <div className="glass rounded-2xl p-2.5">
-            <p className="mb-2 text-center text-sm font-semibold">Wer hat das Quartett <b className="text-gold">{RANK_PLURAL[pick]}</b> gelegt?</p>
+            <p className="mb-2 text-center text-sm font-semibold">Wer hat das Quartett <b className="text-ice">{RANK_PLURAL[pick]}</b> gelegt?</p>
             <div className="grid grid-cols-2 gap-1.5">
               {owners.map((p) => <Button key={p.id} variant={p.id === cur ? "default" : "secondary"} onClick={() => lay(p.id)}>{me2(p.id)}</Button>)}
             </div>
@@ -110,10 +111,10 @@ export function TableBoard({ room, game: s, me, online, isHost, canAct, act, dis
           <div className={cn("grid gap-2", lastLaid ? "grid-cols-[auto_1fr]" : "grid-cols-1")}>
             {lastLaid && (
               <Button size="lg" variant="secondary" className="px-4" onClick={() => act({ type: "undo" })} aria-label={`Quartett ${RANK_PLURAL[lastLaid.rank]} zurücknehmen`}>
-                ↩
+                <Undo2 />
               </Button>
             )}
-            <Button size="lg" className="min-w-0" onClick={() => (askedGoesNext(room.options) && players.length > 2 ? setAsking(true) : fish())}>🎣 Geh fischen</Button>
+            <Button size="lg" className="min-w-0" onClick={() => (askedGoesNext(room.options) && players.length > 2 ? setAsking(true) : fish())}><Fish />Geh fischen</Button>
           </div>
         )}
       </div>

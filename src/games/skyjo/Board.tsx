@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Undo2 } from "lucide-react";
 import { leaders, visibleSum, type Cell, type SkAction, type SkState } from "@shared/games/skyjo/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
@@ -8,16 +9,17 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { cn, vibrate } from "@/lib/utils";
+import { MUTED } from "@/lib/palette";
 
 const nameOf = (players: Player[], id: string | null) => players.find((p) => p.id === id)?.name ?? "?";
 
-/** Farben wie beim Original: Minus dunkelblau, 0 hellblau, 1–4 grün, 5–8 gelb, 9–12 rot */
+/** Farben angelehnt ans Original, aber gedämpft: Minus Navy, 0 Eisblau, 1–4 Blaugrün, 5–8 Ocker, 9–12 Weinrot */
 export function cardColor(v: number): { bg: string; fg: string } {
-  if (v < 0) return { bg: "#2c3f9e", fg: "#fff" };
-  if (v === 0) return { bg: "#7cc4ef", fg: "#10223d" };
-  if (v <= 4) return { bg: "#4fae57", fg: "#fff" };
-  if (v <= 8) return { bg: "#f2c53d", fg: "#2b2100" };
-  return { bg: "#d8433b", fg: "#fff" };
+  if (v < 0) return { bg: MUTED.navy, fg: "#fff" };
+  if (v === 0) return { bg: MUTED.ice, fg: "#10223d" };
+  if (v <= 4) return { bg: MUTED.teal, fg: "#fff" };
+  if (v <= 8) return { bg: MUTED.ochre, fg: "#1f1a0c" };
+  return { bg: MUTED.red, fg: "#fff" };
 }
 
 /** Eine Karte: offen mit Zahl, verdeckt mit Rückseite, abgeräumt als leerer Platz */
@@ -28,7 +30,7 @@ export function SkCard({ cell, small, pick, onClick, label }: { cell: Cell | nul
   return (
     <button type="button" disabled={!onClick} onClick={onClick} aria-label={label ?? (up ? `Karte ${cell.v}` : "verdeckte Karte")}
       className={cn("grid place-items-center overflow-hidden rounded-[18%] font-extrabold shadow outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-        small ? "size-full text-[0.55rem]" : "h-full w-full text-[clamp(1rem,6vw,1.8rem)]", !up && "card-back", pick && "ring-[3px] ring-gold", onClick && "active:scale-95")}
+        small ? "size-full text-[0.55rem]" : "h-full w-full text-[clamp(1rem,6vw,1.8rem)]", !up && "card-back", pick && "ring-[3px] ring-ice", onClick && "active:scale-95")}
       style={c ? { background: c.bg, color: c.fg } : undefined}>
       {up ? cell.v : small ? "" : <span className="text-[0.6em] text-paper/70">SKYJO</span>}
     </button>
@@ -197,7 +199,7 @@ function TableBoard(props: BoardProps<SkState, SkAction>) {
                 onBlur={() => commit(p.id)} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
               <button type="button" aria-pressed={s.tableEnder === p.id} aria-label={`${p.name} hat beendet`}
                 onClick={() => act({ type: "setEnder", player: s.tableEnder === p.id ? null : p.id })}
-                className={cn("rounded-lg px-2 py-2 text-xs font-bold ring-1 ring-inset", s.tableEnder === p.id ? "bg-gold text-navy-950 ring-transparent" : "text-muted-foreground ring-border")}>beendet</button>
+                className={cn("rounded-lg px-2 py-2 text-xs font-bold ring-1 ring-inset", s.tableEnder === p.id ? "bg-ice text-navy-950 ring-transparent" : "text-muted-foreground ring-border")}>beendet</button>
             </div>
           );
         })}
@@ -215,7 +217,7 @@ function TableBoard(props: BoardProps<SkState, SkAction>) {
       <div className="grid shrink-0 gap-2 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {isHost ? (
           <div className={cn("grid gap-2", s.rounds.length ? "grid-cols-[auto_1fr]" : "grid-cols-1")}>
-            {s.rounds.length > 0 && <Button size="lg" variant="secondary" onClick={() => act({ type: "undoRound" })}>↩</Button>}
+            {s.rounds.length > 0 && <Button size="lg" variant="secondary" onClick={() => act({ type: "undoRound" })} aria-label="Letzte Runde zurücknehmen"><Undo2 /></Button>}
             <Button size="lg" disabled={missing > 0} onClick={() => { vibrate(10); setDraft({}); act({ type: "finishRound" }); }}>
               {missing ? `Noch ${missing} ${missing === 1 ? "Eintrag" : "Einträge"}` : `Runde ${s.round} abschließen`}
             </Button>

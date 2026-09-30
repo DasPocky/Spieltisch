@@ -8,12 +8,12 @@ const KEYS = [50, 100, 200, 300, 400, 500, 600, 1000];
 /** Was ein Tutto mit dieser Karte bringt – steht groß auf dem Knopf, darüber die Überschrift */
 function tuttoLabel(card: CardId, tuttos: number): [string, string] {
   switch (card) {
-    case "x2": return ["🎉 Tutto geschafft", "×2"];
+    case "x2": return ["Tutto geschafft", "×2"];
     case "street": return ["Straße geschafft", "+2.000"];
     case "torte": return ["Torte geschafft", "+1.500"];
-    case "pm": return ["🎉 Tutto geschafft", "±1.000"];
-    case "clover": return ["🎉 Tutto geschafft", `${tuttos + 1} von 2`];
-    default: return ["🎉 Tutto geschafft", `+${fmt(CARD_BY_ID[card].quick ?? 0)}`];
+    case "pm": return ["Tutto geschafft", "±1.000"];
+    case "clover": return ["Tutto geschafft", `${tuttos + 1} von 2`];
+    default: return ["Tutto geschafft", `+${fmt(CARD_BY_ID[card].quick ?? 0)}`];
   }
 }
 
@@ -78,12 +78,12 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
   const pts = fmt(state.turnPts);
   const book = (zero = false) => onAction({ type: "book", zero });
   /** Knopf mit kleiner Überschrift und großem Wert – passt auch auf schmale Handys */
-  const Btn = ({ children, sub, onClick, disabled, kind = "plain" }: { children: React.ReactNode; sub?: string; onClick?: () => void; disabled?: boolean; kind?: "primary" | "gold" | "plain" }) => (
+  const Btn = ({ children, sub, onClick, disabled, kind = "plain" }: { children: React.ReactNode; sub?: string; onClick?: () => void; disabled?: boolean; kind?: "primary" | "ice" | "plain" }) => (
     <button type="button" onClick={onClick} disabled={disabled}
       className={cn("disabled:opacity-40",
         "flex h-13 min-w-0 flex-col items-center justify-center rounded-xl px-1.5 leading-tight font-bold outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring",
         kind === "primary" ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]"
-          : kind === "gold" ? "bg-gold text-navy-950 shadow-[0_6px_20px_rgb(214_176_92/0.3)]" : "bg-secondary ring-1 ring-inset ring-border",
+          : kind === "ice" ? "bg-ice text-navy-950 shadow-[0_6px_20px_rgb(207_224_250/0.25)]" : "bg-secondary ring-1 ring-inset ring-border",
       )}>
       {sub && <span className="max-w-full truncate text-[0.7rem] font-semibold opacity-80">{sub}</span>}
       <span className="max-w-full truncate text-base">{children}</span>
@@ -100,7 +100,7 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
     return (
       <div className="grid grid-cols-2 gap-2">
         <Btn sub="Aufhören" kind="primary" onClick={() => book()}>{pts} eintragen</Btn>
-        <Btn sub="Neue Karte – Risiko" onClick={() => onAction({ type: "draw" })}>🎲 Weiterzocken</Btn>
+        <Btn sub="Neue Karte – Risiko" onClick={() => onAction({ type: "draw" })}>Weiterzocken</Btn>
       </div>
     );
   }
@@ -118,9 +118,9 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
   const tuttoReady = NO_DICE_POINTS.has(card) || state.turnPts - (state.cardStart ?? 0) >= MIN_TUTTO;
   const tuttoBtn = card === "clover" && (state.cardTuttos ?? 0) >= 1 ? (
     <Confirm title="Zweites Tutto geschafft?" description="Zweimal hintereinander Tutto – damit ist das Spiel sofort gewonnen." confirmLabel="Sieg!" onConfirm={tutto}>
-      <Btn sub="☘ Tutto" kind="gold">2 von 2</Btn>
+      <Btn sub="Tutto" kind="ice">2 von 2</Btn>
     </Confirm>
-  ) : <Btn sub={tuttoLabel(card, state.cardTuttos ?? 0)[0]} kind="gold" disabled={!tuttoReady} onClick={tutto}>{tuttoLabel(card, state.cardTuttos ?? 0)[1]}</Btn>;
+  ) : <Btn sub={tuttoLabel(card, state.cardTuttos ?? 0)[0]} kind="ice" disabled={!tuttoReady} onClick={tutto}>{tuttoLabel(card, state.cardTuttos ?? 0)[1]}</Btn>;
   const stop = canStop(state) && state.turnPts > 0;
 
   return (

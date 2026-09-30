@@ -61,7 +61,7 @@ function MenuExtras({ room, game, hostTools, act }: BoardProps<TuttoState, Tutto
                     </span>
                   )}
                 </span>
-                <b className="tabular-nums">{e.clover ? "☘" : `+${fmt(e.pts)}`}</b>
+                <b className="tabular-nums">{e.clover ? "Kleeblatt" : `+${fmt(e.pts)}`}</b>
               </li>
             ))}
           </ul>

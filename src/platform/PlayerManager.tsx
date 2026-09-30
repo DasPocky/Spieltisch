@@ -26,7 +26,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
         {room.players.map((p, i) => (
           <li key={p.id} className="flex h-13 items-center gap-2.5 glass rounded-xl pr-1.5 pl-4">
             <span className="w-5 shrink-0 text-muted-foreground tabular-nums">{i + 1}</span>
-            {online && <span className={cn("size-2 shrink-0 rounded-full", online.has(p.id) ? "bg-emerald-400" : "bg-foreground/25")} />}
+            {online && <span className={cn("size-2 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-foreground/25")} />}
             <span className="flex-1 truncate font-semibold">
               {p.name}
               {p.id === me && <span className="font-normal text-muted-foreground"> (du)</span>}

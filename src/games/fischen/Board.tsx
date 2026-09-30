@@ -1,3 +1,4 @@
+import { Fish, Layers } from "lucide-react";
 import { useState } from "react";
 import { DECKS, rankOf, RANK_DATIVE, RANK_PLURAL, type Card, type Rank } from "@shared/cards/deck";
 import { leaders, type FischenAction, type FischenEvent, type FischenState } from "@shared/games/fischen/logic";
@@ -23,10 +24,10 @@ function LastAsk({ e, players, viewer }: { e: FischenEvent; players: Player[]; v
       <div className="text-xl font-extrabold leading-tight">„Hast du {RANK_PLURAL[e.rank]}?“</div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {e.got
-          ? <span className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white">Ja! {e.got} {e.got === 1 ? "Karte" : "Karten"}</span>
-          : <span className="rounded-full bg-navy-600 px-3 py-1 text-sm font-bold text-white">Nein – geh fischen! 🎣</span>}
-        {e.lucky && <span className="rounded-full bg-gold px-3 py-1 text-sm font-bold text-navy-950">Glück gehabt – nochmal!</span>}
-        {e.quartet && <span className="rounded-full bg-gold px-3 py-1 text-sm font-bold text-navy-950">Quartett: {RANK_PLURAL[e.quartet]}!</span>}
+          ? <span className="rounded-full bg-ok px-3 py-1 text-sm font-bold text-navy-950">Ja! {e.got} {e.got === 1 ? "Karte" : "Karten"}</span>
+          : <span className="rounded-full bg-navy-600 px-3 py-1 text-sm font-bold text-white">Nein – geh fischen!</span>}
+        {e.lucky && <span className="rounded-full bg-ice px-3 py-1 text-sm font-bold text-navy-950">Glück gehabt – nochmal!</span>}
+        {e.quartet && <span className="rounded-full bg-ice px-3 py-1 text-sm font-bold text-navy-950">Quartett: {RANK_PLURAL[e.quartet]}!</span>}
       </div>
     </div>
   );
@@ -48,15 +49,15 @@ function RankStack({ cards, rank, selected, disabled, fished, onPick }: { cards:
   return (
     <button type="button" disabled={disabled} onClick={onPick} aria-pressed={selected} aria-label={`${RANK_PLURAL[rank]}: ${cards.length} von 4. Nach ${RANK_DATIVE[rank]} fragen`}
       className={cn("flex shrink-0 flex-col items-center rounded-2xl p-1.5 outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-        selected ? "-translate-y-1.5 bg-gold/25 ring-2 ring-gold" : "")}>
+        selected ? "-translate-y-1.5 bg-ice/25 ring-2 ring-ice" : "")}>
       <div className="relative h-[calc(2.7rem*1.6)]" style={{ width: `calc(2.7rem + ${(cards.length - 1) * step}rem)` }}>
         {cards.map((c, i) => (
-          <div key={c} className={cn("absolute top-0 w-[2.7rem] rounded-[10%]", c === fished && "ring-[3px] ring-gold")} style={{ left: `${i * step}rem` }}>
+          <div key={c} className={cn("absolute top-0 w-[2.7rem] rounded-[10%]", c === fished && "ring-[3px] ring-ice")} style={{ left: `${i * step}rem` }}>
             <PlayingCard card={c} />
           </div>
         ))}
       </div>
-      <span className={cn("mt-1 text-xs font-bold whitespace-nowrap", selected ? "text-gold" : "text-muted-foreground")}>{RANK_PLURAL[rank]} {cards.length}/4</span>
+      <span className={cn("mt-1 text-xs font-bold whitespace-nowrap", selected ? "text-ice" : "text-muted-foreground")}>{RANK_PLURAL[rank]} {cards.length}/4</span>
     </button>
   );
 }
@@ -103,7 +104,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
   return (
     <>
       {/* Schritt 1: Mitspieler */}
-      {myTurn && <div className="shrink-0 px-1 pb-1 text-sm font-bold text-gold">1 · Wen fragst du?</div>}
+      {myTurn && <div className="shrink-0 px-1 pb-1 text-sm font-bold text-ice">1 · Wen fragst du?</div>}
       <div className="no-scrollbar -mx-4 flex shrink-0 gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Mitspieler">
         {players.filter((p) => p.id !== viewer || !myTurn).map((p) => {
           const pickable = myTurn && targets.some((t) => t.id === p.id);
@@ -111,12 +112,12 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
           return (
             <button key={p.id} type="button" disabled={!pickable} onClick={() => setTarget(p.id)} aria-pressed={chosen}
               className={cn("flex min-w-[6.5rem] shrink-0 flex-col items-start rounded-xl px-3 py-2 text-left text-sm outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                chosen ? "bg-gold text-navy-950" : p.id === s.curId ? "bg-gradient-to-b from-navy-400 to-primary text-white" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
+                chosen ? "bg-ice text-navy-950" : p.id === s.curId ? "bg-gradient-to-b from-navy-400 to-primary text-white" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
               <span className="flex items-center gap-1.5 font-bold">
-                {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-emerald-400" : "bg-current opacity-30")} />}
+                {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
                 <span className="max-w-[6rem] truncate">{p.id === me ? "Du" : p.name}</span>
               </span>
-              <span className={cn("text-xs tabular-nums", !chosen && p.id !== s.curId && "text-muted-foreground")}>🂠 {s.counts[p.id] ?? 0} · ★ {s.quartets[p.id]?.length ?? 0}</span>
+              <span className={cn("text-xs tabular-nums", !chosen && p.id !== s.curId && "text-muted-foreground")}><Layers className="inline size-3 align-[-1px]" aria-label="Karten" /> {s.counts[p.id] ?? 0} · ★ {s.quartets[p.id]?.length ?? 0}</span>
             </button>
           );
         })}
@@ -125,7 +126,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
       {/* Mitte: letzte Fragen */}
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden py-2" aria-live="polite">
         <div className="flex shrink-0 items-center justify-between text-sm text-muted-foreground">
-          <span>🎣 Teich: <b className="text-foreground tabular-nums">{s.pileCount}</b></span>
+          <span className="flex items-center gap-1"><Fish className="size-4" />Teich: <b className="text-foreground tabular-nums">{s.pileCount}</b></span>
           <span className="min-w-0 truncate">★ {myQuartets.length ? myQuartets.map((r) => RANK_PLURAL[r]).join(", ") : "noch kein Quartett"}</span>
           <RulesSheet gameId={room.gameId} />
         </div>
@@ -141,7 +142,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {covered ? <HandoffCover name={cur?.name ?? "?"} onReveal={reveal} /> : (
           <>
-            {myTurn && <div className="px-1 text-sm font-bold text-gold">2 · Wonach fragst du? <span className="font-normal text-muted-foreground">Tippe einen Stapel an</span></div>}
+            {myTurn && <div className="px-1 text-sm font-bold text-ice">2 · Wonach fragst du? <span className="font-normal text-muted-foreground">Tippe einen Stapel an</span></div>}
             <div className="flex flex-wrap items-end justify-center gap-x-0.5 pt-2" data-testid="hand" role="group" aria-label="Wert">
               {groups.map((g) => (
                 <RankStack key={g.rank} cards={g.cards} rank={g.rank} selected={myTurn && selRank === g.rank} disabled={!myTurn} fished={s.fished} onPick={() => setRank(g.rank)} />

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Check, Crown, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
 import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { AliveStrip, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
+import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
+import { RoleIcon } from "./RoleIcon";
 import { DAWN_SAY, SCRIPT } from "./script";
 import { setSpeech, speechSupported, useSpeak, useSpeechEnabled } from "./useSpeech";
 
@@ -52,13 +53,13 @@ function Reveal({ s, players, act, online }: { s: WerwolfState; players: Player[
           <ul className="grid gap-1.5">
             {participants(s).map((id) => (
               <li key={id} className="flex items-center justify-between rounded-xl bg-navy-950/40 px-3 py-2">
-                <span className="font-semibold">{ROLES[s.roles[id]].emoji} {nameOf(players, id)}</span>
-                <span className="text-sm text-muted-foreground">{ROLES[s.roles[id]].name}{s.ready.includes(id) ? " · ✓" : ""}</span>
+                <span className="font-semibold"><RoleIcon role={s.roles[id]} className="mr-2 text-navy-200" />{nameOf(players, id)}</span>
+                <span className="text-sm text-muted-foreground">{ROLES[s.roles[id]].name}{s.ready.includes(id) && <> · <Ico icon={Check} className="text-ice" /></>}</span>
               </li>
             ))}
           </ul>
         </Panel>
-        <Button size="lg" className="shrink-0" onClick={() => act({ type: "startNight" })}>🌙 Nacht beginnen</Button>
+        <Button size="lg" className="shrink-0" onClick={() => act({ type: "startNight" })}><Moon />Nacht beginnen</Button>
       </>
     );
   }
@@ -79,10 +80,10 @@ function Reveal({ s, players, act, online }: { s: WerwolfState; players: Player[
   return (
     <>
       <Panel title="Rollen ansehen" sub="Reicht das Handy herum. Jeder tippt auf seinen Namen und schaut sich allein seine Rolle an.">
-        <Picker ids={participants(s)} players={players} selected={[]} onPick={setPeek} marks={Object.fromEntries(seen.map((id) => [id, "✓"]))} />
+        <Picker ids={participants(s)} players={players} selected={[]} onPick={setPeek} marks={Object.fromEntries(seen.map((id) => [id, <Check aria-label="gesehen" className="size-4" />]))} />
       </Panel>
       <Button size="lg" className="shrink-0" variant={all ? "default" : "secondary"} onClick={() => act({ type: "startNight" })}>
-        🌙 {all ? "Alle kennen ihre Rolle – Nacht beginnen" : "Nacht beginnen"}
+        <Moon />{all ? "Alle kennen ihre Rolle – Nacht beginnen" : "Nacht beginnen"}
       </Button>
     </>
   );
@@ -111,15 +112,15 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
     ) : (
       <div className="grid gap-2">
         <p className="text-sm text-muted-foreground">Die zwei übrigen Karten:</p>
-        {s.extra.map((r, i) => <Button key={i} size="lg" variant="secondary" onClick={() => act({ type: "steal", pick: i })}>{ROLES[r].emoji} {ROLES[r].name} nehmen</Button>)}
+        {s.extra.map((r, i) => <Button key={i} size="lg" variant="secondary" onClick={() => act({ type: "steal", pick: i })}><RoleIcon role={r} className="size-5" />{ROLES[r].name} nehmen</Button>)}
         {!s.extra.every((r) => isWolf(r)) && <Button variant="ghost" onClick={() => act({ type: "steal", pick: null })}>Nicht tauschen</Button>}
       </div>
     );
   } else if (step === "amor" && !acted) {
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 2)} />;
-    confirm = { label: pick.length === 2 ? `${nameOf(players, pick[0])} 💘 ${nameOf(players, pick[1])}` : "Zwei Personen wählen", ok: pick.length === 2, run: () => act({ type: "amor", a: pick[0], b: pick[1] }) };
+    confirm = { label: pick.length === 2 ? `${nameOf(players, pick[0])} & ${nameOf(players, pick[1])} verlieben` : "Zwei Personen wählen", ok: pick.length === 2, run: () => act({ type: "amor", a: pick[0], b: pick[1] }) };
   } else if (step === "lovers" && s.lovers) {
-    body = <p className="text-center text-2xl font-extrabold">{nameOf(players, s.lovers[0])} 💘 {nameOf(players, s.lovers[1])}</p>;
+    body = <p className="text-center text-2xl font-extrabold">{nameOf(players, s.lovers[0])} <Heart aria-label="und" className="inline size-6 align-[-3px] text-ice" /> {nameOf(players, s.lovers[1])}</p>;
   } else if (step === "beschuetzer" && !acted) {
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} disabled={(id) => id === s.lastProtected} />;
     confirm = { label: "Beschützen", ok: pick.length === 1, run: () => act({ type: "protect", target: pick[0] }) };
@@ -129,12 +130,12 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
   } else if (step === "wolfshund" && !acted) {
     body = (
       <div className="grid gap-2">
-        <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: false })}>🏡 Bleibt beim Dorf</Button>
-        <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: true })}>🐺 Wird zum Werwolf</Button>
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: false })}><House />Bleibt beim Dorf</Button>
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "dog", wolf: true })}><PawPrint />Wird zum Werwolf</Button>
       </div>
     );
   } else if (step === "schwestern") {
-    body = <p className="text-center text-2xl font-extrabold">👭 {who(holders(s, "schwester"))}</p>;
+    body = <p className="text-center text-2xl font-extrabold"><Ico icon={Users} className="mr-2 size-6 text-ice" />{who(holders(s, "schwester"))}</p>;
   } else if (step === "werwolf" && !acted) {
     body = <Picker ids={alive.filter((id) => !isWolf(s.roles[id]))} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf", target: pick[0] }) };
@@ -147,12 +148,12 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
     body = <Picker ids={open} players={players} selected={pick} onPick={(id) => toggle(id, 2)} />;
     confirm = { label: "Verzaubern", ok: pick.length === Math.min(2, open.length), run: () => act({ type: "enchant", a: pick[0], b: pick[1] }) };
   } else if (step === "verzaubert") {
-    body = <p className="text-center text-2xl font-extrabold">🪈 {s.enchantedTonight.map((id) => nameOf(players, id)).join(" & ")}</p>;
+    body = <p className="text-center text-2xl font-extrabold"><Ico icon={Music} className="mr-2 size-6 text-ice" />{s.enchantedTonight.map((id) => nameOf(players, id)).join(" & ")}</p>;
   } else if (step === "urwolf" && !acted) {
     body = s.victim ? (
       <div className="grid gap-2">
         <p className="rounded-xl bg-navy-950/50 p-3 text-center">Opfer: <b className="text-lg">{nameOf(players, s.victim)}</b></p>
-        <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: true })}>🌑 Verwandeln – wird zum Werwolf</Button>
+        <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: true })}><MoonStar />Verwandeln – wird zum Werwolf</Button>
         <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: false })}>Nein, fressen</Button>
       </div>
     ) : <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: false })}>Kein Opfer – weiter</Button>;
@@ -164,7 +165,7 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
     confirm = { label: "Schnüffeln", ok: pick.length === 1, run: () => act({ type: "fox", target: pick[0] }) };
   } else if (step === "fuchs" && acted) {
     const r = s.fox.at(-1)!;
-    body = <p className="text-center text-2xl font-extrabold" data-testid="fox-result">{r.wolf ? `🦊 Wolf in der Nähe von ${nameOf(players, r.target)}!` : "🦊 Kein Wolf dort – der Fuchs verliert seinen Spürsinn."}</p>;
+    body = <p className="text-center text-2xl font-extrabold" data-testid="fox-result"><Ico icon={Search} className="mr-2 size-6 text-ice" />{r.wolf ? `Wolf in der Nähe von ${nameOf(players, r.target)}!` : "Kein Wolf dort – der Fuchs verliert seinen Spürsinn."}</p>;
   } else if (step === "schlampe" && !acted) {
     body = <Picker ids={alive.filter((id) => s.roles[id] !== "schlampe")} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: pick.length ? `Übernachtet bei ${nameOf(players, pick[0])}` : "Person wählen", ok: pick.length === 1, run: () => act({ type: "visit", target: pick[0] }) };
@@ -179,7 +180,7 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
     body = (
       <div className="text-center">
         <div className="text-sm text-muted-foreground">{nameOf(players, r.target)} ist</div>
-        <div className="mt-1 text-5xl">{ROLES[r.role].emoji}</div>
+        <RoleIcon role={r.role} className="mx-auto mt-2 block size-12 text-ice" />
         <div className="text-3xl font-extrabold" data-testid="seer-result">{ROLES[r.role].name}</div>
       </div>
     );
@@ -189,25 +190,25 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
         <p className="rounded-xl bg-navy-950/50 p-3 text-center">{s.victim ? <>Opfer der Werwölfe: <b className="text-lg">{nameOf(players, s.victim)}</b></> : "Heute Nacht wurde niemand angegriffen."}</p>
         <label className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-inset ring-border", !s.potions.heal && "opacity-40")}>
           <Checkbox checked={heal} disabled={!s.potions.heal || !s.victim} onCheckedChange={(c) => setHeal(c === true)} />
-          🧪 Heiltrank benutzen{!s.potions.heal && " (verbraucht)"}
+          <span><Ico icon={FlaskConical} className="mr-1.5" />Heiltrank benutzen{!s.potions.heal && " (verbraucht)"}</span>
         </label>
         {s.potions.poison ? (
           <>
-            <div className="text-sm font-semibold text-muted-foreground">☠ Gifttrank – optional jemanden vergiften:</div>
+            <div className="text-sm font-semibold text-muted-foreground"><Ico icon={Skull} className="mr-1.5" />Gifttrank – optional jemanden vergiften:</div>
             <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />
           </>
-        ) : <p className="text-sm text-muted-foreground">☠ Gifttrank verbraucht.</p>}
+        ) : <p className="text-sm text-muted-foreground"><Ico icon={Skull} className="mr-1.5" />Gifttrank verbraucht.</p>}
       </div>
     );
     confirm = { label: "Bestätigen", ok: true, run: () => act({ type: "witch", heal, poison: pick[0] ?? null }) };
   } else if (acted && script.after) {
-    body = <p className="text-center text-lg font-semibold text-muted-foreground">✓ Erledigt</p>;
+    body = <p className="text-center text-lg font-semibold text-muted-foreground"><Ico icon={Check} className="mr-1.5" />Erledigt</p>;
   }
 
   const actorHint = showRoles && awake.length ? who(awake) : "";
   return (
     <>
-      <Panel title={<>🌙 Nacht {s.night} · {script.title}</>} sub={<><span className="italic">„{acted && script.after ? script.after : script.say}“</span>{actorHint && <span className="block not-italic">Wach: {actorHint}</span>}</>}>
+      <Panel title={<IconTitle icon={Moon}>Nacht {s.night} · {script.title}</IconTitle>} sub={<><span className="italic">„{acted && script.after ? script.after : script.say}“</span>{actorHint && <span className="block not-italic">Wach: {actorHint}</span>}</>}>
         {body}
       </Panel>
       {confirm && !acted
@@ -222,7 +223,7 @@ function Day({ s, players, act }: { s: WerwolfState; players: Player[]; act: (a:
   return (
     <>
       <News s={s} players={players} />
-      <Panel title={<>☀️ Tag {s.night}</>} sub="Das Dorf diskutiert und stimmt ab. Wen verurteilt das Dorf?">
+      <Panel title={<IconTitle icon={Sun}>Tag {s.night}</IconTitle>} sub="Das Dorf diskutiert und stimmt ab. Wen verurteilt das Dorf?">
         <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={(id) => setPick(id === pick ? undefined : id)}
           extra={{ label: "Niemand", selected: pick === null, onPick: () => setPick(pick === null ? undefined : null) }} />
       </Panel>
@@ -239,7 +240,7 @@ export function Hunter({ s, players, act }: { s: WerwolfState; players: Player[]
   return (
     <>
       <News s={s} players={players} />
-      <Panel title="🏹 Der Jäger schießt" sub={`${nameOf(players, hunter)} war Jäger und nimmt jemanden mit in den Tod.`}>
+      <Panel title={<IconTitle icon={Crosshair}>Der Jäger schießt</IconTitle>} sub={`${nameOf(players, hunter)} war Jäger und nimmt jemanden mit in den Tod.`}>
         <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={setPick} />
       </Panel>
       <Button size="lg" className="shrink-0" disabled={!pick} onClick={() => pick && act({ type: "shoot", target: pick })}>Schießen</Button>
@@ -264,9 +265,9 @@ function Assign({ s, players, act, enabled }: { s: WerwolfState; players: Player
     <>
       <Panel title="Eigene Karten zuordnen" sub="Jeder zieht eine echte Karte. Tippe die Namen an und wähle die gezogene Rolle – nicht Zugeordnete sind Dorfbewohner.">
         <Picker ids={participants(s)} players={players} selected={[]} onPick={setWho}
-          marks={Object.fromEntries(s.ready.map((id) => [id, ROLES[s.roles[id]].emoji]))} />
+          marks={Object.fromEntries(s.ready.map((id) => [id, <span role="img" aria-label={ROLES[s.roles[id]].name}><RoleIcon role={s.roles[id]} /></span>]))} />
       </Panel>
-      <Button size="lg" className="shrink-0" onClick={() => act({ type: "assignDone" })}>🌙 Fertig – Nacht beginnen</Button>
+      <Button size="lg" className="shrink-0" onClick={() => act({ type: "assignDone" })}><Moon />Fertig – Nacht beginnen</Button>
     </>
   );
 }
@@ -276,7 +277,7 @@ function Election({ s, players, act }: { s: WerwolfState; players: Player[]; act
   return (
     <>
       <News s={s} players={players} />
-      <Panel title="👑 Hauptmannwahl" sub="Das Dorf wählt per Handzeichen einen Hauptmann. Seine Stimme zählt doppelt.">
+      <Panel title={<IconTitle icon={Crown}>Hauptmannwahl</IconTitle>} sub="Das Dorf wählt per Handzeichen einen Hauptmann. Seine Stimme zählt doppelt.">
         <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={setPick} />
       </Panel>
       <Button size="lg" className="shrink-0" disabled={!pick} onClick={() => pick && act({ type: "elect", target: pick })}>{pick ? `${nameOf(players, pick)} wird Hauptmann` : "Auswahl treffen"}</Button>
@@ -289,7 +290,7 @@ function Successor({ s, players, act }: { s: WerwolfState; players: Player[]; ac
   return (
     <>
       <News s={s} players={players} />
-      <Panel title="👑 Neuer Hauptmann" sub={`${nameOf(players, s.captain)} ist gestorben und bestimmt einen Nachfolger.`}>
+      <Panel title={<IconTitle icon={Crown}>Neuer Hauptmann</IconTitle>} sub={`${nameOf(players, s.captain)} ist gestorben und bestimmt einen Nachfolger.`}>
         <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={setPick} />
       </Panel>
       <Button size="lg" className="shrink-0" disabled={!pick} onClick={() => pick && act({ type: "successor", target: pick })}>Nachfolger bestimmen</Button>

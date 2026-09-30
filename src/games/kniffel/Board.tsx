@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Dices, Minus, Plus } from "lucide-react";
 import {
   CATS, diceModeOf, extraRuleOf, isKniffel, LOWER, scoreFor, totals, UPPER, UPPER_BONUS, UPPER_BONUS_AT, winners,
   type Cat, type KniffelAction, type KniffelState,
@@ -57,7 +57,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
         aria-pressed={active}
         className={cn(
           "flex min-h-0 flex-1 items-center justify-between gap-2 rounded-lg px-2.5 text-left outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-          active ? "bg-gold text-navy-950" : filled !== undefined ? "bg-navy-950/40" : "bg-navy-700/60 ring-1 ring-inset ring-border",
+          active ? "bg-ice text-navy-950" : filled !== undefined ? "bg-navy-950/40" : "bg-navy-700/60 ring-1 ring-inset ring-border",
         )}>
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-sm font-semibold">{CATS[c].name}</span>
@@ -93,7 +93,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
         <div className="grid min-h-0 flex-1 grid-cols-2 gap-1.5" data-testid="sheet">
           <div className="flex min-h-0 flex-col gap-1">
             {UPPER.map(cell)}
-            <div className={cn("flex min-h-0 flex-1 items-center justify-between rounded-lg px-2.5 text-sm", t.bonus ? "bg-gold/15 text-gold" : "text-muted-foreground border border-dashed border-border")}>
+            <div className={cn("flex min-h-0 flex-1 items-center justify-between rounded-lg px-2.5 text-sm", t.bonus ? "bg-ice/15 text-ice" : "text-muted-foreground border border-dashed border-border")}>
               <span className="font-semibold">Bonus</span>
               <b className="tabular-nums">{t.bonus ? `+${UPPER_BONUS}` : `noch ${Math.max(0, UPPER_BONUS_AT - t.upper)}`}</b>
             </div>
@@ -129,7 +129,7 @@ function DiceRow({ s, disabled, onHold }: { s: KniffelState; disabled: boolean; 
             onClick={() => { vibrate(6); onHold(i); }}
             className={cn("rounded-[22%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
               disabled ? "size-9" : "size-[min(15vw,3.4rem)]",
-              s.held[i] ? "-translate-y-1 ring-[3px] ring-gold" : !disabled && "dice-in")}
+              s.held[i] ? "-translate-y-1 ring-[3px] ring-ice" : !disabled && "dice-in")}
             style={{ animationDelay: `${i * 40}ms` }}>
             <Die value={v} className="size-full drop-shadow-[0_4px_6px_rgba(0,0,0,.35)]" />
           </button>
@@ -151,13 +151,13 @@ function AppControls({ s, sel, joker, own, act, onPickSelf }: { s: KniffelState;
   return (
     <section className="glass rounded-2xl p-2.5">
       <DiceRow s={s} disabled={false} onHold={(i) => act({ type: "hold", i })} />
-      <p className={cn("mt-2 min-h-5 text-center text-sm", joker ? "font-semibold text-gold" : "text-muted-foreground")}>
+      <p className={cn("mt-2 min-h-5 text-center text-sm", joker ? "font-semibold text-ice" : "text-muted-foreground")}>
         {joker && !sel ? "Extra-Kniffel! +50 und Joker" : status}
       </p>
       <div className={cn("mt-2 grid gap-2.5", rolled && s.rollsLeft > 0 ? "grid-cols-2" : "grid-cols-1")}>
         {s.rollsLeft > 0 && (
           <Button size="lg" variant={sel ? "secondary" : "default"} onClick={() => { vibrate(15); act({ type: "roll" }); }} disabled={rolled && s.held.every(Boolean)}>
-            🎲 Würfeln <span className="text-sm font-semibold opacity-75">({s.rollsLeft})</span>
+            <Dices />Würfeln <span className="text-sm font-semibold opacity-75">({s.rollsLeft})</span>
           </Button>
         )}
         {rolled && (
@@ -187,7 +187,7 @@ function RealControls({ cat, own, extraPossible, onScore, onPickSelf }: { cat: C
   const choice = (v: number, label: string, sub?: string) => (
     <button key={v} type="button" aria-pressed={value === v} onClick={() => setValue(v)}
       className={cn("h-12 rounded-xl font-bold outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring",
-        value === v ? "bg-gold text-navy-950" : "bg-navy-700/80 ring-1 ring-inset ring-border")}>
+        value === v ? "bg-ice text-navy-950" : "bg-navy-700/80 ring-1 ring-inset ring-border")}>
       <span className="block leading-tight">{label}</span>
       {sub && <span className={cn("block text-[0.7rem] font-semibold leading-tight", value === v ? "text-navy-950/70" : "text-muted-foreground")}>{sub}</span>}
     </button>
@@ -206,7 +206,7 @@ function RealControls({ cat, own, extraPossible, onScore, onPickSelf }: { cat: C
         <div className="flex items-center gap-2">
           {cat !== "chance" && <div className="w-24 shrink-0">{choice(0, "Streichen")}</div>}
           <Button variant="secondary" size="icon" aria-label="Weniger" onClick={() => setValue((v) => Math.max(5, (v || 20) - 1))}><Minus /></Button>
-          <input type="range" min={5} max={30} value={value || 5} onChange={(e) => setValue(Number(e.target.value))} aria-label="Summe" className="min-w-0 flex-1 accent-[var(--gold)]" />
+          <input type="range" min={5} max={30} value={value || 5} onChange={(e) => setValue(Number(e.target.value))} aria-label="Summe" className="min-w-0 flex-1 accent-[var(--ice)]" />
           <Button variant="secondary" size="icon" aria-label="Mehr" onClick={() => setValue((v) => Math.min(30, (v || 20) + 1))}><Plus /></Button>
           <b className="w-8 text-right text-xl tabular-nums">{value || "–"}</b>
         </div>
