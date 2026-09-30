@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 import { MUTED } from "@/lib/palette";
 
@@ -157,7 +158,7 @@ function Play({ room, game: s, me, act }: BoardProps<CNState, CNAction>) {
           </Button>
         ) : (
           <p className="glass rounded-xl py-3 text-center text-muted-foreground">
-            {m?.team ? (m.team === s.turn ? (m.chief ? "Deine Agenten raten …" : "Warte auf den Hinweis deines Chefs.") : `Team ${TEAM_NAME[s.turn]} ist dran.`) : "Du schaust zu – oben im Menü kannst du einem Team beitreten."}
+            <SmoothText>{m?.team ? (m.team === s.turn ? (m.chief ? "Deine Agenten raten …" : "Warte auf den Hinweis deines Chefs.") : `Team ${TEAM_NAME[s.turn]} ist dran.`) : "Du schaust zu – oben im Menü kannst du einem Team beitreten."}</SmoothText>
           </p>
         )}
       </div>

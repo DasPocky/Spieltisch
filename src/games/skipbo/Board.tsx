@@ -8,6 +8,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { MUTED } from "@/lib/palette";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
 /** Zahlenfarbe wie beim Original, nur gedämpft: 1–4 blau, 5–8 grün, 9–12 rot */
@@ -44,6 +45,9 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<SbState, SbActio
 }
 
 type Pick = Source | null;
+
+/** Kleine Bereichs-Überschrift */
+const Label = ({ children }: { children: React.ReactNode }) => <span className="text-[0.66rem] font-bold tracking-wider text-muted-foreground uppercase">{children}</span>;
 const same = (a: Pick, b: Pick) => !!a && !!b && a.from === b.from && (a.from !== "hand" || a.card === (b as typeof a).card) && (a.from !== "discard" || a.i === (b as typeof a).i);
 
 function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps<SbState, SbAction>) {
@@ -94,71 +98,90 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
               </span>
               <span className="text-xs tabular-nums opacity-75">Vorrat {s.stockCounts[p.id] ?? 0}</span>
             </div>
-            <SbCardView card={topOf(s.stocks[p.id] ?? [])} className="w-8" small />
-            <div className="flex gap-0.5">
+            <SbCardView key={s.stockCounts[p.id]} card={topOf(s.stocks[p.id] ?? [])} className="card-in w-8 ring-2 ring-ice/50" small />
+            <span className="w-px self-stretch bg-current opacity-20" aria-hidden="true" />
+            <div className="flex gap-0.5" aria-label="Ablagen">
               {(s.discards[p.id] ?? []).map((d, i) => <SbCardView key={i} card={topOf(d)} className="w-5 rounded-[18%]" small />)}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Aufbaustapel */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5">
-        <div className="flex items-end gap-2" data-testid="builds">
+      {/* Aufbau: vier gemeinsame Stapel von 1 bis 12 */}
+      <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5" aria-label="Aufbaustapel">
+        <Label>Aufbau für alle · 1 → 12</Label>
+        <div className="flex items-start gap-2" data-testid="builds">
           {s.builds.map((b, i) => {
             const ok = picked !== undefined && fits(b, picked);
             const t = topOf(b);
             return (
-              <button key={i} type="button" disabled={!ok} onClick={() => playTo(i)} aria-label={`Aufbaustapel ${i + 1}, braucht ${needs(b)}`}
-                className={cn("relative w-[min(20vw,calc(var(--c)*1.5))] rounded-[12%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", ok && "-translate-y-1.5 ring-[3px] ring-ice")}>
-                {t === undefined ? (
-                  <div className="grid aspect-[5/7] place-items-center rounded-[12%] text-lg font-bold text-muted-foreground ring-1 ring-inset ring-border ring-dashed">1</div>
-                ) : <SbCardView card={t} shown={t === JOKER ? b.length : undefined} />}
-              </button>
+              <div key={i} className="grid justify-items-center gap-1">
+                <button type="button" disabled={!ok} onClick={() => playTo(i)} aria-label={`Aufbaustapel ${i + 1}, braucht ${needs(b)}`}
+                  className={cn("relative w-[min(19vw,calc(var(--c)*1.4))] rounded-[12%] outline-none transition duration-200 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", ok && "target-glow -translate-y-1")}>
+                  {b.length > 1 && <span className="absolute inset-0 translate-x-[3px] translate-y-[3px] rounded-[12%] bg-paper/25" aria-hidden="true" />}
+                  {t === undefined ? (
+                    <div className="grid aspect-[5/7] place-items-center rounded-[12%] bg-navy-950/30 text-lg font-bold text-muted-foreground/70 ring-1 ring-inset ring-border ring-dashed">1</div>
+                  ) : <SbCardView key={b.length} card={t} shown={t === JOKER ? b.length : undefined} className="card-in relative" />}
+                </button>
+                <span aria-hidden="true" className={cn("rounded-full px-2 py-px text-[0.7rem] font-semibold whitespace-nowrap tabular-nums", ok ? "bg-ice text-navy-950" : "bg-navy-950/60 text-muted-foreground")}>
+                  <SmoothText>{`→ ${needs(b)}`}</SmoothText>
+                </span>
+              </div>
             );
           })}
         </div>
         <p className="text-xs text-muted-foreground tabular-nums">Nachziehstapel {s.pileCount}</p>
-      </div>
+      </section>
 
-      <div className="flex shrink-0 items-center justify-center gap-2 px-1 py-1 text-sm">
-        <span data-testid="status" className={cn("text-center leading-snug", myTurn || s.phase === "roundEnd" ? "font-semibold" : "text-muted-foreground")}>{status}</span>
+      <div className="flex min-h-10 shrink-0 items-center justify-center gap-2 px-1 py-1 text-sm">
+        <span data-testid="status" className={cn("text-center leading-snug", myTurn || s.phase === "roundEnd" ? "font-semibold" : "text-muted-foreground")}><SmoothText>{status}</SmoothText></span>
         <RulesSheet gameId={room.gameId} />
       </div>
 
-      {/* Eigener Bereich */}
+      {/* Eigener Bereich: Vorrat (loswerden!) und vier Ablagen */}
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {s.phase === "roundEnd" ? (
           isHost ? <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
             : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet die nächste Runde.</p>
         ) : (
           <>
-            <div className="glass mb-2 flex items-end justify-center gap-3 rounded-2xl px-2 py-2">
-              <div className="grid justify-items-center gap-0.5">
+            <div className="glass mb-2 flex items-stretch justify-center gap-2.5 rounded-2xl px-2.5 py-2">
+              <div className="grid content-start justify-items-center gap-1">
+                <Label>Vorrat</Label>
                 <button type="button" disabled={!myTurn || !stock.length} onClick={() => select({ from: "stock" })} aria-label={`Vorrat, oben ${stock.length ? topOf(stock) : "leer"}`}
-                  className={cn("w-[calc(var(--c)*1.05)] rounded-[12%] outline-none transition disabled:cursor-default", pick?.from === "stock" && "-translate-y-1.5 ring-[3px] ring-ice")}>
-                  <SbCardView card={topOf(stock)} />
+                  className={cn("relative w-[calc(var(--c)*1.05)] rounded-[12%] outline-none transition duration-200 disabled:cursor-default", pick?.from === "stock" && "-translate-y-1.5 ring-[3px] ring-ice")}>
+                  {/* angedeuteter Stapel darunter */}
+                  <span className="absolute inset-0 translate-x-[4px] translate-y-[4px] rounded-[12%] bg-paper/20" aria-hidden="true" />
+                  <span className="absolute inset-0 translate-x-[2px] translate-y-[2px] rounded-[12%] bg-paper/40" aria-hidden="true" />
+                  <SbCardView key={s.stockCounts[viewer ?? ""]} card={topOf(stock)} className="card-in relative ring-2 ring-ice/60" />
+                  <span className="absolute -top-2 -right-2 rounded-full bg-ice px-1.5 text-[0.7rem] font-extrabold text-navy-950 tabular-nums" data-testid="stock">{viewer ? s.stockCounts[viewer] ?? 0 : 0}</span>
                 </button>
-                <span className="text-xs font-semibold tabular-nums" data-testid="stock">Vorrat {viewer ? s.stockCounts[viewer] ?? 0 : 0}</span>
               </div>
-              <div className="grid justify-items-center gap-0.5">
+              <span className="w-px self-stretch bg-border" aria-hidden="true" />
+              <div className="grid content-start justify-items-center gap-1">
+                <Label>Ablagen</Label>
                 <div className="flex gap-1.5">
                   {discards.map((d, i) => {
                     const target = myTurn && (pick?.from === "hand" || !hand.length);
                     const source = myTurn && !pick && d.length > 0;
                     const sel = pick?.from === "discard" && pick.i === i;
+                    const under = d.slice(-4, -1);
                     return (
-                      <button key={i} type="button" disabled={!target && !source && !sel} data-testid={`discard-${i}`}
-                        onClick={() => (target ? discardTo(i) : select({ from: "discard", i }))}
-                        aria-label={target ? `Auf Ablage ${i + 1} ablegen und Zug beenden` : `Ablage ${i + 1}${d.length ? `, oben ${topOf(d)}` : " leer"}`}
-                        className={cn("relative w-[calc(var(--c)*0.82)] rounded-[12%] outline-none transition disabled:cursor-default", sel && "-translate-y-1.5 ring-[3px] ring-ice", target && "ring-2 ring-navy-300/70")}>
-                        <SbCardView card={topOf(d)} small />
-                        {d.length > 1 && <span className="absolute -top-1.5 -right-1.5 rounded-full bg-navy-900 px-1.5 text-[0.65rem] font-bold tabular-nums ring-1 ring-border">{d.length}</span>}
-                      </button>
+                      <div key={i} className="grid justify-items-center gap-0.5">
+                        <span className="flex h-3.5 gap-0.5 text-[0.62rem] leading-none font-bold text-muted-foreground tabular-nums" aria-hidden="true">
+                          {d.length > 4 && <span>…</span>}{under.map((c, k) => <span key={k}>{c === JOKER ? "SB" : c}</span>)}
+                        </span>
+                        <button type="button" disabled={!target && !source && !sel} data-testid={`discard-${i}`}
+                          onClick={() => (target ? discardTo(i) : select({ from: "discard", i }))}
+                          aria-label={target ? `Auf Ablage ${i + 1} ablegen und Zug beenden` : `Ablage ${i + 1}${d.length ? `, oben ${topOf(d)}` : " leer"}`}
+                          className={cn("relative w-[calc(var(--c)*0.82)] rounded-[12%] outline-none transition duration-200 disabled:cursor-default", sel && "-translate-y-1.5 ring-[3px] ring-ice", target && "target-glow")}>
+                          {d.length > 1 && <span className="absolute inset-0 -translate-y-[3px] rounded-[12%] bg-paper/30" aria-hidden="true" />}
+                          <SbCardView key={d.length} card={topOf(d)} small className={cn("relative", d.length > 0 && "card-in")} />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
-                <span className="text-xs text-muted-foreground">Ablagen</span>
               </div>
             </div>
             {covered ? <HandoffCover name={cur?.name ?? "?"} onReveal={reveal} /> : (
@@ -167,8 +190,8 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
                   const sel = pick?.from === "hand" && pick.card === c && hand.indexOf(c) === i;
                   return (
                     <button key={`${c}-${i}`} type="button" disabled={!myTurn} onClick={() => select({ from: "hand", card: c })}
-                      className={cn("w-[min(17vw,calc(var(--c)*1.15))] rounded-[12%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", sel && "-translate-y-2 ring-[3px] ring-ice")}>
-                      <SbCardView card={c} />
+                      className={cn("w-[min(17vw,calc(var(--c)*1.15))] rounded-[12%] outline-none transition duration-200 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", sel && "-translate-y-2 ring-[3px] ring-ice")}>
+                      <SbCardView card={c} className="card-in" />
                     </button>
                   );
                 })}

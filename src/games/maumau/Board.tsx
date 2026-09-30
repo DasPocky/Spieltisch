@@ -8,6 +8,7 @@ import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ScorePad } from "@/platform/ScorePad";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
 /** Mau-Mau: Mitspieler oben, Stapel und Ablage in der Mitte, die eigene Hand unten. */
@@ -81,7 +82,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
             {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-extrabold text-navy-950">+{s.pendingDraw}</span>}
           </button>
           <div className="relative h-full" key={s.discard.length}>
-            <PlayingCard card={top(s)} className="dice-in h-full" />
+            <PlayingCard card={top(s)} className="card-in h-full" />
             {s.wish && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="wish">
                 Wunsch: <SuitIcon suit={s.wish} className="size-4" />{SUIT_NAME[s.wish]}
@@ -90,7 +91,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span data-testid="status" className={cn(myTurn && "font-semibold text-foreground")}>{status}</span>
+          <span data-testid="status" className={cn(myTurn && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>
           <span aria-label={s.dir === 1 ? "Richtung im Uhrzeigersinn" : "Richtung gegen den Uhrzeigersinn"}>{s.dir === 1 ? "↻" : "↺"}</span>
           <RulesSheet gameId={room.gameId} />
         </div>

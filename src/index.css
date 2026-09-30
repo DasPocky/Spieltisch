@@ -143,3 +143,30 @@
 }
 .dice-in { animation: dice-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 @media (prefers-reduced-motion: reduce) { .dice-in { animation: none; } }
+
+/* Dezente Bewegung: Texte blenden über, Karten gleiten auf den Stapel, Ziele leuchten leicht */
+@keyframes text-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+.text-in { animation: text-in 0.24s ease-out backwards; }
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+.card-in { animation: card-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+.pop { animation: pop 0.3s ease-out; }
+@keyframes target-glow {
+  0%, 100% { box-shadow: 0 0 0 2px rgb(207 224 250 / 0.55), 0 0 0 0 rgb(207 224 250 / 0); }
+  50% { box-shadow: 0 0 0 2px rgb(207 224 250 / 0.9), 0 0 14px 2px rgb(207 224 250 / 0.28); }
+}
+.target-glow { animation: target-glow 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .text-in, .card-in, .pop, .target-glow { animation: none; }
+  .target-glow { box-shadow: 0 0 0 2px rgb(207 224 250 / 0.8); }
+}

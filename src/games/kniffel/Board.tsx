@@ -11,6 +11,7 @@ import { Die } from "@/platform/Die";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** Die laufende Kniffel-Partie: Punkteleiste, Block, Würfel bzw. Eingabe – alles auf einem Bildschirm. */
@@ -152,7 +153,7 @@ function AppControls({ s, sel, joker, own, act, onPickSelf }: { s: KniffelState;
     <section className="glass rounded-2xl p-2.5">
       <DiceRow s={s} disabled={false} onHold={(i) => act({ type: "hold", i })} />
       <p className={cn("mt-2 min-h-5 text-center text-sm", joker ? "font-semibold text-ice" : "text-muted-foreground")}>
-        {joker && !sel ? "Extra-Kniffel! +50 und Joker" : status}
+        <SmoothText>{joker && !sel ? "Extra-Kniffel! +50 und Joker" : status}</SmoothText>
       </p>
       <div className={cn("mt-2 grid gap-2.5", rolled && s.rollsLeft > 0 ? "grid-cols-2" : "grid-cols-1")}>
         {s.rollsLeft > 0 && (

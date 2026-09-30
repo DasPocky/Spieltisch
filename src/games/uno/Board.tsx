@@ -12,6 +12,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { MUTED } from "@/lib/palette";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
 /** Gedämpfte Kartenfarben: Rot, Grün (Petrol), Blau, Gelb (Ocker) */
@@ -105,7 +106,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
             {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-extrabold text-navy-950">+{s.pendingDraw}</span>}
           </button>
           <div className="relative h-full" key={s.discard.length}>
-            <UnoCardView card={top(s)} className="dice-in h-full" />
+            <UnoCardView card={top(s)} className="card-in h-full" />
             {isWild(top(s)) && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="color">
                 <span className="size-3 rounded-full" style={{ background: UNO_BG[s.color] }} />{COLOR_NAME[s.color]}
@@ -114,7 +115,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold text-foreground")}>{status}</span>
+          <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>
           {s.phase === "play" && <span aria-label={s.dir === 1 ? "Richtung im Uhrzeigersinn" : "Richtung gegen den Uhrzeigersinn"}>{s.dir === 1 ? "↻" : "↺"}</span>}
           <RulesSheet gameId={room.gameId} />
         </div>

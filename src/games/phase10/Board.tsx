@@ -12,6 +12,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { MUTED } from "@/lib/palette";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
 export const P10_INK: Record<P10Color, string> = { r: MUTED.red, b: MUTED.blue, g: MUTED.teal, y: MUTED.ochre };
@@ -132,7 +133,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
                       const ok = myTurn && s.step === "play" && laidMine && !slots && !!one && !!extend(g, one);
                       return (
                         <button key={k} type="button" disabled={!ok} onClick={() => hit(p.id, k)} aria-label={`An ${p.name}s Gruppe ${groupText(g)} anlegen`}
-                          className={cn("flex items-center gap-1.5 rounded-lg bg-navy-900/60 px-1.5 py-1 text-xs tabular-nums ring-1 ring-inset ring-border disabled:cursor-default", ok && "ring-2 ring-ice")}>
+                          className={cn("flex items-center gap-1.5 rounded-lg bg-navy-900/60 px-1.5 py-1 text-xs tabular-nums ring-1 ring-inset ring-border transition disabled:cursor-default", ok && "target-glow ring-0")}>
                           <Mini cards={g.cards} /><span className="text-muted-foreground">{groupText(g)}</span>
                         </button>
                       );
@@ -146,12 +147,12 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
           {/* Stapel und Ablage */}
           <div className="flex shrink-0 items-center justify-center gap-3 py-1.5">
             <button type="button" disabled={!myTurn || s.step !== "draw"} onClick={() => { vibrate(8); act({ type: "draw", from: "pile" }); }} aria-label={`Vom Stapel ziehen (${s.pileCount})`}
-              className={cn("card-back grid aspect-[5/7] w-12 place-items-center rounded-[12%] text-sm font-bold text-paper/85 shadow outline-none disabled:cursor-default", myTurn && s.step === "draw" && "ring-2 ring-ice")}>{s.pileCount}</button>
+              className={cn("card-back grid aspect-[5/7] w-12 place-items-center rounded-[12%] text-sm font-bold text-paper/85 shadow outline-none disabled:cursor-default", myTurn && s.step === "draw" && "target-glow")}>{s.pileCount}</button>
             <button type="button" disabled={!myTurn || s.step !== "draw" || !top || isSkip(top)} onClick={() => { vibrate(8); act({ type: "draw", from: "discard" }); }}
-              aria-label={top ? `Ablage nehmen: ${cardLabel(top)}` : "Ablage leer"} className={cn("w-12 rounded-[12%] outline-none disabled:cursor-default", myTurn && s.step === "draw" && top && !isSkip(top) && "ring-2 ring-ice")}>
-              {top ? <P10CardView card={top} /> : <div className="aspect-[5/7] rounded-[12%] ring-1 ring-dashed ring-border" />}
+              aria-label={top ? `Ablage nehmen: ${cardLabel(top)}` : "Ablage leer"} className={cn("w-12 rounded-[12%] outline-none disabled:cursor-default", myTurn && s.step === "draw" && top && !isSkip(top) && "target-glow")}>
+              {top ? <P10CardView key={s.discard.length} card={top} className="card-in" /> : <div className="aspect-[5/7] rounded-[12%] ring-1 ring-dashed ring-border" />}
             </button>
-            <span data-testid="status" className={cn("max-w-[13rem] text-sm leading-snug", myTurn ? "font-semibold" : "text-muted-foreground")}>{status}</span>
+            <span data-testid="status" className={cn("max-w-[13rem] text-sm leading-snug", myTurn ? "font-semibold" : "text-muted-foreground")}><SmoothText>{status}</SmoothText></span>
             <RulesSheet gameId={room.gameId} />
           </div>
 

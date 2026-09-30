@@ -8,6 +8,7 @@ import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
+import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 import { MUTED } from "@/lib/palette";
 
@@ -135,7 +136,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
       </div>
 
       <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <p className="mb-1.5 text-center text-sm leading-snug font-semibold" data-testid="hint">{s.ender && s.phase === "turn" ? "⏳ Letzte Runde! " : ""}{hint}</p>
+        <p className="mb-1.5 text-center text-sm leading-snug font-semibold" data-testid="hint"><SmoothText>{`${s.ender && s.phase === "turn" ? "Letzte Runde! " : ""}${hint}`}</SmoothText></p>
         {s.phase === "roundEnd" ? (
           isHost ? <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
             : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet die nächste Runde.</p>

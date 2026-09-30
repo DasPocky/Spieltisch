@@ -24,7 +24,7 @@ test("Skip-Bo lokal: auswählen, ablegen, weitergeben – passt auf 320 px", asy
   await local(page, ["Anna", "Ben", "Cem"]);
   await page.getByRole("button", { name: /Karten zeigen/ }).click();
   await expect(page.getByTestId("hand").getByRole("button")).toHaveCount(5);
-  await expect(page.getByTestId("stock")).toHaveText("Vorrat 30");
+  await expect(page.getByTestId("stock")).toHaveText("30");
   await page.getByTestId("hand").getByRole("button").first().click();
   await expect(page.getByTestId("status")).toContainText("Ablage");
   await expectNoScroll(page);

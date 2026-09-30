@@ -90,7 +90,7 @@ function TurnHint({ state, canAct, full, gameId }: { state: TuttoState; canAct: 
   return (
     <div className="mx-auto mb-2 flex w-full max-w-[40ch] shrink-0 items-start gap-2 px-2 text-sm leading-snug text-muted-foreground">
       <div className="min-w-0 flex-1 text-center">
-        <p className={cn("min-h-[2lh]", full ? "line-clamp-3" : "line-clamp-2")}>
+        <p key={fresh ? "fresh" : lost ? "lost" : `${latest ?? "idle"}-${state.turnCards.length}`} className={cn("text-in min-h-[2lh]", full ? "line-clamp-3" : "line-clamp-2")}>
           {fresh ? <b className="text-ice" data-testid="tutto-banner">Tutto! {fmt(state.turnPts)} Punkte – aufhören oder weiterzocken? Bei Stopp oder Niete ist alles weg.</b>
             : lost ? <b className="text-destructive" data-testid="stop-lost">Stopp nach dem Tutto – die {fmt(state.turnPts)} Punkte verfallen.</b>
             : card ? card.rule : idle}
