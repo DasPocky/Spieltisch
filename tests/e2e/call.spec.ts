@@ -74,7 +74,7 @@ test("Sprachchat: beitreten, hören, stumm, nachts still, verlassen", async ({ b
   // Spiel starten – in der Nacht sind die Mikros aus
   await anna.getByRole("button", { name: "Spiel starten" }).click();
   for (const p of [anna, ben, cem]) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
-  await expect(anna.getByText("🌙 still")).toBeVisible();
+  await expect(anna.getByTestId("call-strip").getByText("still", { exact: true })).toBeVisible();
   await expect(strip(ben).getByRole("button", { name: "Anna (stumm)" })).toBeVisible();
   await shot(anna, "82-call-night");
 

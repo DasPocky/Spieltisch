@@ -54,7 +54,11 @@ test("Uno online: jeder sieht nur seine Hand", async ({ browser }) => {
   // Ben ist nicht dran und kann nichts tun
   await expect(ben.getByTestId("hand").locator("button:not([disabled])")).toHaveCount(0);
   await expect(ben.getByRole("button", { name: /ziehen/i }).first()).toBeDisabled();
-  await takeTurn(anna);
+  // Zu zweit wirken Aussetzen und Richtungswechsel so, dass Anna gleich wieder dran ist
+  for (let i = 0; i < 8 && ((await ben.getByTestId("status").textContent()) ?? "").includes("ist am Zug"); i++) {
+    await takeTurn(anna);
+    await anna.waitForTimeout(300);
+  }
   await expect.poll(async () => (await ben.getByTestId("status").textContent()) ?? "", { timeout: 5000 }).not.toContain("ist am Zug");
 });
 

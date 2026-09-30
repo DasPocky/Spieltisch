@@ -48,7 +48,8 @@ test("Phase 10 online: Hände geheim, Zug geht weiter", async ({ browser }) => {
   await expect(hand(first)).toHaveCount(11);
   await expectNoScroll(first);
   await shot(first, "73-phase10-online");
-  await hand(first).last().click();
+  // keine Aussetzen-Karte – zu zweit wäre man sonst gleich wieder dran
+  await hand(first).filter({ hasNot: first.getByRole("img", { name: "Aussetzen" }) }).first().click();
   await first.getByRole("button", { name: /ablegen$/ }).click();
   await expect(other.getByRole("button", { name: "Ziehen", exact: true })).toBeEnabled();
 });

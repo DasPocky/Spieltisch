@@ -10,19 +10,24 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder a
 - **Skyjo** – 2–8 Spieler, 150 Karten von −2 bis 12: tauschen, aufdecken, Spalten mit drei Gleichen abräumen, wer beendet und nicht allein am wenigsten hat, zahlt doppelt. **In der App** (ein Handy für alle oder online jeder am eigenen – offene Karten sehen alle, verdeckte niemand) oder mit **echten Karten**: Die App ist dann der Punkteblock, online trägt jeder seine Punkte selbst ein.
 - **Codenames** – Team-Wortspiel für 4–20 (als Brettspiel-Hilfe ab 2): Zwei Chefs geben Hinweise aus einem Wort und einer Zahl, die Agenten suchen ihre Karten unter 25 Wörtern und meiden den Attentäter. Entweder komplett in der App (Chefs sehen online die Farben am eigenen Handy, lokal per „Chef-Ansicht“ zum Gedrückthalten) oder als **Hilfe zum Brettspiel**: Ihr legt eure Wortkarten aus, die App erzeugt nur die Schlüsselkarte und zählt mit. Eigene Wortliste mit über 450 Begriffen.
 - **Mau-Mau** – französisches (32/52) oder deutsches Blatt, 2–8 Spieler je nach Blatt. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
+- **Uno** – 2–10 Spieler, 108 Karten: Farbe oder Zahl bedienen, Aussetzen, Richtungswechsel, +2, Farbwahl, +4 (nur ohne passende Farbe), „Uno!“ mit Strafkarten. Hausregeln Ziehkarten stapeln und +4 immer; eine Runde oder bis 500. In der App oder mit **echten Karten** als Punkteblock.
+- **Skip-Bo** – 2–6 Spieler, 162 Karten: Vorrat, vier eigene Ablagen, vier gemeinsame Aufbaustapel von 1 bis 12, Skip-Bo-Joker. Bedienung: Karte antippen, dann Ziel. In der App oder mit **echten Karten** als Punkteblock (25 + 5 je Restkarte).
+- **Phase 10** – 2–6 Spieler, 108 Karten: zehn Phasen aus Gleichen, Folgen und Farben, Joker, Aussetzen mit Zielwahl, Anlegen bei allen. „Finden“ schlägt eine passende Auslage vor; kurze Partie mit fünf Phasen. In der App oder mit **echten Karten**: Die App führt Phasen und Strafpunkte.
 - **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar. Mit **echten Karten** spielt ihr am Tisch und die App zählt nur Zug und Quartette. Variante: nach „Geh fischen!“ macht der Gefragte weiter.
 - **Flip 7** – Drück-dein-Glück mit Zahlenkarten für 3–18: noch eine Karte oder aufhören, doppelte Zahl heißt raus, sieben verschiedene bringen +15. Klassisch (Einfrieren, Flip 3, zweite Chance, Plus/×2) oder „Voll fies“ angelehnt an die fiese Ausgabe (bis 13, Glücks-13, Unglücks-7, Nur noch eine, Flip 4, Tauschen, Klauen, Abwerfen, Minus und ÷2 zum Verschenken).
 - **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
 
 Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
 
+**Gestaltung:** schlicht in Marineblau mit Abstufungen, Eisblau als Akzent. Farben nur dort, wo ein Spiel sie als Regel braucht (Kartenfarben, Teams), und dann gedämpft (`src/lib/palette.ts`). Symbole kommen aus lucide-react statt bunter Emojis.
+
 - **Online-Räume:** Auf der Seite eines Spiels erstellt der Host einen Raum mit PIN. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
 - **Lokal:** Alle spielen an einem Gerät, ohne Server. Der Spielstand bleibt im Browser, getrennt pro Spiel.
 - **Ein Raum, mehrere Spiele:** Nach einer Partie geht der Host zurück in die Lobby und wählt ein anderes Spiel – alle bleiben im Raum.
 - **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **Spielleiter-Funktionen** (Menü) darf er für andere spielen, zurücknehmen und mischen.
 - **Profil und Statistik:** ohne Registrierung. Jedes Gerät bekommt eine zufällige Profil-ID; unter `/profil` stehen Partien, Siege, Quote, Bestwert und Durchschnitt je Spiel. Online zählt jede Partie im Raum, lokal der Spieler, der so heißt wie das Profil. Mit dem Profil-Code lässt sich das Profil auf ein anderes Handy übernehmen.
-- **Sprach- und Videochat (online):** über Cloudflare Realtime. Im Raum oben auf 📞 tippen, „Nur Sprache“ oder „Mit Video“. In der Werwolf- und Eine-Nacht-Nacht sind die Mikros automatisch aus (nur ein menschlicher Spielleiter darf sprechen).
-- **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „🔒 mit Zugangscode“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
+- **Sprach- und Videochat (online):** über Cloudflare Realtime. Im Raum oben auf das Telefon-Symbol tippen, „Nur Sprache“ oder „Mit Video“. In der Werwolf- und Eine-Nacht-Nacht sind die Mikros automatisch aus (nur ein menschlicher Spielleiter darf sprechen).
+- **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „Mit Code“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
 - **Fairer Zufall:** `crypto.getRandomValues` mit Verwerfungsmethode (keine Modulo-Verzerrung). Online würfelt und mischt ausschließlich der Server.
 - **Ansicht „Einfach“ oder „Voll“** (im Menü, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
 
@@ -91,6 +96,8 @@ shared/                       Logik für Browser UND Server
     werwolf/                  Werwolf: Rollen, Nacht/Tag, geheime Sicht pro Spieler
     einenacht/                Eine Nacht: Karten, Tausch-Reihenfolge, Abstimmung
     maumau/                   Mau-Mau: Hausregeln, geheime Hände
+    uno/ skipbo/ phase10/     Uno, Skip-Bo, Phase 10: App-Karten oder Punkteblock
+    skyjo/ codenames/         Skyjo, Codenames: App oder Brettspiel-Hilfe
     fischen/                  Fischen: Fragen, Teich, Quartette
 worker/index.ts               API + Durable Object GameRoom
 src/
@@ -105,6 +112,8 @@ src/
     werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
     einenacht/                Gerät in der Mitte, Handy-Ansicht, Timer, Auflösung
     maumau/                   Tisch, Hand, Farbwunsch, Weitergeben mit Sichtschutz
+    uno/ skipbo/ phase10/     Karten, Tisch, Punkteblock für echte Karten
+    skyjo/ codenames/         Raster bzw. Wortfeld, Schlüsselkarte, Punkteblock
     fischen/                  Fragen-Verlauf, Hand, Frage-Auswahl
   pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum
   hooks/                      useRoom (WebSocket + Reconnect), useRoute (Mini-Router), useViewMode
