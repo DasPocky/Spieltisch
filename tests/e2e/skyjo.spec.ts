@@ -1,0 +1,68 @@
+import { expect, test, type Page } from "@playwright/test";
+import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+
+async function local(page: Page, names: string[], table = false) {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.goto("/spiel/skyjo/lokal");
+  for (const n of names) {
+    await page.getByLabel("Name des Spielers").fill(n);
+    await page.getByRole("button", { name: "Hinzufügen" }).click();
+  }
+  if (table) await page.getByRole("radio", { name: /Echte Karten/ }).click();
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+}
+
+const myCards = (p: Page) => p.getByRole("group", { name: "Deine Karten" }).getByRole("button");
+/** Eine verdeckte eigene Karte umdrehen und warten, bis der Server es bestätigt */
+async function flipOne(p: Page) {
+  const hidden = myCards(p).filter({ hasText: "SKYJO" });
+  const n = await hidden.count();
+  await hidden.first().click();
+  await expect(hidden).not.toHaveCount(n);
+}
+
+test("Skyjo lokal: aufdecken, ziehen, tauschen – passt auf 320 px", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await local(page, ["Anna", "Ben", "Cem"]);
+  // jeder deckt zwei Karten auf (lokal nacheinander)
+  for (let k = 0; k < 6; k++) await myCards(page).filter({ hasText: "SKYJO" }).first().click();
+  await expect(page.getByTestId("hint")).toContainText("Ziehe vom Stapel");
+  await expectNoScroll(page);
+  await page.getByRole("button", { name: /Vom Stapel ziehen/ }).click();
+  await expect(page.getByTestId("drawn")).toBeVisible();
+  await shot(page, "88-skyjo-320");
+  await myCards(page).first().click();
+  await expect(page.getByTestId("drawn")).toHaveCount(0);
+});
+
+test("Skyjo online: jeder sein Raster, offene Karten für alle", async ({ browser }) => {
+  const [anna, ben] = await Promise.all([newPhone(browser), newPhone(browser)]);
+  const code = await createRoom(anna, "skyjo", "Anna", "5656");
+  await joinRoom(ben, code, "Ben", "5656");
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  for (const p of [anna, ben]) for (let k = 0; k < 2; k++) await flipOne(p);
+  // wer beginnt, zieht vom Stapel und legt ab, dreht eine um
+  const starter = (await anna.getByTestId("hint").textContent())!.includes("Ziehe") ? anna : ben;
+  const other = starter === anna ? ben : anna;
+  await expect(other.getByTestId("hint")).toContainText("Warte");
+  await starter.getByRole("button", { name: /Vom Stapel ziehen/ }).click();
+  await starter.getByRole("button", { name: "Ablegen & umdrehen" }).click();
+  await expect(starter.getByTestId("hint")).toContainText("Dreh eine verdeckte Karte um");
+  await flipOne(starter);
+  await expect(other.getByTestId("hint")).toContainText("Ziehe");
+  await expectNoScroll(other);
+  await shot(other, "89-skyjo-online");
+});
+
+test("Skyjo mit echten Karten: Punkteblock mit Verdopplung", async ({ page }) => {
+  await local(page, ["Anna", "Ben"], true);
+  await page.getByLabel("Punkte Anna").fill("20");
+  await page.getByLabel("Punkte Ben").fill("15");
+  await page.getByLabel("Punkte Ben").blur();
+  await page.getByRole("button", { name: "Anna hat beendet" }).click();
+  await page.getByRole("button", { name: "Runde 1 abschließen" }).click();
+  await expect(page.getByText("40", { exact: true })).toBeVisible();
+  await expectNoScroll(page);
+  await shot(page, "89b-skyjo-table");
+});

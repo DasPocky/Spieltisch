@@ -61,6 +61,19 @@ function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "pass" });
       break;
     }
+    case "skyjo": {
+      for (let i = 0; i < 12; i++) {
+        for (const id of ids) add({ type: "flipStart", player: id, i });
+        add({ type: "swap", i }); add({ type: "flip", i });
+      }
+      add({ type: "draw", from: Math.random() < 0.5 ? "deck" : "discard" });
+      add({ type: "discardDrawn" });
+      add({ type: "nextRound" });
+      for (const id of ids) add({ type: "enter", player: id, points: Math.floor(Math.random() * 40) - 5 });
+      add({ type: "setEnder", player: pick(ids) });
+      add({ type: "finishRound" });
+      break;
+    }
     case "codenames": {
       for (const id of ids) for (const team of ["rot", "blau", null]) add({ type: "join", player: id, team, chief: Math.random() < 0.3 });
       ["shuffleTeams", "begin", "pass"].forEach((type) => add({ type }));
@@ -145,6 +158,11 @@ function checkCards(r: RoomState) {
       + Object.values(s.lines).reduce((t, l) => t + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
     expect(n).toBe(s.variant === "fies" ? 112 : 94);
   }
+  if (r.gameId === "skyjo" && (r.game as { mode: string }).mode === "app") {
+    const s = r.game as { deck: number[]; discard: number[]; drawn: number | null; grids: Record<string, ({ v: number } | null)[]> };
+    const n = s.deck.length + s.discard.length + (s.drawn !== null ? 1 : 0) + Object.values(s.grids).flat().filter(Boolean).length;
+    expect(n).toBe(150);
+  }
   if (r.gameId === "fischen" && !(r.game as FischenState).table) {
     const s = r.game as FischenState;
     const n = s.pile.length + Object.values(s.hands).flat().length + Object.values(s.quartets).flat().length * 4;
@@ -202,6 +220,9 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["maumau", 4, {}],
   ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
   ["maumau", 7, { deck: "fr52", hand: "6" }],
+  ["skyjo", 2, {}],
+  ["skyjo", 6, { target: 60 }],
+  ["skyjo", 4, { mode: "table" }],
   ["codenames", 4, {}],
   ["codenames", 7, {}],
   ["codenames", 2, { mode: "key" }],

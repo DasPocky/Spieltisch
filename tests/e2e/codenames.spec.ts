@@ -23,10 +23,10 @@ test("Codenamen lokal: Teams, Hinweis, raten – auch auf 320 px", async ({ page
   await page.getByRole("button", { name: "Los geht's" }).click();
   await expect(page.getByRole("group", { name: "Wörter" }).getByRole("button")).toHaveCount(25);
   await expectNoScroll(page);
-  await page.getByLabel("Hinweiswort").fill("Tier");
+  await page.getByLabel("Hinweiswort").fill("Quatsch");
   await page.getByRole("button", { name: "Zahl erhöhen" }).click();
   await page.getByRole("button", { name: "Geben" }).click();
-  await expect(page.getByTestId("clue")).toContainText("Tier");
+  await expect(page.getByTestId("clue")).toContainText("Quatsch");
   await page.getByRole("group", { name: "Wörter" }).getByRole("button").first().click();
   await expect(page.getByRole("group", { name: "Wörter" }).getByRole("button", { name: /\(/ })).toHaveCount(1);
   await shot(page, "84-cn-play-320");

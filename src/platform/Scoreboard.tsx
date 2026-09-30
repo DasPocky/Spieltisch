@@ -13,7 +13,7 @@ export interface ScoreEntry {
  * Kompakte Punkteleiste – bis 4 Spieler als Raster, darüber wischbar.
  * Der Spieler am Zug ist blau hervorgehoben, der Führende bekommt einen Stern.
  */
-export function Scoreboard({ entries, currentId, me, online, selectedId, onSelect }: {
+export function Scoreboard({ entries, currentId, me, online, selectedId, onSelect, lowWins }: {
   entries: ScoreEntry[];
   currentId: string | null;
   me: string | null;
@@ -21,9 +21,12 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
   /** optional: antippbar, z. B. um den Block eines Spielers anzuzeigen */
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  /** Wenige Punkte sind gut (z. B. Skyjo): der Stern geht an den Niedrigsten */
+  lowWins?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const max = Math.max(...entries.map((p) => p.score));
+  const min = Math.min(...entries.map((p) => p.score));
   const fits = entries.length <= 4;
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
     >
       {entries.map((p) => {
         const cur = p.id === currentId;
-        const lead = p.score === max && max > 0;
+        const lead = lowWins ? p.score === min && max > min : p.score === max && max > 0;
         return (
           <div
             key={p.id}

@@ -56,11 +56,11 @@ describe("Codenamen", () => {
 
   it("Hinweis vom richtigen Chef, raten nur die Agenten des Teams", () => {
     let r = start();
-    expect(() => game(r, { type: "clue", word: "Tier", count: 2 }, "p3")).toThrow(/Chef von Team Rot/);
+    expect(() => game(r, { type: "clue", word: "Quatsch", count: 2 }, "p3")).toThrow(/Chef von Team Rot/);
     expect(() => game(r, { type: "clue", word: "zwei Worte", count: 2 }, "p1")).toThrow(/ein Wort/);
     expect(() => game(r, { type: "clue", word: g(r).words[0], count: 1 }, "p1")).toThrow(/auf dem Tisch/);
     expect(() => game(r, { type: "guess", i: 0 }, "p2")).toThrow(/Hinweis/);
-    r = game(r, { type: "clue", word: "Tier", count: 2 }, "p1");
+    r = game(r, { type: "clue", word: "Quatsch", count: 2 }, "p1");
     expect(g(r).guessesLeft).toBe(3);
     expect(() => game(r, { type: "guess", i: 0 }, "p1")).toThrow(/Agenten/);
     expect(() => game(r, { type: "guess", i: 0 }, "p4")).toThrow(/Agenten/);
@@ -74,11 +74,11 @@ describe("Codenamen", () => {
 
   it("Zahl + 1 Versuche, gegnerische Karte beendet den Zug", () => {
     let r = start();
-    r = game(r, { type: "clue", word: "Tier", count: 1 }, "p1");
+    r = game(r, { type: "clue", word: "Quatsch", count: 1 }, "p1");
     r = game(r, { type: "guess", i: 0 }, "p2");
     r = game(r, { type: "guess", i: 1 }, "p2");
     expect(g(r).turn).toBe("blau"); // zwei Versuche aufgebraucht
-    r = game(r, { type: "clue", word: "Meer", count: 1 }, "p3");
+    r = game(r, { type: "clue", word: "Unsinn", count: 1 }, "p3");
     r = game(r, { type: "guess", i: 2 }, "p4"); // rote Karte
     expect(g(r).turn).toBe("rot");
     expect(g(r).revealed[2]).toBe(true);
@@ -86,14 +86,14 @@ describe("Codenamen", () => {
 
   it("Attentäter verliert sofort, alle eigenen Karten gewinnen", () => {
     let r = start();
-    r = game(r, { type: "clue", word: "Tier", count: 1 }, "p1");
+    r = game(r, { type: "clue", word: "Quatsch", count: 1 }, "p1");
     r = game(r, { type: "guess", i: 24 }, "p2");
     expect(g(r).phase).toBe("over");
     expect(g(r).winner).toBe("blau");
     expect(g(r).assassin).toBe(true);
 
     let q = start();
-    q = game(q, { type: "clue", word: "Alles", count: 0 }, "p1");
+    q = game(q, { type: "clue", word: "Allesamt", count: 0 }, "p1");
     for (let i = 0; i < 9; i++) q = game(q, { type: "guess", i }, "p2");
     expect(g(q).winner).toBe("rot");
   });
@@ -111,7 +111,7 @@ describe("Codenamen", () => {
 
   it("Ergebnis: Mitglieder des Siegerteams gewinnen", async () => {
     let r = start();
-    r = game(r, { type: "clue", word: "Tier", count: 1 }, "p1");
+    r = game(r, { type: "clue", word: "Quatsch", count: 1 }, "p1");
     r = game(r, { type: "guess", i: 24 }, "p2");
     const { codenames } = await import("@shared/games/codenames/logic");
     const res = codenames.results!(g(r), { players: r.players, hostId: r.hostId, actorId: null, options: r.options, now: 0 });
