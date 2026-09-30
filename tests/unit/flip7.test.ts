@@ -41,7 +41,8 @@ describe("Flip 7", () => {
   it("Austeilen: jeder bekommt eine Karte, dann ist jemand dran", () => {
     const s = g(start(3));
     const dealt = Object.values(s.lines).reduce((n, l) => n + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
-    expect(dealt).toBeGreaterThanOrEqual(1);
+    // Ist die erste Karte eine Aktion, liegt noch nichts – dann wartet ein Ziel
+    expect(dealt >= 1 || !!s.pending).toBe(true);
     expect(s.curId || s.pending).toBeTruthy();
   });
 
