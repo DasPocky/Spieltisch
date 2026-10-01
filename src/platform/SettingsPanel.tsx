@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
+import { getGameUI } from "@/games";
 import type { EntryMode, SettingDef } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +24,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
   room: RoomState; editable: boolean; online: boolean; dispatch: (a: RoomAction) => void; className?: string;
 }) {
   const logic = getGame(room.gameId);
+  const Extra = getGameUI(room.gameId).SettingsExtra;
   const playing = room.phase === "playing";
   return (
     <section className={cn("grid gap-4", className)}>
@@ -30,6 +32,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
         <h3 className="font-semibold">Einstellungen</h3>
         {!editable && <span className="text-xs text-muted-foreground">legt der Host fest</span>}
       </div>
+      {Extra && <Extra room={room} editable={editable && !playing} online={online} dispatch={dispatch} />}
       {logic.settings.filter((def) => !def.showIf || def.showIf(room.options)).map((def, i, shown) => (
         <div key={def.key} className="grid gap-4">
           {def.group && def.group !== shown[i - 1]?.group && (

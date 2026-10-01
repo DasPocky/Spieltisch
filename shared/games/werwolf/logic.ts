@@ -935,24 +935,44 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
   joinMidGame: false,
   settings: [
     {
-      key: "narrator", label: "Erzähler", type: "choice", default: "app",
+      key: "narrator", label: "Erzähler", type: "choice", default: "app", group: "Ablauf",
       choices: [
         { value: "app", label: "Die App", hint: "alle spielen mit" },
         { value: "human", label: "Spielleiter", hint: "Host leitet, spielt nicht" },
       ],
     },
     {
-      key: "wolves", label: "Werwölfe", type: "choice", default: "auto",
+      key: "wolves", label: "Werwölfe", type: "choice", default: "auto", group: "Ablauf",
       choices: [
         { value: "auto", label: "Auto", hint: "nach Spielerzahl" },
         { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
       ],
     },
     {
-      key: "cards", label: "Rollen", type: "choice", default: "app",
+      key: "cards", label: "Rollen", type: "choice", default: "app", group: "Ablauf",
       choices: [
         { value: "app", label: "App verteilt", hint: "zufällig, geheim" },
         { value: "own", label: "Eigene Karten", hint: "ihr zieht echte Karten" },
+      ],
+    },
+    {
+      key: "auto", label: "Automatik (ein Handy)", type: "toggle", default: true, group: "Ablauf", showIf: (o) => o.narrator !== "human",
+      hint: "die App liest vor, zählt herunter und macht selbst weiter – niemand muss „Weiter“ tippen",
+    },
+    {
+      key: "tempo", label: "Tempo", type: "choice", default: "normal", group: "Ablauf", inGame: true,
+      choices: [
+        { value: "slow", label: "Gemütlich", hint: "Rollen 30 s · Diskussion 8 Min." },
+        { value: "normal", label: "Normal", hint: "Rollen 20 s · Diskussion 5 Min." },
+        { value: "fast", label: "Zügig", hint: "Rollen 12 s · Diskussion 3 Min." },
+      ],
+    },
+    {
+      key: "vote", label: "Abstimmung am Tag", type: "choice", default: "point", group: "Ablauf", inGame: true,
+      choices: [
+        { value: "point", label: "Zeigen", hint: "„3, 2, 1“ – alle zeigen, Ergebnis antippen" },
+        { value: "secret", label: "Geheim", hint: "Handy reihum, die App zählt" },
+        { value: "talk", label: "Gemeinsam", hint: "ihr einigt euch und tippt es ein" },
       ],
     },
     { key: "revealDead", label: "Rollen der Toten aufdecken", type: "toggle", default: true, hint: "sonst erst am Spielende", group: "Hausregeln" },

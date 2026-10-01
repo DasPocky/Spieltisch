@@ -39,6 +39,8 @@ export interface GameUI<S = unknown, A = { type: string }> {
   Rules: ComponentType<{ focus?: string }>;
   /** Zusätzliche Einträge im Menü während der Partie (z. B. Verlauf, Rückgängig) */
   MenuExtras?: ComponentType<BoardProps<S, A>>;
+  /** Über den Einstellungen: z. B. Vorlagen und eine Übersicht der Rollenverteilung */
+  SettingsExtra?: ComponentType<{ room: RoomState; editable: boolean; online: boolean; dispatch: (action: RoomAction) => void }>;
   /** Kleine Info rechts in der Kopfzeile (z. B. Karten im Stapel) */
   HeaderExtra?: ComponentType<BoardProps<S, A>>;
 }

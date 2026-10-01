@@ -2,6 +2,7 @@ import { Crown, Moon, Sun } from "lucide-react";
 import { werwolf, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
+import { Setup } from "./Setup";
 import { Board } from "./Board";
 import { Rules } from "./Rules";
 
@@ -38,4 +39,4 @@ function MenuExtras({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
   );
 }
 
-export const werwolfUI: GameUI<WerwolfState, WerwolfAction> = { logic: werwolf, Icon, Board, Rules, MenuExtras, HeaderExtra };
+export const werwolfUI: GameUI<WerwolfState, WerwolfAction> = { logic: werwolf, Icon, Board, Rules, MenuExtras, HeaderExtra, SettingsExtra: Setup };

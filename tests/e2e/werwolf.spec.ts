@@ -3,14 +3,33 @@ import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
 
 const NAMES = ["Anna", "Ben", "Cem", "Dora", "Emil"];
 
+/** Hexe: erst „Nicht heilen“, dann „Niemand vergiften“ – liefert true, wenn sie dran war */
+async function witch(page: Page) {
+  if (await page.getByTestId("witch-heal").isVisible()) await page.getByRole("button", { name: "Nicht heilen" }).click();
+  if (await page.getByTestId("witch-poison").isVisible()) { await page.getByRole("button", { name: "Niemand vergiften" }).click(); return true; }
+  return false;
+}
+/** Manueller Ablauf mit „Weiter“ (Automatik aus) */
+async function manual(page: Page) {
+  await page.getByRole("checkbox", { name: /Automatik/ }).click();
+}
+/** Am Tag: Abstimmung starten und niemanden verurteilen */
+async function nobody(page: Page) {
+  const now = page.getByRole("button", { name: "Jetzt abstimmen" });
+  if (await now.isVisible()) await now.click();
+  await page.getByRole("button", { name: "Niemand" }).click({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Niemanden verurteilen" }).click();
+}
+
 test("Werwolf lokal: Rollen herumreichen, App liest vor, Nacht und Tag", async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => { localStorage.clear(); localStorage.setItem("spieltisch:werwolf:speech", "0"); });
   await page.goto("/spiel/werwolf/lokal");
   for (const n of NAMES) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await manual(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await expect(page.getByText("Rollen ansehen")).toBeVisible();
   await expectNoScroll(page);
@@ -28,7 +47,8 @@ test("Werwolf lokal: Rollen herumreichen, App liest vor, Nacht und Tag", async (
 
   // Nacht durchspielen: immer die erste Wahl treffen
   for (let i = 0; i < 12 && (await page.getByTestId("ww-phase").textContent())?.includes("Nacht"); i++) {
-    const confirm = page.getByRole("button", { name: /fressen|Opfer wählen|Rolle ansehen|Bestätigen|Beschützen/ });
+    await witch(page);
+    const confirm = page.getByRole("button", { name: /fressen|Opfer wählen|Rolle ansehen|Beschützen/ });
     if (await confirm.isVisible()) {
       const label = await confirm.textContent();
       if (label?.includes("Opfer") || label?.includes("Rolle ansehen")) await page.getByRole("group").getByRole("button").first().click();
@@ -42,8 +62,7 @@ test("Werwolf lokal: Rollen herumreichen, App liest vor, Nacht und Tag", async (
   await expect(page.getByTestId("news")).toBeVisible();
   await expectNoScroll(page);
   await shot(page, "43-ww-local-day");
-  await page.getByRole("button", { name: "Niemand" }).click();
-  await page.getByRole("button", { name: "Niemanden verurteilen" }).click();
+  await nobody(page);
   await expect(page.getByTestId("ww-phase")).toHaveText("Nacht 2");
 });
 
@@ -122,7 +141,8 @@ test("Werwolf online mit Spielleiter – sechs Handys", async ({ browser }) => {
   await expect(phones[1].getByText(/Augen zu!/)).toBeVisible();
 
   for (let i = 0; i < 12 && (await lead.getByTestId("ww-phase").textContent())?.includes("Nacht"); i++) {
-    const confirm = lead.getByRole("button", { name: /fressen|Opfer wählen|Rolle ansehen|Bestätigen/ });
+    await witch(lead);
+    const confirm = lead.getByRole("button", { name: /fressen|Opfer wählen|Rolle ansehen/ });
     if (await confirm.isVisible()) {
       const label = await confirm.textContent();
       if (label?.includes("Opfer") || label?.includes("Rolle ansehen")) await lead.getByRole("group").getByRole("button").first().click();
@@ -141,11 +161,12 @@ test("Werwolf online mit Spielleiter – sechs Handys", async ({ browser }) => {
 
 /** Einen Nachtschritt am Gerät erledigen – egal welche Rolle dran ist */
 async function doStep(page: Page) {
+  if (await witch(page)) return;
   for (const name of [/Bleibt beim Dorf/, /Nein, fressen/, /Kein Opfer – weiter/]) {
     const b = page.getByRole("button", { name });
     if (await b.isVisible()) { await b.click(); return; }
   }
-  const confirm = page.getByRole("button", { name: /fressen|wählen|ansehen|Bestätigen|Beschützen|Schnüffeln|markieren|Vorbild|Zwei Personen/ }).last();
+  const confirm = page.getByRole("button", { name: /fressen|wählen|ansehen|Beschützen|Schnüffeln|markieren|Vorbild|Zwei Personen/ }).last();
   if (!(await confirm.isVisible())) return;
   const options = page.getByRole("group").locator("button:not([disabled])");
   for (let i = 0; i < 3 && !(await confirm.isEnabled()); i++) await options.nth(i).click();
@@ -166,6 +187,7 @@ test("Werwolf lokal mit Rollen aus allen Erweiterungen", async ({ page }) => {
   for (const role of [/Wildes Kind/, /Wolfshund/, /Fuchs/, /Rabe/, /Urwolf/, /Heiler/, /Der Alte/]) {
     await page.getByRole("checkbox", { name: role }).click();
   }
+  await manual(page);
   await shot(page, "52-ww-roles-settings");
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await page.getByRole("button", { name: /Nacht beginnen/ }).click();
@@ -241,4 +263,54 @@ test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser })
   for (const p of alivePhones) await p.getByRole("group").getByRole("button").first().click();
   await expect(host.getByTestId("ww-phase")).toHaveText("Tag 1");
   await expect(host.getByLabel("Hauptmann")).toBeVisible();
+});
+
+test("Werwolf Automatik: ein Handy, niemand muss „Weiter“ tippen", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto("/");
+  await page.evaluate(() => { localStorage.clear(); localStorage.setItem("spieltisch:werwolf:speech", "0"); });
+  await page.goto("/spiel/werwolf/lokal");
+  for (const n of NAMES) {
+    await page.getByLabel("Name des Spielers").fill(n);
+    await page.getByRole("button", { name: "Hinzufügen" }).click();
+  }
+  // Übersicht und Vorlagen
+  await expect(page.getByTestId("ww-deck")).toContainText("5 Spieler bekommen");
+  await page.getByRole("button", { name: /Klassisch/ }).click();
+  await expect(page.getByTestId("ww-deck")).toContainText("Jäger");
+  await page.getByRole("button", { name: /Einsteiger/ }).click();
+  await expect(page.getByTestId("ww-deck")).not.toContainText("Jäger");
+  await page.getByRole("radio", { name: /Zügig/ }).click();
+  await shot(page, "58-ww-setup");
+
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await page.getByRole("button", { name: /Nacht beginnen/ }).click();
+  await expect(page.getByTestId("ww-clock")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Weiter" })).toHaveCount(0);
+
+  // Jede Rolle wählt – bestätigt wird durch Gedrückthalten, weiter geht es von selbst
+  let shotDone = false;
+  for (let i = 0; i < 400 && (await page.getByTestId("ww-phase").textContent())?.includes("Nacht"); i++) {
+    if (await witch(page)) continue;
+    const hold = page.getByTestId("hold");
+    if (await hold.isVisible() && !(await hold.isEnabled())) await page.getByRole("group").locator("button:not([disabled])").first().click();
+    if (await hold.isVisible() && await hold.isEnabled()) {
+      if (!shotDone) { await shot(page, "59-ww-auto-night"); shotDone = true; }
+      await hold.click({ delay: 900 });
+    }
+    const seen = page.getByRole("button", { name: "Gesehen" });
+    if (await seen.isVisible()) await seen.click();
+    await page.waitForTimeout(250);
+  }
+  await expect(page.getByTestId("ww-phase")).toHaveText(/Tag 1|Ende/);
+  if ((await page.getByTestId("ww-phase").textContent())?.includes("Tag")) {
+    await expect(page.getByTestId("day-timer")).toBeVisible();
+    await expectNoScroll(page);
+    await shot(page, "60-ww-auto-day");
+    await page.getByRole("button", { name: "Jetzt abstimmen" }).click();
+    await expect(page.getByTestId("vote-count")).toBeVisible();
+    await nobody(page);
+    await expect(page.getByTestId("ww-phase")).toHaveText(/Nacht 2|Ende/);
+  }
 });

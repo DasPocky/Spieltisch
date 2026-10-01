@@ -1,25 +1,28 @@
-import { useState } from "react";
-import { Check, Crown, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
-import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
-import type { Player } from "@shared/platform/types";
+import { useEffect, useRef, useState } from "react";
+import { Check, Crown, Pause, Play, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
+import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, voters, type Role, type Step, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
+import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
 import { RoleIcon } from "./RoleIcon";
-import { DAWN_SAY, SCRIPT } from "./script";
-import { setSpeech, speechSupported, useSpeak, useSpeechEnabled } from "./useSpeech";
+import { AUTO_SAY, DAWN_SAY, SCRIPT } from "./script";
+import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled } from "./useSpeech";
+import { Clock, HoldButton, INFO_STEPS, RESULT_STEPS, stepSeconds, tempoOf, useCountdown } from "./Auto";
 
 /**
  * Ansicht für den Spielleiter (online) bzw. das Gerät in der Mitte (lokal).
  * Führt Schritt für Schritt durch die Nacht und liest auf Wunsch vor.
  * Im Modus „App erzählt“ lokal sind die Rollen verborgen – dann tippen die aufgerufenen Rollen selbst.
  */
-export function Leader({ s, players, act, online, enabled }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; online: boolean; enabled: Role[] }) {
+export function Leader({ s, players, act, online, enabled, options }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; online: boolean; enabled: Role[]; options: Options }) {
   const showRoles = s.mode === "human";
   const speech = useSpeechEnabled(s.mode === "app");
+  // Automatik: ein Handy in der Mitte, die App erzählt und taktet selbst
+  const auto = !online && s.mode === "app" && options.auto !== false;
   const step = s.phase === "night" ? s.pending[0] : null;
-  const say = step ? SCRIPT[step].say : s.phase === "day" ? DAWN_SAY : s.phase === "election" ? "Das Dorf wählt einen Hauptmann." : "";
+  // In der Automatik liest der Nachtschritt selbst vor (mit Wartezeiten), der Tag seine Nachrichten
+  const say = s.phase === "election" ? "Das Dorf wählt einen Hauptmann." : step && !auto ? SCRIPT[step].say : "";
   useSpeak(say, speech && s.phase !== "reveal");
 
   return (
@@ -35,8 +38,8 @@ export function Leader({ s, players, act, online, enabled }: { s: WerwolfState; 
         {s.phase === "reveal" && <Reveal s={s} players={players} act={act} online={online} />}
         {s.phase === "election" && <Election s={s} players={players} act={act} />}
         {s.phase === "successor" && <Successor s={s} players={players} act={act} />}
-        {s.phase === "night" && step && <NightStep key={`${s.night}-${step}`} s={s} players={players} act={act} showRoles={showRoles} />}
-        {s.phase === "day" && <Day s={s} players={players} act={act} />}
+        {s.phase === "night" && step && <NightStep key={`${s.night}-${step}`} s={s} players={players} act={act} showRoles={showRoles} auto={auto} options={options} />}
+        {s.phase === "day" && <Day key={s.night} s={s} players={players} act={act} options={options} speech={speech && s.mode === "app"} />}
         {s.phase === "hunter" && <Hunter s={s} players={players} act={act} />}
       </div>
     </>
@@ -89,12 +92,11 @@ function Reveal({ s, players, act, online }: { s: WerwolfState; players: Player[
   );
 }
 
-function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; showRoles: boolean }) {
+function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; showRoles: boolean; auto: boolean; options: Options }) {
   const step = s.pending[0];
   const script = SCRIPT[step];
   const acted = s.acted.includes(step);
   const [pick, setPick] = useState<string[]>([]);
-  const [heal, setHeal] = useState(false);
   const alive = aliveIds(s);
   const who = (ids: string[]) => ids.map((id) => nameOf(players, id)).join(", ");
   const awake = step === "werwolf" ? aliveWolves(s) : step === "schwestern" ? holders(s, "schwester") : step === "verzaubert" ? s.enchanted : STEP_ROLE[step] ? holders(s, STEP_ROLE[step]!).filter((id) => s.alive[id]) : [];
@@ -185,32 +187,21 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
       </div>
     );
   } else if (step === "hexe" && !acted) {
-    body = (
-      <div className="grid gap-3">
-        <p className="rounded-xl bg-navy-950/50 p-3 text-center">{s.victim ? <>Opfer der Werwölfe: <b className="text-lg">{nameOf(players, s.victim)}</b></> : "Heute Nacht wurde niemand angegriffen."}</p>
-        <label className={cn("flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-inset ring-border", !s.potions.heal && "opacity-40")}>
-          <Checkbox checked={heal} disabled={!s.potions.heal || !s.victim} onCheckedChange={(c) => setHeal(c === true)} />
-          <span><Ico icon={FlaskConical} className="mr-1.5" />Heiltrank benutzen{!s.potions.heal && " (verbraucht)"}</span>
-        </label>
-        {s.potions.poison ? (
-          <>
-            <div className="text-sm font-semibold text-muted-foreground"><Ico icon={Skull} className="mr-1.5" />Gifttrank – optional jemanden vergiften:</div>
-            <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />
-          </>
-        ) : <p className="text-sm text-muted-foreground"><Ico icon={Skull} className="mr-1.5" />Gifttrank verbraucht.</p>}
-      </div>
-    );
-    confirm = { label: "Bestätigen", ok: true, run: () => act({ type: "witch", heal, poison: pick[0] ?? null }) };
+    body = <Witch s={s} players={players} hold={auto} onDone={(heal, poison) => act({ type: "witch", heal, poison })} />;
   } else if (acted && script.after) {
     body = <p className="text-center text-lg font-semibold text-muted-foreground"><Ico icon={Check} className="mr-1.5" />Erledigt</p>;
   }
 
   const actorHint = showRoles && awake.length ? who(awake) : "";
+  const panel = (
+    <Panel title={<IconTitle icon={Moon}>Nacht {s.night} · {script.title}</IconTitle>} sub={<><span className="italic">„{acted && script.after ? script.after : script.say}“</span>{actorHint && <span className="block not-italic">Wach: {actorHint}</span>}</>}>
+      {body}
+    </Panel>
+  );
+  if (auto) return <AutoStep step={step} acted={acted} options={options} act={act} panel={panel} confirm={confirm} />;
   return (
     <>
-      <Panel title={<IconTitle icon={Moon}>Nacht {s.night} · {script.title}</IconTitle>} sub={<><span className="italic">„{acted && script.after ? script.after : script.say}“</span>{actorHint && <span className="block not-italic">Wach: {actorHint}</span>}</>}>
-        {body}
-      </Panel>
+      {panel}
       {confirm && !acted
         ? <Button size="lg" className="shrink-0" disabled={!confirm.ok} onClick={confirm.run}>{confirm.label}</Button>
         : <Button size="lg" className="shrink-0" onClick={() => act({ type: "next" })}>Weiter</Button>}
@@ -218,19 +209,264 @@ function NightStep({ s, players, act, showRoles }: { s: WerwolfState; players: P
   );
 }
 
-function Day({ s, players, act }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void }) {
-  const [pick, setPick] = useState<string | null | undefined>(undefined);
+type Stage = "call" | "act" | "result" | "putdown" | "end";
+
+/**
+ * Automatik für ein Handy in der Mitte: Aufruf vorlesen → Countdown (nur Text, damit niemand hört, wo das Handy ist)
+ * → Auswahl gedrückt halten → Ergebnis lesen → Handy zurücklegen → „schläft wieder ein“ vorlesen → nächster Schritt.
+ * Läuft die Zeit ab, verlängert sie mit einer Meldung, bis gewählt ist.
+ */
+function AutoStep({ step, acted, options, act, panel, confirm }: {
+  step: Step; acted: boolean; options: Options; act: (a: WerwolfAction) => void; panel: React.ReactNode;
+  confirm: { label: string; ok: boolean; run: () => void } | null;
+}) {
+  const script = SCRIPT[step];
+  const info = INFO_STEPS.includes(step) || step === "sleep";
+  const total = stepSeconds(step, options);
+  const [stage, setStage] = useState<Stage>("call");
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [extended, setExtended] = useState(false);
+  const [pausedLeft, setPausedLeft] = useState<number | null>(null);
+  const left = useCountdown(deadline, pausedLeft !== null);
+  const ended = useRef(false);
+  const go = (next: Stage, secs: number | null) => { setStage(next); setDeadline(secs === null ? null : Date.now() + secs * 1000); };
+
+  // Aufruf vorlesen, dann läuft die Zeit
+  useEffect(() => {
+    let alive = true;
+    void speak(AUTO_SAY[step] ?? script.say).then(() => { if (alive) go("act", step === "sleep" ? 2 : total); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Gewählt: Ergebnis zeigen bzw. Handy zurücklegen lassen
+  useEffect(() => {
+    if (acted && (stage === "act" || stage === "call")) go(RESULT_STEPS.includes(step) ? "result" : "putdown", RESULT_STEPS.includes(step) ? 6 : 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acted]);
+  // Zeit abgelaufen
+  useEffect(() => {
+    if (left !== 0 || pausedLeft !== null) return;
+    if (stage === "act") {
+      if (info || acted) go("end", null);
+      else { setExtended(true); setDeadline(Date.now() + 15_000); }
+    } else if (stage === "result") go("putdown", 3);
+    else if (stage === "putdown") go("end", null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left]);
+  // Schritt beenden: „… schläft wieder ein“ vorlesen, dann weiter
+  useEffect(() => {
+    if (stage !== "end" || ended.current) return;
+    ended.current = true;
+    void speak(script.after ?? "").then(() => act({ type: "next" }));
+  }, [stage, script.after, act]);
+
+  const pause = () => {
+    if (pausedLeft !== null) { setDeadline(Date.now() + pausedLeft * 1000); setPausedLeft(null); }
+    else setPausedLeft(left ?? 0);
+  };
+  const shown = pausedLeft ?? left;
+  const note = stage === "call" ? "Hört zu …"
+    : stage === "result" ? "Merk dir das Ergebnis."
+    : stage === "putdown" ? "Handy zurück in die Mitte legen – gleich geht es weiter."
+    : stage === "end" ? "…"
+    : extended ? "Zeit verlängert – bitte jetzt wählen."
+    : shown !== null && shown <= 5 && !info ? `Achtung – noch ${shown} Sekunden.`
+    : info ? "Augen auf und aufs Handy schauen." : "Wählen und zum Bestätigen gedrückt halten.";
+  const clockTotal = stage === "result" ? 6 : stage === "putdown" ? 3 : extended ? 15 : total;
+
+  return (
+    <>
+      <Clock left={shown} total={clockTotal} note={note} paused={pausedLeft !== null} onPause={pause}
+        onSkip={info || acted ? () => { if (!ended.current) go("end", null); } : undefined} />
+      {panel}
+      {confirm && !acted && <HoldButton label={confirm.label} disabled={!confirm.ok} onDone={confirm.run} />}
+      {acted && RESULT_STEPS.includes(step) && stage === "result" && <Button size="lg" className="shrink-0" variant="secondary" onClick={() => go("putdown", 3)}>Gesehen</Button>}
+    </>
+  );
+}
+
+/** Hexe in zwei einfachen Fragen: erst heilen, dann vergiften */
+function Witch({ s, players, hold, onDone }: { s: WerwolfState; players: Player[]; hold: boolean; onDone: (heal: boolean, poison: string | null) => void }) {
+  const victimIsWitch = !!s.victim && s.roles[s.victim] === "hexe";
+  const canHeal = s.potions.heal && !!s.victim && (s.rules.selfHeal || !victimIsWitch);
+  const [q, setQ] = useState<"heal" | "poison">(canHeal ? "heal" : "poison");
+  const [heal, setHeal] = useState(false);
+  const [pick, setPick] = useState<string | null>(null);
+  const answerHeal = (h: boolean) => { setHeal(h); if (s.potions.poison) setQ("poison"); else onDone(h, null); };
+  const victim = <p className="rounded-xl bg-navy-950/50 p-3 text-center">{s.victim ? <>Opfer der Werwölfe: <b className="text-lg">{nameOf(players, s.victim)}</b></> : "Heute Nacht wurde niemand angegriffen."}</p>;
+  if (q === "heal") {
+    return (
+      <div className="grid gap-2.5" data-testid="witch-heal">
+        {victim}
+        <p className="text-center font-semibold"><Ico icon={FlaskConical} className="mr-1.5" />Heiltrank benutzen?</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="lg" onClick={() => answerHeal(true)}>Heilen</Button>
+          <Button size="lg" variant="secondary" onClick={() => answerHeal(false)}>Nicht heilen</Button>
+        </div>
+      </div>
+    );
+  }
+  if (!s.potions.poison) {
+    return (
+      <div className="grid gap-2.5">
+        {victim}
+        <p className="text-center text-sm text-muted-foreground">{!s.potions.heal ? "Beide Tränke sind verbraucht." : canHeal ? "" : "Heilen geht heute nicht."} Der Gifttrank ist verbraucht.</p>
+        <Button size="lg" onClick={() => onDone(heal, null)}>Fertig</Button>
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-2.5" data-testid="witch-poison">
+      {!canHeal && victim}
+      {heal && <p className="text-center text-sm text-ice"><Ico icon={Check} className="mr-1" />{nameOf(players, s.victim!)} wird geheilt.</p>}
+      <p className="text-center font-semibold"><Ico icon={Skull} className="mr-1.5" />Jemanden vergiften?</p>
+      <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={(id) => setPick(pick === id ? null : id)}
+        extra={{ label: "Niemand vergiften", selected: false, onPick: () => onDone(heal, null) }} />
+      {pick && (hold
+        ? <HoldButton label={`${nameOf(players, pick)} vergiften`} onDone={() => onDone(heal, pick)} />
+        : <Button size="lg" onClick={() => onDone(heal, pick)}>{nameOf(players, pick)} vergiften</Button>)}
+    </div>
+  );
+}
+
+/** Was in der Nacht passiert ist – zum Vorlesen (nur Namen und, falls aufgedeckt, Rollen) */
+function newsSay(s: WerwolfState, players: Player[]) {
+  const d = s.news?.kind === "night" ? s.news.deaths : [];
+  if (!d.length) return "Heute Nacht ist niemand gestorben.";
+  return d.map((x) => `${nameOf(players, x.id)} ist tot${s.revealDead ? ` und war ${ROLES[s.roles[x.id]].name}` : ""}.`).join(" ");
+}
+
+type DayStage = "talk" | "count" | "pick" | "secret";
+
+/**
+ * Tag mit Diskussions-Timer und Abstimmung: zeigen („3, 2, 1“), geheim reihum oder gemeinsam.
+ * Das Handy liegt offen in der Mitte – hier darf die App sprechen.
+ */
+function Day({ s, players, act, options, speech }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; options: Options; speech: boolean }) {
+  const mode = options.vote === "secret" ? "secret" : options.vote === "talk" ? "talk" : "point";
+  const minutes = tempoOf(options).talk;
+  const [stage, setStage] = useState<DayStage>("talk");
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [pausedLeft, setPausedLeft] = useState<number | null>(null);
+  const [count, setCount] = useState(3);
+  const [tie, setTie] = useState<string[]>([]);
+  const left = useCountdown(deadline, pausedLeft !== null);
+  const say = (text: string) => (speech ? speak(text) : Promise.resolve());
+
+  useEffect(() => {
+    let alive = true;
+    void say(`${DAWN_SAY} ${newsSay(s, players)} Ihr habt ${minutes} Minuten.`).then(() => { if (alive) setDeadline(Date.now() + minutes * 60_000); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (stage !== "talk" || pausedLeft !== null) return;
+    if (left === 60) void say("Noch eine Minute.");
+    if (left === 0) startVote(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left]);
+  // „3, 2, 1 – zeigt!“
+  useEffect(() => {
+    if (stage !== "count") return;
+    if (count === 0) { setStage("pick"); return; }
+    const t = setTimeout(() => setCount((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [stage, count]);
+
+  function startVote(timeUp: boolean) {
+    const pre = timeUp ? "Die Zeit ist um. " : "";
+    setDeadline(null);
+    if (mode === "point") { setCount(3); void say(`${pre}Auf drei zeigt jeder auf einen Verdächtigen.`).then(() => { setStage("count"); void say("Eins. Zwei. Drei!"); }); }
+    else if (mode === "secret") { setStage("secret"); void say(`${pre}Gebt das Handy reihum zur geheimen Abstimmung.`); }
+    else { setStage("pick"); void say(`${pre}Einigt euch, wen das Dorf verurteilt.`); }
+  }
+  const shown = pausedLeft ?? left;
+  const mmss = shown === null ? "…" : `${Math.floor(shown / 60)}:${String(shown % 60).padStart(2, "0")}`;
+
   return (
     <>
       <News s={s} players={players} />
-      <Panel title={<IconTitle icon={Sun}>Tag {s.night}</IconTitle>} sub="Das Dorf diskutiert und stimmt ab. Wen verurteilt das Dorf?">
-        <Picker ids={aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={(id) => setPick(id === pick ? undefined : id)}
+      {stage === "talk" && (
+        <>
+          <Panel title={<IconTitle icon={Sun}>Tag {s.night} – diskutiert!</IconTitle>} sub="Wer könnte ein Werwolf sein? Wenn die Zeit um ist, wird abgestimmt.">
+            <div className="grid flex-1 place-content-center justify-items-center gap-2">
+              <span className={cn("text-6xl font-extrabold tabular-nums", shown !== null && shown <= 60 && "text-ice")} data-testid="day-timer">{mmss}</span>
+              <span className="text-sm text-muted-foreground">{pausedLeft !== null ? "Angehalten" : shown !== null && shown <= 60 ? "Letzte Minute" : "Diskussion läuft"}</span>
+            </div>
+          </Panel>
+          <div className="grid shrink-0 grid-cols-[auto_1fr] gap-2">
+            <Button size="lg" variant="secondary" aria-label={pausedLeft !== null ? "Weiterlaufen lassen" : "Anhalten"}
+              onClick={() => { if (pausedLeft !== null) { setDeadline(Date.now() + pausedLeft * 1000); setPausedLeft(null); } else setPausedLeft(left ?? 0); }}>
+              {pausedLeft !== null ? <Play /> : <Pause />}
+            </Button>
+            <Button size="lg" onClick={() => startVote(false)}>Jetzt abstimmen</Button>
+          </div>
+        </>
+      )}
+      {stage === "count" && (
+        <Panel title={<IconTitle icon={Sun}>Gleich zeigen alle …</IconTitle>} sub="Auf drei zeigt jeder auf einen Verdächtigen.">
+          <div className="grid flex-1 place-items-center">
+            <span key={count} className="pop text-8xl font-extrabold text-ice tabular-nums" data-testid="vote-count">{count || "Zeigt!"}</span>
+          </div>
+        </Panel>
+      )}
+      {stage === "secret" && <SecretVote s={s} players={players} onResult={(target, tied) => { if (tied.length) { setTie(tied); setStage("pick"); } else act({ type: "lynch", target }); }} />}
+      {stage === "pick" && <Verdict s={s} players={players} act={act} tie={tie} pointed={mode === "point"} />}
+    </>
+  );
+}
+
+/** Ergebnis eintragen: wer hat die meisten Stimmen bzw. auf wen hat sich das Dorf geeinigt? */
+function Verdict({ s, players, act, tie, pointed }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; tie: string[]; pointed: boolean }) {
+  const [pick, setPick] = useState<string | null | undefined>(undefined);
+  const sub = tie.length ? `Gleichstand zwischen ${tie.map((id) => nameOf(players, id)).join(" und ")} – einigt euch oder wählt „Niemand“.`
+    : pointed ? "Auf wen zeigen die meisten Finger? Bei Gleichstand: „Niemand“." : "Wen verurteilt das Dorf?";
+  return (
+    <>
+      <Panel title={<IconTitle icon={Sun}>Urteil</IconTitle>} sub={sub}>
+        <Picker ids={tie.length ? tie : aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={(id) => setPick(id === pick ? undefined : id)}
           extra={{ label: "Niemand", selected: pick === null, onPick: () => setPick(pick === null ? undefined : null) }} />
       </Panel>
       <Button size="lg" className="shrink-0" disabled={pick === undefined} onClick={() => act({ type: "lynch", target: pick ?? null })}>
         {pick ? `${nameOf(players, pick)} verurteilen` : pick === null ? "Niemanden verurteilen" : "Auswahl treffen"}
       </Button>
     </>
+  );
+}
+
+/** Geheime Abstimmung: das Handy geht reihum, die App zählt (Hauptmann doppelt, Rabe +2) */
+function SecretVote({ s, players, onResult }: { s: WerwolfState; players: Player[]; onResult: (target: string | null, tie: string[]) => void }) {
+  const list = voters(s);
+  const [i, setI] = useState(0);
+  const [ready, setReady] = useState(false);
+  const [votes, setVotes] = useState<Record<string, string | null>>({});
+  const cur = list[i];
+  const cast = (target: string | null) => {
+    const next = { ...votes, [cur]: target };
+    setVotes(next);
+    setReady(false);
+    if (i + 1 < list.length) { setI(i + 1); return; }
+    const tally = new Map<string, number>();
+    for (const [voter, t] of Object.entries(next)) if (t) tally.set(t, (tally.get(t) ?? 0) + (voter === s.captain ? 2 : 1));
+    if (s.raven && s.alive[s.raven]) tally.set(s.raven, (tally.get(s.raven) ?? 0) + 2);
+    if (!tally.size) { onResult(null, []); return; }
+    const max = Math.max(...tally.values());
+    const top = [...tally].filter(([, n]) => n === max).map(([id]) => id);
+    onResult(top.length === 1 ? top[0] : null, top.length > 1 ? top : []);
+  };
+  if (!ready) {
+    return (
+      <>
+        <Panel title={`Geheime Abstimmung · ${i + 1} von ${list.length}`} sub={`Gib das Handy an ${nameOf(players, cur)}. Die anderen schauen weg.`} />
+        <Button size="lg" className="shrink-0" onClick={() => setReady(true)}>Ich bin {nameOf(players, cur)}</Button>
+      </>
+    );
+  }
+  return (
+    <Panel title={`${nameOf(players, cur)} stimmt ab`} sub="Antippen – dann sofort weitergeben.">
+      <Picker ids={aliveIds(s).filter((id) => id !== cur)} players={players} selected={[]} onPick={(id) => cast(id)}
+        extra={{ label: "Enthaltung", selected: false, onPick: () => cast(null) }} />
+    </Panel>
   );
 }
 

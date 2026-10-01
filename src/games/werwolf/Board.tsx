@@ -48,6 +48,6 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
   // Im Spiel aktive Rollen (für „eigene Karten“ zuerst anbieten)
   const enabled: Role[] = ["werwolf", "dorf", ...SPECIAL_ROLES.filter((r) => room.options[r] === true)];
   return leader
-    ? <Leader s={s} players={players} act={act} online={me !== null} enabled={enabled} />
+    ? <Leader s={s} players={players} act={act} online={me !== null} enabled={enabled} options={room.options} />
     : <PlayerView s={s} players={players} me={me!} isHost={isHost} act={act} enabled={enabled} />;
 }

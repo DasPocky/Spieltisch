@@ -71,6 +71,15 @@ export function Rules({ focus }: { focus?: string }) {
           Tagsüber stimmt jeder am Handy ab; der Host kann die Abstimmung beenden.
           <b className="text-foreground"> Lokal</b> liegt ein Handy in der Mitte, liest vor („Vorlesen“) und die aufgerufenen Rollen tippen selbst.
         </p>
+        <h3 className="mt-4 font-semibold">Automatik mit einem Handy</h3>
+        <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
+          <li>Die App ruft jede Rolle auf, dann läuft ein Countdown (Tempo einstellbar). Niemand muss „Weiter“ tippen.</li>
+          <li>Gewählt wird durch <b className="text-foreground">Antippen und kurzes Gedrückthalten</b> – leise und sicher gegen Fehltipper.</li>
+          <li>Solange jemand am Handy ist, erscheinen Hinweise nur als Text, damit niemand hört, wo das Handy gerade ist. Erst wenn es wieder in der Mitte liegt, spricht die App weiter.</li>
+          <li>Ist die Zeit um, verlängert die App und bittet per Text, jetzt zu wählen.</li>
+          <li>Die Hexe beantwortet zwei Fragen nacheinander: erst heilen, dann vergiften.</li>
+          <li>Am Tag läuft die Diskussionszeit mit Ansage. Abgestimmt wird per Zeigen („3, 2, 1“), geheim reihum oder gemeinsam – je nach Einstellung.</li>
+        </ul>
         <h3 className="mt-4 font-semibold">Erzähler: ein Spielleiter</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           Der Host leitet und spielt nicht mit. Er sieht alle Rollen, bekommt den Vorlesetext und tippt die Entscheidungen der Nacht und das Urteil des Dorfes ein. Die Mitspieler sehen am Handy nur ihre Rollenkarte.

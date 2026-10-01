@@ -24,3 +24,10 @@ export const SCRIPT: Record<Step, { title: string; say: string; after?: string }
 };
 
 export const DAWN_SAY = "Es wird Tag. Das Dorf erwacht.";
+
+/** Automatik: Wo ein Spielleiter antippen würde, schauen die Betroffenen aufs Handy in der Mitte */
+export const AUTO_SAY: Partial<Record<Step, string>> = {
+  lovers: "Die Verliebten öffnen die Augen und lesen ihre Namen auf dem Handy. Dann schließen sie die Augen wieder.",
+  verzaubert: "Alle Verzauberten öffnen die Augen und lesen auf dem Handy, wer verzaubert ist. Dann schließen sie die Augen wieder.",
+  schwestern: "Die Schwestern öffnen die Augen und lesen ihre Namen auf dem Handy. Dann schließen sie die Augen wieder.",
+};
