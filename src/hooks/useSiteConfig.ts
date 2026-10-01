@@ -18,6 +18,12 @@ function load(): Promise<SiteConfig> {
   return loading;
 }
 
+/** Was gerade bekannt ist (null, solange noch nicht geladen) – lädt bei Bedarf nach */
+export function siteConfigNow(): SiteConfig | null {
+  if (!cache) void load();
+  return cache;
+}
+
 /** Nach dem Speichern im Admin-Bereich: neue Werte sofort übernehmen */
 export function setSiteConfig(c: SiteConfig) {
   cache = c;
