@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, Copy, Loader2, Trophy } from "lucide-react";
+import { ChevronLeft, Copy, Loader2, Trophy, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { formatProfileId, parseProfileId, PROFILE_ID_RE, type ProfileStats } from "@shared/platform/profile";
 import { cleanName, MAX_NAME } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Confirm } from "@/components/Confirm";
@@ -16,6 +17,8 @@ import { adoptProfile, deleteProfile, fetchStats, myName, myProfile, saveName, w
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
+import { playSound } from "@/platform/sound";
+import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
 import { cn, fmt } from "@/lib/utils";
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "–");
@@ -134,6 +137,11 @@ export function Profile() {
         <ThemeSwitch />
       </Card>
 
+      <Card className="grid gap-3" data-testid="play-prefs">
+        <h2 className="font-bold">Im Spiel</h2>
+        <PlayPrefs />
+      </Card>
+
       <Card className="grid gap-2.5">
         <h2 className="font-bold">Stimme</h2>
         <VoiceSettings />
@@ -152,5 +160,35 @@ export function Profile() {
         </Confirm>
       </Card>
     </main>
+  );
+}
+
+const PREFS: [keyof Prefs, string, string][] = [
+  ["sound", "Töne", "Leise Klänge beim Spielen."],
+  ["vibration", "Vibration", "Kurz vibrieren, wenn du dran bist."],
+  ["announce", "„Wer ist dran?“ ansagen", "Liest vor, wer am Zug ist."],
+  ["hints", "Spielhilfen", "Zeigt, welche Karten oder Züge gerade gehen."],
+];
+
+/** Rückmeldung während der Partie – gilt nur für dieses Gerät */
+function PlayPrefs() {
+  const p = usePrefs();
+  return (
+    <div className="grid gap-3">
+      {PREFS.map(([key, label, hint]) => (
+        <div key={key} className="flex items-center gap-3">
+          <label className="flex min-w-0 flex-1 items-center gap-3 text-sm">
+            <Checkbox checked={p[key]} onCheckedChange={(c) => setPref(key, c === true)} />
+            <span><span className="font-semibold">{label}</span><span className="block text-xs text-muted-foreground">{hint}</span></span>
+          </label>
+          {key === "sound" && (
+            <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground" aria-label="Töne probehören"
+              onClick={() => { playSound("turn", { force: true }); setTimeout(() => playSound("place", { force: true }), 700); setTimeout(() => playSound("dice", { force: true }), 1100); }}>
+              <Volume2 />Probe
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

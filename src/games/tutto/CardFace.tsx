@@ -40,15 +40,27 @@ const star = (cx: number, cy: number, r1: number, r2: number, n: number) =>
   }).join(" ");
 
 function Art({ card, c }: { card: CardType; c: string }) {
-  // Chance: gleiche Wirkung wie Feuerwerk – großes Fragezeichen mit Glitzer
+  // Chance: gleiche Wirkung wie Feuerwerk – Sternschnuppe auf Nachthimmel
   if (card.id === "fire" && card.name === "Chance") {
-    const star = (x: number, y: number, r: number) => <path key={`${x}-${y}`} d={`M${x} ${y - r} L${x + r * 0.28} ${y - r * 0.28} L${x + r} ${y} L${x + r * 0.28} ${y + r * 0.28} L${x} ${y + r} L${x - r * 0.28} ${y + r * 0.28} L${x - r} ${y} L${x - r * 0.28} ${y - r * 0.28} Z`} fill="#ffc83d" />;
+    const star = (cx: number, cy: number, r: number, fill: string) => {
+      const pts = Array.from({ length: 10 }, (_, i) => {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const rr = i % 2 ? r * 0.45 : r;
+        return `${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`;
+      });
+      return <polygon points={pts.join(" ")} fill={fill} />;
+    };
     return (
       <g>
-        <circle cx="50" cy="52" r="34" fill={c} />
-        <circle cx="50" cy="52" r="28" fill="none" stroke="#ffffff66" strokeWidth="2" />
-        <text x="50" y="54" textAnchor="middle" dominantBaseline="central" fontSize="50" fontWeight={900} fill="#fff">?</text>
-        {[star(18, 18, 7), star(84, 22, 5), star(82, 84, 6), star(16, 80, 4)]}
+        <rect x="8" y="8" width="84" height="84" rx="12" fill="#17305c" />
+        {[[22, 24, 1.2], [76, 20, 1.5], [84, 50, 1], [30, 80, 1.3], [62, 84, 1], [16, 56, 0.9]].map(([x, y, r], i) => <circle key={i} cx={x} cy={y} r={r} fill="#fff" opacity="0.8" />)}
+        {/* Schweif */}
+        <path d="M16 82 Q 42 66 60 42" stroke="#ffd45c" strokeWidth="10" strokeLinecap="round" fill="none" opacity="0.35" />
+        <path d="M22 78 Q 44 64 60 42" stroke="#ffe08a" strokeWidth="5" strokeLinecap="round" fill="none" opacity="0.8" />
+        <path d="M30 76 Q 48 62 60 42" stroke="#fff6d6" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+        <circle cx="62" cy="38" r="20" fill="#ffd45c" opacity="0.22" />
+        <g>{star(62, 38, 19, "#ffc83d")}</g>
+        <g>{star(62, 38, 9, "#fff3c4")}</g>
       </g>
     );
   }

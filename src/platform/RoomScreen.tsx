@@ -20,6 +20,7 @@ import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
 import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
+import { useGameFeedback } from "./useGameFeedback";
 
 interface Props extends Omit<MenuProps, "board"> {
   room: RoomState;
@@ -43,9 +44,10 @@ export function RoomScreen(props: Props) {
   const isHost = me === null || me === room.hostId;
   const hostTools = me === null || (isHost && !!room.hostTools);
   const playing = room.phase === "playing" && room.game !== null;
+  const feedback = useGameFeedback(room, me);
 
   const board: BoardProps | null = playing
-    ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: (action) => dispatch({ type: "game", action: action as never }), dispatch }
+    ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch }
     : null;
   const { Board, HeaderExtra, Icon } = ui;
 

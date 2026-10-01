@@ -68,3 +68,26 @@ test("Profil: Online- und lokale Partien landen in der Statistik", async ({ brow
   await expect(page.getByText("Noch keine Partien")).toBeVisible();
   await ctx.close();
 });
+
+test("Profil: Einstellungen „Im Spiel“ bleiben nach Neuladen", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "de-DE", colorScheme: "light" });
+  const page = await ctx.newPage();
+  await page.goto("/profil");
+  const prefs = page.getByTestId("play-prefs");
+  const box = (name: RegExp) => prefs.getByRole("checkbox", { name });
+  // dezent an: Töne, Vibration, Spielhilfen an – Ansage aus
+  await expect(box(/Töne/)).toBeChecked();
+  await expect(box(/Vibration/)).toBeChecked();
+  await expect(box(/ansagen/)).not.toBeChecked();
+  await expect(box(/Spielhilfen/)).toBeChecked();
+  await prefs.getByRole("button", { name: "Töne probehören" }).click();
+  await box(/Töne/).click();
+  await box(/ansagen/).click();
+  await page.reload();
+  await expect(box(/Töne/)).not.toBeChecked();
+  await expect(box(/ansagen/)).toBeChecked();
+  await expect(box(/Vibration/)).toBeChecked();
+  await prefs.scrollIntoViewIfNeeded();
+  await shot(page, "81-profile-prefs");
+  await ctx.close();
+});
