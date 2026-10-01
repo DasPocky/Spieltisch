@@ -16,9 +16,9 @@ export function Segmented<T extends string>({ label, value, options, editable = 
           <button key={o.value} type="button" role="radio" aria-checked={value === o.value} disabled={!editable}
             onClick={() => value !== o.value && onChange(o.value)}
             className={cn("rounded-lg px-1.5 py-2.5 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default",
-              value === o.value ? "bg-navy-600 shadow-md" : "text-muted-foreground")}>
+              value === o.value ? "bg-primary/14 text-primary ring-1 ring-inset ring-primary/35" : "text-muted-foreground")}>
             <div className="text-sm font-semibold">{o.label}</div>
-            {o.hint && <div className="mt-0.5 text-xs leading-tight text-muted-foreground">{o.hint}</div>}
+            {o.hint && <div className={cn("mt-0.5 text-xs leading-tight", value === o.value ? "text-primary/80" : "text-muted-foreground")}>{o.hint}</div>}
           </button>
         ))}
       </div>

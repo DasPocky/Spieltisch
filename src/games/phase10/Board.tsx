@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { PlayerRow } from "@/platform/PlayerRow";
 import { Ban, Check, ChevronLeft, SkipForward } from "lucide-react";
 import {
   cardLabel, colorOf, extend, findPhase, isSkip, isWild, leaders, needLabel, PHASES, phaseLabel, valueOf,
@@ -22,7 +24,7 @@ export function P10CardView({ card, className, dim }: { card: P10Card; className
   const col = colorOf(card);
   return (
     <div role="img" aria-label={cardLabel(card)}
-      className={cn("@container grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-extrabold shadow ring-1 ring-black/10 transition",
+      className={cn("@container grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-bold shadow ring-1 ring-black/10 transition",
         col ? "bg-paper" : "bg-navy-700 text-ice ring-ice/40", dim && "brightness-50", className)}>
       {col ? <span className="self-start justify-self-start pt-[10%] pl-[9%] text-[44cqw] leading-none tracking-tighter" style={{ color: P10_INK[col] }}>{valueOf(card)}</span>
         : isWild(card) ? <span className="text-[48cqw] leading-none">W</span>
@@ -103,11 +105,11 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Mitspieler: Phase, Karten, Punkte */}
-      <div className="no-scrollbar -mx-4 flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Mitspieler">
+      <PlayerRow>
         {players.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId}
             className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm font-semibold",
-              p.id === s.curId && s.step !== "roundEnd" ? "bg-gradient-to-b from-deep-400 to-primary text-white" : "glass")}>
+              p.id === s.curId && s.step !== "roundEnd" ? "turn" : "glass")}>
             {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
             <span className="max-w-[6rem] truncate">{p.id === me ? "Du" : p.name}</span>
             <span className="rounded bg-current/10 px-1 text-xs tabular-nums" aria-label={`Phase ${s.phase[p.id]}`}>P{Math.min(s.goal, s.phase[p.id] ?? 1)}</span>
@@ -116,7 +118,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
             <span className="text-xs font-normal tabular-nums opacity-75">{s.counts[p.id] ?? 0} · {s.scores[p.id] ?? 0}</span>
           </div>
         ))}
-      </div>
+      </PlayerRow>
 
       {s.step === "roundEnd" ? <RoundEnd room={room} s={s} act={act} /> : (
         <>
@@ -150,7 +152,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
               className={cn("card-back grid aspect-[5/7] w-12 place-items-center rounded-[12%] text-sm font-bold text-paper/85 shadow outline-none disabled:cursor-default", myTurn && s.step === "draw" && "target-glow")}>{s.pileCount}</button>
             <button type="button" disabled={!myTurn || s.step !== "draw" || !top || isSkip(top)} onClick={() => { vibrate(8); act({ type: "draw", from: "discard" }); }}
               aria-label={top ? `Ablage nehmen: ${cardLabel(top)}` : "Ablage leer"} className={cn("w-12 rounded-[12%] outline-none disabled:cursor-default", myTurn && s.step === "draw" && top && !isSkip(top) && "target-glow")}>
-              {top ? <P10CardView key={s.discard.length} card={top} className="card-in" /> : <div className="aspect-[5/7] rounded-[12%] ring-1 ring-dashed ring-border" />}
+              {top ? <P10CardView key={s.discard.length} card={top} className="card-land" /> : <div className="aspect-[5/7] rounded-[12%] ring-1 ring-dashed ring-border" />}
             </button>
             <span data-testid="status" className={cn("max-w-[13rem] text-sm leading-snug", myTurn ? "font-semibold" : "text-muted-foreground")}><SmoothText>{status}</SmoothText></span>
             <RulesSheet gameId={room.gameId} />
@@ -172,17 +174,15 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
                     ))}
                   </div>
                 )}
-                <div className="no-scrollbar -mx-4 flex items-end overflow-x-auto px-4 pt-2.5 pb-1" data-testid="hand">
-                  <div className="mx-auto flex items-end">
+                <Fan count={hand.length - inSlots.size} className="pt-2.5" minShow={0.58}>
                     {hand.map((c, i) => inSlots.has(i) ? null : (
-                      <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!myTurn || s.step !== "play"} onClick={() => toggle(i)} aria-pressed={sel.includes(i)}
-                        className={cn("w-[min(13vw,3.4rem)] shrink-0 rounded-[12%] outline-none transition-transform disabled:cursor-default", i > 0 && hand.length > 7 && "-ml-[min(5.5vw,1.3rem)]",
+                      <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!myTurn || s.step !== "play"} style={dealDelay(i)} onClick={() => toggle(i)} aria-pressed={sel.includes(i)}
+                        className={cn("card-in w-[min(14vw,3.6rem)] shrink-0 rounded-[12%] outline-none disabled:cursor-default",
                           sel.includes(i) && "-translate-y-2.5 ring-[3px] ring-ice")}>
-                        <P10CardView card={c} className="card-in" />
+                        <P10CardView card={c} />
                       </button>
                     ))}
-                  </div>
-                </div>
+                </Fan>
                 {skipPick ? (
                   <div className="glass mt-2 grid gap-2 rounded-2xl p-2.5">
                     <p className="text-center text-sm font-semibold">Wer soll aussetzen?</p>

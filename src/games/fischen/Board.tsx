@@ -1,4 +1,5 @@
 import { Fish, Layers } from "lucide-react";
+import { PlayerRow } from "@/platform/PlayerRow";
 import { useState } from "react";
 import { DECKS, rankOf, RANK_DATIVE, RANK_PLURAL, type Card, type Rank } from "@shared/cards/deck";
 import { leaders, type FischenAction, type FischenEvent, type FischenState } from "@shared/games/fischen/logic";
@@ -21,7 +22,7 @@ function LastAsk({ e, players, viewer }: { e: FischenEvent; players: Player[]; v
   return (
     <div className="rounded-2xl bg-paper px-4 py-3 text-paper-ink shadow-lg" data-testid="last-ask">
       <div className="text-sm font-semibold text-paper-ink/60">{asker} → {target}</div>
-      <div className="text-xl font-extrabold leading-tight">„Hast du {RANK_PLURAL[e.rank]}?“</div>
+      <div className="text-xl font-bold leading-tight">„Hast du {RANK_PLURAL[e.rank]}?“</div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {e.got
           ? <span className="rounded-full bg-ok px-3 py-1 text-sm font-bold text-navy-950">Ja! {e.got} {e.got === 1 ? "Karte" : "Karten"}</span>
@@ -105,14 +106,14 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
     <>
       {/* Schritt 1: Mitspieler */}
       {myTurn && <div className="shrink-0 px-1 pb-1 text-sm font-bold text-ice">1 · Wen fragst du?</div>}
-      <div className="no-scrollbar -mx-4 flex shrink-0 gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label="Mitspieler">
+      <PlayerRow group className="gap-2">
         {players.filter((p) => p.id !== viewer || !myTurn).map((p) => {
           const pickable = myTurn && targets.some((t) => t.id === p.id);
           const chosen = myTurn && selTarget === p.id;
           return (
-            <button key={p.id} type="button" disabled={!pickable} onClick={() => setTarget(p.id)} aria-pressed={chosen}
+            <button key={p.id} type="button" data-cur={p.id === s.curId} disabled={!pickable} onClick={() => setTarget(p.id)} aria-pressed={chosen}
               className={cn("flex min-w-[6.5rem] shrink-0 flex-col items-start rounded-xl px-3 py-2 text-left text-sm outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                chosen ? "bg-ice text-navy-950" : p.id === s.curId ? "bg-gradient-to-b from-deep-400 to-primary text-white" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
+                chosen ? "bg-ice text-navy-950" : p.id === s.curId ? "turn" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
               <span className="flex items-center gap-1.5 font-bold">
                 {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
                 <span className="max-w-[6rem] truncate">{p.id === me ? "Du" : p.name}</span>
@@ -121,7 +122,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
             </button>
           );
         })}
-      </div>
+      </PlayerRow>
 
       {/* Mitte: letzte Fragen */}
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden py-2" aria-live="polite">

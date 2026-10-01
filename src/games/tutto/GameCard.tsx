@@ -48,7 +48,7 @@ export function GameCard({ cards, turn, onDraw, disabled }: { cards: CardId[]; /
               <rect width="10" height="10" rx="2" fill="#fdfdfb" />
               {[[3, 3], [7, 3], [5, 5], [3, 7], [7, 7]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="0.95" fill="#1f437f" />)}
             </svg>
-            <span className="text-[15cqw] leading-none font-extrabold tracking-tight text-paper">TUTTO</span>
+            <span className="text-[15cqw] leading-none font-bold tracking-tight text-paper">TUTTO</span>
           </div>
           {!disabled && <span className="absolute inset-x-0 bottom-[6cqw] text-center text-[6.5cqw] font-semibold text-paper/85">Tippen zum Ziehen</span>}
         </div>

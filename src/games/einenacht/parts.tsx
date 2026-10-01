@@ -18,7 +18,7 @@ export function ONCard({ role, compact, label = "Deine Karte" }: { role: ONRole;
         <span className={cn("flex items-center gap-3", compact ? "text-left" : "flex-col")}>
           <RoleIcon role={role} className={cn(compact ? "size-8" : "size-14", r.team === "werwolf" ? "text-destructive" : "text-navy-600")} />
           <span>
-            <span className={cn("block font-extrabold", compact ? "text-lg" : "text-3xl")} data-testid="on-role">{r.name}</span>
+            <span className={cn("block font-bold", compact ? "text-lg" : "text-3xl")} data-testid="on-role">{r.name}</span>
             <span className="block text-sm opacity-75">{r.short}</span>
           </span>
           {!compact && <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold opacity-60"><EyeOff className="size-3.5" />Tippen zum Verdecken</span>}
@@ -53,7 +53,7 @@ export function Countdown({ s, voice = false }: { s: ONState; voice?: boolean })
   const mm = Math.floor(left / 60000), ss = Math.floor((left % 60000) / 1000);
   return (
     <div className={cn("shrink-0 rounded-2xl px-4 py-2 text-center", left ? "bg-navy-950/50" : "bg-ice/20 text-ice")} data-testid="countdown">
-      <span className="text-3xl font-extrabold tabular-nums">{mm}:{String(ss).padStart(2, "0")}</span>
+      <span className="text-3xl font-bold tabular-nums">{mm}:{String(ss).padStart(2, "0")}</span>
       <span className="ml-2 text-sm">{left ? "Diskussion" : "Zeit ist um – abstimmen!"}</span>
     </div>
   );

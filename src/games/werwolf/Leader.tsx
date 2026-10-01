@@ -73,7 +73,7 @@ function GuidedReveal({ s, players, act }: { s: WerwolfState; players: Player[];
       <Panel title="Alle kennen ihre Rolle" sub="Legt das Handy in die Mitte – gleich beginnt die Nacht.">
         <div className="grid flex-1 place-content-center justify-items-center gap-2">
           <Moon className="size-12 text-ice" />
-          <span className="text-5xl font-extrabold tabular-nums">{left ?? 6}</span>
+          <span className="text-5xl font-bold tabular-nums">{left ?? 6}</span>
         </div>
         <Button variant="secondary" onClick={() => act({ type: "startNight" })}>Jetzt beginnen</Button>
       </Panel>
@@ -86,7 +86,7 @@ function GuidedReveal({ s, players, act }: { s: WerwolfState; players: Player[];
         <Panel title={`Gib das Handy an ${nameOf(players, who)}`} sub={`Rollen ansehen · ${i + 1} von ${order.length}. Die anderen schauen weg.`}>
           <div className="grid flex-1 place-content-center justify-items-center gap-3">
             <Smartphone className="size-12 text-navy-300" />
-            <span className="text-4xl font-extrabold" data-testid="reveal-next">{nameOf(players, who)}</span>
+            <span className="text-4xl font-bold" data-testid="reveal-next">{nameOf(players, who)}</span>
           </div>
         </Panel>
         <Button size="lg" className="shrink-0" onClick={() => setOpen(true)}>Ich bin {nameOf(players, who)}</Button>
@@ -181,7 +181,7 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 2)} />;
     confirm = { label: pick.length === 2 ? `${nameOf(players, pick[0])} & ${nameOf(players, pick[1])} verlieben` : "Zwei Personen wählen", ok: pick.length === 2, run: () => act({ type: "amor", a: pick[0], b: pick[1] }) };
   } else if (step === "lovers" && s.lovers) {
-    body = <p className="text-center text-2xl font-extrabold">{nameOf(players, s.lovers[0])} <Heart aria-label="und" className="inline size-6 align-[-3px] text-ice" /> {nameOf(players, s.lovers[1])}</p>;
+    body = <p className="text-center text-2xl font-bold">{nameOf(players, s.lovers[0])} <Heart aria-label="und" className="inline size-6 align-[-3px] text-ice" /> {nameOf(players, s.lovers[1])}</p>;
   } else if (step === "beschuetzer" && !acted) {
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} disabled={(id) => id === s.lastProtected} />;
     confirm = { label: "Beschützen", ok: pick.length === 1, run: () => act({ type: "protect", target: pick[0] }) };
@@ -196,7 +196,7 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
       </div>
     );
   } else if (step === "schwestern") {
-    body = <p className="text-center text-2xl font-extrabold"><Ico icon={Users} className="mr-2 size-6 text-ice" />{who(holders(s, "schwester"))}</p>;
+    body = <p className="text-center text-2xl font-bold"><Ico icon={Users} className="mr-2 size-6 text-ice" />{who(holders(s, "schwester"))}</p>;
   } else if (step === "werwolf" && !acted) {
     body = <Picker ids={alive.filter((id) => !isWolf(s.roles[id]))} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf", target: pick[0] }) };
@@ -209,7 +209,7 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
     body = <Picker ids={open} players={players} selected={pick} onPick={(id) => toggle(id, 2)} />;
     confirm = { label: "Verzaubern", ok: pick.length === Math.min(2, open.length), run: () => act({ type: "enchant", a: pick[0], b: pick[1] }) };
   } else if (step === "verzaubert") {
-    body = <p className="text-center text-2xl font-extrabold"><Ico icon={Music} className="mr-2 size-6 text-ice" />{s.enchantedTonight.map((id) => nameOf(players, id)).join(" & ")}</p>;
+    body = <p className="text-center text-2xl font-bold"><Ico icon={Music} className="mr-2 size-6 text-ice" />{s.enchantedTonight.map((id) => nameOf(players, id)).join(" & ")}</p>;
   } else if (step === "urwolf" && !acted) {
     body = s.victim ? (
       <div className="grid gap-2">
@@ -226,7 +226,7 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
     confirm = { label: "Schnüffeln", ok: pick.length === 1, run: () => act({ type: "fox", target: pick[0] }) };
   } else if (step === "fuchs" && acted) {
     const r = s.fox.at(-1)!;
-    body = <p className="text-center text-2xl font-extrabold" data-testid="fox-result"><Ico icon={Search} className="mr-2 size-6 text-ice" />{r.wolf ? `Wolf in der Nähe von ${nameOf(players, r.target)}!` : "Kein Wolf dort – der Fuchs verliert seinen Spürsinn."}</p>;
+    body = <p className="text-center text-2xl font-bold" data-testid="fox-result"><Ico icon={Search} className="mr-2 size-6 text-ice" />{r.wolf ? `Wolf in der Nähe von ${nameOf(players, r.target)}!` : "Kein Wolf dort – der Fuchs verliert seinen Spürsinn."}</p>;
   } else if (step === "schlampe" && !acted) {
     body = <Picker ids={alive.filter((id) => s.roles[id] !== "schlampe")} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: pick.length ? `Übernachtet bei ${nameOf(players, pick[0])}` : "Person wählen", ok: pick.length === 1, run: () => act({ type: "visit", target: pick[0] }) };
@@ -242,7 +242,7 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
       <div className="text-center">
         <div className="text-sm text-muted-foreground">{nameOf(players, r.target)} ist</div>
         <RoleIcon role={r.role} className="mx-auto mt-2 block size-12 text-ice" />
-        <div className="text-3xl font-extrabold" data-testid="seer-result">{ROLES[r.role].name}</div>
+        <div className="text-3xl font-bold" data-testid="seer-result">{ROLES[r.role].name}</div>
       </div>
     );
   } else if (step === "hexe" && !acted) {
@@ -399,7 +399,7 @@ function Day({ s, players, act, options, speech }: { s: WerwolfState; players: P
         <>
           <Panel title={<IconTitle icon={Sun}>Tag {s.night} – diskutiert!</IconTitle>} sub="Wer könnte ein Werwolf sein? Wenn die Zeit um ist, wird abgestimmt.">
             <div className="grid flex-1 place-content-center justify-items-center gap-2">
-              <span className={cn("text-6xl font-extrabold tabular-nums", shown !== null && shown <= 60 && "text-ice")} data-testid="day-timer">{mmss}</span>
+              <span className={cn("text-6xl font-bold tabular-nums", shown !== null && shown <= 60 && "text-ice")} data-testid="day-timer">{mmss}</span>
               <span className="text-sm text-muted-foreground">{pausedLeft !== null ? "Angehalten" : shown !== null && shown <= 60 ? "Letzte Minute" : "Diskussion läuft"}</span>
             </div>
           </Panel>
@@ -415,7 +415,7 @@ function Day({ s, players, act, options, speech }: { s: WerwolfState; players: P
       {stage === "count" && (
         <Panel title={<IconTitle icon={Sun}>Gleich zeigen alle …</IconTitle>} sub="Auf drei zeigt jeder auf einen Verdächtigen.">
           <div className="grid flex-1 place-items-center">
-            <span key={count} className="pop text-8xl font-extrabold text-ice tabular-nums" data-testid="vote-count">{count || "Zeigt!"}</span>
+            <span key={count} className="pop text-8xl font-bold text-ice tabular-nums" data-testid="vote-count">{count || "Zeigt!"}</span>
           </div>
         </Panel>
       )}

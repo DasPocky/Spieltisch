@@ -30,7 +30,7 @@ export function SkCard({ cell, small, pick, onClick, label }: { cell: Cell | nul
   const c = up ? cardColor(cell.v!) : null;
   return (
     <button type="button" disabled={!onClick} onClick={onClick} aria-label={label ?? (up ? `Karte ${cell.v}` : "verdeckte Karte")}
-      className={cn("grid place-items-center overflow-hidden rounded-[18%] font-extrabold shadow outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
+      className={cn("grid place-items-center overflow-hidden rounded-[18%] font-bold shadow outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
         small ? "size-full text-[0.55rem]" : "h-full w-full text-[clamp(1rem,6vw,1.8rem)]", !up && "card-back", pick && "ring-[3px] ring-ice", onClick && "active:scale-95")}
       style={c ? { background: c.bg, color: c.fg } : undefined}>
       {up ? cell.v : small ? "" : <span className="text-[0.6em] text-paper/70">SKYJO</span>}
@@ -94,7 +94,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
       {others.length > 0 && (
         <div className="no-scrollbar -mx-4 flex shrink-0 gap-2 overflow-x-auto px-4 py-1.5">
           {others.map((p) => (
-            <div key={p.id} className={cn("shrink-0 rounded-xl px-2 py-1", p.id === s.curId ? "bg-navy-600/70 ring-1 ring-navy-300/60" : "glass")} data-testid={`mini-${p.name}`}>
+            <div key={p.id} data-cur={p.id === s.curId} className={cn("shrink-0 rounded-xl px-2 py-1", p.id === s.curId ? "bg-primary/12 ring-2 ring-primary" : "glass")} data-testid={`mini-${p.name}`}>
               <div className="flex items-baseline justify-between gap-2 text-xs"><b className="max-w-[5rem] truncate">{p.name}</b><span className="tabular-nums text-muted-foreground">{visibleSum(s.grids[p.id])}</span></div>
               <div className="mt-0.5 grid w-[3.6rem] grid-cols-4 grid-rows-3 gap-0.5 [@media(min-height:700px)]:w-[4.6rem]" style={{ aspectRatio: "4 / 3.9" }}>
                 {s.grids[p.id].map((c, i) => <SkCard key={i} cell={c} small />)}
@@ -110,7 +110,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
           aria-label={`Vom Stapel ziehen (${deckCount})`} className={cn("card-back grid h-(--pile) w-[calc(var(--pile)*0.714)] place-items-center rounded-xl text-sm font-bold text-paper shadow outline-none transition disabled:cursor-default", canDraw && "target-glow")}>
           {deckCount}
         </button>
-        <div key={`d${s.discard.length}`} className={cn("card-in aspect-[5/7] h-(--pile) rounded-xl", canDraw && top !== undefined && "target-glow")}>
+        <div key={`d${s.discard.length}`} className={cn("card-land aspect-[5/7] h-(--pile) rounded-xl", canDraw && top !== undefined && "target-glow")}>
           {top !== undefined
             ? <SkCard cell={{ v: top, up: true }} onClick={myTurn && s.drawn === null && !s.mustFlip ? () => act({ type: "draw", from: "discard" }) : undefined} label={`Offene Karte ${top} nehmen`} />
             : <div className="h-full rounded-xl border border-dashed border-border" />}

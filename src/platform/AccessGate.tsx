@@ -22,7 +22,7 @@ export function AccessGate({ gameId, children }: { gameId?: string; children: Re
   if (access === "off") {
     return (
       <Screen back={!!gameId && config.site !== "off"}>
-        <h1 className="text-2xl font-extrabold tracking-tight" data-testid="closed">{what} ist gerade geschlossen</h1>
+        <h1 className="text-2xl font-bold tracking-tight" data-testid="closed">{what} ist gerade geschlossen</h1>
         {config.message && <p className="mt-2 text-muted-foreground">{config.message}</p>}
       </Screen>
     );
@@ -30,7 +30,7 @@ export function AccessGate({ gameId, children }: { gameId?: string; children: Re
   if (access === "code" && !unlocked) {
     return (
       <Screen back={!!gameId && config.site === "on"}>
-        <h1 className="text-2xl font-extrabold tracking-tight">{what} braucht einen Zugangscode</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{what} braucht einen Zugangscode</h1>
         {config.message && <p className="mt-2 text-muted-foreground">{config.message}</p>}
         <CodeForm onOk={() => setUnlocked(true)} />
       </Screen>

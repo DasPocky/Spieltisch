@@ -65,7 +65,7 @@ export function Clock({ left, total, note, paused, onPause, onSkip }: { left: nu
           {left !== null && <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" pathLength={100}
             strokeDasharray={`${Math.min(100, (left / Math.max(1, total)) * 100)} 100`} className={cn("transition-[stroke-dasharray] duration-300", warn ? "text-destructive" : "text-ice")} />}
         </svg>
-        <span className={cn("text-lg font-extrabold tabular-nums", warn && "text-destructive")} data-testid="ww-left">{left ?? "…"}</span>
+        <span className={cn("text-lg font-bold tabular-nums", warn && "text-destructive")} data-testid="ww-left">{left ?? "…"}</span>
       </div>
       <p className={cn("min-w-0 flex-1 text-sm leading-snug", warn ? "font-semibold text-destructive" : "text-muted-foreground")}>
         <span key={note} className="text-in inline-block">{paused ? "Angehalten." : note}</span>

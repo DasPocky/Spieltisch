@@ -19,11 +19,25 @@ test("Startseite: erst Spielweise, dann Spiel – ohne Scrollen", async ({ page 
   await shot(page, "01b-home-games");
   await page.getByRole("button", { name: /^Kniffel/ }).click();
   await expect(page).toHaveURL(/\/spiel\/kniffel\/lokal$/);
-  // Online: zur Spielseite mit „Raum erstellen“; die letzte Spielweise ist markiert
+  // Online: erst den Raum erstellen, dann in der Lobby das Spiel wählen
   await page.goto("/");
   await page.getByRole("button", { name: /Online-Raum erstellen/ }).click();
-  await page.getByRole("button", { name: /^Tutto/ }).click();
-  await expect(page).toHaveURL(/\/spiel\/tutto$/);
+  await expect(page.getByTestId("create-room")).toBeVisible();
+  await expectNoScroll(page);
+  await shot(page, "01c-home-online");
+  await page.getByLabel("Dein Name").fill("Anna");
+  await page.getByLabel(/PIN/).fill("4711");
+  await page.getByRole("button", { name: "Raum erstellen" }).click();
+  await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
+  await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
+  await shot(page, "01d-lobby-pick");
+  await page.getByRole("button", { name: /^Uno/ }).click();
+  await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeHidden();
+  await expect(page.getByText("Gespielt wird")).toBeVisible();
+  await expect(page.locator("header")).toContainText("Uno");
+  await shot(page, "01e-lobby");
+  // Die Spielseite gibt es weiter als Direktlink
+  await page.goto("/spiel/tutto");
   await expect(page.getByRole("heading", { name: "Tutto" })).toBeVisible();
   await expectNoScroll(page);
   await shot(page, "02-game-page");

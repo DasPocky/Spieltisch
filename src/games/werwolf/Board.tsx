@@ -26,7 +26,7 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
     return (
       <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[4vh] pb-6 text-center">
         <w.icon aria-hidden="true" className="mx-auto size-14 text-ice" />
-        <h2 className="mt-3 bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-4xl font-extrabold leading-tight tracking-tight text-transparent" data-testid="winner">{w.title}</h2>
+        <h2 className="mt-3 bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-4xl font-bold leading-tight tracking-tight text-transparent" data-testid="winner">{w.title}</h2>
         {me === null && <SayOnce text={`${w.title}. ${w.text}`} />}
         <p className="text-muted-foreground">{w.text}</p>
         <ul className="mt-6 grid gap-1.5 text-left">

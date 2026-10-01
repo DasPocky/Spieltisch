@@ -85,7 +85,7 @@ function DeviceStep({ s, players, act, auto, options }: { s: ONState; players: P
   if (step === "werwolf") {
     body = (
       <div className="grid gap-3">
-        <p className="text-center text-xl font-extrabold"><Ico icon={PawPrint} className="mr-2 size-6 text-ice" />{names(wolves)}</p>
+        <p className="text-center text-xl font-bold"><Ico icon={PawPrint} className="mr-2 size-6 text-ice" />{names(wolves)}</p>
         {wolves.length === 1 && (
           <>
             <p className="text-sm text-muted-foreground">Einsamer Werwolf: eine Karte aus der Mitte ansehen?</p>
@@ -95,14 +95,14 @@ function DeviceStep({ s, players, act, auto, options }: { s: ONState; players: P
       </div>
     );
   } else if (step === "guenstling") {
-    body = <p className="text-center text-xl font-extrabold">Die Werwölfe: {names(wolves)}</p>;
+    body = <p className="text-center text-xl font-bold">Die Werwölfe: {names(wolves)}</p>;
   } else if (step === "freimaurer") {
-    body = <p className="text-center text-xl font-extrabold"><Ico icon={Handshake} className="mr-2 size-6 text-ice" />{names(holder("freimaurer"))}</p>;
+    body = <p className="text-center text-xl font-bold"><Ico icon={Handshake} className="mr-2 size-6 text-ice" />{names(holder("freimaurer"))}</p>;
   } else if (step === "seherin") {
     const me = holder("seherin")[0];
     body = s.seer ? (
       s.seer.player
-        ? <p className="text-center text-xl font-extrabold">{nameOf(players, s.seer.player)} ist <RoleIcon role={s.start[s.seer.player]} className="mr-1 size-6 text-ice" />{ON_ROLES[s.start[s.seer.player]].name}</p>
+        ? <p className="text-center text-xl font-bold">{nameOf(players, s.seer.player)} ist <RoleIcon role={s.start[s.seer.player]} className="mr-1 size-6 text-ice" />{ON_ROLES[s.start[s.seer.player]].name}</p>
         : <CenterCards cards={[0, 1, 2].map(shown)} />
     ) : (
       <div className="grid gap-3">
@@ -117,14 +117,14 @@ function DeviceStep({ s, players, act, auto, options }: { s: ONState; players: P
   } else if (step === "raeuber") {
     const me = holder("raeuber")[0];
     body = s.robber || s.robberSkip ? (
-      <p className="text-center text-xl font-extrabold">{s.robber ? <>Neue Karte: <RoleIcon role={s.start[s.robber]} className="mr-1 size-6 text-ice" />{ON_ROLES[s.start[s.robber]].name}</> : "Nicht getauscht."}</p>
+      <p className="text-center text-xl font-bold">{s.robber ? <>Neue Karte: <RoleIcon role={s.start[s.robber]} className="mr-1 size-6 text-ice" />{ON_ROLES[s.start[s.robber]].name}</> : "Nicht getauscht."}</p>
     ) : (
       <Picker ids={ids(s).filter((id) => id !== me)} players={players} selected={[]} onPick={(id) => act({ type: "rob", target: id })}
         extra={{ label: "Nicht tauschen", selected: false, onPick: () => act({ type: "rob", target: null }) }} />
     );
   } else if (step === "unruhestifter") {
     const me = holder("unruhestifter")[0];
-    body = s.trouble || s.troubleSkip ? <p className="text-center text-xl font-extrabold">{s.trouble ? "Vertauscht." : "Nicht vertauscht."}</p> : (
+    body = s.trouble || s.troubleSkip ? <p className="text-center text-xl font-bold">{s.trouble ? "Vertauscht." : "Nicht vertauscht."}</p> : (
       <>
         <Picker ids={ids(s).filter((id) => id !== me)} players={players} selected={pick}
           onPick={(id) => { const next = pick.includes(id) ? pick.filter((x) => x !== id) : [...pick, id]; if (next.length === 2) act({ type: "trouble", a: next[0], b: next[1] }); else setPick(next); }}
@@ -132,12 +132,12 @@ function DeviceStep({ s, players, act, auto, options }: { s: ONState; players: P
       </>
     );
   } else if (step === "betrunkener") {
-    body = s.drunk !== null ? <p className="text-center text-xl font-extrabold">Getauscht – ohne hinzusehen.</p>
+    body = s.drunk !== null ? <p className="text-center text-xl font-bold">Getauscht – ohne hinzusehen.</p>
       : <CenterCards cards={["?", "?", "?"]} pickable onPick={(i) => act({ type: "drunk", i })} />;
   } else if (step === "schlaflose") {
     const me = holder("schlaflose")[0];
     const final = resolveNight(s).cards;
-    body = me ? <p className="text-center text-xl font-extrabold">Deine Karte jetzt: <RoleIcon role={final[me]} className="mr-1 size-6 text-ice" />{ON_ROLES[final[me]].name}</p>
+    body = me ? <p className="text-center text-xl font-bold">Deine Karte jetzt: <RoleIcon role={final[me]} className="mr-1 size-6 text-ice" />{ON_ROLES[final[me]].name}</p>
       : <p className="text-center text-muted-foreground">(Die Karte liegt in der Mitte.)</p>;
   }
 
@@ -306,7 +306,7 @@ function Result({ s, players, isHost, dispatch }: { s: ONState; players: Player[
   const final = s.final ?? s.start;
   return (
     <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[3vh] pb-6 text-center">
-      <h2 className="bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent" data-testid="winner">
+      <h2 className="bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent" data-testid="winner">
         {winLine(s.winners)}
       </h2>
       {s.own ? (

@@ -50,7 +50,7 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
       <div className="flex min-h-0 flex-1 flex-col items-center pt-2">
         <div className="flex items-baseline gap-2.5">
           <span className="text-sm text-muted-foreground">Am Zug</span>
-          <span className="text-xl font-extrabold tracking-tight" data-testid="current-player">{cur?.id === me ? "Du" : cur?.name}</span>
+          <span className="text-xl font-bold tracking-tight" data-testid="current-player">{cur?.id === me ? "Du" : cur?.name}</span>
         </div>
         <div className="flex min-h-0 w-full flex-1 items-center justify-center py-2">
           <GameCard cards={state.turnCards} turn={state.log.length} onDraw={() => onAction({ type: "draw" })} disabled={!canAct || !canDraw} />

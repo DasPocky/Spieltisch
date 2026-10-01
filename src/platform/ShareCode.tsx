@@ -14,10 +14,10 @@ export function ShareCode({ code, gameName }: { code: string; gameName?: string 
     } catch { /* abgebrochen */ }
   };
   return (
-    <div className="flex items-center justify-between gap-3 glass rounded-2xl p-4">
+    <div className="flex items-center justify-between gap-3 glass rounded-2xl px-4 py-3">
       <div>
-        <div className="text-sm text-muted-foreground">Raumcode</div>
-        <div className="text-3xl font-extrabold tracking-[0.18em] tabular-nums" data-testid="room-code">{code}</div>
+        <div className="text-xs text-muted-foreground">Raumcode</div>
+        <div className="text-2xl font-bold tracking-[0.18em] tabular-nums" data-testid="room-code">{code}</div>
       </div>
       <Button onClick={share}><Share2 />Einladen</Button>
     </div>

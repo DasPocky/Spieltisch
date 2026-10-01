@@ -131,7 +131,7 @@ export function CardFace({ card }: { card: CardType }) {
   return (
     <div className="size-full rounded-[7cqw] bg-paper p-[4cqw]">
       <div className="flex size-full flex-col items-center rounded-[4.5cqw] px-[5cqw] pt-[7cqw] pb-[6cqw] text-paper-ink" style={{ boxShadow: `inset 0 0 0 1.6cqw ${card.color}` }}>
-        <div className="text-[8.5cqw] leading-none font-extrabold tracking-[0.08em] uppercase" style={{ color: card.color }}>{title}</div>
+        <div className="text-[8.5cqw] leading-none font-bold tracking-[0.08em] uppercase" style={{ color: card.color }}>{title}</div>
         <div className="mt-[2.5cqw] h-[0.9cqw] w-[18cqw] rounded-full" style={{ background: tint(card.color, 0.45) }} />
         <svg viewBox="0 0 100 100" className="my-[3cqw] min-h-0 w-[80%] flex-1" aria-hidden="true">
           <Art card={card} />
@@ -139,7 +139,7 @@ export function CardFace({ card }: { card: CardType }) {
         <div className="flex h-[15cqw] min-w-[56%] items-center justify-center gap-[1.5cqw] rounded-full px-[5cqw] whitespace-nowrap" style={{ background: tint(card.color, 0.13), color: card.color }}>
           {card.value ? (
             <>
-              <b className="text-[10cqw] leading-none font-extrabold tabular-nums">{card.value}</b>
+              <b className="text-[10cqw] leading-none font-bold tabular-nums">{card.value}</b>
               <span className="text-[6cqw] leading-none font-semibold opacity-80">Punkte</span>
             </>
           ) : (

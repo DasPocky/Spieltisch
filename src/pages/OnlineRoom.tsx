@@ -29,7 +29,7 @@ export function OnlineRoom({ code }: { code: string }) {
   if (room.status === "missing") {
     return (
       <Center>
-        <h1 className="text-3xl font-extrabold tracking-tight">Raum {code} gibt es nicht</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Raum {code} gibt es nicht</h1>
         <p className="mt-2 text-muted-foreground">Vielleicht ein Tippfehler, oder der Raum ist nach 48 Stunden ohne Spiel abgelaufen.</p>
         <Button className="mt-6 w-full" onClick={() => navigate("/")}>Zur Startseite</Button>
       </Center>
@@ -50,7 +50,7 @@ export function OnlineRoom({ code }: { code: string }) {
   if (room.status === "closed") {
     return (
       <Center>
-        <h1 className="text-3xl font-extrabold tracking-tight">Raum beendet</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Raum beendet</h1>
         <p className="mt-2 text-muted-foreground">{room.error}</p>
         <Button className="mt-6 w-full" onClick={() => navigate("/")}>Zur Startseite</Button>
       </Center>
@@ -60,7 +60,7 @@ export function OnlineRoom({ code }: { code: string }) {
   if (room.status === "failed") {
     return (
       <Center>
-        <h1 className="text-3xl font-extrabold tracking-tight">Nicht verbunden</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Nicht verbunden</h1>
         <p className="mt-2 text-muted-foreground">{room.error}</p>
         <Button className="mt-6 w-full" onClick={() => setAttempt((a) => a + 1)}>Nochmal versuchen</Button>
         <Button variant="ghost" className="mt-2 w-full" onClick={leave}>Zur Startseite</Button>
@@ -95,7 +95,7 @@ function JoinForm({ code, gameId, error, onSubmit }: { code: string; gameId: str
   return (
     <Center>
       <div className="text-sm text-muted-foreground">{isGameId(gameId) ? `${getGame(gameId).info.name} · Raum` : "Raum"}</div>
-      <h1 className="text-4xl font-extrabold tracking-[0.18em]">{code}</h1>
+      <h1 className="text-4xl font-bold tracking-[0.18em]">{code}</h1>
       <Card className="mt-6 grid gap-4 text-left">
         <form className="grid gap-4" onSubmit={(e) => {
           e.preventDefault(); if (!ok) return;

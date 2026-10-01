@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PlayerRow } from "@/platform/PlayerRow";
 import { fits, JOKER, leaders, needs, topOf, type SbAction, type SbCard, type SbState, type Source } from "@shared/games/skipbo/logic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ export function SbCardView({ card, shown, className, small }: { card: SbCard | u
   const value = shown ?? card;
   return (
     <div role="img" aria-label={joker ? (shown ? `Skip-Bo als ${shown}` : "Skip-Bo") : String(card)}
-      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-extrabold shadow ring-1 ring-black/10",
+      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-bold shadow ring-1 ring-black/10",
         joker ? "bg-navy-700 text-ice ring-ice/40" : "bg-paper", className)}>
       {joker && !shown ? <span className="text-[22cqw] leading-none tracking-tight">SKIP<br />BO</span>
         : <span className={cn("leading-none", small ? "text-[52cqw]" : "text-[46cqw]")} style={joker ? undefined : { color: ink(card) }}>{value}</span>}
@@ -88,10 +89,10 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
   return (
     <div className="flex min-h-0 flex-1 flex-col [--c:clamp(2.6rem,9.5vh,4.6rem)]">
       {/* Mitspieler: oberste Vorratskarte, Vorrat, Ablagen */}
-      <div className="no-scrollbar -mx-4 flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Mitspieler">
+      <PlayerRow>
         {others.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId} aria-label={`${p.name}: Vorrat ${s.stockCounts[p.id] ?? 0}`}
-            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm", p.id === s.curId && s.phase === "play" ? "bg-gradient-to-b from-deep-400 to-primary text-white" : "glass")}>
+            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm", p.id === s.curId && s.phase === "play" ? "turn" : "glass")}>
             <div className="grid gap-0.5">
               <span className="flex max-w-[6rem] items-center gap-1.5 truncate font-semibold">
                 {online && <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}{p.name}
@@ -105,7 +106,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
             </div>
           </div>
         ))}
-      </div>
+      </PlayerRow>
 
       {/* Aufbau: vier gemeinsame Stapel von 1 bis 12 */}
       <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5" aria-label="Aufbaustapel">
@@ -121,7 +122,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
                   {b.length > 1 && <span className="absolute inset-0 translate-x-[3px] translate-y-[3px] rounded-[12%] bg-paper/25" aria-hidden="true" />}
                   {t === undefined ? (
                     <div className="grid aspect-[5/7] place-items-center rounded-[12%] bg-navy-950/30 text-lg font-bold text-muted-foreground/70 ring-1 ring-inset ring-border ring-dashed">1</div>
-                  ) : <SbCardView key={b.length} card={t} shown={t === JOKER ? b.length : undefined} className="card-in relative" />}
+                  ) : <SbCardView key={b.length} card={t} shown={t === JOKER ? b.length : undefined} className="card-land relative" />}
                 </button>
                 <span aria-hidden="true" className={cn("rounded-full px-2 py-px text-[0.7rem] font-semibold whitespace-nowrap tabular-nums", ok ? "bg-ice text-navy-950" : "bg-navy-950/60 text-muted-foreground")}>
                   <SmoothText>{`→ ${needs(b)}`}</SmoothText>
@@ -153,7 +154,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
                   <span className="absolute inset-0 translate-x-[4px] translate-y-[4px] rounded-[12%] bg-paper/20" aria-hidden="true" />
                   <span className="absolute inset-0 translate-x-[2px] translate-y-[2px] rounded-[12%] bg-paper/40" aria-hidden="true" />
                   <SbCardView key={s.stockCounts[viewer ?? ""]} card={topOf(stock)} className="card-in relative ring-2 ring-ice/60" />
-                  <span className="absolute -top-2 -right-2 rounded-full bg-ice px-1.5 text-[0.7rem] font-extrabold text-navy-950 tabular-nums" data-testid="stock">{viewer ? s.stockCounts[viewer] ?? 0 : 0}</span>
+                  <span className="absolute -top-2 -right-2 rounded-full bg-ice px-1.5 text-[0.7rem] font-bold text-navy-950 tabular-nums" data-testid="stock">{viewer ? s.stockCounts[viewer] ?? 0 : 0}</span>
                 </button>
               </div>
               <span className="w-px self-stretch bg-border" aria-hidden="true" />

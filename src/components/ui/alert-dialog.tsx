@@ -22,7 +22,7 @@ function AlertDialogContent({ className, ...props }: React.ComponentProps<typeof
 }
 
 const AlertDialogTitle = ({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) =>
-  <AlertDialogPrimitive.Title className={cn("text-xl font-extrabold tracking-tight", className)} {...props} />;
+  <AlertDialogPrimitive.Title className={cn("text-xl font-bold tracking-tight", className)} {...props} />;
 const AlertDialogDescription = ({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) =>
   <AlertDialogPrimitive.Description className={cn("text-muted-foreground", className)} {...props} />;
 const AlertDialogAction = ({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) =>

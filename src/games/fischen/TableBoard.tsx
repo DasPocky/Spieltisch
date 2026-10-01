@@ -57,7 +57,7 @@ export function TableBoard({ room, game: s, me, online, isHost, canAct, act, dis
       <div className="flex shrink-0 items-center justify-between gap-2 px-1 pt-2">
         <div className="flex items-baseline gap-2">
           <span className="text-sm text-muted-foreground">Am Zug</span>
-          <span className="text-xl font-extrabold tracking-tight" data-testid="current-player">{me2(cur)}</span>
+          <span className="text-xl font-bold tracking-tight" data-testid="current-player">{me2(cur)}</span>
         </div>
         <RulesSheet gameId={room.gameId} />
       </div>

@@ -60,7 +60,7 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
               selectedId === p.id && !cur && "ring-2 ring-inset ring-navy-300/70",
               selectedId === p.id && cur && "ring-2 ring-inset ring-white/70",
               !fits && "w-26 shrink-0 snap-start",
-              cur ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass",
+              cur ? "turn" : "glass",
             )}
           >
             <div className="flex items-center gap-1 text-xs font-semibold">
@@ -71,7 +71,7 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
               <span className={cn("truncate", !cur && "text-muted-foreground")}>{p.name}{p.id === me ? " (du)" : ""}</span>
               {lead && <span className="ml-auto text-[0.7rem] text-ice" aria-label="Führt">★</span>}
             </div>
-            <div className="text-lg font-extrabold leading-tight tracking-tight tabular-nums">{fmt(p.score)}</div>
+            <div className="text-lg font-bold leading-tight tracking-tight tabular-nums">{fmt(p.score)}</div>
             {p.progress !== undefined && (
               <div className={cn("mt-1 h-1 overflow-hidden rounded-full", cur ? "bg-white/25" : "bg-navy-950/60")}>
                 <i className={cn("block h-full rounded-full", cur ? "bg-white" : "bg-navy-300")} style={{ width: `${Math.min(100, Math.max(0, p.progress) * 100)}%` }} />

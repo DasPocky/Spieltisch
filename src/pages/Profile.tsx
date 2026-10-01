@@ -53,7 +53,7 @@ export function Profile() {
       <header className="flex h-14 shrink-0 items-center">
         <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate("/")}><ChevronLeft />Spieltisch</Button>
       </header>
-      <h1 className="text-3xl font-extrabold tracking-tight">Profil & Einstellungen</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Profil & Einstellungen</h1>
 
       <Card className="grid gap-2">
         <Label htmlFor="profile-name">Dein Name</Label>
@@ -74,7 +74,7 @@ export function Profile() {
           <>
             <div className="grid grid-cols-3 gap-2 text-center">
               {[["Partien", fmt(played)], ["Siege", fmt(won)], ["Quote", pct(won, played)]].map(([k, v]) => (
-                <div key={k} className="rounded-xl bg-navy-950/50 py-2"><div className="text-xl font-extrabold tabular-nums">{v}</div><div className="text-xs text-muted-foreground">{k}</div></div>
+                <div key={k} className="rounded-xl bg-navy-950/50 py-2"><div className="text-xl font-bold tabular-nums">{v}</div><div className="text-xs text-muted-foreground">{k}</div></div>
               ))}
             </div>
             <ul className="grid gap-1.5">

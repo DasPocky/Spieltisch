@@ -20,6 +20,8 @@ export function remove(key: string) {
 export interface RoomCreds { playerId: string; token: string }
 export const credsKey = (code: string) => `spieltisch:room:${code}`;
 export const NAME_KEY = "spieltisch:name";
+/** Zuletzt online gewähltes Spiel – damit ist ein neuer Raum gleich richtig vorbelegt */
+export const LAST_GAME_KEY = "spieltisch:lastGame";
 
 /** Beim Erstellen/Beitreten übergibt die Startseite Name und PIN einmalig an den Raum. */
 export const pendingKey = (code: string) => `spieltisch:pending:${code}`;

@@ -64,7 +64,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
           <span className="block truncate text-sm font-semibold">{CATS[c].name}</span>
           {full && <span className={cn("block truncate text-[0.7rem]", active ? "text-navy-950/70" : "text-muted-foreground")}>{CATS[c].hint}</span>}
         </span>
-        <span className={cn("shrink-0 text-base font-extrabold tabular-nums",
+        <span className={cn("shrink-0 text-base font-bold tabular-nums",
           filled === 0 && "text-muted-foreground",
           pot !== null && !active && (pot > 0 ? "text-navy-300" : "text-muted-foreground/60"))}>
           {filled !== undefined ? (filled === 0 ? "–" : filled) : pot ?? ""}

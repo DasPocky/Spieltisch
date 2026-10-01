@@ -35,7 +35,7 @@ function Score({ s, showTurn }: { s: CNState; showTurn: boolean }) {
         <div key={t} className={cn("flex items-center justify-between rounded-xl px-3 py-1.5 text-white", showTurn && s.turn === t ? "ring-2 ring-white/80" : "opacity-80")}
           style={{ background: COLOR[t] }} data-testid={`score-${t}`}>
           <span className="truncate font-bold">{showTurn && s.turn === t ? "▶ " : ""}{TEAM_NAME[t]}</span>
-          <span className="text-lg font-extrabold tabular-nums">{remaining(s, t)}</span>
+          <span className="text-lg font-bold tabular-nums">{remaining(s, t)}</span>
         </div>
       ))}
     </div>
@@ -53,7 +53,7 @@ function Teams({ room, game: s, me, isHost, act }: BoardProps<CNState, CNAction>
   return (
     <>
       <div className="flex shrink-0 items-center justify-between px-1 pt-1">
-        <h2 className="text-xl font-extrabold tracking-tight">Teams einteilen</h2>
+        <h2 className="text-xl font-bold tracking-tight">Teams einteilen</h2>
         <RulesSheet gameId={room.gameId} />
       </div>
       <p className="shrink-0 px-1 text-sm text-muted-foreground">
@@ -208,7 +208,7 @@ function KeyCard({ room, game: s, me, act }: BoardProps<CNState, CNAction>) {
             role="group" aria-label="Schlüsselkarte">
             {s.key.map((c, i) => (
               <button key={i} type="button" onClick={() => act({ type: "mark", i })} aria-label={`Feld ${i + 1}: ${c === "neutral" ? "Passant" : c === "attentaeter" ? "Attentäter" : TEAM_NAME[c]}${s.revealed[i] ? ", aufgedeckt" : ""}`}
-                aria-pressed={s.revealed[i]} className={cn("grid place-items-center rounded-md text-lg font-extrabold", s.revealed[i] && "opacity-30")} style={{ background: COLOR[c], color: TEXT_ON[c] }}>
+                aria-pressed={s.revealed[i]} className={cn("grid place-items-center rounded-md text-lg font-bold", s.revealed[i] && "opacity-30")} style={{ background: COLOR[c], color: TEXT_ON[c] }}>
                 {c === "attentaeter" ? "✕" : s.revealed[i] ? "✓" : ""}
               </button>
             ))}

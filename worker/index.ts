@@ -32,6 +32,8 @@ interface RoomData {
   fails: number;
   lockUntil: number;
   createdAt: number;
+  /** Beim Anlegen wurde der Zugangscode genannt – dann dürfen auch Spiele hinter dem Code gewählt werden */
+  unlocked?: boolean;
   /** playerId → Profil-ID (nur auf dem Server, nie an andere Spieler) */
   profiles?: Record<string, string>;
   /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
@@ -81,7 +83,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   /** Legt den Raum an. false, wenn der Code schon vergeben ist. */
-  async init(pin: string, gameId: string): Promise<boolean> {
+  async init(pin: string, gameId: string, unlocked = false): Promise<boolean> {
     if (this.room) return false;
     const salt = crypto.randomUUID();
     this.room = {
@@ -92,6 +94,7 @@ export class GameRoom extends DurableObject<Env> {
       fails: 0,
       lockUntil: 0,
       createdAt: Date.now(),
+      unlocked,
     };
     await this.persist();
     return true;
@@ -179,6 +182,14 @@ export class GameRoom extends DurableObject<Env> {
 
     if (msg.type === "action" && msg.action && typeof msg.action === "object") {
       const before = this.room.state;
+      // Spielwechsel in der Lobby: Admin-Freigaben gelten auch hier
+      if (msg.action.type === "selectGame" && isGameId(msg.action.gameId)) {
+        const access = accessFor(await settingsOf(this.env).config(), msg.action.gameId);
+        if (access === "off" || (access === "code" && !this.room.unlocked)) {
+          this.send(ws, { type: "error", message: access === "off" ? "Dieses Spiel ist gerade abgeschaltet." : "Dafür braucht ihr den Zugangscode." });
+          return;
+        }
+      }
       try {
         this.room.state = applyRoomAction(this.room.state, msg.action, playerId);
       } catch (e) {
@@ -594,14 +605,13 @@ export default {
       const settings = settingsOf(env);
       const access = accessFor(await settings.config(), gameId);
       if (access === "off") return json({ error: "Dieses Spiel ist gerade abgeschaltet." }, 403);
-      if (access === "code" && !(typeof body.access === "string" && await settings.checkCode(body.access))) {
-        return json({ error: "Dafür braucht ihr den Zugangscode.", code: "access" }, 403);
-      }
+      const unlocked = typeof body.access === "string" && await settings.checkCode(body.access);
+      if (access === "code" && !unlocked) return json({ error: "Dafür braucht ihr den Zugangscode.", code: "access" }, 403);
 
       for (let i = 0; i < 6; i++) {
         const code = makeCode();
         const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
-        if (await stub.init(pin, gameId)) return json({ code }, 201);
+        if (await stub.init(pin, gameId, unlocked)) return json({ code }, 201);
       }
       return json({ error: "Gerade ist kein Raumcode frei. Versuch es gleich nochmal." }, 503);
     }

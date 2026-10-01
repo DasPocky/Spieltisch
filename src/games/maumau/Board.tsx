@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { PlayerRow } from "@/platform/PlayerRow";
 import { DECKS, isJack, SUIT_NAME, type Card, type Suit } from "@shared/cards/deck";
 import { canPlay, top, type MauMauAction, type MauMauState } from "@shared/games/maumau/logic";
 import { Button } from "@/components/ui/button";
@@ -58,11 +60,11 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   return (
     <>
       {/* Mitspieler mit Kartenzahl */}
-      <div className="no-scrollbar -mx-4 flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Mitspieler">
+      <PlayerRow>
         {players.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId}
             className={cn("flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold",
-              p.id === s.curId ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass")}>
+              p.id === s.curId ? "turn" : "glass")}>
             {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
             <span className="max-w-[7rem] truncate">{p.id === me ? "Du" : p.name}</span>
             <span className="flex items-center gap-1 tabular-nums" aria-label={`${s.counts[p.id] ?? 0} Karten`}>
@@ -70,7 +72,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
             </span>
           </div>
         ))}
-      </div>
+      </PlayerRow>
 
       {/* Mitte: Stapel und Ablage */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
@@ -81,12 +83,12 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
             <CardBack className="h-full">
               <span className="text-[14cqw] font-bold text-paper/85">{s.pileCount}</span>
             </CardBack>
-            {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-extrabold text-navy-950">+{s.pendingDraw}</span>}
+            {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-bold text-navy-950">+{s.pendingDraw}</span>}
             <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Stapel</span>
           </button>
           <div className="relative h-[86%]" key={s.discard.length}>
             <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Ablage</span>
-            <PlayingCard card={top(s)} className="card-in h-full" />
+            <PlayingCard card={top(s)} className="card-land h-full" />
             {s.wish && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="wish">
                 Wunsch: <SuitIcon suit={s.wish} className="size-4" />{SUIT_NAME[s.wish]}
@@ -120,22 +122,19 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
           </div>
         ) : (
           <>
-            <div className="no-scrollbar -mx-4 flex items-end overflow-x-auto px-4 pt-3 pb-1" data-testid="hand">
-              <div className="mx-auto flex items-end">
+            <Fan count={hand.length}>
                 {hand.map((c, i) => {
                   const ok = playable(c);
                   return (
-                    <button key={c} type="button" disabled={!ok}
+                    <button key={c} type="button" disabled={!ok} style={dealDelay(i)}
                       onClick={() => (isJack(c) ? setUnter(c) : play(c))}
-                      className={cn("w-[min(19vw,5rem)] shrink-0 rounded-[10%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                        i > 0 && (hand.length > 5 ? "-ml-[min(9vw,2.4rem)]" : "-ml-[min(3vw,0.8rem)]"),
+                      className={cn("card-in w-[min(19vw,5rem)] shrink-0 rounded-[10%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                         ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-ice")}>
-                      <PlayingCard card={c} dim={myTurn && !ok} className="card-in" />
+                      <PlayingCard card={c} dim={myTurn && !ok} />
                     </button>
                   );
                 })}
-              </div>
-            </div>
+            </Fan>
             <div className="mt-2 grid grid-cols-[1fr_auto_1fr] gap-2 [&>button]:min-w-0 [&>button]:px-3">
               <Button variant="secondary" size="lg" disabled={!myTurn || !!s.drawn} onClick={() => act({ type: "draw" })}>
                 {s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"}

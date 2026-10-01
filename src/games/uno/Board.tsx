@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { PlayerRow } from "@/platform/PlayerRow";
 import { Ban, Repeat2 } from "lucide-react";
 import {
   canPlay, colorOf, COLOR_NAME, COLORS, cardLabel, isWild, leaders, top, valueOf,
@@ -27,7 +29,7 @@ export function UnoCardView({ card, dim, className }: { card: Card; dim?: boolea
     : v === "plus2" ? "+2" : v === "plus4" ? "+4" : v === "wild" ? null : v;
   return (
     <div role="img" aria-label={cardLabel(card)}
-      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-extrabold text-paper shadow-md ring-1 ring-white/25 transition", dim && "card-dim", className)}
+      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-bold text-paper shadow-md ring-1 ring-white/25 transition", dim && "card-dim", className)}
       style={{ background: c ? UNO_BG[c] : MUTED.ink }}>
       {!c && (
         <div className="absolute grid aspect-square w-[68%] grid-cols-2 overflow-hidden rounded-full opacity-90">
@@ -83,11 +85,11 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
   return (
     <>
       {/* Mitspieler mit Kartenzahl (und Punkten) */}
-      <div className="no-scrollbar -mx-4 flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Mitspieler">
+      <PlayerRow>
         {players.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId}
             className={cn("flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold",
-              p.id === s.curId && s.phase === "play" ? "bg-gradient-to-b from-deep-400 to-primary text-white" : "glass")}>
+              p.id === s.curId && s.phase === "play" ? "turn" : "glass")}>
             {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
             <span className="max-w-[7rem] truncate">{p.id === me ? "Du" : p.name}</span>
             <span className="flex items-center gap-1 tabular-nums" aria-label={`${s.counts[p.id] ?? 0} Karten`}>
@@ -96,7 +98,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
             {scored && <span className="text-xs font-normal tabular-nums opacity-75">{s.scores[p.id] ?? 0}</span>}
           </div>
         ))}
-      </div>
+      </PlayerRow>
 
       {/* Mitte: Stapel, Ablage, gefragte Farbe */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
@@ -105,12 +107,12 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
             aria-label={s.pendingDraw ? `${s.pendingDraw} Karten ziehen` : "Karte ziehen"}
             className={cn("relative h-[68%] rounded-[12%] outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", mustDraw && "target-glow")}>
             <div className="card-back grid aspect-[5/7] h-full place-items-center rounded-[12%] text-lg font-bold text-paper/85 shadow-md">{s.pileCount}</div>
-            {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-extrabold text-navy-950">+{s.pendingDraw}</span>}
+            {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-bold text-navy-950">+{s.pendingDraw}</span>}
             <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Stapel</span>
           </button>
           <div className="relative h-[86%]" key={s.discard.length}>
             <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Ablage</span>
-            <UnoCardView card={top(s)} className="card-in h-full" />
+            <UnoCardView card={top(s)} className="card-land h-full" />
             {isWild(top(s)) && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="color">
                 <span className="size-3 rounded-full" style={{ background: UNO_BG[s.color] }} />{COLOR_NAME[s.color]}
@@ -146,22 +148,19 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
           </div>
         ) : (
           <>
-            <div className="no-scrollbar -mx-4 flex items-end overflow-x-auto px-4 pt-3 pb-1" data-testid="hand">
-              <div className="mx-auto flex items-end">
+            <Fan count={hand.length}>
                 {hand.map((c, i) => {
                   const ok = playable(c);
                   return (
-                    <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!ok} data-card={c}
+                    <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!ok} data-card={c} style={dealDelay(i)}
                       onClick={() => (isWild(c) ? setWild(c) : play(c))}
-                      className={cn("w-[min(17vw,4.5rem)] shrink-0 rounded-[12%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                        i > 0 && (hand.length > 6 ? "-ml-[min(8vw,2.2rem)]" : "-ml-[min(3vw,0.8rem)]"),
+                      className={cn("card-in w-[min(17vw,4.5rem)] shrink-0 rounded-[12%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                         ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-ice")}>
-                      <UnoCardView card={c} dim={myTurn && !ok} className="card-in" />
+                      <UnoCardView card={c} dim={myTurn && !ok} />
                     </button>
                   );
                 })}
-              </div>
-            </div>
+            </Fan>
             <div className="mt-2 grid grid-cols-[1fr_auto_1fr] gap-2 [&>button]:min-w-0 [&>button]:px-3">
               <Button variant="secondary" size="lg" disabled={!myTurn || !!s.drawn} onClick={() => act({ type: "draw" })}>
                 {s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"}

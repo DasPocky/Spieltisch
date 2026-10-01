@@ -62,7 +62,7 @@ export function Admin() {
       <header className="flex h-14 shrink-0 items-center">
         <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate("/")}><ChevronLeft />Spieltisch</Button>
       </header>
-      <h1 className="flex items-center gap-2 text-3xl font-extrabold tracking-tight"><ShieldCheck className="size-7 text-navy-300" />Admin</h1>
+      <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight"><ShieldCheck className="size-7 text-navy-300" />Admin</h1>
 
       {!config ? (
         <Card className="mt-5">

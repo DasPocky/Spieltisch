@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { PlayerRow } from "@/platform/PlayerRow";
 import { Bird, Crown, Eye, EyeOff, Footprints, Heart, Laugh, Music, Scale, Skull, type LucideIcon } from "lucide-react";
 import { ALL_ROLES, knownRoles, participants, ROLES, type Death, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
@@ -26,7 +27,7 @@ export function IconTitle({ icon, children }: { icon: LucideIcon; children: Reac
 export function Panel({ title, sub, children, className }: { title?: ReactNode; sub?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <section className={cn("glass flex min-h-0 flex-1 flex-col rounded-2xl p-3.5", className)}>
-      {title && <h2 className="shrink-0 text-xl font-extrabold tracking-tight">{title}</h2>}
+      {title && <h2 className="shrink-0 text-xl font-bold tracking-tight">{title}</h2>}
       {sub && <p className="mt-1 shrink-0 text-sm leading-snug text-muted-foreground">{sub}</p>}
       {children && <div className="no-scrollbar mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>}
     </section>
@@ -95,7 +96,7 @@ export function RoleCard({ role, hidden: startHidden = true, compact }: { role: 
         <span className={cn("flex items-center gap-3", compact ? "justify-start text-left" : "flex-col")}>
           <RoleIcon role={role} className={cn(compact ? "size-8" : "size-14", r.team === "werwolf" ? "text-destructive" : "text-navy-600")} />
           <span className="min-w-0">
-            <span className={cn("block font-extrabold tracking-tight", compact ? "text-lg" : "text-3xl")} data-testid="my-role">{r.name}</span>
+            <span className={cn("block font-bold tracking-tight", compact ? "text-lg" : "text-3xl")} data-testid="my-role">{r.name}</span>
             <span className={cn("block text-sm leading-snug", r.team === "werwolf" ? "text-white/75" : "text-paper-ink/70")}>{r.short}</span>
             {!compact && <span className={cn("mt-1.5 block text-sm font-semibold leading-snug", r.team === "werwolf" ? "text-white/90" : "text-paper-ink/85")} data-testid="role-goal">{goalOf(role)}</span>}
           </span>
@@ -110,7 +111,7 @@ export function RoleCard({ role, hidden: startHidden = true, compact }: { role: 
 export function AliveStrip({ s, players, me, showAll }: { s: WerwolfState; players: Player[]; me: string | null; showAll?: boolean }) {
   const known = knownRoles(s);
   return (
-    <div className="no-scrollbar -mx-4 flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Mitspieler">
+    <PlayerRow>
       {participants(s).map((id) => {
         const dead = !s.alive[id];
         // Lebende Rollen nie in der Leiste zeigen – ein Blick aufs Nachbarhandy würde sie verraten
@@ -127,7 +128,7 @@ export function AliveStrip({ s, players, me, showAll }: { s: WerwolfState; playe
           </span>
         );
       })}
-    </div>
+    </PlayerRow>
   );
 }
 

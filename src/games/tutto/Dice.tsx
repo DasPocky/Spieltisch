@@ -24,7 +24,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
     <section className="glass rounded-2xl p-2.5">
       <div className="flex items-center justify-between px-1.5">
         <span className="text-sm text-muted-foreground">Punkte dieser Runde</span>
-        <b className="text-3xl font-extrabold tracking-tight tabular-nums">
+        <b className="text-3xl font-bold tracking-tight tabular-nums">
           <span className={cn(d?.bust && card !== "fire" && "text-muted-foreground line-through decoration-destructive decoration-[3px]")}>{fmt(state.turnPts)}</span>
           {sel !== null && sel > 0 && scoresHere && <span className="ml-1.5 text-lg text-navy-300">+{fmt(sel)}</span>}
         </b>
@@ -74,7 +74,7 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
     <button type="button" onClick={onClick} disabled={disabled}
       className={cn(
         "h-14 whitespace-nowrap rounded-xl px-3 text-base font-bold outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40",
-        primary ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]" : "bg-secondary ring-1 ring-inset ring-border",
+        primary ? "bg-primary text-white shadow-[0_2px_8px_rgb(42_92_191/0.22)]" : "bg-secondary ring-1 ring-inset ring-border",
       )}>
       {children}
     </button>

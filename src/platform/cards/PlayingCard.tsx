@@ -62,11 +62,11 @@ export function PlayingCard({ card, className, dim }: { card: Card; className?: 
     <div className={cn("@container aspect-[5/8] select-none", className)} role="img" aria-label={`${SUIT_NAME[suit]}-${RANK_NAME[rank]}`}>
       <div className={cn("relative size-full overflow-hidden rounded-[10cqw] bg-paper shadow-[0_6px_14px_rgba(2,8,23,.45)] ring-1 ring-black/10 transition", dim && "card-dim")}>
         <div className="absolute top-[5cqw] left-[7cqw] flex flex-col items-center leading-none" style={{ color }}>
-          <span className="text-[26cqw] font-extrabold tracking-tighter">{rank}</span>
+          <span className="text-[26cqw] font-bold tracking-tighter">{rank}</span>
           <SuitIcon suit={suit} className="mt-[2cqw] size-[20cqw]" />
         </div>
         <div className="absolute right-[7cqw] bottom-[5cqw] flex rotate-180 flex-col items-center leading-none" style={{ color }}>
-          <span className="text-[26cqw] font-extrabold tracking-tighter">{rank}</span>
+          <span className="text-[26cqw] font-bold tracking-tighter">{rank}</span>
           <SuitIcon suit={suit} className="mt-[2cqw] size-[20cqw]" />
         </div>
         <div className="absolute inset-[22cqw_14cqw] grid place-items-center rounded-[6cqw]" style={{ background: face ? `${color}14` : undefined, boxShadow: face ? `inset 0 0 0 1.2cqw ${color}55` : undefined }}>

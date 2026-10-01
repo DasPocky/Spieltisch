@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getGameUI } from "@/games";
 import { navigate } from "@/hooks/useRoute";
-import { NAME_KEY, setPendingJoin } from "@/lib/storage";
-import { forgetAccess, savedAccess } from "@/hooks/useSiteConfig";
+import { NAME_KEY } from "@/lib/storage";
+import { createRoom } from "@/lib/createRoom";
 import { IconTile } from "@/platform/Logo";
 import { RulesSheet } from "@/platform/RulesSheet";
 
@@ -26,24 +26,9 @@ export function GamePage({ gameId }: { gameId: string }) {
 
   const create = async () => {
     setBusy(true); setError(null);
-    try {
-      const res = await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pin, game: gameId, access: savedAccess() ?? undefined }),
-      });
-      const data = (await res.json()) as { code?: string; error?: string };
-      // Zugangscode inzwischen geändert: vergessen, damit er neu abgefragt wird
-      if (res.status === 403 && (data as { code?: string }).code === "access") forgetAccess();
-      if (!res.ok || !data.code) throw new Error(data.error ?? "Raum konnte nicht erstellt werden.");
-      try { localStorage.setItem(NAME_KEY, cleanName(name)); } catch { /* egal */ }
-      setPendingJoin(data.code, { name: cleanName(name), pin });
-      navigate(`/r/${data.code}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Keine Verbindung zum Server.");
-    } finally {
-      setBusy(false);
-    }
+    try { await createRoom(name, pin, gameId); }
+    catch (e) { setError(e instanceof Error ? e.message : "Keine Verbindung zum Server."); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -58,7 +43,7 @@ export function GamePage({ gameId }: { gameId: string }) {
       <div className="mt-[2vh] flex items-center gap-4">
         <IconTile className="size-18 rounded-3xl"><Icon className="size-12" /></IconTile>
         <div className="min-w-0">
-          <h1 className="text-4xl font-extrabold leading-none tracking-tighter">{info.name}</h1>
+          <h1 className="text-4xl font-bold leading-none tracking-tighter">{info.name}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">{info.category} · {info.minPlayers}–{info.maxPlayers} Spieler · {info.duration}</p>
         </div>
       </div>

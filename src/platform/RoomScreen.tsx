@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronRight, Lock } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,10 @@ import { getGameUI } from "@/games";
 import type { BoardProps } from "@/games/types";
 import { useViewMode } from "@/hooks/useViewMode";
 import { cn } from "@/lib/utils";
+import { pickGameKey } from "@/lib/createRoom";
+import { LAST_GAME_KEY } from "@/lib/storage";
+import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
+import { accessFor } from "@shared/platform/access";
 import { IconTile } from "./Logo";
 import { MenuSheet, type MenuProps } from "./MenuSheet";
 import { PlayerManager } from "./PlayerManager";
@@ -42,12 +46,12 @@ export function RoomScreen(props: Props) {
   const { Board, HeaderExtra, Icon } = ui;
 
   return (
-    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe pb-8")}>
+    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="flex h-14 shrink-0 items-center justify-between">
         <div className="flex min-w-0 items-center gap-2.5">
           <IconTile><Icon className="size-6" /></IconTile>
           <div className="min-w-0 leading-tight">
-            <div className="truncate text-lg font-extrabold tracking-tight">{info.name}</div>
+            <div className="truncate text-lg font-bold tracking-tight">{info.name}</div>
             {code && <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground">{code}</div>}
           </div>
         </div>
@@ -67,7 +71,15 @@ export function RoomScreen(props: Props) {
 }
 
 function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props & { isHost: boolean }) {
-  const [pick, setPick] = useState(false);
+  // Frisch erstellter Raum: der Host wählt zuerst das Spiel
+  const [pick, setPick] = useState(() => {
+    if (!code || !isHost) return false;
+    try { const v = sessionStorage.getItem(pickGameKey(code)); sessionStorage.removeItem(pickGameKey(code)); return v === "1"; } catch { return false; }
+  });
+  const config = useSiteConfig();
+  const gameIds = GAME_IDS.filter((id) => !config || accessFor(config, id) !== "off");
+  const locked = (id: string) => !!config && accessFor(config, id) === "code" && !savedAccess();
+  useEffect(() => { if (code && isHost) try { localStorage.setItem(LAST_GAME_KEY, room.gameId); } catch { /* egal */ } }, [code, isHost, room.gameId]);
   const info = getGame(room.gameId).info;
   const { Icon } = getGameUI(room.gameId);
   const n = room.players.length;
@@ -76,43 +88,46 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
   const range = limits.min === limits.max ? `${limits.min}` : `${limits.min}–${limits.max}`;
 
   return (
-    <section className="pt-2">
-      {code && <ShareCode code={code} gameName={info.name} />}
-
-      <button type="button" disabled={!isHost || GAME_IDS.length < 2} onClick={() => setPick(true)}
-        className="glass mt-3 flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
+    <section className="flex flex-1 flex-col pt-1">
+      <button type="button" disabled={!isHost || gameIds.length < 2} onClick={() => setPick(true)}
+        className="glass flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
         <IconTile className="size-11"><Icon className="size-7" /></IconTile>
         <span className="min-w-0 flex-1">
           <span className="block text-xs text-muted-foreground">Gespielt wird</span>
-          <span className="block font-bold">{info.name} <span className="font-normal text-muted-foreground">· {range} Spieler</span></span>
+          <span className="block font-semibold">{info.name} <span className="font-normal text-muted-foreground">· {range} Spieler</span></span>
           {limits.note && <span className="block text-xs text-muted-foreground">{limits.note}</span>}
         </span>
-        {isHost && GAME_IDS.length > 1 && <span className="flex items-center text-sm font-semibold text-navy-300">Wechseln<ChevronRight className="size-4" /></span>}
+        {isHost && gameIds.length > 1 && <span className="flex items-center text-sm font-semibold text-primary">Wechseln<ChevronRight className="size-4" /></span>}
       </button>
+      {code && <div className="mt-2.5"><ShareCode code={code} gameName={info.name} /></div>}
 
-      <h2 className="mt-6 mb-1 text-xl font-extrabold tracking-tight">Wer spielt mit?</h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        {code ? "Schick den Link und sag die PIN dazu. Die Reihenfolge ist die Zugreihenfolge." : "Die Reihenfolge ist die Zugreihenfolge."}
+      <h2 className="mt-5 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
+      <p className="mb-2.5 px-1 text-sm text-muted-foreground">
+        {code ? "Link schicken und PIN sagen. Die Reihenfolge ist die Zugreihenfolge." : "Die Reihenfolge ist die Zugreihenfolge."}
       </p>
       <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} />
-      <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} className="mt-6" />
-      {isHost ? (
-        <>
-          <Button size="lg" className="mt-6 w-full" disabled={!countOk} onClick={() => dispatch({ type: "start" })}>Spiel starten</Button>
-          {!countOk && <p className="mt-2 text-center text-sm text-muted-foreground">{info.name} braucht {range} Spieler{limits.note ? ` (${limits.note})` : ""} – gerade {n}.</p>}
-        </>
-      ) : (
-        <p className="glass mt-6 rounded-xl py-4 text-center text-muted-foreground">Warte, bis der Host das Spiel startet …</p>
-      )}
+      <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} className="mt-5" />
+      <div className="min-h-4 flex-1" />
+      {/* Start bleibt immer sichtbar unten */}
+      <div className="sticky bottom-0 -mx-4 mt-4 border-t border-border bg-background/90 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md">
+        {isHost ? (
+          <>
+            <Button size="lg" className="w-full" disabled={!countOk} onClick={() => dispatch({ type: "start" })}>Spiel starten</Button>
+            {!countOk && <p className="mt-1.5 text-center text-sm text-muted-foreground">{info.name} braucht {range} Spieler{limits.note ? ` (${limits.note})` : ""} – gerade {n}.</p>}
+          </>
+        ) : (
+          <p className="glass rounded-xl py-3.5 text-center text-muted-foreground">Warte, bis der Host das Spiel startet …</p>
+        )}
+      </div>
 
       <Sheet open={pick} onOpenChange={setPick}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Spiel wählen</SheetTitle>
-            <SheetDescription>Alle bleiben im Raum, nur das Spiel wechselt.</SheetDescription>
+            <SheetTitle>Was spielt ihr?</SheetTitle>
+            <SheetDescription>Alle bleiben im Raum – das Spiel kannst du jederzeit in der Lobby wechseln.</SheetDescription>
           </SheetHeader>
           <div className="grid gap-2 overflow-y-auto px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            {GAME_IDS.map((id) => {
+            {gameIds.map((id) => {
               const g = getGame(id).info;
               const GIcon = getGameUI(id).Icon;
               return (
@@ -120,7 +135,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
                   className={cn("flex items-center gap-3 rounded-2xl p-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === room.gameId ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
                   <IconTile className="size-11"><GIcon className="size-7" /></IconTile>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-bold">{g.name}</span>
+                    <span className="block font-semibold">{g.name}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
                     <span className="block text-sm text-muted-foreground">{g.category} · {g.minPlayers}–{g.maxPlayers} Spieler · {g.duration}</span>
                   </span>
                 </button>
