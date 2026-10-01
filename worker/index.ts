@@ -1,6 +1,12 @@
 import { DurableObject } from "cloudflare:workers";
 import { GAMES, isGameId } from "../shared/games";
-import { addResult, emptyStats, PROFILE_ID_RE, sanitizeResult, type ProfileStats, type RecentGame } from "../shared/platform/profile";
+import {
+  addResult, emptyStats, MAX_PROFILE_GROUPS, PROFILE_ID_RE, sanitizeResult, TRANSFER_CODE_RE, TRANSFER_MS, type ProfileStats, type RecentGame,
+} from "../shared/platform/profile";
+import {
+  addGroupResult, GROUP_CODE_LENGTH, GROUP_CODE_RE, MEMBER_ID_RE, newGroup, previewGroup, randomCode, removeMember, sanitizeAvatar,
+  sanitizeGroupResult, upsertMember, viewGroup, cleanGroupName, type GroupData, type GroupPreview, type GroupView,
+} from "../shared/platform/group";
 import {
   ACCESS_CODE_RE, accessFor, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
   type AccessConfig, type AdminRoom, type GameDefaults, type SiteConfig, type SiteStats, type StatKind,
@@ -16,6 +22,7 @@ interface Env {
   ROOMS: DurableObjectNamespace<GameRoom>;
   SETTINGS: DurableObjectNamespace<SiteSettings>;
   PROFILES: DurableObjectNamespace<ProfileStore>;
+  GROUPS: DurableObjectNamespace<GroupStore>;
   /** Admin-Passwort – als Secret in Cloudflare gesetzt. Fehlt es, ist der Admin-Bereich aus. */
   ADMIN_PASSWORD?: string;
   /** Cloudflare Realtime (Sprach-/Videochat): App-ID und App-Token. Fehlen sie, ist der Chat aus. */
@@ -39,6 +46,8 @@ interface RoomData {
   unlocked?: boolean;
   /** playerId → Profil-ID (nur auf dem Server, nie an andere Spieler) */
   profiles?: Record<string, string>;
+  /** playerId → aktive Gruppe (nur auf dem Server) – bekommt das Ergebnis der Partie */
+  groups?: Record<string, string>;
   /** Zuletzt ausgeführte Aktions-IDs je Spieler – doppelt geschickte Aktionen werden nur einmal ausgeführt */
   seen?: Record<string, string[]>;
   /** Beitritts-Nonce → Spieler, damit ein wiederholter Beitritt keinen zweiten Spieler anlegt */
@@ -305,6 +314,35 @@ export class GameRoom extends DurableObject<Env> {
       const entry: RecentGame = { gameId: now.gameId, at: Date.now(), won: r.won, score: r.score, players, online: true };
       try { await this.env.PROFILES.get(this.env.PROFILES.idFromName(pid)).record(entry); } catch { /* Statistik ist nur ein Extra */ }
     }));
+    // Gruppen der Mitspieler: jede bekommt das Ergebnis aller, die dort Mitglied sind
+    const entries = results.flatMap((r) => (room.profiles?.[r.id] ? [{ profile: room.profiles[r.id], won: r.won }] : []));
+    const codes = new Set(Object.entries(room.groups ?? {}).filter(([id]) => results.some((r) => r.id === id)).map(([, c]) => c));
+    await Promise.all([...codes].map(async (c) => {
+      try { await groupOf(this.env, c).recordOnline(now.gameId, entries); } catch { /* nur ein Extra */ }
+    }));
+  }
+
+  /** Avatar und Gruppe beim (Wieder-)Beitritt übernehmen. true, wenn sich etwas geändert hat. */
+  private async applyExtras(playerId: string, msg: Extract<ClientMessage, { type: "join" }>): Promise<boolean> {
+    // Erst nachfragen, dann ändern – während des Wartens kann sich der Raum schon geändert haben
+    const pid = this.room?.profiles?.[playerId];
+    const code = typeof msg.group === "string" && GROUP_CODE_RE.test(msg.group) ? msg.group : null;
+    let member: string | null = null;
+    if (code && pid) { try { member = await groupOf(this.env, code).memberOf(pid); } catch { /* egal */ } }
+    const room = this.room;
+    if (!room || !room.state.players.some((p) => p.id === playerId)) return false;
+    const state = room.state;
+    const before = JSON.stringify([state.avatars?.[playerId], state.members?.[playerId], room.groups?.[playerId]]);
+    const avatar = sanitizeAvatar(msg.avatar);
+    if (avatar) state.avatars = { ...state.avatars, [playerId]: avatar };
+    if (member && code) {
+      state.members = { ...state.members, [playerId]: member };
+      room.groups = { ...room.groups, [playerId]: code };
+    } else {
+      if (state.members?.[playerId]) { state.members = { ...state.members }; delete state.members[playerId]; }
+      if (room.groups?.[playerId]) delete room.groups[playerId];
+    }
+    return JSON.stringify([state.avatars?.[playerId], state.members?.[playerId], room.groups?.[playerId]]) !== before;
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
@@ -371,10 +409,13 @@ export class GameRoom extends DurableObject<Env> {
         && room.state.players.some((p) => p.id === msg.playerId)) {
       ws.serializeAttachment({ playerId: msg.playerId } satisfies Attachment);
       this.dropOldSockets(msg.playerId, ws);
+      let changed = false;
       if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile) && room.profiles?.[msg.playerId] !== msg.profile) {
         (room.profiles ??= {})[msg.playerId] = msg.profile;
-        await this.persist();
+        changed = true;
       }
+      if (await this.applyExtras(msg.playerId, msg)) changed = true;
+      if (changed) await this.persist();
       this.send(ws, { type: "joined", playerId: msg.playerId, token: msg.token });
       this.broadcast();
       return;
@@ -418,6 +459,7 @@ export class GameRoom extends DurableObject<Env> {
     room.tokens[playerId] = token;
     if (nonce) room.joins = Object.fromEntries([...Object.entries(room.joins ?? {}), [nonce, playerId]].slice(-40));
     if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile)) (room.profiles ??= {})[playerId] = msg.profile;
+    await this.applyExtras(playerId, msg);
     ws.serializeAttachment({ playerId } satisfies Attachment);
     await this.persist(true);
     this.send(ws, { type: "joined", playerId, token });
@@ -437,6 +479,7 @@ export class GameRoom extends DurableObject<Env> {
     if (!this.room) return;
     delete this.room.tokens[playerId];
     if (this.room.profiles) delete this.room.profiles[playerId];
+    if (this.room.groups) delete this.room.groups[playerId];
     if (this.room.call) delete this.room.call[playerId];
     for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as Attachment | null;
@@ -690,10 +733,42 @@ export class ProfileStore extends DurableObject<Env> {
     return this.stats;
   }
 
-  async rename(name: string): Promise<ProfileStats> {
-    this.stats = { ...(this.stats ?? emptyStats(Date.now())), name: cleanName(name) };
+  /** Name und/oder Avatar setzen (fehlende Felder bleiben) */
+  async update(name: unknown, avatar: unknown): Promise<ProfileStats> {
+    const s = { ...(this.stats ?? emptyStats(Date.now())) };
+    if (name !== undefined) s.name = cleanName(name);
+    const av = sanitizeAvatar(avatar);
+    if (av) s.avatar = av;
+    this.stats = s;
     await this.save();
-    return this.stats;
+    return s;
+  }
+
+  /** Gruppe merken bzw. vergessen (für den Umzug aufs neue Handy) */
+  async setGroup(code: string, member: boolean): Promise<void> {
+    if (!GROUP_CODE_RE.test(code)) return;
+    const s = { ...(this.stats ?? emptyStats(Date.now())) };
+    const rest = (s.groups ?? []).filter((c) => c !== code);
+    s.groups = member ? [code, ...rest].slice(0, MAX_PROFILE_GROUPS) : rest;
+    this.stats = s;
+    await this.save();
+  }
+
+  // ----- Übertragungs-Code (eigenes Objekt je Code, nicht im Profil) -----
+
+  async offer(profileId: string): Promise<number> {
+    const until = Date.now() + TRANSFER_MS;
+    await this.ctx.storage.put("transfer", { profileId, until });
+    await this.ctx.storage.setAlarm(until);
+    return until;
+  }
+
+  /** Einmal einlösen: Profil-ID, danach ist der Code verbraucht */
+  async take(): Promise<string | null> {
+    const t = await this.ctx.storage.get<{ profileId: string; until: number }>("transfer");
+    if (!t) return null;
+    await this.remove();
+    return t.until > Date.now() ? t.profileId : null;
   }
 
   async remove(): Promise<void> {
@@ -711,6 +786,215 @@ export class ProfileStore extends DurableObject<Env> {
 }
 
 const profileOf = (env: Env, id: string) => env.PROFILES.get(env.PROFILES.idFromName(id));
+const transferOf = (env: Env, code: string) => env.PROFILES.get(env.PROFILES.idFromName(`transfer:${code}`));
+
+/** Gruppen ohne Aktivität werden nach einem Jahr gelöscht */
+const GROUP_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+/** Lokale Ergebnisse: höchstens so viele je Gruppe in 10 Minuten */
+const GROUP_POSTS = 30;
+
+type GroupAnswer = { ok: true; group: GroupView } | { ok: false; status: number; error: string };
+
+/** Ein Durable Object pro Gruppe (Name = Gruppencode): Mitglieder und Bestenliste. */
+export class GroupStore extends DurableObject<Env> {
+  private group: GroupData | null = null;
+  private posts: number[] = [];
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.blockConcurrencyWhile(async () => { this.group = (await ctx.storage.get<GroupData>("group")) ?? null; });
+  }
+
+  /** Neue Gruppe mit dem ersten Mitglied. null, wenn der Code schon vergeben ist. */
+  async init(code: string, name: string, profileId: string, member: string, avatar: unknown): Promise<GroupView | null> {
+    if (this.group) return null;
+    const g = newGroup(code, name, Date.now());
+    const id = upsertMember(g, profileId, member, avatar, Date.now());
+    this.group = g;
+    await this.save();
+    return viewGroup(g, id);
+  }
+
+  /** Mitglieder sehen alles, andere nur Name und Größe */
+  async get(profileId: string | null): Promise<{ group?: GroupView; preview?: GroupPreview } | null> {
+    const g = this.group;
+    if (!g) return null;
+    const id = profileId ? g.keys[profileId] : undefined;
+    return id ? { group: viewGroup(g, id) } : { preview: previewGroup(g) };
+  }
+
+  async memberOf(profileId: string): Promise<string | null> {
+    return this.group?.keys[profileId] ?? null;
+  }
+
+  /** Beitreten oder eigenen Namen/Avatar aktualisieren */
+  async join(profileId: string, name: unknown, avatar: unknown): Promise<GroupAnswer> {
+    const g = this.group;
+    if (!g) return { ok: false, status: 404, error: "Diese Gruppe gibt es nicht." };
+    try {
+      const id = upsertMember(g, profileId, name, avatar, Date.now());
+      await this.save();
+      return { ok: true, group: viewGroup(g, id) };
+    } catch (e) {
+      return { ok: false, status: 400, error: e instanceof Error ? e.message : "Beitritt nicht möglich." };
+    }
+  }
+
+  async rename(profileId: string, name: unknown): Promise<GroupAnswer> {
+    const g = this.group;
+    const id = g?.keys[profileId];
+    if (!g || !id) return { ok: false, status: 403, error: "Du bist nicht in dieser Gruppe." };
+    const clean = cleanGroupName(name);
+    if (!clean) return { ok: false, status: 400, error: "Bitte gib einen Namen ein." };
+    g.name = clean;
+    await this.save();
+    return { ok: true, group: viewGroup(g, id) };
+  }
+
+  /** Jedes Mitglied darf jedes entfernen (auch sich selbst = austreten). Leere Gruppen verschwinden. */
+  async remove(profileId: string, memberId: string): Promise<GroupAnswer | { ok: true; gone: true }> {
+    const g = this.group;
+    const id = g?.keys[profileId];
+    if (!g || !id) return { ok: false, status: 403, error: "Du bist nicht in dieser Gruppe." };
+    if (!removeMember(g, memberId)) return { ok: false, status: 404, error: "Dieses Mitglied gibt es nicht." };
+    if (!g.members.length) {
+      this.group = null;
+      await this.ctx.storage.deleteAlarm();
+      await this.ctx.storage.deleteAll();
+      return { ok: true, gone: true };
+    }
+    await this.save();
+    return memberId === id ? { ok: true, gone: true } : { ok: true, group: viewGroup(g, id) };
+  }
+
+  /** Lokale Partie: ein Mitglied meldet das Ergebnis der Mitglieder am Tisch */
+  async result(profileId: string, body: unknown): Promise<GroupAnswer> {
+    const g = this.group;
+    const id = g?.keys[profileId];
+    if (!g || !id) return { ok: false, status: 403, error: "Du bist nicht in dieser Gruppe." };
+    const now = Date.now();
+    this.posts = this.posts.filter((t) => now - t < 10 * 60 * 1000);
+    if (this.posts.length >= GROUP_POSTS) return { ok: false, status: 429, error: "Zu viele Ergebnisse auf einmal." };
+    const r = sanitizeGroupResult(body, GAME_IDS, g.members.map((m) => m.id));
+    if (!r) return { ok: false, status: 400, error: "Ungültiges Ergebnis." };
+    this.posts.push(now);
+    addGroupResult(g, r);
+    await this.save();
+    return { ok: true, group: viewGroup(g, id) };
+  }
+
+  /** Online-Partie (vom Raum): nur Mitglieder zählen */
+  async recordOnline(gameId: string, entries: { profile: string; won: boolean }[]): Promise<void> {
+    const g = this.group;
+    if (!g || !isGameId(gameId)) return;
+    const players = entries.flatMap((e) => (g.keys[e.profile] ? [{ id: g.keys[e.profile], won: e.won }] : []));
+    if (!players.length) return;
+    addGroupResult(g, { gameId, players });
+    await this.save();
+  }
+
+  async alarm(): Promise<void> {
+    this.group = null;
+    await this.ctx.storage.deleteAll();
+  }
+
+  private async save() {
+    await this.ctx.storage.put("group", this.group);
+    await this.ctx.storage.setAlarm(Date.now() + GROUP_TTL_MS);
+  }
+}
+
+const groupOf = (env: Env, code: string) => env.GROUPS.get(env.GROUPS.idFromName(code));
+
+/** Anfragen je Adresse begrenzen (pro Worker-Instanz, grob reicht) */
+const hits = new Map<string, number[]>();
+function allowed(bucket: string, ip: string, max: number, ms = 10 * 60 * 1000): boolean {
+  const key = `${bucket}:${ip}`;
+  const now = Date.now();
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < ms);
+  if (recent.length >= max) return false;
+  recent.push(now);
+  hits.set(key, recent);
+  if (hits.size > 5000) hits.clear();
+  return true;
+}
+
+async function readBody(request: Request): Promise<Record<string, unknown> | null> {
+  const text = await request.text();
+  if (text.length > 8000) return null;
+  try {
+    const body = text ? JSON.parse(text) : {};
+    return body && typeof body === "object" && !Array.isArray(body) ? body : null;
+  } catch { return null; }
+}
+
+const answer = (r: GroupAnswer | { ok: true; gone: true }) =>
+  r.ok ? json("gone" in r ? { ok: true, gone: true } : { ok: true, group: r.group }) : json({ error: r.error }, r.status);
+
+/**
+ * Gruppen: anlegen, ansehen (Mitglieder alles, sonst Vorschau), beitreten, umbenennen, Mitglied entfernen, Ergebnis melden.
+ * Wer fragt, weist sich mit seiner Profil-ID aus (Kopfzeile x-profile bzw. Feld `profile`).
+ */
+async function handleGroups(request: Request, env: Env, path: string): Promise<Response> {
+  const ip = request.headers.get("cf-connecting-ip") ?? "local";
+  if (path === "/api/groups" && request.method === "POST") {
+    const body = await readBody(request);
+    const profile = String(body?.profile ?? "");
+    if (!body || !PROFILE_ID_RE.test(profile)) return json({ error: "Ungültige Anfrage." }, 400);
+    if (!allowed("group-new", ip, 10)) return json({ error: "Zu viele neue Gruppen. Bitte später nochmal." }, 429);
+    if (!cleanName(body.member)) return json({ error: "Bitte gib deinen Namen ein." }, 400);
+    for (let i = 0; i < 6; i++) {
+      const code = randomCode(GROUP_CODE_LENGTH);
+      const group = await groupOf(env, code).init(code, String(body.name ?? ""), profile, String(body.member), body.avatar);
+      if (group) {
+        await profileOf(env, profile).setGroup(code, true);
+        return json({ ok: true, group }, 201);
+      }
+    }
+    return json({ error: "Gerade ist kein Gruppencode frei." }, 503);
+  }
+
+  const m = path.match(/^\/api\/groups\/([A-Z0-9]+)(?:\/(join|remove|result))?$/);
+  if (!m) return json({ error: "Nicht gefunden." }, 404);
+  const [, code, op] = m;
+  if (!GROUP_CODE_RE.test(code)) return json({ error: "Ungültiger Gruppencode." }, 400);
+  const store = groupOf(env, code);
+
+  if (!op && request.method === "GET") {
+    const profile = request.headers.get("x-profile") ?? "";
+    const pid = PROFILE_ID_RE.test(profile) ? profile : null;
+    const res = await store.get(pid);
+    // Raten von Gruppencodes bremsen: Vorschauen und Fehlgriffe sind begrenzt
+    if (!res?.group && !allowed("group-look", ip, 60)) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);
+    if (!res) return json({ error: "Diese Gruppe gibt es nicht." }, 404);
+    return json(res);
+  }
+
+  const body = await readBody(request);
+  const profile = String(body?.profile ?? "");
+  if (!body || !PROFILE_ID_RE.test(profile)) return json({ error: "Ungültige Anfrage." }, 400);
+
+  if (op === "join" && request.method === "POST") {
+    if (!allowed("group-join", ip, 30)) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);
+    const res = await store.join(profile, body.name, body.avatar);
+    if (res.ok) await profileOf(env, profile).setGroup(code, true);
+    return answer(res);
+  }
+  if (!op && request.method === "PUT") return answer(await store.rename(profile, body.name));
+  if (op === "remove" && request.method === "POST") {
+    const member = String(body.member ?? "");
+    if (!MEMBER_ID_RE.test(member)) return json({ error: "Ungültiges Mitglied." }, 400);
+    const me = await store.memberOf(profile);
+    const res = await store.remove(profile, member);
+    if (res.ok && me === member) await profileOf(env, profile).setGroup(code, false);
+    return answer(res);
+  }
+  if (op === "result" && request.method === "POST") {
+    if (!allowed("group-result", ip, 40)) return json({ error: "Zu viele Ergebnisse. Bitte später nochmal." }, 429);
+    return answer(await store.result(profile, body));
+  }
+  return json({ error: "Nicht gefunden." }, 404);
+}
 
 /** Admin-Anmeldung aus der Anfrage: `authorization: Bearer <token>` oder Passwort (Kopfzeile oder Body) */
 function adminCred(request: Request, password?: unknown): AdminCred {
@@ -874,6 +1158,24 @@ export default {
     }
 
     // Profil: Statistik lesen, Namen setzen, lokale Partie eintragen, löschen
+    // Aufs neue Handy übertragen: Einmal-Code anlegen (mit Profil-ID) bzw. einlösen
+    const transfer = url.pathname.match(/^\/api\/profile\/([A-Z0-9]+)\/transfer$/);
+    if (transfer && request.method === "POST") {
+      if (!PROFILE_ID_RE.test(transfer[1])) return json({ error: "Ungültiges Profil." }, 400);
+      const code = randomCode(8);
+      const until = await transferOf(env, code).offer(transfer[1]);
+      return json({ code, until });
+    }
+    const take = url.pathname.match(/^\/api\/transfer\/([A-Z0-9]+)$/);
+    if (take && request.method === "POST") {
+      if (!allowed("transfer", request.headers.get("cf-connecting-ip") ?? "local", 20)) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);
+      if (!TRANSFER_CODE_RE.test(take[1])) return json({ error: "Ungültiger Code." }, 400);
+      const id = await transferOf(env, take[1]).take();
+      return id ? json({ id }) : json({ error: "Der Code ist abgelaufen oder schon benutzt." }, 404);
+    }
+
+    if (url.pathname === "/api/groups" || url.pathname.startsWith("/api/groups/")) return handleGroups(request, env, url.pathname);
+
     const prof = url.pathname.match(/^\/api\/profile\/([A-Z0-9]+)(\/result)?$/);
     if (prof) {
       const id = prof[1];
@@ -888,9 +1190,9 @@ export default {
       }
       if (!prof[2] && request.method === "GET") return json(await store.get());
       if (!prof[2] && request.method === "PUT") {
-        let body: { name?: unknown };
+        let body: { name?: unknown; avatar?: unknown };
         try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
-        return json(await store.rename(String(body.name ?? "")));
+        return json(await store.update(body.name === undefined ? undefined : String(body.name ?? ""), body.avatar));
       }
       if (!prof[2] && request.method === "DELETE") { await store.remove(); return json({ ok: true }); }
     }

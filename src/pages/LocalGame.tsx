@@ -9,6 +9,8 @@ import { navigate } from "@/hooks/useRoute";
 import { siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
 import { localKey, readJSON, writeJSON } from "@/lib/storage";
 import { myName, reportLocal } from "@/lib/profile";
+import { linkLocalPlayer, localLinks, reportGroupResult } from "@/lib/group";
+import type { GroupPick } from "@/platform/PlayerManager";
 
 const isOver = (r: RoomState) => r.phase === "playing" && !!r.game && roomGame(r).isOver(r.game);
 
@@ -27,6 +29,14 @@ function useLocalStats(room: RoomState) {
       const results = logic.results?.(room.game, { players: room.players, hostId: room.hostId, actorId: null, options: room.options, now: Date.now() });
       const mine = me && results?.find((r) => r.id === me.id);
       if (mine) void reportLocal({ gameId: room.gameId, won: mine.won, score: mine.score, players: results!.length });
+      // Spieler aus einer Gruppe: Ergebnis an deren Bestenliste
+      const links = localLinks();
+      const byGroup: Record<string, { id: string; won: boolean }[]> = {};
+      for (const r of results ?? []) {
+        const link = links[r.id];
+        if (link && room.members?.[r.id] === link.member) (byGroup[link.code] ??= []).push({ id: link.member, won: r.won });
+      }
+      for (const [code, players] of Object.entries(byGroup)) void reportGroupResult(code, room.gameId, players);
     }
     was.current = over;
   }, [room]);
@@ -99,7 +109,14 @@ export function LocalGame({ gameId }: { gameId: string }) {
         // Anderes Spiel gewählt: Standard-Einstellungen übernehmen
         return next.gameId !== s.gameId ? applyDefaults(next, siteConfigNow()?.defaults) : next;
       })}
-      onAddLocal={(name) => run((s) => addPlayer(s, { id: crypto.randomUUID(), name }))}
+      onAddLocal={(name, from?: GroupPick) => {
+        const id = crypto.randomUUID();
+        if (from) linkLocalPlayer(id, from.code, from.member);
+        run((s) => {
+          const next = addPlayer(s, { id, name });
+          return from ? { ...next, avatars: { ...next.avatars, [id]: from.avatar }, members: { ...next.members, [id]: from.member } } : next;
+        });
+      }}
       onLeave={() => navigate(`/spiel/${gameId}`)}
     />
   );

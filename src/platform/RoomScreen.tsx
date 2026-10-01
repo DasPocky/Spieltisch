@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Lock } from "lucide-react";
+import { toast } from "sonner";
+import { ChevronRight, Lock, Send } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,9 @@ import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
 import { accessFor } from "@shared/platform/access";
 import { IconTile } from "./Logo";
 import { MenuSheet, type MenuProps } from "./MenuSheet";
-import { PlayerManager } from "./PlayerManager";
+import { PlayerManager, type GroupPick } from "./PlayerManager";
+import { Avatar, AvatarContext } from "./Avatar";
+import { loadGroup, activeGroupCode, useActiveGroup } from "@/lib/group";
 import { SettingsPanel } from "./SettingsPanel";
 import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
@@ -22,7 +25,9 @@ import { InfoBar } from "./InfoBar";
 import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
 import { useGameFeedback } from "./useGameFeedback";
 
-interface Props extends Omit<MenuProps, "board"> {
+interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
+  /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
+  onAddLocal?: (name: string, from?: GroupPick) => void;
   room: RoomState;
   /** null im lokalen Modus */
   me: string | null;
@@ -52,6 +57,7 @@ export function RoomScreen(props: Props) {
   const { Board, HeaderExtra, Icon } = ui;
 
   return (
+    <AvatarContext.Provider value={room.avatars}>
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="flex h-14 shrink-0 items-center justify-between">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -74,6 +80,40 @@ export function RoomScreen(props: Props) {
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} />}
       {board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}
     </div>
+    </AvatarContext.Provider>
+  );
+}
+
+/** Online-Lobby: Raum an die aktive Gruppe schicken und zeigen, wer aus der Gruppe schon da ist */
+function GroupShare({ room, code, gameName }: { room: RoomState; code: string; gameName: string }) {
+  const group = useActiveGroup();
+  if (!group) return null;
+  const here = new Set(Object.values(room.members ?? {}));
+  const joined = group.members.filter((m) => here.has(m.id));
+  const share = async () => {
+    const url = `${location.origin}/r/${code}`;
+    try {
+      const text = `Spiel ${gameName} mit – Raum ${code}`;
+      if (navigator.share) { await navigator.share({ title: group.name, text, url }); return; }
+      await navigator.clipboard.writeText(`${text}: ${url}`);
+      toast("Einladung kopiert – jetzt in eure Gruppe einfügen");
+    } catch { /* abgebrochen */ }
+  };
+  return (
+    <div className="glass mt-2 flex items-center gap-3 rounded-2xl py-2.5 pr-2.5 pl-4" data-testid="group-share">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold">{group.name}</div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {joined.length > 0 && (
+            <span className="flex -space-x-1.5">
+              {joined.slice(0, 4).map((m) => <Avatar key={m.id} avatar={m.avatar} className="size-5 text-[0.7rem] ring-2 ring-background" />)}
+            </span>
+          )}
+          <span className="truncate">{joined.length} von {group.members.length} dabei</span>
+        </div>
+      </div>
+      <Button variant="secondary" size="sm" className="shrink-0" onClick={share}><Send />An Gruppe senden</Button>
+    </div>
   );
 }
 
@@ -87,6 +127,8 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
   const gameIds = GAME_IDS.filter((id) => !config || accessFor(config, id) !== "off");
   const locked = (id: string) => !!config && accessFor(config, id) === "code" && !savedAccess();
   useEffect(() => { if (code && isHost) try { localStorage.setItem(LAST_GAME_KEY, room.gameId); } catch { /* egal */ } }, [code, isHost, room.gameId]);
+  // Aktive Gruppe frisch holen (neue Mitglieder, Avatare)
+  useEffect(() => { const g = activeGroupCode(); if (g) void loadGroup(g); }, []);
   const info = getGame(room.gameId).info;
   const { Icon } = getGameUI(room.gameId);
   const n = room.players.length;
@@ -107,6 +149,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
         {isHost && gameIds.length > 1 && <span className="flex items-center text-sm font-semibold text-primary">Wechseln<ChevronRight className="size-4" /></span>}
       </button>
       {code && <div className="mt-2.5"><ShareCode code={code} gameName={info.name} /></div>}
+      {code && <GroupShare room={room} code={code} gameName={info.name} />}
 
       <h2 className="mt-5 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
       <p className="mb-2.5 px-1 text-sm text-muted-foreground">

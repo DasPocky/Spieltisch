@@ -51,13 +51,14 @@ test("Profil: Online- und lokale Partien landen in der Statistik", async ({ brow
   await expect(page.getByTestId("stats")).toContainText("lokal");
   await shot(page, "80-profile");
 
-  // Code anzeigen und auf einem zweiten „Handy“ übernehmen
-  await page.getByRole("button", { name: "Profil-Code anzeigen" }).click();
-  const code = (await page.getByTestId("profile-code").textContent())!;
+  // Einmal-Code anzeigen und auf einem zweiten „Handy“ eingeben
+  await page.getByRole("button", { name: "Code zum Übertragen anzeigen" }).click();
+  const code = (await page.getByTestId("transfer-code").textContent())!;
   const other = await (await browser.newContext({ locale: "de-DE" })).newPage();
   await other.goto("/profil");
-  await other.getByLabel("Code von einem anderen Gerät eingeben").fill(code);
+  await other.getByLabel("Code vom alten Handy eingeben").fill(code.toLowerCase());
   await other.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(other.getByLabel("Dein Name")).toHaveValue("Anna");
   await expect(other.getByTestId("stats")).toContainText("2 Partien");
 
   // Löschen

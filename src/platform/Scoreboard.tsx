@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
+import { AVATAR_COLORS, AVATAR_EMOJIS } from "@shared/platform/group";
 import { cn, fmt } from "@/lib/utils";
+import { AvatarContext } from "./Avatar";
 
 export interface ScoreEntry {
   id: string;
@@ -25,6 +27,7 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
   lowWins?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const avatars = useContext(AvatarContext);
   const max = Math.max(...entries.map((p) => p.score));
   const min = Math.min(...entries.map((p) => p.score));
   const fits = entries.length <= 4;
@@ -64,7 +67,13 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
             )}
           >
             <div className="flex items-center gap-1 text-xs font-semibold">
-              {online && (
+              {avatars?.[p.id] ? (
+                // Avatar statt Online-Punkt; offline wird er blass
+                <span className={cn("grid size-4 shrink-0 place-items-center rounded-full text-[0.62rem] leading-none", online && !online.has(p.id) && "opacity-40 grayscale")}
+                  style={{ backgroundColor: AVATAR_COLORS[avatars[p.id].color] }} aria-label={online ? (online.has(p.id) ? "online" : "offline") : undefined}>
+                  {AVATAR_EMOJIS[avatars[p.id].emoji]}
+                </span>
+              ) : online && (
                 <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")}
                   aria-label={online.has(p.id) ? "online" : "offline"} />
               )}

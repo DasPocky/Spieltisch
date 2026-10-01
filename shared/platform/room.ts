@@ -4,6 +4,7 @@
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
+import type { Avatar } from "./group";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
 
 export const MAX_PLAYERS = 20;
@@ -30,6 +31,10 @@ export interface RoomState {
   undoCount?: number;
   /** zählt Rücknahmen – damit alle kurz „Zug zurückgenommen“ sehen */
   undone?: number;
+  /** Avatar je Spieler (online setzt ihn der Server beim Beitritt, lokal das Gerät) */
+  avatars?: Record<string, Avatar>;
+  /** Spieler → Mitglieds-ID in seiner Gruppe (öffentlich innerhalb der Gruppe, keine Profil-ID) */
+  members?: Record<string, string>;
 }
 
 /** So viele Züge lassen sich zurücknehmen */
@@ -199,6 +204,8 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
         s.game = logic.onPlayerRemoved(s.game, a.id, context(s, actorId));
       }
       s.players.splice(i, 1);
+      if (s.avatars) delete s.avatars[a.id];
+      if (s.members) delete s.members[a.id];
       if (s.hostId === a.id) s.hostId = s.players[0]?.id ?? null;
       // Mindestzahl gilt nur beim Start – während der Partie regelt das Spiel Abgänge selbst (onPlayerRemoved)
       if (s.phase === "playing" && !s.players.length) { s.phase = "lobby"; s.game = null; }

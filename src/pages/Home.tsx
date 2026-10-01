@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Lock, LogIn, Settings2, Smartphone, UserRound, Users, type LucideIcon } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE } from "@shared/platform/protocol";
 import { cleanName, MAX_NAME } from "@shared/platform/room";
@@ -15,6 +15,9 @@ import { InstallHint } from "@/platform/InstallHint";
 import { ThemeToggle } from "@/platform/ThemeSwitch";
 import { accessFor } from "@shared/platform/access";
 import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
+import { activeGroupCode, loadGroup, useActiveGroup } from "@/lib/group";
+import { leaderboard } from "@shared/platform/group";
+import { Avatar } from "@/platform/Avatar";
 
 type Way = "local" | "online";
 const WAY_KEY = "spieltisch:way";
@@ -52,7 +55,7 @@ export function Home() {
       {way === null && (
         <>
           <h2 className="mt-7 mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground">Wie spielt ihr?</h2>
-          <div className="glass grid shrink-0 divide-y divide-border overflow-hidden rounded-2xl">
+          <div className="glass grid shrink-0 grid-cols-[minmax(0,1fr)] divide-y divide-border overflow-hidden rounded-2xl">
             <WayRow icon={Smartphone} title="Ein Handy für alle" text="Herumreichen oder in die Mitte legen" marked={last === "local"} onClick={() => choose("local")} />
             <WayRow icon={Users} title="Online-Raum erstellen" text="Jeder spielt am eigenen Handy" marked={last === "online"} onClick={() => choose("online")} />
           </div>
@@ -64,6 +67,7 @@ export function Home() {
               <Button type="submit" disabled={!codeOk} className="shrink-0">Los</Button>
             </div>
           </form>
+          <GroupCard />
           <InstallHint />
           <div className="min-h-0 flex-1" />
         </>
@@ -153,6 +157,48 @@ function StepHead({ title, sub, onBack }: { title: string; sub: string; onBack: 
         <p className="truncate text-sm text-muted-foreground">{sub}</p>
       </div>
     </div>
+  );
+}
+
+/** „Meine Gruppe“: Name und die besten drei – oder ein kleiner Einstieg, solange das Handy in keiner Gruppe ist */
+function GroupCard() {
+  const group = useActiveGroup();
+  useEffect(() => { const c = activeGroupCode(); if (c) void loadGroup(c); }, []);
+  if (!group) {
+    return (
+      <button type="button" onClick={() => navigate("/gruppe")} data-testid="group-card"
+        className="glass mt-3 flex w-full shrink-0 items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring">
+        <Users className="size-4.5 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 truncate font-semibold">Gruppe erstellen oder beitreten</span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+      </button>
+    );
+  }
+  const top = leaderboard(group, null).filter((r) => r.played > 0).slice(0, 3);
+  return (
+    <button type="button" onClick={() => navigate(`/g/${group.code}`)} data-testid="group-card" aria-label={`Meine Gruppe: ${group.name}`}
+      className="glass mt-3 grid w-full shrink-0 grid-cols-[minmax(0,1fr)] gap-1.5 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring">
+      <span className="flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate font-semibold"><span className="font-normal text-muted-foreground">Meine Gruppe · </span>{group.name}</span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+      </span>
+      {top.length ? (
+        <span className="flex min-w-0 gap-3 text-sm">
+          {top.map((r, i) => (
+            <span key={r.member.id} className="flex min-w-0 items-center gap-1.5">
+              <Avatar avatar={r.member.avatar} className="size-6 text-[0.8rem]" />
+              <span className="truncate">{i === 0 ? <b>{r.member.name}</b> : r.member.name}</span>
+              <span className="shrink-0 font-semibold tabular-nums text-muted-foreground">{r.won}</span>
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="flex -space-x-1.5">{group.members.slice(0, 5).map((m) => <Avatar key={m.id} avatar={m.avatar} className="size-6 text-[0.8rem] ring-2 ring-background" />)}</span>
+          <span className="truncate">{group.members.length} {group.members.length === 1 ? "Mitglied" : "Mitglieder"} · noch keine Partien</span>
+        </span>
+      )}
+    </button>
   );
 }
 

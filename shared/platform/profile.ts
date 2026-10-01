@@ -3,6 +3,7 @@
  * Damit führt der Server eine kleine Statistik pro Spiel. Wer die ID kennt, kann das Profil auf ein
  * anderes Gerät übernehmen – deshalb wird sie nur dem Besitzer gezeigt.
  */
+import type { Avatar } from "./group";
 import { ROOM_CODE_ALPHABET } from "./protocol";
 
 export const PROFILE_ID_LENGTH = 16;
@@ -34,7 +35,17 @@ export interface ProfileStats {
   createdAt: number;
   games: Record<string, GameStats>;
   recent: RecentGame[];
+  /** Farbe + Emoji */
+  avatar?: Avatar;
+  /** Gruppencodes, in denen das Profil Mitglied ist – reisen beim Übertragen aufs neue Handy mit */
+  groups?: string[];
 }
+
+/** Einmal-Code zum Übertragen aufs neue Handy: 8 Zeichen, 15 Minuten gültig */
+export const TRANSFER_CODE_RE = /^[A-HJ-NP-Z2-9]{8}$/;
+export const TRANSFER_MS = 15 * 60 * 1000;
+/** So viele Gruppen merkt sich ein Profil höchstens */
+export const MAX_PROFILE_GROUPS = 10;
 
 export const emptyStats = (now: number): ProfileStats => ({ name: "", createdAt: now, games: {}, recent: [] });
 

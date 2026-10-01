@@ -1,3 +1,4 @@
+import type { Avatar } from "./group";
 import type { RoomAction, RoomState } from "./room";
 
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -7,6 +8,7 @@ export const PIN_RE = /^\d{4,8}$/;
 
 export type ClientMessage =
   | { type: "join"; name?: string; pin?: string; playerId?: string; token?: string; /** Profil-ID für die Statistik (optional) */ profile?: string;
+      /** Avatar und aktive Gruppe (optional) – die Gruppe bekommt das Ergebnis mit */ avatar?: Avatar; group?: string;
       /** Zufallswert je Beitritt: geht die Antwort verloren und das Handy versucht es nochmal, entsteht kein zweiter Spieler */ nonce?: string }
   /** `id`: eindeutig je Aktion – wird sie nach einem Abbruch nochmal geschickt, führt der Server sie nur einmal aus */
   | { type: "action"; action: RoomAction; id?: string }

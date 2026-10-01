@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { PING, PONG, type CallPeer, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
 import { credsKey, readJSON, remove, writeJSON, type RoomCreds } from "@/lib/storage";
-import { myProfile } from "@/lib/profile";
+import { myAvatar, myProfile } from "@/lib/profile";
+import { activeGroupCode } from "@/lib/group";
 
 export type RoomStatus = "checking" | "missing" | "needsJoin" | "connecting" | "ready" | "failed" | "closed";
 
@@ -107,7 +108,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         lastSeen = Date.now();
         const creds = readJSON<RoomCreds>(credsKey(code));
         // Mit gespeichertem Zugang wiederverbinden; Name und PIN nur als Rückfall
-        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), nonce, profile: myProfile().id };
+        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), nonce, profile: myProfile().id, avatar: myAvatar(), group: activeGroupCode() ?? undefined };
         ws.send(JSON.stringify(msg));
       };
 

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, Copy, Loader2, Trophy, Volume2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Loader2, Smartphone, Trophy, Upload, Users, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
-import { formatProfileId, parseProfileId, PROFILE_ID_RE, type ProfileStats } from "@shared/platform/profile";
+import { parseProfileId, PROFILE_ID_RE, TRANSFER_CODE_RE, type ProfileStats } from "@shared/platform/profile";
+import type { Avatar as AvatarData } from "@shared/platform/group";
 import { cleanName, MAX_NAME } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,7 +14,10 @@ import { Confirm } from "@/components/Confirm";
 import { getGameUI } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { NAME_KEY } from "@/lib/storage";
-import { adoptProfile, deleteProfile, fetchStats, myName, myProfile, saveName, wipeAllData } from "@/lib/profile";
+import { createTransfer, deleteProfile, exportData, fetchStats, importData, myAvatar, myName, myProfile, redeemTransfer, saveAvatar, saveName, wipeAllData } from "@/lib/profile";
+import { adoptAndSync, syncMe, useMyGroups } from "@/lib/group";
+import { Avatar, AvatarPicker } from "@/platform/Avatar";
+import { QrCode } from "@/platform/QrCode";
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
@@ -22,6 +26,9 @@ import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
 import { cn, fmt } from "@/lib/utils";
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "–");
+const time = (t: number) => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+/** Übertragungs-Code lesbar: ABCD-EFGH */
+const formatTransfer = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`;
 const date = (t: number) => new Date(t).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 
 /** Eigenes Profil: Name, Statistik je Spiel, letzte Partien, Profil auf ein anderes Gerät mitnehmen. */
@@ -30,8 +37,15 @@ export function Profile() {
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState(myName);
-  const [showCode, setShowCode] = useState(false);
+  const [avatar, setAvatar] = useState(myAvatar);
+  const [picking, setPicking] = useState(false);
+  const [transfer, setTransfer] = useState<{ code: string; until: number } | null>(null);
   const [other, setOther] = useState("");
+  const [busy, setBusy] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
+  const groups = useMyGroups();
+  const otherCode = parseProfileId(other);
+  const otherOk = TRANSFER_CODE_RE.test(otherCode) || PROFILE_ID_RE.test(otherCode);
 
   useEffect(() => {
     let on = true;
@@ -47,8 +61,42 @@ export function Profile() {
   const storeName = () => {
     const n = cleanName(name);
     try { localStorage.setItem(NAME_KEY, n); } catch { /* egal */ }
-    void saveName(n);
+    void saveName(n).then(syncMe);
     toast("Name gespeichert");
+  };
+  const pickAvatar = (a: AvatarData) => { setAvatar(a); void saveAvatar(a).then(syncMe); };
+
+  /** Code vom alten Handy: Übertragungs-Code (8 Zeichen) oder der frühere Profil-Code (16) */
+  const adopt = async () => {
+    setBusy(true);
+    let pid: string | undefined = otherCode;
+    if (TRANSFER_CODE_RE.test(otherCode)) {
+      const res = await redeemTransfer(otherCode);
+      if (!res.id) { setBusy(false); toast(res.error ?? "Das hat nicht geklappt."); return; }
+      pid = res.id;
+    }
+    await adoptAndSync(pid);
+    setBusy(false);
+    setId(pid); setName(myName()); setAvatar(myAvatar()); setOther(""); setTransfer(null);
+    toast("Profil übernommen");
+  };
+  const showTransfer = async () => {
+    const t = await createTransfer();
+    if (t) setTransfer(t); else toast("Keine Verbindung zum Server.");
+  };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([exportData()], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `spieltisch-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const upload = async (f: File | undefined) => {
+    if (!f) return;
+    if (!importData(await f.text())) { toast("Das ist keine Spieltisch-Datei."); return; }
+    toast("Daten eingespielt");
+    location.reload();
   };
 
   return (
@@ -61,9 +109,21 @@ export function Profile() {
       <Card className="grid gap-2">
         <Label htmlFor="profile-name">Dein Name</Label>
         <div className="flex gap-2">
+          <button type="button" onClick={() => setPicking((p) => !p)} aria-label="Avatar ändern" aria-expanded={picking}
+            className="shrink-0 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring" data-testid="my-avatar">
+            <Avatar avatar={avatar} className="size-9 text-xl" />
+          </button>
           <Input id="profile-name" value={name} maxLength={MAX_NAME} onChange={(e) => setName(e.target.value)} placeholder="Name" />
           <Button variant="secondary" disabled={!cleanName(name)} onClick={storeName}>Speichern</Button>
         </div>
+        {picking ? (
+          <div className="mt-1 grid gap-2">
+            <AvatarPicker value={avatar} onChange={pickAvatar} />
+            <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>Fertig</Button>
+          </div>
+        ) : (
+          <button type="button" className="justify-self-start text-sm font-semibold text-primary" onClick={() => setPicking(true)}>Avatar ändern</button>
+        )}
         <p className="text-xs leading-snug text-muted-foreground">
           Online zählt jede Partie in deinem Raum. Lokal (ein Handy für alle) zählt der Spieler, der genauso heißt wie du.
         </p>
@@ -115,20 +175,41 @@ export function Profile() {
         )}
       </Card>
 
-      <Card className="grid gap-2.5">
-        <h2 className="font-bold">Auf ein anderes Handy mitnehmen</h2>
-        <p className="text-sm text-muted-foreground">Dein Profil-Code ist wie ein Schlüssel: Wer ihn hat, sieht und führt deine Statistik weiter. Nicht weitergeben.</p>
-        {showCode ? (
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg bg-navy-950/60 px-3 py-2 text-center font-mono text-lg tracking-wider" data-testid="profile-code">{formatProfileId(id)}</code>
-            <Button variant="secondary" size="icon" aria-label="Kopieren" onClick={() => { void navigator.clipboard?.writeText(formatProfileId(id)); toast("Kopiert"); }}><Copy /></Button>
+      <Card className="grid gap-2.5" data-testid="groups-card">
+        <h2 className="flex items-center gap-2 font-bold"><Users className="size-4 text-ice" />Gruppen</h2>
+        {groups.codes.length > 0 && (
+          <ul className="grid gap-1">
+            {groups.codes.map((c) => (
+              <li key={c}>
+                <button type="button" onClick={() => navigate(`/g/${c}`)} className="flex w-full items-center gap-2 rounded-xl bg-navy-950/30 px-3 py-2.5 text-left">
+                  <span className="min-w-0 flex-1 truncate font-semibold">{groups.cache[c]?.name ?? c}</span>
+                  {groups.active === c && <span className="rounded-full bg-primary/12 px-1.5 py-px text-[0.7rem] font-semibold text-primary">aktiv</span>}
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button variant="secondary" onClick={() => navigate("/gruppe")}>{groups.codes.length ? "Gruppen verwalten" : "Gruppe erstellen oder beitreten"}</Button>
+      </Card>
+
+      <Card className="grid gap-2.5" data-testid="transfer">
+        <h2 className="flex items-center gap-2 font-bold"><Smartphone className="size-4 text-ice" />Auf neues Handy übertragen</h2>
+        <p className="text-sm text-muted-foreground">Statistik, Name, Avatar und Gruppen ziehen mit um. Der Code gilt 15 Minuten und nur einmal – nicht weitergeben.</p>
+        {transfer ? (
+          <div className="grid gap-2.5">
+            <QrCode value={`${location.origin}/profil/uebernehmen/${transfer.code}`} className="mx-auto w-48" label="QR-Code zum Übertragen" />
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg bg-navy-950/60 px-3 py-2 text-center font-mono text-xl tracking-[0.2em]" data-testid="transfer-code">{formatTransfer(transfer.code)}</code>
+              <Button variant="secondary" size="icon" aria-label="Link kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/profil/uebernehmen/${transfer.code}`); toast("Link kopiert"); }}><Copy /></Button>
+            </div>
+            <p className="text-center text-xs text-muted-foreground">Mit dem neuen Handy scannen oder dort im Profil eingeben · gültig bis {time(transfer.until)} Uhr</p>
           </div>
-        ) : <Button variant="secondary" onClick={() => setShowCode(true)}>Profil-Code anzeigen</Button>}
-        <Label htmlFor="profile-adopt" className="mt-2">Code von einem anderen Gerät eingeben</Label>
+        ) : <Button variant="secondary" onClick={showTransfer}>Code zum Übertragen anzeigen</Button>}
+        <Label htmlFor="profile-adopt" className="mt-2">Code vom alten Handy eingeben</Label>
         <div className="flex gap-2">
-          <Input id="profile-adopt" value={other} onChange={(e) => setOther(e.target.value)} placeholder="XXXX-XXXX-XXXX-XXXX" autoComplete="off" className="font-mono" />
-          <Button variant="secondary" disabled={!PROFILE_ID_RE.test(parseProfileId(other))}
-            onClick={() => { const n = parseProfileId(other); adoptProfile(n); setId(n); setOther(""); setShowCode(false); toast("Profil übernommen"); }}>Übernehmen</Button>
+          <Input id="profile-adopt" value={other} onChange={(e) => setOther(e.target.value)} placeholder="XXXX-XXXX" autoComplete="off" autoCapitalize="characters" className="font-mono" />
+          <Button variant="secondary" disabled={!otherOk || busy} onClick={adopt}>{busy && <Loader2 className="animate-spin" />}Übernehmen</Button>
         </div>
       </Card>
 
@@ -149,9 +230,14 @@ export function Profile() {
 
       <Card className="grid gap-2.5">
         <h2 className="font-bold">Daten</h2>
-        <p className="text-sm text-muted-foreground">Gespeichert sind dein Name, dein Profil mit Statistik, die letzten Mitspieler und Spielstände auf diesem Gerät.</p>
+        <p className="text-sm text-muted-foreground">Gespeichert sind dein Name, dein Profil mit Statistik, Gruppen, die letzten Mitspieler und Spielstände auf diesem Gerät.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={download}><Download />Sichern</Button>
+          <Button variant="secondary" onClick={() => file.current?.click()}><Upload />Einspielen</Button>
+        </div>
+        <input ref={file} type="file" accept="application/json,.json" className="hidden" aria-label="Datei einspielen" onChange={(e) => void upload(e.target.files?.[0])} />
         <Confirm title="Profil löschen?" description="Deine Statistik wird vom Server gelöscht. Dieses Gerät bekommt ein neues, leeres Profil." confirmLabel="Löschen"
-          onConfirm={async () => { await deleteProfile(); setId(myProfile().id); setShowCode(false); toast("Profil gelöscht"); }}>
+          onConfirm={async () => { await deleteProfile(); setId(myProfile().id); setAvatar(myAvatar()); setTransfer(null); toast("Profil gelöscht"); }}>
           <Button variant="secondary">Profil und Statistik löschen</Button>
         </Confirm>
         <Confirm title="Alle Daten löschen?" description="Profil, Statistik, Namen, Spielstände und Einstellungen werden von diesem Gerät (und das Profil vom Server) gelöscht." confirmLabel="Alles löschen"
@@ -190,5 +276,29 @@ function PlayPrefs() {
         </div>
       ))}
     </div>
+  );
+}
+
+/** /profil/uebernehmen/<CODE>: Link aus dem QR-Code des alten Handys */
+export function ProfileTransfer({ code }: { code: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(TRANSFER_CODE_RE.test(code) ? null : "Dieser Link ist ungültig.");
+  const go = async () => {
+    setBusy(true);
+    const res = await redeemTransfer(code);
+    if (!res.id) { setBusy(false); setError(res.error ?? "Das hat nicht geklappt."); return; }
+    await adoptAndSync(res.id);
+    toast("Profil übernommen");
+    navigate("/profil", true);
+  };
+  return (
+    <main className="mx-auto max-w-md px-4 pt-[14vh] text-center">
+      <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/12 text-primary"><Smartphone className="size-7" /></span>
+      <h1 className="mt-4 text-3xl font-bold tracking-tight">Profil übernehmen</h1>
+      <p className="mt-2 text-muted-foreground">Dieses Handy übernimmt dein Profil vom alten Handy – mit Statistik, Name, Avatar und Gruppen. Ein bisheriges Profil auf diesem Handy wird ersetzt.</p>
+      {error && <p role="alert" className="mt-4 rounded-xl bg-destructive/15 p-3 text-sm text-destructive">{error}</p>}
+      <Button size="lg" className="mt-6 w-full" disabled={busy || !TRANSFER_CODE_RE.test(code)} onClick={go}>{busy && <Loader2 className="animate-spin" />}Profil übernehmen</Button>
+      <Button variant="ghost" className="mt-2 w-full text-muted-foreground" onClick={() => navigate("/")}>Abbrechen</Button>
+    </main>
   );
 }

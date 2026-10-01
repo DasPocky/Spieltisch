@@ -8,11 +8,19 @@ export type Route =
   | { name: "room"; code: string }
   | { name: "admin" }
   | { name: "profile" }
+  | { name: "transfer"; code: string }
+  | { name: "groups" }
+  | { name: "group"; code: string }
   | { name: "gallery" };
 
 function parse(path: string): Route {
   if (/^\/admin\/?$/.test(path)) return { name: "admin" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };
+  const transfer = path.match(/^\/profil\/uebernehmen\/([A-Za-z0-9-]{8,9})\/?$/);
+  if (transfer) return { name: "transfer", code: transfer[1].toUpperCase().replace(/-/g, "") };
+  if (/^\/gruppe\/?$/.test(path)) return { name: "groups" };
+  const group = path.match(/^\/g\/([A-Za-z0-9]{6})\/?$/);
+  if (group) return { name: "group", code: group[1].toUpperCase() };
   if (import.meta.env.DEV && path === "/dev/karten") return { name: "gallery" };
   const room = path.match(/^\/r\/([A-Za-z0-9]{5})\/?$/);
   if (room) return { name: "room", code: room[1].toUpperCase() };

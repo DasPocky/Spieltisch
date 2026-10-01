@@ -150,9 +150,9 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
   await host.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
   await expect(host.getByText("Warte auf Ben")).toBeVisible();
   await host.getByRole("button", { name: "Menü" }).click();
-  await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(0);
+  await expect(host.getByRole("button", { name: /Eintrag zurücknehmen/ })).toHaveCount(0);
   await host.getByRole("checkbox", { name: /Spielleiter-Funktionen/ }).click();
-  await expect(host.getByRole("button", { name: /zurücknehmen/ })).toBeVisible();
+  await expect(host.getByRole("button", { name: /Eintrag zurücknehmen/ })).toBeVisible();
   await host.keyboard.press("Escape");
   await expect(host.getByText("Warte auf Ben")).toHaveCount(0);
   // Gast hat den Schalter nicht
