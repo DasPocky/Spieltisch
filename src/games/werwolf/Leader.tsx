@@ -3,6 +3,7 @@ import { Check, Crown, Pause, Play, Crosshair, FlaskConical, Heart, House, Moon,
 import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, voters, type Role, type Step, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
+import { RulesSheet } from "@/platform/RulesSheet";
 import { cn } from "@/lib/utils";
 import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
 import { RoleIcon } from "./RoleIcon";
@@ -69,7 +70,8 @@ function Reveal({ s, players, act, online }: { s: WerwolfState; players: Player[
   if (peek) {
     return (
       <>
-        <Panel title={`Nur ${nameOf(players, peek)} schaut!`} sub="Tippe auf die Karte, merk dir deine Rolle, verdecke sie wieder und gib das Handy weiter.">
+        <Panel title={<span className="flex items-center justify-between gap-2">Nur {nameOf(players, peek)} schaut!<RulesSheet gameId="werwolf" focus={s.roles[peek]} /></span>}
+          sub="Tippe auf die Karte, merk dir Rolle und Ziel, verdecke sie wieder und gib das Handy weiter. Mehr zur Rolle: Info-Knopf.">
           <RoleCard role={s.roles[peek]} />
           {s.roles[peek] === "werwolf" && holders(s, "werwolf").length > 1 && (
             <p className="mt-3 text-center text-sm text-muted-foreground">Die anderen Werwölfe lernst du in der ersten Nacht kennen.</p>

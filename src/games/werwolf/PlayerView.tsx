@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
+import { RulesSheet } from "@/platform/RulesSheet";
 import { OnlineClock } from "./OnlineClock";
 import { RoleIcon } from "./RoleIcon";
 
@@ -37,7 +38,7 @@ export function PlayerView({ s, players, me, isHost, act, enabled, options, disp
           ) : <Panel title="Karten ziehen" sub="Zieh eine echte Karte und zeig sie nur dem Spielleiter. Er trägt die Rollen ein." />
         ) : s.phase === "reveal" ? (
           <>
-            <Panel title="Deine Rolle" sub="Schau sie dir unauffällig an. Niemand darf mitlesen.">
+            <Panel title={<span className="flex items-center justify-between gap-2">Deine Rolle<RulesSheet gameId="werwolf" focus={role} /></span>} sub="Schau sie dir unauffällig an. Niemand darf mitlesen. Mehr zur Rolle: Info-Knopf.">
               <RoleCard role={role} />
               <Allies s={s} players={players} me={me} />
             </Panel>
@@ -48,11 +49,16 @@ export function PlayerView({ s, players, me, isHost, act, enabled, options, disp
           </>
         ) : (
           <>
-            <RoleCard role={role} compact />
+            {/* Eigene Rolle immer griffbereit, mit „Mehr dazu“ (Regelseite springt zur Rolle) */}
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="min-w-0 flex-1"><RoleCard role={role} compact /></div>
+              <RulesSheet gameId="werwolf" focus={role} />
+            </div>
             <Allies s={s} players={players} me={me} compact />
             {s.lovers?.includes(me) && (
               <p className="shrink-0 rounded-xl bg-navy-600/40 px-3 py-2 text-center text-sm font-semibold text-navy-100">
                 <Ico icon={Heart} className="mr-1.5" />Du bist verliebt in {nameOf(players, s.lovers[0] === me ? s.lovers[1] : s.lovers[0])}
+                <span className="block text-xs font-normal opacity-80">Stirbt einer, stirbt auch der andere.</span>
               </p>
             )}
             {s.phase === "hunter" ? (
@@ -278,7 +284,7 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
 function Suspect({ s, players, me, act, hint }: { s: WerwolfState; players: Player[]; me: string; act: (a: WerwolfAction) => void; hint?: ReactNode }) {
   const mine = s.suspicions[me];
   return (
-    <Panel title={<IconTitle icon={Moon}>Nacht {s.night}</IconTitle>} sub={hint ?? (mine ? "Danke. Warte, bis es Tag wird …" : "Wen verdächtigst du? Der Verdacht wird morgens anonym gezeigt.")}>
+    <Panel title={<IconTitle icon={Moon}>Nacht {s.night}</IconTitle>} sub={hint ?? (mine ? "Danke. Warte, bis es Tag wird …" : "Heute Nacht hast du keine Aufgabe. Wen verdächtigst du? Das wird morgens anonym gezeigt.")}>
       <Picker ids={aliveIds(s).filter((id) => id !== me)} players={players} selected={mine ? [mine] : []} onPick={(id) => act({ type: "suspect", target: id })} />
     </Panel>
   );

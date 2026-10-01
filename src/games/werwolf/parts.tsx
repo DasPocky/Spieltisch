@@ -70,6 +70,17 @@ export function Picker({ ids, players, selected, onPick, disabled, extra, marks 
 }
 
 /** Rollenkarte – verdeckt, bis man sie antippt, damit niemand mitliest */
+/** Wann gewinnt man mit dieser Rolle? Ein Satz – kurz genug für die Rollenkarte */
+export function goalOf(role: Role): string {
+  if (role === "weisserwolf") return "Dein Ziel: als Einziger übrig bleiben.";
+  if (role === "floetenspieler") return "Dein Ziel: alle Lebenden verzaubern.";
+  if (role === "engel") return "Dein Ziel: in der ersten Runde sterben – sonst spielst du fürs Dorf.";
+  if (role === "wildeskind") return "Dein Ziel: mit dem Dorf gewinnen – bis dein Vorbild stirbt.";
+  if (role === "wolfshund") return "Dein Ziel hängt von deiner Wahl ab: Dorf oder Wölfe.";
+  if (ROLES[role].team === "werwolf") return "Euer Ziel: so viele Wölfe wie Dorfbewohner – ohne aufzufliegen.";
+  return "Dein Ziel: alle Werwölfe finden und verurteilen.";
+}
+
 export function RoleCard({ role, hidden: startHidden = true, compact }: { role: Role; hidden?: boolean; compact?: boolean }) {
   const [hidden, setHidden] = useState(startHidden);
   const r = ROLES[role];
@@ -86,6 +97,7 @@ export function RoleCard({ role, hidden: startHidden = true, compact }: { role: 
           <span className="min-w-0">
             <span className={cn("block font-extrabold tracking-tight", compact ? "text-lg" : "text-3xl")} data-testid="my-role">{r.name}</span>
             <span className={cn("block text-sm leading-snug", r.team === "werwolf" ? "text-white/75" : "text-paper-ink/70")}>{r.short}</span>
+            {!compact && <span className={cn("mt-1.5 block text-sm font-semibold leading-snug", r.team === "werwolf" ? "text-white/90" : "text-paper-ink/85")} data-testid="role-goal">{goalOf(role)}</span>}
           </span>
           {!compact && <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold opacity-60"><EyeOff className="size-3.5" />Tippen zum Verdecken</span>}
         </span>
