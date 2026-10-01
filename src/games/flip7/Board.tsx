@@ -1,4 +1,4 @@
-import { Clover, LifeBuoy, Skull } from "lucide-react";
+import { ArrowLeftRight, Clover, Hand, Heart, Hourglass, Layers, LifeBuoy, Skull, Snowflake, Trash, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { cardLabel, linePoints, numValue, type F7Action, type F7Card, type F7State } from "@shared/games/flip7/logic";
 import { Button } from "@/components/ui/button";
@@ -11,21 +11,52 @@ import { cn, vibrate } from "@/lib/utils";
 
 const STATUS: Record<string, string> = { active: "", stayed: "aufgehört", bust: "raus", frozen: "eingefroren", done: "fertig" };
 
-/** Kleine Karte: Zahlen farbig nach Wert, Aktionen und Modifikatoren eigens gefärbt */
+/** Zahlenfarben wie auf den Originalkarten: jede Zahl ihr eigener Farbton */
+const NUM_COLOR = ["#7d8590", "#8a8a1f", "#5f9e12", "#e04a86", "#0f9a8e", "#2d9a46", "#8b4cc4", "#e2522a", "#2793d1", "#ec8412", "#d0294f", "#2f5fd0", "#87684f", "#3c4352"];
+
+/** Aktionskarten: Hintergrund, Rahmen, Schrift und Symbol */
+const ACTION: Record<string, { bg: string; frame: string; ink: string; Icon: LucideIcon }> = {
+  "a:freeze": { bg: "linear-gradient(160deg,#eef9ff,#a9dcf7)", frame: "#3a9ad6", ink: "#0f5384", Icon: Snowflake },
+  "a:flip3": { bg: "linear-gradient(160deg,#fff3a6,#ffc81f)", frame: "#e79a00", ink: "#7a3d00", Icon: Layers },
+  "a:second": { bg: "linear-gradient(160deg,#ff8aa0,#e2304f)", frame: "#fff3", ink: "#fff", Icon: Heart },
+  "a:flip4": { bg: "linear-gradient(160deg,#ffcf8a,#f2761c)", frame: "#c95400", ink: "#5c2200", Icon: Layers },
+  "a:one": { bg: "linear-gradient(160deg,#e7dcff,#b49af0)", frame: "#7b5ad0", ink: "#3b2378", Icon: Hourglass },
+  "a:swap": { bg: "linear-gradient(160deg,#d5f7ef,#7fd9c4)", frame: "#1d9c83", ink: "#0b4f42", Icon: ArrowLeftRight },
+  "a:steal": { bg: "linear-gradient(160deg,#4b4f63,#262a3a)", frame: "#8a90a8", ink: "#fff", Icon: Hand },
+  "a:discard": { bg: "linear-gradient(160deg,#eceff3,#bcc3cf)", frame: "#7d8796", ink: "#2c3442", Icon: Trash },
+};
+
+/** Kleine Karte im Stil der Originalkarten: cremefarben mit farbiger Zahl, Plus-Karten orange, Aktionen mit Symbol */
 export function Tile({ card, selectable, selected, onClick }: { card: F7Card; selectable?: boolean; selected?: boolean; onClick?: () => void }) {
   const num = card.startsWith("n:");
   const v = num ? numValue(card) : 0;
-  // Zahlen: helles bis dunkles Navy je nach Wert; Aktionen dunkel, Plus-Karten Eisblau, Minus gedämpftes Rot
-  const light = 94 - Math.min(v, 13) * 3.4;
-  const style = num ? { background: `hsl(216 42% ${light}%)`, color: light < 62 ? "#fff" : "#10223d" } : undefined;
-  const cls = card.startsWith("a:") ? "bg-deep-700 text-white ring-1 ring-inset ring-deep-400/40" : card.startsWith("m:-") || card === "m:/2" ? "bg-destructive text-navy-950" : !num ? "bg-ice text-navy-950" : "";
+  const act = ACTION[card];
+  const minus = card.startsWith("m:-") || card === "m:/2";
+  // Farben je Kartenart: Zahl, Modifikator (Plus orange, Minus rot) oder Aktion
+  const color = num ? NUM_COLOR[Math.min(v, 13)] : act ? act.frame : minus ? "#9e1b2e" : "#d9700a";
+  const bg = num ? "#fbf6e9" : act ? act.bg : minus ? "linear-gradient(160deg,#ff9a8a,#d93a3a)" : card === "m:x2" ? "linear-gradient(160deg,#ffd84d,#ff8a1a)" : "linear-gradient(160deg,#fff0a0,#ffb52e)";
+  const ink = num ? color : act ? act.ink : minus ? "#fff" : "#8a3300";
   const Special = card === "n:13L" ? Clover : card === "n:7U" ? Skull : null;
   return (
     <button type="button" disabled={!selectable} onClick={onClick} aria-label={cardLabel(card)} aria-pressed={selected}
-      className={cn("card-in flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-bold leading-none shadow outline-none transition disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
-        num ? "text-lg" : "text-[0.62rem] leading-tight", cls, selectable && "target-glow", selected && "-translate-y-1 ring-[3px] ring-ice")}
-      style={style}>
-      {num ? <>{v}{Special && <Special className="size-2.5" aria-hidden="true" />}</> : <span className="max-w-14 text-center">{cardLabel(card)}</span>}
+      className={cn("card-in relative flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-bold leading-none shadow-[0_1px_3px_rgba(2,8,23,.35)] ring-1 ring-black/10 outline-none transition disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
+        num ? "text-xl" : act ? "px-1 text-[0.5rem] leading-[1.1]" : "text-[0.95rem]", selectable && "target-glow", selected && "-translate-y-1 ring-[3px] ring-ice")}
+      style={{ background: bg, color: ink }}>
+      {/* Feiner Innenrahmen wie auf den echten Karten */}
+      <span className="pointer-events-none absolute inset-[2.5px] rounded-[5px] border-[1.5px]" style={{ borderColor: color }} aria-hidden="true" />
+      {num ? (
+        <>
+          <span className="relative font-black tracking-tight" style={{ textShadow: "0 1px 0 rgba(0,0,0,.14)" }}>{v}</span>
+          {Special && <Special className="relative mt-px size-2.5" aria-hidden="true" />}
+        </>
+      ) : act ? (
+        <>
+          <act.Icon className="relative size-4 shrink-0" strokeWidth={2.5} fill={card === "a:second" ? "currentColor" : "none"} aria-hidden="true" />
+          <span className="relative mt-0.5 max-w-12 text-center font-extrabold">{cardLabel(card)}</span>
+        </>
+      ) : (
+        <span className="relative font-black tracking-tight" style={{ textShadow: minus ? "0 1px 0 rgba(0,0,0,.3)" : "0 1px 0 rgba(255,255,255,.6)" }}>{cardLabel(card)}</span>
+      )}
     </button>
   );
 }

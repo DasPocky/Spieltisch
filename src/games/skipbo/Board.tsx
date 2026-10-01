@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { PlayerRow } from "@/platform/PlayerRow";
 import { fits, JOKER, leaders, needs, topOf, type SbAction, type SbCard, type SbState, type Source } from "@shared/games/skipbo/logic";
 import { Button } from "@/components/ui/button";
@@ -8,25 +8,46 @@ import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
-import { MUTED } from "@/lib/palette";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
-/** Zahlenfarbe wie beim Original, nur gedämpft: 1–4 blau, 5–8 grün, 9–12 rot */
-const ink = (c: SbCard) => (c <= 4 ? MUTED.blue : c <= 8 ? MUTED.teal : MUTED.red);
+/** Zahlenfarbe wie beim Original: 1–4 blau, 5–8 grün, 9–12 rot */
+const ink = (c: number) => (c <= 4 ? "#1d5fc4" : c <= 8 ? "#23913c" : "#d3262b");
+const STAR = "M0-10L2.9-4 9.5-3.1 4.7 1.5 5.9 8.1 0 5 -5.9 8.1-4.7 1.5-9.5-3.1-2.9-4Z";
 
 /** Eine Karte. `shown` überschreibt die Zahl (Joker auf dem Aufbaustapel zählt als die Stelle, an der er liegt). */
 export function SbCardView({ card, shown, className, small }: { card: SbCard | undefined; shown?: number; className?: string; small?: boolean }) {
+  const id = useId();
   if (card === undefined) return <div className={cn("aspect-[5/7] rounded-[12%] ring-1 ring-inset ring-border ring-dashed", className)} />;
   const joker = card === JOKER;
   const value = shown ?? card;
+  const col = joker ? "#fff" : ink(card);
+  const line = joker ? { stroke: "#5a1030", strokeWidth: 2, paintOrder: "stroke", strokeLinejoin: "round" } as const : undefined;
+  // Ecke: Zahl, beim reinen Joker ein Stern
+  const corner = joker && !shown ? <path d={STAR} transform="scale(.42)" fill="#fff" stroke="#5a1030" strokeWidth={2} />
+    : <text textAnchor="middle" dominantBaseline="central" fontSize={value > 9 ? 8.5 : 10} fontWeight={800} fill={col} style={line}>{value}</text>;
   return (
     <div role="img" aria-label={joker ? (shown ? `Skip-Bo als ${shown}` : "Skip-Bo") : String(card)}
-      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-bold shadow ring-1 ring-black/10",
-        joker ? "bg-navy-700 text-ice ring-ice/40" : "bg-paper", className)}>
-      {joker && !shown ? <span className="text-[22cqw] leading-none tracking-tight">SKIP<br />BO</span>
-        : <span className={cn("leading-none", small ? "text-[52cqw]" : "text-[46cqw]")} style={joker ? undefined : { color: ink(card) }}>{value}</span>}
-      {joker && !!shown && <span className="absolute bottom-[6%] text-[14cqw] opacity-80">SB</span>}
+      className={cn("@container relative aspect-[5/7] overflow-hidden rounded-[12%] shadow ring-1 ring-black/15", joker ? "bg-[#e8501f]" : "bg-[#fbf8f1]", className)}>
+      <svg viewBox="0 0 50 70" className="absolute inset-0 size-full" aria-hidden="true">
+        {joker ? (
+          <>
+            <defs><linearGradient id={`${id}j`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#f7941d" /><stop offset=".55" stopColor="#e8501f" /><stop offset="1" stopColor="#c2185b" /></linearGradient></defs>
+            <rect width={50} height={70} fill={`url(#${id}j)`} />
+            <rect x={3.5} y={3.5} width={43} height={63} rx={4} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={1.4} />
+          </>
+        ) : <rect x={3.5} y={3.5} width={43} height={63} rx={4} fill="none" stroke={col} strokeWidth={1.6} />}
+        <g transform="translate(25 35)">
+          {joker && !shown ? <path d={STAR} transform={`scale(${small ? 1.9 : 1.6})`} fill="#fff" stroke="#5a1030" strokeWidth={1.2} strokeLinejoin="round" />
+            : <text textAnchor="middle" dominantBaseline="central" fontWeight={800} fontSize={(small ? 36 : 30) * (value > 9 ? 0.8 : 1)} letterSpacing={value > 9 ? -1.5 : 0}
+                fill={col} style={line}>{value}</text>}
+        </g>
+        {!small && <>
+          <g transform="translate(10 11.5)">{corner}</g>
+          <g transform="translate(40 58.5) rotate(180)">{corner}</g>
+        </>}
+        {small && joker && !!shown && <path d={STAR} transform="translate(25 60) scale(.35)" fill="#fff" />}
+      </svg>
     </div>
   );
 }

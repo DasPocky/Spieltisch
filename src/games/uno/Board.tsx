@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
 import { PlayerRow } from "@/platform/PlayerRow";
-import { Ban, Repeat2 } from "lucide-react";
 import {
   canPlay, colorOf, COLOR_NAME, COLORS, cardLabel, isWild, leaders, top, valueOf,
   type UnoAction, type UnoCard as Card, type UnoColor, type UnoState,
@@ -13,31 +12,104 @@ import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
-import { MUTED } from "@/lib/palette";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
-/** Gedämpfte Kartenfarben: Rot, Grün (Petrol), Blau, Gelb (Ocker) */
-export const UNO_BG: Record<UnoColor, string> = { r: MUTED.red, g: MUTED.teal, b: MUTED.blue, y: MUTED.ochre };
+/** Kartenfarben wie beim Original: kräftiges Rot, Grün, Blau, Gelb */
+export const UNO_BG: Record<UnoColor, string> = { r: "#d72600", g: "#379711", b: "#0956bf", y: "#ecd407" };
 
-/** Eine Uno-Karte – Farbe als Fläche, Wert groß in der Mitte */
+const INK = "#161616";
+/** Text mit dunkler Kontur (Kontur unter der Füllung) */
+const outl = (w: number) => ({ stroke: INK, strokeWidth: w, paintOrder: "stroke", strokeLinejoin: "round" }) as const;
+
+/** Aussetzen: Kreis mit Schrägstrich */
+const SkipMark = ({ fill }: { fill: string }) => (
+  <g fill="none" strokeLinecap="round">
+    <g stroke={INK} strokeWidth={5}><circle r={7.5} /><path d="M-5 5L5-5" /></g>
+    <g stroke={fill} strokeWidth={3}><circle r={7.5} /><path d="M-5 5L5-5" /></g>
+  </g>
+);
+
+/** Richtungswechsel: zwei gegenläufige Pfeile */
+const ARROW = "M-1.8 9V-1.5H-5L0-8.5L5-1.5H1.8V9Z";
+const RevMark = ({ fill }: { fill: string }) => (
+  <g fill={fill} stroke={INK} strokeWidth={1.3} strokeLinejoin="round">
+    <path d={ARROW} transform="translate(-3.4 -3.4) rotate(45)" />
+    <path d={ARROW} transform="translate(3.4 3.4) rotate(225)" />
+  </g>
+);
+
+/** Vier Farbviertel (Farbwahl-Oval) */
+const Quads = ({ w, h }: { w: number; h: number }) => (
+  <>
+    <rect x={-w} y={-h} width={w} height={h} fill={UNO_BG.r} /><rect y={-h} width={w} height={h} fill={UNO_BG.b} />
+    <rect x={-w} width={w} height={h} fill={UNO_BG.y} /><rect width={w} height={h} fill={UNO_BG.g} />
+  </>
+);
+
+/** Kleine Karte für +2/+4 */
+const Mini = ({ x, y, fill }: { x: number; y: number; fill: string }) => (
+  <rect x={x - 5} y={y - 7.5} width={10} height={15} rx={1.8} fill={fill} stroke={INK} strokeWidth={1.1} />
+);
+
+/** Eine Uno-Karte – weißer Rand, Farbfläche, schräges Oval mit Wert, Ecken-Indizes */
 export function UnoCardView({ card, dim, className }: { card: Card; dim?: boolean; className?: string }) {
+  const id = useId();
   const c = colorOf(card);
   const v = valueOf(card);
-  const mark = v === "skip" ? <Ban className="size-[45cqw]" strokeWidth={2.5} />
-    : v === "rev" ? <Repeat2 className="size-[45cqw]" strokeWidth={2.5} />
-    : v === "plus2" ? "+2" : v === "plus4" ? "+4" : v === "wild" ? null : v;
+  const fill = c ? UNO_BG[c] : INK;
+  const num = /^\d$/.test(v) ? v : null;
+  const label = num ?? (v === "plus2" ? "+2" : v === "plus4" ? "+4" : null);
+  // Ecken-Index: Zahl/„+2“ als Text, sonst verkleinertes Symbol
+  const corner = label ? (
+    <text textAnchor="middle" dominantBaseline="central" fontSize={label.length > 1 ? 10.5 : 13.5} fontWeight={800} fill="#fff" style={outl(1.6)}
+      textDecoration={num === "6" || num === "9" ? "underline" : undefined}>{label}</text>
+  ) : v === "skip" ? <g transform="scale(.6)"><SkipMark fill="#fff" /></g>
+    : v === "rev" ? <g transform="scale(.55)"><RevMark fill="#fff" /></g>
+    : <g transform="rotate(30) scale(1.15)"><g clipPath={`url(#${id}c)`}><Quads w={4} h={6.5} /></g><ellipse rx={3.6} ry={6} fill="none" stroke="#fff" strokeWidth={0.9} /></g>;
   return (
     <div role="img" aria-label={cardLabel(card)}
-      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-bold text-paper shadow-md ring-1 ring-white/25 transition", dim && "card-dim", className)}
-      style={{ background: c ? UNO_BG[c] : MUTED.ink }}>
-      {!c && (
-        <div className="absolute grid aspect-square w-[68%] grid-cols-2 overflow-hidden rounded-full opacity-90">
-          {COLORS.map((k) => <span key={k} style={{ background: UNO_BG[k] }} />)}
-        </div>
-      )}
-      <span className="relative grid aspect-square w-[72%] place-items-center rounded-full bg-white/12 text-[34cqw] leading-none">{mark}</span>
-      {mark && typeof mark === "string" && <span className="absolute top-[5%] left-[9%] text-[16cqw] leading-none opacity-80">{mark}</span>}
+      className={cn("@container relative aspect-[5/7] overflow-hidden rounded-[12%] bg-white shadow-md ring-1 ring-black/20 transition", dim && "card-dim", className)}>
+      <svg viewBox="0 0 50 70" className="absolute inset-0 size-full" aria-hidden="true">
+        <defs>
+          <clipPath id={`${id}o`}><ellipse rx={15.5} ry={27} /></clipPath>
+          <clipPath id={`${id}c`}><ellipse rx={3.6} ry={6} /></clipPath>
+        </defs>
+        <rect x={2.6} y={2.6} width={44.8} height={64.8} rx={4.6} fill={fill} />
+        <g transform="translate(25 35) rotate(30)">
+          {v === "wild" ? (
+            <g clipPath={`url(#${id}o)`}><Quads w={16} h={28} /></g>
+          ) : <ellipse rx={15.5} ry={27} fill="#fff" />}
+        </g>
+        <g transform="translate(25 35)">
+          {num && (
+            <g fontWeight={800} textAnchor="middle" dominantBaseline="central" fontSize={30}>
+              <text x={1.3} y={1.5} fill={INK} style={outl(2.4)}>{num}</text>
+              <text fill={fill} style={outl(2.4)}>{num}</text>
+              {(num === "6" || num === "9") && <rect x={-6} y={12.5} width={12} height={2.6} rx={1} fill={fill} stroke={INK} strokeWidth={1} />}
+            </g>
+          )}
+          {v === "skip" && <g transform="scale(1.25)"><SkipMark fill={fill} /></g>}
+          {v === "rev" && <g transform="scale(1.15)"><RevMark fill={fill} /></g>}
+          {v === "plus2" && <><Mini x={-3} y={3} fill={fill} /><Mini x={3} y={-3} fill={fill} /></>}
+          {v === "plus4" && <><Mini x={-5.5} y={3} fill={UNO_BG.b} /><Mini x={-1.5} y={-4} fill={UNO_BG.g} /><Mini x={2} y={5} fill={UNO_BG.r} /><Mini x={6} y={-2} fill={UNO_BG.y} /></>}
+        </g>
+        <g transform="translate(9 11)">{corner}</g>
+        <g transform="translate(41 59) rotate(180)">{corner}</g>
+      </svg>
+    </div>
+  );
+}
+
+/** Rückseite: schwarz mit weißem Rand und schrägem roten Oval – ohne Schriftzug */
+function UnoBack({ count }: { count: number }) {
+  return (
+    <div className="relative aspect-[5/7] h-full overflow-hidden rounded-[12%] bg-white shadow-md ring-1 ring-black/20">
+      <svg viewBox="0 0 50 70" className="absolute inset-0 size-full" aria-hidden="true">
+        <rect x={2.6} y={2.6} width={44.8} height={64.8} rx={4.6} fill={INK} />
+        <ellipse cx={25} cy={35} rx={15.5} ry={27} transform="rotate(30 25 35)" fill={UNO_BG.r} />
+        <text x={25} y={35} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={800} fill={UNO_BG.y} style={outl(2.6)}>{count}</text>
+      </svg>
     </div>
   );
 }
@@ -106,7 +178,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
           <button type="button" disabled={!myTurn || !!s.drawn || covered} onClick={() => { vibrate(8); act({ type: "draw" }); }}
             aria-label={s.pendingDraw ? `${s.pendingDraw} Karten ziehen` : "Karte ziehen"}
             className={cn("relative h-[68%] rounded-[12%] outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", mustDraw && "target-glow")}>
-            <div className="card-back grid aspect-[5/7] h-full place-items-center rounded-[12%] text-lg font-bold text-paper/85 shadow-md">{s.pileCount}</div>
+            <UnoBack count={s.pileCount} />
             {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-bold text-navy-950">+{s.pendingDraw}</span>}
             <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Stapel</span>
           </button>

@@ -31,7 +31,7 @@ test("Skyjo lokal: aufdecken, ziehen, tauschen – passt auf 320 px", async ({ p
   await page.setViewportSize({ width: 320, height: 568 });
   await local(page, ["Anna", "Ben", "Cem"]);
   // jeder deckt zwei Karten auf (lokal nacheinander)
-  for (let k = 0; k < 6; k++) await myCards(page).filter({ hasText: "SKYJO" }).first().click();
+  for (let k = 0; k < 6; k++) await myCards(page).and(page.getByLabel("verdeckte Karte")).first().click();
   await expect(page.getByTestId("hint")).toContainText("Ziehe vom Stapel");
   await expectNoScroll(page);
   await page.getByRole("button", { name: /Vom Stapel ziehen/ }).click();

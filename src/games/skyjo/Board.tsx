@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Undo2 } from "lucide-react";
 import { leaders, visibleSum, type Cell, type SkAction, type SkState } from "@shared/games/skyjo/logic";
 import type { Player } from "@shared/platform/types";
@@ -10,30 +10,82 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
-import { MUTED } from "@/lib/palette";
 
 const nameOf = (players: Player[], id: string | null) => players.find((p) => p.id === id)?.name ?? "?";
 
-/** Farben angelehnt ans Original, aber gedämpft: Minus Navy, 0 Eisblau, 1–4 Blaugrün, 5–8 Ocker, 9–12 Weinrot */
+/** Farben wie im Original: Minus Dunkelblau, 0 Hellblau, 1–4 Grün, 5–8 Gelb, 9–12 Rot */
 export function cardColor(v: number): { bg: string; fg: string } {
-  if (v < 0) return { bg: MUTED.navy, fg: "#fff" };
-  if (v === 0) return { bg: MUTED.ice, fg: "#10223d" };
-  if (v <= 4) return { bg: MUTED.teal, fg: "#fff" };
-  if (v <= 8) return { bg: MUTED.ochre, fg: "#1f1a0c" };
-  return { bg: MUTED.red, fg: "#fff" };
+  if (v < 0) return { bg: "#2b3a9b", fg: "#fff" };
+  if (v === 0) return { bg: "#3fb6e6", fg: "#fff" };
+  if (v <= 4) return { bg: "#5cb431", fg: "#fff" };
+  if (v <= 8) return { bg: "#f2c919", fg: "#1c1c1c" };
+  return { bg: "#e4372a", fg: "#fff" };
+}
+
+/** Zahl mit Kontur (Farbe gegenläufig zur Füllung) */
+function SkNum({ v, x, y, size, fg, rot }: { v: number; x: number; y: number; size: number; fg: string; rot?: boolean }) {
+  const dark = fg !== "#fff";
+  return (
+    <text x={x} y={y} fontSize={size} fontWeight={900} textAnchor="middle" dominantBaseline="central" fill={fg}
+      stroke={dark ? "#fff" : "#141a33"} strokeWidth={size * 0.12} strokeLinejoin="round" paintOrder="stroke"
+      transform={rot ? `rotate(180 ${x} ${y})` : undefined} style={{ fontFamily: "system-ui, sans-serif", letterSpacing: "-0.04em" }}>{v}</text>
+  );
+}
+
+/** Vorderseite als SVG: Farbfläche, helle Raute, große Zahl, Eckzahlen */
+function SkFace({ v, small }: { v: number; small?: boolean }) {
+  const c = cardColor(v);
+  const id = "sk" + useId().replace(/[^\w-]/g, "");
+  const big = String(v).length > 1 ? (small ? 30 : 26) : (small ? 36 : 32);
+  return (
+    <svg viewBox="0 0 50 70" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+      <rect width="50" height="70" fill={c.bg} />
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.22" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity="0.12" />
+        </linearGradient>
+      </defs>
+      <rect width="50" height="70" fill={`url(#${id})`} />
+      <path d="M25 6 L46 35 L25 64 L4 35 Z" fill="#fff" fillOpacity="0.28" />
+      {!small && <path d="M25 13 L41 35 L25 57 L9 35 Z" fill="none" stroke="#fff" strokeOpacity="0.45" strokeWidth="1" />}
+      <SkNum v={v} x={25} y={36} size={big} fg={c.fg} />
+      {!small && <><SkNum v={v} x={8} y={8} size={9} fg={c.fg} /><SkNum v={v} x={42} y={62} size={9} fg={c.fg} rot /></>}
+    </svg>
+  );
+}
+
+/** Rückseite: blaues Rautenmuster mit Stern in der Mitte, ohne Schrift */
+function SkBack({ small }: { small?: boolean }) {
+  const id = "sk" + useId().replace(/[^\w-]/g, "");
+  return (
+    <svg viewBox="0 0 50 70" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden="true">
+      <defs>
+        <pattern id={id} width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="translate(5 0)">
+          <rect width="10" height="10" fill="#2f55c4" />
+          <path d="M5 0 L10 5 L5 10 L0 5 Z" fill="#3e6fe0" />
+          <path d="M5 3 L7 5 L5 7 L3 5 Z" fill="#9fd8ff" fillOpacity="0.6" />
+        </pattern>
+      </defs>
+      <rect x="3" y="3" width="44" height="64" rx="5" fill={`url(#${id})`} stroke="#fff" strokeOpacity="0.5" strokeWidth="1" />
+      {!small && <>
+        <path d="M25 20 L38 35 L25 50 L12 35 Z" fill="#1a2a78" stroke="#fff" strokeOpacity="0.8" strokeWidth="1.2" />
+        <path d="M25 26 L30 35 L25 44 L20 35 Z" fill="#7fd0f5" />
+      </>}
+    </svg>
+  );
 }
 
 /** Eine Karte: offen mit Zahl, verdeckt mit Rückseite, abgeräumt als leerer Platz */
 export function SkCard({ cell, small, pick, onClick, label }: { cell: Cell | null; small?: boolean; pick?: boolean; onClick?: () => void; label?: string }) {
   if (!cell) return <div className={cn("rounded-[18%] border border-dashed border-border/60", small ? "size-full" : "h-full")} aria-hidden="true" />;
   const up = cell.up && cell.v !== null;
-  const c = up ? cardColor(cell.v!) : null;
   return (
     <button type="button" disabled={!onClick} onClick={onClick} aria-label={label ?? (up ? `Karte ${cell.v}` : "verdeckte Karte")}
-      className={cn("grid place-items-center overflow-hidden rounded-[18%] font-bold shadow outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-        small ? "size-full text-[0.55rem]" : "h-full w-full text-[clamp(1rem,6vw,1.8rem)]", !up && "card-back", pick && "ring-[3px] ring-ice", onClick && "active:scale-95")}
-      style={c ? { background: c.bg, color: c.fg } : undefined}>
-      {up ? cell.v : small ? "" : <span className="text-[0.6em] text-paper/70">SKYJO</span>}
+      className={cn("relative block overflow-hidden rounded-[14%] shadow outline-none ring-1 ring-black/15 transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
+        small ? "size-full" : "h-full w-full", up ? "bg-white" : "bg-[#1d3a9e]", pick && "ring-[3px] ring-ice", onClick && "active:scale-95")}>
+      {up ? <SkFace v={cell.v!} small={small} /> : <SkBack small={small} />}
     </button>
   );
 }

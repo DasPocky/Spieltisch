@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
 import { PlayerRow } from "@/platform/PlayerRow";
-import { Ban, Check, ChevronLeft, SkipForward } from "lucide-react";
+import { Check, ChevronLeft, SkipForward } from "lucide-react";
 import {
   cardLabel, colorOf, extend, findPhase, isSkip, isWild, leaders, needLabel, PHASES, phaseLabel, valueOf,
   type Group, type P10Action, type P10Card, type P10Color, type P10State,
@@ -13,22 +13,56 @@ import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
-import { MUTED } from "@/lib/palette";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
-export const P10_INK: Record<P10Color, string> = { r: MUTED.red, b: MUTED.blue, g: MUTED.teal, y: MUTED.ochre };
+/** Kräftige Kartenfarben wie im Original */
+export const P10_INK: Record<P10Color, string> = { r: "#e0261d", b: "#1062c4", g: "#1e9a3c", y: "#f4b000" };
+const FONT = { fontFamily: "system-ui, sans-serif", letterSpacing: "-0.05em" } as const;
 
-/** Karte: Papier mit farbiger Zahl; Joker und Aussetzen dunkel */
+/** Zahl mit dunkler Kontur (Gelb braucht sie auf Weiß) */
+function P10Num({ v, x, y, size, fill, anchor = "middle", rot }: { v: string | number; x: number; y: number; size: number; fill: string; anchor?: "start" | "middle"; rot?: boolean }) {
+  return (
+    <text x={x} y={y} fontSize={size} fontWeight={900} textAnchor={anchor} dominantBaseline="central" fill={fill}
+      stroke="#1a1a1a" strokeOpacity="0.55" strokeWidth={size * 0.05} paintOrder="stroke" style={FONT}
+      transform={rot ? `rotate(180 ${x} ${y})` : undefined}>{v}</text>
+  );
+}
+
+/** Karte: weiß mit Farbrahmen, große Zahl in der Mitte, Eckzahl oben links (bleibt im Fächer sichtbar) */
 export function P10CardView({ card, className, dim }: { card: P10Card; className?: string; dim?: boolean }) {
   const col = colorOf(card);
+  const wild = !col && isWild(card);
+  const ink = col ? P10_INK[col] : "#1062c4";
   return (
     <div role="img" aria-label={cardLabel(card)}
-      className={cn("@container grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-bold shadow ring-1 ring-black/10 transition",
-        col ? "bg-paper" : "bg-navy-700 text-ice ring-ice/40", dim && "brightness-50", className)}>
-      {col ? <span className="self-start justify-self-start pt-[10%] pl-[9%] text-[44cqw] leading-none tracking-tighter" style={{ color: P10_INK[col] }}>{valueOf(card)}</span>
-        : isWild(card) ? <span className="text-[48cqw] leading-none">W</span>
-        : <Ban className="size-[55cqw]" strokeWidth={2.5} />}
+      className={cn("aspect-[5/7] overflow-hidden rounded-[12%] bg-white shadow ring-1 ring-black/15 transition", dim && "brightness-50", className)}>
+      <svg viewBox="0 0 50 70" preserveAspectRatio="xMidYMid slice" className="block size-full" aria-hidden="true">
+        {wild ? <>
+          {/* Joker: vier Farbfelder als Rahmen, „Wild“ bunt */}
+          <rect width="25" height="35" fill={P10_INK.r} /><rect x="25" width="25" height="35" fill={P10_INK.b} />
+          <rect y="35" width="25" height="35" fill={P10_INK.y} /><rect x="25" y="35" width="25" height="35" fill={P10_INK.g} />
+          <rect x="4" y="4" width="42" height="62" rx="5" fill="#fff" />
+          <P10Num v="W" x={5.5} y={11} size={13} fill="#1a1a1a" anchor="start" />
+          <text x="25" y="38" fontSize="15" fontWeight={900} textAnchor="middle" dominantBaseline="central" stroke="#1a1a1a" strokeOpacity="0.5" strokeWidth="0.7" paintOrder="stroke" style={FONT}>
+            <tspan fill={P10_INK.r}>W</tspan><tspan fill={P10_INK.b}>i</tspan><tspan fill={P10_INK.g}>l</tspan><tspan fill={P10_INK.y}>d</tspan>
+          </text>
+        </> : col ? <>
+          {/* Farbrahmen, innen weiß mit farbigem Oval */}
+          <rect width="50" height="70" fill={ink} />
+          <rect x="4" y="4" width="42" height="62" rx="5" fill="#fff" />
+          <ellipse cx="25" cy="38" rx="17" ry="22" fill={ink} fillOpacity="0.12" />
+          <P10Num v={valueOf(card)} x={5.5} y={11} size={13} fill={ink} anchor="start" />
+          <P10Num v={valueOf(card)} x={41} y={61} size={9} fill={ink} rot />
+          <P10Num v={valueOf(card)} x={25} y={39} size={valueOf(card) > 9 ? 22 : 27} fill={ink} />
+        </> : <>
+          {/* Aussetzen: blau mit weißem Verbotszeichen */}
+          <rect width="50" height="70" fill={ink} />
+          <rect x="4" y="4" width="42" height="62" rx="5" fill="none" stroke="#fff" strokeOpacity="0.7" strokeWidth="1" />
+          <g fill="none" stroke="#fff" strokeWidth="3.2"><circle cx="25" cy="38" r="12" /><path d="M16.5 46.5 L33.5 29.5" /></g>
+          <g fill="none" stroke="#fff" strokeWidth="1.6"><circle cx="11.5" cy="12" r="5.5" /><path d="M7.6 15.9 L15.4 8.1" /></g>
+        </>}
+      </svg>
     </div>
   );
 }
