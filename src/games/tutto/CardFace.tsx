@@ -161,6 +161,8 @@ export function CardFace({ card }: { card: CardType }) {
   // Gold ist für weiße Schrift zu hell – Leiste unten dunkler
   const bar = c === COLOR.b200 ? "#b97800" : frame;
   return (
+    // Eigener Container: alle Maße wachsen mit der Kartenbreite, egal wo die Karte steckt
+    <div className="@container size-full">
     <div className="size-full rounded-[7cqw] p-[4.5cqw] shadow-[inset_0_0_0_0.6cqw_rgba(0,0,0,.12)]" style={{ background: frame }}>
       <div className="flex size-full flex-col items-center rounded-[4cqw] bg-white px-[4cqw] pt-[6cqw] pb-[5cqw] text-paper-ink">
         <div className="text-[9.5cqw] leading-none font-black tracking-[0.06em] uppercase" style={{ color: card.id === "pm" ? "#1f2937" : c }}>{title}</div>
@@ -178,6 +180,7 @@ export function CardFace({ card }: { card: CardType }) {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

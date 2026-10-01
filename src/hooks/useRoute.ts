@@ -7,11 +7,13 @@ export type Route =
   | { name: "local"; gameId: string }
   | { name: "room"; code: string }
   | { name: "admin" }
-  | { name: "profile" };
+  | { name: "profile" }
+  | { name: "gallery" };
 
 function parse(path: string): Route {
   if (/^\/admin\/?$/.test(path)) return { name: "admin" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };
+  if (import.meta.env.DEV && path === "/dev/karten") return { name: "gallery" };
   const room = path.match(/^\/r\/([A-Za-z0-9]{5})\/?$/);
   if (room) return { name: "room", code: room[1].toUpperCase() };
   const game = path.match(/^\/spiel\/([a-z0-9-]+)(\/lokal)?\/?$/);

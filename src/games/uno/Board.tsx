@@ -102,14 +102,15 @@ export function UnoCardView({ card, dim, className }: { card: Card; dim?: boolea
 }
 
 /** Rückseite: schwarz mit weißem Rand und schrägem roten Oval – ohne Schriftzug */
-function UnoBack({ count }: { count: number }) {
+export function UnoBack({ count }: { count: number }) {
   return (
     <div className="relative aspect-[5/7] h-full overflow-hidden rounded-[12%] bg-white shadow-md ring-1 ring-black/20">
       <svg viewBox="0 0 50 70" className="absolute inset-0 size-full" aria-hidden="true">
         <rect x={2.6} y={2.6} width={44.8} height={64.8} rx={4.6} fill={INK} />
         <ellipse cx={25} cy={35} rx={15.5} ry={27} transform="rotate(30 25 35)" fill={UNO_BG.r} />
-        <text x={25} y={35} textAnchor="middle" dominantBaseline="central" fontSize={15} fontWeight={800} fill={UNO_BG.y} style={outl(2.6)}>{count}</text>
       </svg>
+      {/* Restkarten als kleines Schild – nicht wie ein Kartenwert in der Mitte */}
+      <span className="absolute bottom-[7%] left-1/2 -translate-x-1/2 rounded-full bg-white/95 px-2 py-0.5 text-xs font-bold text-[#1a1a1a] tabular-nums shadow">{count}</span>
     </div>
   );
 }

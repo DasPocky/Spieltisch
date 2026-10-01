@@ -36,7 +36,7 @@ export function P10CardView({ card, className, dim }: { card: P10Card; className
   const ink = col ? P10_INK[col] : "#1062c4";
   return (
     <div role="img" aria-label={cardLabel(card)}
-      className={cn("aspect-[5/7] overflow-hidden rounded-[12%] bg-white shadow ring-1 ring-black/15 transition", dim && "brightness-50", className)}>
+      className={cn("aspect-[5/7] overflow-hidden rounded-[12%] bg-white shadow ring-1 ring-black/15 transition", dim && "card-dim", className)}>
       <svg viewBox="0 0 50 70" preserveAspectRatio="xMidYMid slice" className="block size-full" aria-hidden="true">
         {wild ? <>
           {/* Joker: vier Farbfelder als Rahmen, „Wild“ bunt */}
