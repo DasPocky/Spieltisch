@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Crown, Pause, Play, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
 import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, voters, type Role, type Step, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Options, Player } from "@shared/platform/types";
@@ -8,7 +8,7 @@ import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, Role
 import { RoleIcon } from "./RoleIcon";
 import { AUTO_SAY, DAWN_SAY, SCRIPT } from "./script";
 import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled } from "./useSpeech";
-import { Clock, HoldButton, INFO_STEPS, RESULT_STEPS, stepSeconds, tempoOf, useCountdown } from "./Auto";
+import { AutoRunner, HoldButton, Timer, INFO_STEPS, RESULT_STEPS, stepSeconds, tempoOf, useCountdown } from "./Auto";
 
 /**
  * Ansicht für den Spielleiter (online) bzw. das Gerät in der Mitte (lokal).
@@ -199,8 +199,11 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
     </Panel>
   );
   if (auto) return <AutoStep step={step} acted={acted} options={options} act={act} panel={panel} confirm={confirm} />;
+  // Ohne Automatik (Spielleiter oder Automatik aus): Richtzeit als Orientierung, weiter geht es per Hand
+  const guide = step !== "sleep" && !acted && s.stepAt ? s.stepAt + stepSeconds(step, options) * 1000 : null;
   return (
     <>
+      {guide !== null && <Timer deadline={guide} label={showRoles ? "Richtzeit für diesen Schritt" : "Zeit für diese Rolle"} warnAt={5} />}
       {panel}
       {confirm && !acted
         ? <Button size="lg" className="shrink-0" disabled={!confirm.ok} onClick={confirm.run}>{confirm.label}</Button>
@@ -209,79 +212,17 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
   );
 }
 
-type Stage = "call" | "act" | "result" | "putdown" | "end";
-
-/**
- * Automatik für ein Handy in der Mitte: Aufruf vorlesen → Countdown (nur Text, damit niemand hört, wo das Handy ist)
- * → Auswahl gedrückt halten → Ergebnis lesen → Handy zurücklegen → „schläft wieder ein“ vorlesen → nächster Schritt.
- * Läuft die Zeit ab, verlängert sie mit einer Meldung, bis gewählt ist.
- */
+/** Werwolf-Nachtschritt in der Automatik (Ablauf siehe AutoRunner) */
 function AutoStep({ step, acted, options, act, panel, confirm }: {
   step: Step; acted: boolean; options: Options; act: (a: WerwolfAction) => void; panel: React.ReactNode;
   confirm: { label: string; ok: boolean; run: () => void } | null;
 }) {
-  const script = SCRIPT[step];
   const info = INFO_STEPS.includes(step) || step === "sleep";
-  const total = stepSeconds(step, options);
-  const [stage, setStage] = useState<Stage>("call");
-  const [deadline, setDeadline] = useState<number | null>(null);
-  const [extended, setExtended] = useState(false);
-  const [pausedLeft, setPausedLeft] = useState<number | null>(null);
-  const left = useCountdown(deadline, pausedLeft !== null);
-  const ended = useRef(false);
-  const go = (next: Stage, secs: number | null) => { setStage(next); setDeadline(secs === null ? null : Date.now() + secs * 1000); };
-
-  // Aufruf vorlesen, dann läuft die Zeit
-  useEffect(() => {
-    let alive = true;
-    void speak(AUTO_SAY[step] ?? script.say).then(() => { if (alive) go("act", step === "sleep" ? 2 : total); });
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // Gewählt: Ergebnis zeigen bzw. Handy zurücklegen lassen
-  useEffect(() => {
-    if (acted && (stage === "act" || stage === "call")) go(RESULT_STEPS.includes(step) ? "result" : "putdown", RESULT_STEPS.includes(step) ? 6 : 3);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acted]);
-  // Zeit abgelaufen
-  useEffect(() => {
-    if (left !== 0 || pausedLeft !== null) return;
-    if (stage === "act") {
-      if (info || acted) go("end", null);
-      else { setExtended(true); setDeadline(Date.now() + 15_000); }
-    } else if (stage === "result") go("putdown", 3);
-    else if (stage === "putdown") go("end", null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [left]);
-  // Schritt beenden: „… schläft wieder ein“ vorlesen, dann weiter
-  useEffect(() => {
-    if (stage !== "end" || ended.current) return;
-    ended.current = true;
-    void speak(script.after ?? "").then(() => act({ type: "next" }));
-  }, [stage, script.after, act]);
-
-  const pause = () => {
-    if (pausedLeft !== null) { setDeadline(Date.now() + pausedLeft * 1000); setPausedLeft(null); }
-    else setPausedLeft(left ?? 0);
-  };
-  const shown = pausedLeft ?? left;
-  const note = stage === "call" ? "Hört zu …"
-    : stage === "result" ? "Merk dir das Ergebnis."
-    : stage === "putdown" ? "Handy zurück in die Mitte legen – gleich geht es weiter."
-    : stage === "end" ? "…"
-    : extended ? "Zeit verlängert – bitte jetzt wählen."
-    : shown !== null && shown <= 5 && !info ? `Achtung – noch ${shown} Sekunden.`
-    : info ? "Augen auf und aufs Handy schauen." : "Wählen und zum Bestätigen gedrückt halten.";
-  const clockTotal = stage === "result" ? 6 : stage === "putdown" ? 3 : extended ? 15 : total;
-
   return (
-    <>
-      <Clock left={shown} total={clockTotal} note={note} paused={pausedLeft !== null} onPause={pause}
-        onSkip={info || acted ? () => { if (!ended.current) go("end", null); } : undefined} />
+    <AutoRunner say={AUTO_SAY[step] ?? SCRIPT[step].say} after={SCRIPT[step].after} total={step === "sleep" ? 2 : stepSeconds(step, options)}
+      required={!info} acted={acted} result={RESULT_STEPS.includes(step)} onNext={() => act({ type: "next" })} confirm={confirm}>
       {panel}
-      {confirm && !acted && <HoldButton label={confirm.label} disabled={!confirm.ok} onDone={confirm.run} />}
-      {acted && RESULT_STEPS.includes(step) && stage === "result" && <Button size="lg" className="shrink-0" variant="secondary" onClick={() => go("putdown", 3)}>Gesehen</Button>}
-    </>
+    </AutoRunner>
   );
 }
 
@@ -330,7 +271,7 @@ function Witch({ s, players, hold, onDone }: { s: WerwolfState; players: Player[
 }
 
 /** Was in der Nacht passiert ist – zum Vorlesen (nur Namen und, falls aufgedeckt, Rollen) */
-function newsSay(s: WerwolfState, players: Player[]) {
+export function newsSay(s: WerwolfState, players: Player[]) {
   const d = s.news?.kind === "night" ? s.news.deaths : [];
   if (!d.length) return "Heute Nacht ist niemand gestorben.";
   return d.map((x) => `${nameOf(players, x.id)} ist tot${s.revealDead ? ` und war ${ROLES[s.roles[x.id]].name}` : ""}.`).join(" ");

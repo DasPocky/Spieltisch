@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pause, Play, SkipForward } from "lucide-react";
 import type { Options } from "@shared/platform/types";
 import type { Step } from "@shared/games/werwolf/logic";
 import { Button } from "@/components/ui/button";
 import { cn, vibrate } from "@/lib/utils";
+import { Timer, useCountdown } from "@/platform/Countdown";
+
+export { Timer, useCountdown };
+import { speak } from "./useSpeech";
 
 /** Zeiten je Tempo: Rollen, Werwölfe, reine Info-Schritte (Sekunden), Diskussion (Minuten) */
 const TEMPO = {
@@ -23,17 +27,6 @@ export function stepSeconds(step: Step, o: Options) {
   if (step === "sleep") return 2;
   if (INFO_STEPS.includes(step)) return t.info;
   return step === "werwolf" ? t.wolves : t.role;
-}
-
-/** Sekunden bis `deadline`, tickt viermal pro Sekunde; steht still, solange `paused` */
-export function useCountdown(deadline: number | null, paused: boolean) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (deadline === null || paused) return;
-    const t = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(t);
-  }, [deadline, paused]);
-  return deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
 }
 
 /**
@@ -82,3 +75,74 @@ export function Clock({ left, total, note, paused, onPause, onSkip }: { left: nu
     </div>
   );
 }
+
+type Stage = "call" | "act" | "result" | "putdown" | "end";
+
+/**
+ * Ein Nachtschritt mit einem Handy in der Mitte – ohne dass jemand „Weiter“ tippen muss:
+ * Aufruf vorlesen → Countdown (nur Text, damit niemand hört, wo das Handy ist) → Auswahl gedrückt halten
+ * → ggf. Ergebnis lesen → Handy zurücklegen → `after` vorlesen → `onNext`.
+ * `required`: Läuft die Zeit ohne Wahl ab, wird mit Meldung verlängert; sonst geht es einfach weiter.
+ */
+export function AutoRunner({ say, after, total, required, acted, result, onNext, confirm, children }: {
+  say: string; after?: string; total: number; required: boolean; acted: boolean; result?: boolean; onNext: () => void;
+  confirm?: { label: string; ok: boolean; run: () => void } | null; children: ReactNode;
+}) {
+  const [stage, setStage] = useState<Stage>("call");
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [extended, setExtended] = useState(false);
+  const [pausedLeft, setPausedLeft] = useState<number | null>(null);
+  const left = useCountdown(deadline, pausedLeft !== null);
+  const ended = useRef(false);
+  const go = (next: Stage, secs: number | null) => { setStage(next); setDeadline(secs === null ? null : Date.now() + secs * 1000); };
+
+  useEffect(() => {
+    let alive = true;
+    void speak(say).then(() => { if (alive) go("act", total); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (acted && (stage === "act" || stage === "call")) go(result ? "result" : "putdown", result ? 6 : 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acted]);
+  useEffect(() => {
+    if (left !== 0 || pausedLeft !== null) return;
+    if (stage === "act") {
+      if (!required || acted) go("end", null);
+      else { setExtended(true); setDeadline(Date.now() + 15_000); }
+    } else if (stage === "result") go("putdown", 3);
+    else if (stage === "putdown") go("end", null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [left]);
+  useEffect(() => {
+    if (stage !== "end" || ended.current) return;
+    ended.current = true;
+    void speak(after ?? "").then(onNext);
+  }, [stage, after, onNext]);
+
+  const pause = () => {
+    if (pausedLeft !== null) { setDeadline(Date.now() + pausedLeft * 1000); setPausedLeft(null); }
+    else setPausedLeft(left ?? 0);
+  };
+  const shown = pausedLeft ?? left;
+  const note = stage === "call" ? "Hört zu …"
+    : stage === "result" ? "Merk dir das Ergebnis."
+    : stage === "putdown" ? "Handy zurück in die Mitte legen – gleich geht es weiter."
+    : stage === "end" ? "…"
+    : extended ? "Zeit verlängert – bitte jetzt wählen."
+    : shown !== null && shown <= 5 && required ? `Achtung – noch ${shown} Sekunden.`
+    : !required ? "Augen auf und aufs Handy schauen." : "Wählen und zum Bestätigen gedrückt halten.";
+  const clockTotal = stage === "result" ? 6 : stage === "putdown" ? 3 : extended ? 15 : total;
+
+  return (
+    <>
+      <Clock left={shown} total={clockTotal} note={note} paused={pausedLeft !== null} onPause={pause}
+        onSkip={!required || acted ? () => { if (!ended.current) go("end", null); } : undefined} />
+      {children}
+      {confirm && !acted && <HoldButton label={confirm.label} disabled={!confirm.ok} onDone={confirm.run} />}
+      {acted && result && stage === "result" && <Button size="lg" className="shrink-0" variant="secondary" onClick={() => go("putdown", 3)}>Gesehen</Button>}
+    </>
+  );
+}
+

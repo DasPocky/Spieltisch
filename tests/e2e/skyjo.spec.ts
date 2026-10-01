@@ -14,12 +14,17 @@ async function local(page: Page, names: string[], table = false) {
 }
 
 const myCards = (p: Page) => p.getByRole("group", { name: "Deine Karten" }).getByRole("button");
-/** Eine verdeckte eigene Karte umdrehen und warten, bis der Server es bestätigt */
-async function flipOne(p: Page) {
-  const hidden = myCards(p).filter({ hasText: "SKYJO" });
-  const n = await hidden.count();
-  await hidden.first().click();
-  await expect(hidden).not.toHaveCount(n);
+/** Die k-te eigene Karte umdrehen und warten, bis der Server es bestätigt (ein verlorener Tipp wird wiederholt) */
+async function flipOne(p: Page, k?: number) {
+  // ohne k: die erste noch verdeckte Karte
+  const labels = await myCards(p).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  const card = myCards(p).nth(k ?? Math.max(0, labels.indexOf("verdeckte Karte")));
+  for (let i = 0; i < 3; i++) {
+    if ((await card.getAttribute("aria-label")) !== "verdeckte Karte") return;
+    await card.click();
+    try { await expect(card).not.toHaveAttribute("aria-label", "verdeckte Karte", { timeout: 3000 }); return; } catch { /* nochmal tippen */ }
+  }
+  await expect(card).not.toHaveAttribute("aria-label", "verdeckte Karte");
 }
 
 test("Skyjo lokal: aufdecken, ziehen, tauschen – passt auf 320 px", async ({ page }) => {
@@ -41,7 +46,7 @@ test("Skyjo online: jeder sein Raster, offene Karten für alle", async ({ browse
   const code = await createRoom(anna, "skyjo", "Anna", "5656");
   await joinRoom(ben, code, "Ben", "5656");
   await anna.getByRole("button", { name: "Spiel starten" }).click();
-  for (const p of [anna, ben]) for (let k = 0; k < 2; k++) await flipOne(p);
+  for (const p of [anna, ben]) for (let k = 0; k < 2; k++) await flipOne(p, k);
   // wer beginnt, zieht vom Stapel und legt ab, dreht eine um
   // Erst wenn beide Handys den Stand nach dem Aufdecken haben, steht fest, wer beginnt
   await expect.poll(async () => [await anna.getByTestId("hint").textContent(), await ben.getByTestId("hint").textContent()].some((h) => h?.includes("Ziehe"))).toBe(true);

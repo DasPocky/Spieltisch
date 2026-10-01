@@ -272,7 +272,6 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
   if (s.mode === "table") return applyTable(s, a, ctx, isHost);
 
   if (a.type === "nextRound") {
-    if (!isHost) throw new GameError("Die nächste Runde startet der Host.");
     if (s.step !== "roundEnd") throw new GameError("Die Runde läuft noch.");
     s.round++;
     deal(s, ctx);

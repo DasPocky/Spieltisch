@@ -260,7 +260,6 @@ function apply(prev: SkState, a: SkAction, ctx: GameContext): SkState {
       return s;
     }
     case "nextRound": {
-      if (!isHost) throw new GameError("Die nächste Runde startet der Host.");
       if (s.phase !== "roundEnd") throw new GameError("Die Runde läuft noch.");
       s.round++;
       deal(s, ctx.players);

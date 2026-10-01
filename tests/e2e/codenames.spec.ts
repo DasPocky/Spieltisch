@@ -10,6 +10,7 @@ async function localPlayers(page: Page, names: string[], mode?: RegExp) {
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
   if (mode) await page.getByRole("radio", { name: mode }).click();
+  else await page.getByRole("radio", { name: "2 Min." }).click();
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
 
@@ -22,6 +23,7 @@ test("Codenames lokal: Teams, Hinweis, raten – auch auf 320 px", async ({ page
   await shot(page, "83-cn-teams");
   await page.getByRole("button", { name: "Los geht's" }).click();
   await expect(page.getByRole("group", { name: "Wörter" }).getByRole("button")).toHaveCount(25);
+  await expect(page.getByTestId("timer")).toContainText("Team");
   await expectNoScroll(page);
   await page.getByLabel("Hinweiswort").fill("Quatsch");
   await page.getByRole("button", { name: "Zahl erhöhen" }).click();

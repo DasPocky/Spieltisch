@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Moon, Pause, Play, Sun, Volume2, VolumeX } from "lucide-react";
+import { useState } from "react";
+import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
 import { ON_ROLES, type ONAction, type ONState } from "@shared/games/einenacht/logic";
 import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,10 @@ import { setSpeech, speechSupported, useSpeak, useSpeechEnabled } from "@/games/
 import { cn } from "@/lib/utils";
 import { Countdown } from "./parts";
 import { RoleIcon } from "./RoleIcon";
-import { ON_DAWN, ON_SCRIPT } from "./script";
+import { fullSay, ON_DAWN, ON_SCRIPT } from "./script";
+import { AutoRunner, tempoOf } from "@/games/werwolf/Auto";
 
 const ids = (s: ONState) => Object.keys(s.start);
-/** Genug Zeit zum Vorlesen und Handeln (die Rollen tauschen echte Karten) */
-const stepSeconds = (say: string) => Math.round(Math.max(7, say.length / 13 + 6));
 
 /** Rollen im Spiel laut Einstellungen */
 function rolesInPlay(o: Options): string[] {
@@ -24,20 +23,9 @@ function rolesInPlay(o: Options): string[] {
 /** Eigene Karten: Das Handy des Hosts (lokal: das Gerät) erzählt die Nacht und schaltet selbst weiter. */
 export function OwnNarrator({ s, players, options, act }: { s: ONState; players: Player[]; options: Options; act: (a: ONAction) => void }) {
   const speech = useSpeechEnabled(true);
-  const [auto, setAuto] = useState(true);
   const step = s.phase === "night" ? s.pending[0] : null;
-  useSpeak(step ? ON_SCRIPT[step].say : s.phase === "day" ? ON_DAWN : "", speech && s.phase !== "reveal");
-  const secs = step ? stepSeconds(ON_SCRIPT[step].say) : 0;
-  const [left, setLeft] = useState(secs);
-  const key = `${step}|${s.pending.length}`;
-  useEffect(() => { setLeft(secs); }, [key, secs]);
-  useEffect(() => {
-    if (!step || !auto) return;
-    if (left <= 0) { act({ type: "next" }); return; }
-    const t = setTimeout(() => setLeft((x) => x - 1), 1000);
-    return () => clearTimeout(t);
-  }, [left, auto, step, act]);
-
+  useSpeak(s.phase === "day" ? ON_DAWN : "", speech);
+  const t = tempoOf(options);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       {speechSupported() && s.phase !== "reveal" && (
@@ -54,19 +42,16 @@ export function OwnNarrator({ s, players, options, act }: { s: ONState; players:
         </>
       )}
       {s.phase === "night" && step && (
-        <>
-          <Panel title={<IconTitle icon={Moon}>{ON_SCRIPT[step].title}</IconTitle>} sub={<span className="italic">„{ON_SCRIPT[step].say}“</span>}>
+        // Eigene Karten: niemand tippt – die Zeit läuft einfach ab, dann „… schließt die Augen“
+        <AutoRunner key={`${step}-${s.pending.length}`} say={ON_SCRIPT[step].say} after={ON_SCRIPT[step].after}
+          total={step === "sleep" ? 2 : step === "werwolf" ? t.wolves : t.role} required={false} acted={false} onNext={() => act({ type: "next" })}>
+          <Panel title={<IconTitle icon={Moon}>{ON_SCRIPT[step].title}</IconTitle>} sub={<span className="italic">„{fullSay(step)}“</span>}>
             <div className="grid flex-1 place-content-center justify-items-center gap-3">
               {step !== "sleep" && ON_ROLES[step as keyof typeof ON_ROLES] ? <RoleIcon role={step as keyof typeof ON_ROLES} className="block size-14 text-ice" /> : <Moon className="size-14 text-ice" />}
-              <p className="text-5xl font-extrabold tabular-nums" data-testid="own-left">{auto ? left : "–"}</p>
-              <p className="text-sm text-muted-foreground">{auto ? "Sekunden bis zum nächsten Schritt" : "Automatik angehalten"}</p>
+              <p className="text-sm text-muted-foreground">Die Rolle handelt mit den echten Karten.</p>
             </div>
           </Panel>
-          <div className="grid shrink-0 grid-cols-[auto_1fr] gap-2">
-            <Button size="lg" variant="secondary" aria-label={auto ? "Automatik anhalten" : "Automatik fortsetzen"} onClick={() => setAuto((a) => !a)}>{auto ? <Pause /> : <Play />}</Button>
-            <Button size="lg" onClick={() => act({ type: "next" })}>Weiter</Button>
-          </div>
-        </>
+        </AutoRunner>
       )}
       {s.phase === "day" && <OwnDay s={s} players={players} act={act} />}
     </div>

@@ -50,7 +50,7 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<SkState, SkActio
 
 /** Karten in der App */
 function AppBoard(props: BoardProps<SkState, SkAction>) {
-  const { room, game: s, me, isHost, canAct, act } = props;
+  const { room, game: s, me, canAct, act } = props;
   const players = room.players;
   if (s.phase === "over") return <Result {...props} />;
 
@@ -139,8 +139,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
       <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <p className="mb-1.5 text-center text-sm leading-snug font-semibold" data-testid="hint"><SmoothText>{`${s.ender && s.phase === "turn" ? "Letzte Runde! " : ""}${hint}`}</SmoothText></p>
         {s.phase === "roundEnd" ? (
-          isHost ? <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
-            : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet die nächste Runde.</p>
+          <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
         ) : myTurn && s.drawnFrom === "deck" && s.drawn !== null ? (
           <Button variant="secondary" className="h-11 w-full" onClick={() => act({ type: "discardDrawn" })}>Ablegen & umdrehen</Button>
         ) : null}

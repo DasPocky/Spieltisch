@@ -64,7 +64,9 @@ test("Tutto mit echten Karten: gezogene Karte antippen", async ({ page }) => {
 });
 
 test("Eine Nacht mit eigenen Karten: Host-Handy erzählt, andere sehen nur Augen zu", async ({ browser }) => {
+  test.setTimeout(120_000);
   const [anna, ben, cem] = await Promise.all([newPhone(browser), newPhone(browser), newPhone(browser)]);
+  await anna.addInitScript(() => { try { localStorage.setItem("spieltisch:werwolf:speech", "0"); } catch { /* about:blank */ } });
   const code = await createRoom(anna, "einenacht", "Anna", "4242");
   await joinRoom(ben, code, "Ben", "4242");
   await joinRoom(cem, code, "Cem", "4242");
@@ -76,10 +78,11 @@ test("Eine Nacht mit eigenen Karten: Host-Handy erzählt, andere sehen nur Augen
   await expect(ben.getByRole("button", { name: "Weiter" })).toHaveCount(0);
   await expectNoScroll(anna);
   await shot(anna, "79-einenacht-own-night");
-  // Automatik läuft – der Host kann auch von Hand weiter
-  for (let i = 0; i < 10 && !(await anna.getByText("Aufdecken und eintragen").isVisible()); i++) {
-    await anna.getByRole("button", { name: "Weiter" }).click().catch(() => {});
-    await anna.waitForTimeout(150);
+  // Automatik läuft – der Host kann Schritte auch überspringen
+  for (let i = 0; i < 200 && !(await anna.getByText("Aufdecken und eintragen").isVisible()); i++) {
+    const skip = anna.getByRole("button", { name: "Schritt überspringen" });
+    if (await skip.isVisible()) await skip.click();
+    await anna.waitForTimeout(250);
   }
   await expect(ben.getByText("Diskutiert!")).toBeVisible();
   await anna.getByRole("button", { name: "Werwölfe", exact: true }).click();

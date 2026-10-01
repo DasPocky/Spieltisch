@@ -50,7 +50,7 @@ type Pick = Source | null;
 const Label = ({ children }: { children: React.ReactNode }) => <span className="text-[0.66rem] font-bold tracking-wider text-muted-foreground uppercase">{children}</span>;
 const same = (a: Pick, b: Pick) => !!a && !!b && a.from === b.from && (a.from !== "hand" || a.card === (b as typeof a).card) && (a.from !== "discard" || a.i === (b as typeof a).i);
 
-function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps<SbState, SbAction>) {
+function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState, SbAction>) {
   const players = room.players;
   const local = me === null;
   const [pick, setPick] = useState<Pick>(null);
@@ -141,8 +141,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
       {/* Eigener Bereich: Vorrat (loswerden!) und vier Ablagen */}
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {s.phase === "roundEnd" ? (
-          isHost ? <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
-            : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet die nächste Runde.</p>
+          <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
         ) : (
           <>
             <div className="glass mb-2 flex items-stretch justify-center gap-2.5 rounded-2xl px-2.5 py-2">

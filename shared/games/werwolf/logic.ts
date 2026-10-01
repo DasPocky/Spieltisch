@@ -206,6 +206,10 @@ export interface WerwolfState {
   /** wohin es nach dem Jägerschuss weitergeht */
   afterHunter: "day" | "night";
   winner: Winner | null;
+  /** Seit wann die aktuelle Phase läuft (Server- bzw. Gerätezeit) – für Countdowns auf allen Handys */
+  phaseAt?: number;
+  /** Seit wann der aktuelle Nachtschritt läuft (Schritt für Schritt) */
+  stepAt?: number;
   log: string[];
   /** nur in der gefilterten Sicht: wessen Rollen der Betrachter wirklich kennt */
   known?: string[];
@@ -568,6 +572,13 @@ function forceNight(s: WerwolfState, ctx: GameContext) {
   s.log.push(`Nacht ${s.night} vom Host beendet`);
   s.pending = [];
   dawn(s, ctx);
+}
+
+/** Zeitstempel setzen, sobald eine neue Phase (oder Stichwahl) bzw. ein neuer Nachtschritt beginnt */
+function stamped(prev: WerwolfState | null, s: WerwolfState, now: number): WerwolfState {
+  if (!prev || prev.phase !== s.phase || prev.night !== s.night || (prev.runoff ?? []).join() !== (s.runoff ?? []).join()) s.phaseAt = now;
+  if (!prev || prev.phase !== s.phase || prev.night !== s.night || prev.pending[0] !== s.pending[0]) s.stepAt = now;
+  return s;
 }
 
 function apply(prev: WerwolfState, a: WerwolfAction, ctx: GameContext): WerwolfState {
@@ -1009,8 +1020,8 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
     roleToggle("engel", false, "Solo-Rollen", "will in der ersten Runde sterben"),
   ],
   playerLimits: (o) => (modeOf(o) === "human" ? { min: 5, max: 20, note: "online zählt der Spielleiter zusätzlich" } : { min: 5, max: 20 }),
-  setup,
-  apply,
+  setup: (ctx) => stamped(null, setup(ctx), ctx.now),
+  apply: (prev, a, ctx) => stamped(prev, apply(prev, a, ctx), ctx.now),
   actionKind: (a) => (a.type in ACTIONS ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
@@ -1037,7 +1048,12 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
     if (s.phase === "hunter") return "Jäger überspringen";
     return null;
   },
-  skipTurn(prev, ctx) {
+  skipTurn: (prev, ctx) => stamped(prev, skipTurn(prev, ctx), ctx.now),
+  onPlayerRemoved: (prev, id, ctx) => stamped(prev, onPlayerRemoved(prev, id, ctx), ctx.now),
+  view,
+};
+
+function skipTurn(prev: WerwolfState, ctx: GameContext): WerwolfState {
     const s = structuredClone(prev);
     if (s.phase === "assign") finishAssign(s);
     else if (s.phase === "election") closeVote(s, ctx);
@@ -1053,8 +1069,9 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
       afterDeaths(s, s.afterHunter);
     }
     return s;
-  },
-  onPlayerRemoved(prev, id, ctx) {
+}
+
+function onPlayerRemoved(prev: WerwolfState, id: string, ctx: GameContext): WerwolfState {
     const s = structuredClone(prev);
     if (id === s.narratorId) { s.phase = "over"; s.winner = null; s.log.push("Der Spielleiter hat den Raum verlassen."); return s; }
     if (!(id in s.roles) || !s.alive[id]) return s;
@@ -1086,9 +1103,7 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
       if (voters(s).every((x) => x in s.votes)) closeVote(s, ctx);
     }
     return s;
-  },
-  view,
-};
+}
 
 const ACTIONS: Record<WerwolfAction["type"], true> = {
   ready: true, startNight: true, amor: true, model: true, dog: true, protect: true, wolf: true, infect: true, wolf2: true,

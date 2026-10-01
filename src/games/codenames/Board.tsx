@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, KeyRound, Shuffle } from "lucide-react";
 import { notReady, other, remaining, TEAM_NAME, type CNAction, type CNState, type Color, type Team } from "@shared/games/codenames/logic";
 import type { Player } from "@shared/platform/types";
@@ -8,6 +8,7 @@ import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { SmoothText } from "@/platform/SmoothText";
+import { Timer, useCountdown } from "@/platform/Countdown";
 import { cn, vibrate } from "@/lib/utils";
 import { MUTED } from "@/lib/palette";
 
@@ -105,7 +106,25 @@ function WordCard({ word, color, revealed, hint, onClick, disabled }: { word: st
 }
 
 /** Die Partie in der App: Raster, Hinweis des Chefs, Agenten tippen */
-function Play({ room, game: s, me, act }: BoardProps<CNState, CNAction>) {
+/**
+ * Sanduhr: Restzeit des Zugs für alle. Ist sie um, beendet das Host-Handy (lokal: das Gerät) den Zug.
+ */
+function Hourglass({ s, room, me, isHost, dispatch }: { s: CNState; room: BoardProps["room"]; me: string | null; isHost: boolean; dispatch: BoardProps["dispatch"] }) {
+  const secs = Number(room.options.timer) || 0;
+  const deadline = secs && s.turnAt ? s.turnAt + secs * 1000 : null;
+  const left = useCountdown(deadline, false);
+  const leader = me === null || isHost;
+  useEffect(() => {
+    if (!leader || deadline === null) return;
+    const t = setTimeout(() => dispatch({ type: "skip" }), Math.max(0, deadline + 2000 - Date.now()));
+    return () => clearTimeout(t);
+  }, [leader, deadline, dispatch]);
+  useEffect(() => { if (left === 10) vibrate([30, 60, 30]); }, [left]);
+  if (deadline === null) return null;
+  return <Timer deadline={deadline} label={`Team ${TEAM_NAME[s.turn]}`} />;
+}
+
+function Play({ room, game: s, me, isHost, act, dispatch }: BoardProps<CNState, CNAction>) {
   const local = me === null;
   const m = me ? s.members[me] : undefined;
   const [peek, setPeek] = useState(false);
@@ -120,6 +139,7 @@ function Play({ room, game: s, me, act }: BoardProps<CNState, CNAction>) {
   return (
     <>
       <Score s={s} showTurn />
+      <Hourglass s={s} room={room} me={me} isHost={isHost} dispatch={dispatch} />
       <div className="flex shrink-0 items-center justify-between gap-2 px-1 pt-1.5 text-sm">
         {s.clue ? (
           <span className="min-w-0 truncate" data-testid="clue">Hinweis: <b className="text-lg">{s.clue.word}</b> <b className="text-ice">{s.clue.count === 0 ? "∞" : s.clue.count}</b> · noch {s.guessesLeft} {s.guessesLeft === 1 ? "Versuch" : "Versuche"}</span>

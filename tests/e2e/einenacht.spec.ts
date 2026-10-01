@@ -11,6 +11,8 @@ test("Eine Nacht lokal: Karten herumreichen, Nacht am Gerät, Auflösung", async
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  // Ablauf von Hand mit „Weiter“ (die Automatik prüft der Werwolf-Test)
+  await page.getByRole("checkbox", { name: /Automatik/ }).click();
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await page.getByRole("button", { name: "Anna", exact: true }).click();
   await page.getByRole("button", { name: /Deine Karte aufdecken/ }).click();

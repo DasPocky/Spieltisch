@@ -49,7 +49,7 @@ function Mini({ cards }: { cards: P10Card[] }) {
 }
 const groupText = (g: Group) => (g.kind === "set" ? `${g.cards.length}× ${g.value}` : g.kind === "run" ? `${g.lo}–${g.hi}` : `${g.cards.length}× Farbe`);
 
-function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps<P10State, P10Action>) {
+function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10State, P10Action>) {
   const players = room.players;
   const local = me === null;
   const { covered, reveal } = useHandoff(local && (s.step === "draw" || s.step === "play"), s.curId, players.length);
@@ -118,7 +118,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
         ))}
       </div>
 
-      {s.step === "roundEnd" ? <RoundEnd room={room} s={s} isHost={isHost} act={act} /> : (
+      {s.step === "roundEnd" ? <RoundEnd room={room} s={s} act={act} /> : (
         <>
           {/* Ausgelegte Gruppen */}
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto py-1" data-testid="table">
@@ -216,7 +216,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
   );
 }
 
-function RoundEnd({ room, s, isHost, act }: { room: BoardProps["room"]; s: P10State; isHost: boolean; act: (a: P10Action) => void }) {
+function RoundEnd({ room, s, act }: { room: BoardProps["room"]; s: P10State; act: (a: P10Action) => void }) {
   const last = s.lastRound;
   return (
     <>
@@ -233,8 +233,7 @@ function RoundEnd({ room, s, isHost, act }: { room: BoardProps["room"]; s: P10St
         ))}
       </ul>
       <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {isHost ? <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
-          : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet die nächste Runde.</p>}
+        <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
       </div>
     </>
   );

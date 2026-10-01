@@ -482,3 +482,20 @@ describe("Randfälle", () => {
     expect(g(r).phase).toBe("day");
   });
 });
+
+describe("Zeitstempel für Countdowns", () => {
+  it("phaseAt wechselt mit der Phase, stepAt mit jedem Nachtschritt", async () => {
+    const { werwolf } = await import("@shared/games/werwolf/logic");
+    const players = ["a", "b", "c", "d", "e"].map((id) => ({ id, name: id }));
+    const ctx = (now: number) => ({ players, hostId: "a", actorId: null, options: { narrator: "app", seherin: true, hexe: false }, now });
+    let s = werwolf.setup(ctx(1000));
+    expect(s.phaseAt).toBe(1000);
+    s = werwolf.apply(s, { type: "startNight" }, ctx(2000));
+    expect(s.phase).toBe("night");
+    expect(s.phaseAt).toBe(2000);
+    expect(s.stepAt).toBe(2000);
+    s = werwolf.apply(s, { type: "next" }, ctx(3000));
+    expect(s.phaseAt).toBe(2000);
+    expect(s.stepAt).toBe(3000);
+  });
+});

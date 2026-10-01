@@ -118,3 +118,22 @@ describe("Codenames", () => {
     expect(res.filter((x) => x.won).map((x) => x.id).sort()).toEqual(["p3", "p4"]);
   });
 });
+
+describe("Codenames – Sanduhr", () => {
+  it("turnAt wird bei jedem Teamwechsel neu gesetzt", async () => {
+    const { codenames } = await import("@shared/games/codenames/logic");
+    const players = ["a", "b", "c", "d"].map((id) => ({ id, name: id }));
+    const ctx = (now: number) => ({ players, hostId: "a", actorId: null, options: { mode: "app", timer: "60" }, now });
+    let s = codenames.setup(ctx(0));
+    s = codenames.apply(s, { type: "join", player: "a", team: "rot", chief: true }, ctx(1));
+    s = codenames.apply(s, { type: "join", player: "b", team: "rot" }, ctx(2));
+    s = codenames.apply(s, { type: "join", player: "c", team: "blau", chief: true }, ctx(3));
+    s = codenames.apply(s, { type: "join", player: "d", team: "blau" }, ctx(4));
+    s = codenames.apply(s, { type: "begin" }, ctx(1000));
+    expect(s.turnAt).toBe(1000);
+    const turn = s.turn;
+    s = codenames.skipTurn!(s, ctx(5000));
+    expect(s.turn).not.toBe(turn);
+    expect(s.turnAt).toBe(5000);
+  });
+});

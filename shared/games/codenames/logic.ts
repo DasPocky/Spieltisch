@@ -31,6 +31,8 @@ export interface CNState {
   revealed: boolean[];
   start: Team;
   turn: Team;
+  /** Seit wann der aktuelle Zug läuft (für die Sanduhr) */
+  turnAt?: number;
   clue: { word: string; count: number } | null;
   /** Versuche in diesem Zug (Hinweiszahl + 1) */
   guessesLeft: number;
@@ -128,6 +130,12 @@ function reveal(s: CNState, i: number, byTeam: Team | null, who: string) {
     s.guessesLeft--;
     if (s.guessesLeft <= 0) endTurn(s);
   } else endTurn(s);
+}
+
+/** Zugbeginn festhalten, sobald ein Team dran kommt */
+function stamped(prev: CNState, s: CNState, now: number): CNState {
+  if (s.phase === "play" && (prev.phase !== "play" || prev.turn !== s.turn)) s.turnAt = now;
+  return s;
 }
 
 function apply(prev: CNState, a: CNAction, ctx: GameContext): CNState {
@@ -235,20 +243,27 @@ export const codenames: GameLogic<CNState, CNAction> = {
         { value: "key", label: "Brettspiel-Hilfe", hint: "nur die Schlüsselkarte" },
       ],
     },
+    {
+      key: "timer", label: "Sanduhr pro Zug", type: "choice", default: "0", inGame: true, showIf: (o) => o.mode !== "key",
+      choices: [
+        { value: "0", label: "Aus" }, { value: "60", label: "1 Min." }, { value: "90", label: "1½ Min." },
+        { value: "120", label: "2 Min." }, { value: "180", label: "3 Min." },
+      ],
+    },
   ],
   /** In der App braucht jedes Team Chef + Agent, als Brettspiel-Hilfe reichen die zwei Chefs */
   playerLimits: (o) => (modeOf(o) === "app" ? { min: 4, max: 20 } : { min: 2, max: 20 }),
   setup,
-  apply,
+  apply: (prev, a, ctx) => stamped(prev, apply(prev, a, ctx), ctx.now),
   actionKind: (a) => (["join", "shuffleTeams", "begin", "clue", "guess", "pass", "mark"].includes(a.type) ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
   results: (s) => Object.entries(s.members).filter(([, m]) => m.team).map(([id, m]) => ({ id, won: m.team === s.winner })),
   skipLabel: (s) => (s.phase === "play" && s.mode === "app" ? `Zug von Team ${TEAM_NAME[s.turn]} beenden` : null),
-  skipTurn(prev) {
+  skipTurn(prev, ctx) {
     const s = structuredClone(prev);
     if (s.phase === "play") { log(s, `Zug von Team ${TEAM_NAME[s.turn]} übersprungen.`); endTurn(s); }
-    return s;
+    return stamped(prev, s, ctx.now);
   },
   onPlayerRemoved(prev, id) {
     const s = structuredClone(prev);

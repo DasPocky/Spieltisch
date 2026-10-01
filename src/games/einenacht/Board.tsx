@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Coffee, Eye, Handshake, Moon, PawPrint, Skull, Sun, VenetianMask, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { ON_ROLES, resolveNight, type ONAction, type ONRole, type ONState } from "@shared/games/einenacht/logic";
-import type { Player } from "@shared/platform/types";
+import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { Ico, IconTitle, nameOf, Panel, Picker } from "@/games/werwolf/parts";
-import { setSpeech, speechSupported, useSpeak, useSpeechEnabled } from "@/games/werwolf/useSpeech";
+import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled } from "@/games/werwolf/useSpeech";
 import { cn } from "@/lib/utils";
 import { CenterCards, Countdown, ONCard } from "./parts";
 import { OwnNarrator, OwnPhone } from "./Own";
 import { RoleIcon } from "./RoleIcon";
-import { ON_DAWN, ON_SCRIPT } from "./script";
+import { fullSay, ON_DAWN, ON_SCRIPT } from "./script";
+import { AutoRunner, tempoOf, Timer, useCountdown } from "@/games/werwolf/Auto";
 
 const ids = (s: ONState) => Object.keys(s.start);
 
@@ -19,7 +20,7 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<O
   const players = room.players;
   if (s.phase === "over") return <Result s={s} players={players} isHost={isHost} dispatch={dispatch} />;
   if (s.own) return me === null || isHost ? <OwnNarrator s={s} players={players} options={room.options} act={act} /> : <OwnPhone s={s} />;
-  return me === null ? <Device s={s} players={players} act={act} /> : <Phone s={s} players={players} me={me} isHost={isHost} act={act} />;
+  return me === null ? <Device s={s} players={players} act={act} options={room.options} /> : <Phone s={s} players={players} me={me} isHost={isHost} act={act} options={room.options} dispatch={dispatch} />;
 }
 
 function Wrap({ children }: { children: React.ReactNode }) {
@@ -28,10 +29,12 @@ function Wrap({ children }: { children: React.ReactNode }) {
 
 /* ───────────── Lokal: ein Gerät in der Mitte ───────────── */
 
-function Device({ s, players, act }: { s: ONState; players: Player[]; act: (a: ONAction) => void }) {
+function Device({ s, players, act, options }: { s: ONState; players: Player[]; act: (a: ONAction) => void; options: Options }) {
   const speech = useSpeechEnabled(true);
+  // Automatik: das Handy liest vor, zählt herunter und macht selbst weiter
+  const auto = options.auto !== false;
   const step = s.phase === "night" ? s.pending[0] : null;
-  useSpeak(step ? ON_SCRIPT[step].say : s.phase === "day" ? ON_DAWN : "", speech && s.phase !== "reveal");
+  useSpeak(step && !auto ? fullSay(step) : s.phase === "day" ? ON_DAWN : "", speech && s.phase !== "reveal");
   return (
     <Wrap>
       {speechSupported() && s.phase !== "reveal" && (
@@ -40,7 +43,7 @@ function Device({ s, players, act }: { s: ONState; players: Player[]; act: (a: O
         </button>
       )}
       {s.phase === "reveal" && <PassAround s={s} players={players} act={act} />}
-      {s.phase === "night" && step && <DeviceStep key={step} s={s} players={players} act={act} />}
+      {s.phase === "night" && step && <DeviceStep key={`${step}-${s.pending.length}`} s={s} players={players} act={act} auto={auto} options={options} />}
       {s.phase === "day" && <DeviceDay s={s} players={players} act={act} />}
     </Wrap>
   );
@@ -69,7 +72,7 @@ function PassAround({ s, players, act }: { s: ONState; players: Player[]; act: (
   );
 }
 
-function DeviceStep({ s, players, act }: { s: ONState; players: Player[]; act: (a: ONAction) => void }) {
+function DeviceStep({ s, players, act, auto, options }: { s: ONState; players: Player[]; act: (a: ONAction) => void; auto: boolean; options: Options }) {
   const step = s.pending[0];
   const [pick, setPick] = useState<string[]>([]);
   const [center, setCenter] = useState<number[]>([]);
@@ -138,9 +141,24 @@ function DeviceStep({ s, players, act }: { s: ONState; players: Player[]; act: (
       : <p className="text-center text-muted-foreground">(Die Karte liegt in der Mitte.)</p>;
   }
 
+  const panel = <Panel title={<IconTitle icon={Moon}>{ON_SCRIPT[step].title}</IconTitle>} sub={<span className="italic">„{fullSay(step)}“</span>}>{body}</Panel>;
+  if (auto) {
+    // Wer hat schon gehandelt? Liegt die Rolle in der Mitte, läuft einfach die Zeit ab – so verrät der Ablauf nichts
+    const acted = step === "werwolf" ? s.wolfPeek !== null : step === "seherin" ? !!s.seer : step === "raeuber" ? !!s.robber || s.robberSkip
+      : step === "unruhestifter" ? !!s.trouble || s.troubleSkip : step === "betrunkener" ? s.drunk !== null : false;
+    const t = tempoOf(options);
+    const info = ["sleep", "guenstling", "freimaurer", "schlaflose"].includes(step);
+    return (
+      <AutoRunner say={ON_SCRIPT[step].say} after={ON_SCRIPT[step].after} total={step === "sleep" ? 2 : info ? t.info : step === "werwolf" ? t.wolves : t.role}
+        required={step === "betrunkener" && holder("betrunkener").length > 0} acted={acted} result={["werwolf", "seherin", "raeuber"].includes(step)}
+        onNext={() => act({ type: "next" })}>
+        {panel}
+      </AutoRunner>
+    );
+  }
   return (
     <>
-      <Panel title={<IconTitle icon={Moon}>{ON_SCRIPT[step].title}</IconTitle>} sub={<span className="italic">„{ON_SCRIPT[step].say}“</span>}>{body}</Panel>
+      {panel}
       <Button size="lg" className="shrink-0" onClick={() => act({ type: "next" })}>Weiter</Button>
     </>
   );
@@ -161,7 +179,7 @@ function DeviceDay({ s, players, act }: { s: ONState; players: Player[]; act: (a
 
 /* ───────────── Online: jeder am eigenen Handy ───────────── */
 
-function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[]; me: string; isHost: boolean; act: (a: ONAction) => void }) {
+function Phone({ s, players, me, isHost, act, options, dispatch }: { s: ONState; players: Player[]; me: string; isHost: boolean; act: (a: ONAction) => void; options: Options; dispatch: BoardProps["dispatch"] }) {
   const role = s.start[me];
   const [pick, setPick] = useState<string[]>([]);
   const [center, setCenter] = useState<number[]>([]);
@@ -219,6 +237,7 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
     const canFinish = !doneMe && role !== "betrunkener";
     return (
       <Wrap>
+        <HostClock s={s} isHost={isHost} options={options} dispatch={dispatch} />
         <ONCard role={role} compact />
         {info && <p className="shrink-0 rounded-xl bg-navy-950/50 px-3 py-2 text-sm font-semibold"><Ico icon={info[0]} className="mr-1.5 text-ice" />{info[1]}</p>}
         <Panel title={<IconTitle icon={Moon}>Die Nacht</IconTitle>} sub={`${s.done.length}/${ids(s).length} sind fertig.`}>{body}</Panel>
@@ -233,6 +252,7 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
   return (
     <Wrap>
       <Countdown s={s} />
+      <HostClock s={s} isHost={isHost} options={options} dispatch={dispatch} />
       <ONCard role={role} compact label="Deine Startkarte" />
       {role === "schlaflose" && s.final?.[me] && <p className="shrink-0 rounded-xl bg-navy-950/50 px-3 py-2 text-sm font-semibold"><Ico icon={Coffee} className="mr-1.5 text-ice" />Deine Karte jetzt: <RoleIcon role={s.final[me]} className="mr-1" />{ON_ROLES[s.final[me]].name}</p>}
       <Panel title={<IconTitle icon={Sun}>Wer ist ein Werwolf?</IconTitle>} sub={mine ? `Du hast abgestimmt. ${count}/${ids(s).length} Stimmen sind da.` : "Diskutiert und stimmt ab – jeder genau einmal, alle gleichzeitig."}>
@@ -241,6 +261,38 @@ function Phone({ s, players, me, isHost, act }: { s: ONState; players: Player[];
       {isHost && <Button variant="secondary" className="shrink-0" disabled={!count} onClick={() => act({ type: "closeVote" })}>Abstimmung beenden ({count}/{ids(s).length})</Button>}
     </Wrap>
   );
+}
+
+/**
+ * Online: Countdown für die Nacht auf allen Handys; das Host-Handy sagt an und beendet nach einer
+ * kurzen Nachfrist Nacht bzw. Abstimmung selbst – so hängt nichts an einem Einzelnen.
+ */
+function HostClock({ s, isHost, options, dispatch }: { s: ONState; isHost: boolean; options: Options; dispatch: BoardProps["dispatch"] }) {
+  const t = tempoOf(options);
+  const deadline = s.phase === "night" && s.nightAt ? s.nightAt + (t.wolves + t.role) * 1000
+    : s.phase === "day" && s.dayStartedAt ? s.dayStartedAt + s.minutes * 60_000 : null;
+  const left = useCountdown(deadline, false);
+  const speech = useSpeechEnabled(true);
+  const said = useRef("");
+  const grace = s.phase === "night" ? 15 : 30;
+  useEffect(() => {
+    if (!isHost || !speech || said.current === s.phase) return;
+    said.current = s.phase;
+    if (s.phase === "night") void speak("Es wird Nacht. Jeder schaut auf sein eigenes Handy und handelt geheim.");
+    if (s.phase === "day") void speak(`${ON_DAWN} Ihr habt ${s.minutes} Minuten.`);
+  }, [isHost, speech, s.phase, s.minutes]);
+  useEffect(() => {
+    if (!isHost || !speech || s.phase !== "day") return;
+    if (left === 60) void speak("Noch eine Minute.");
+    if (left === 0) void speak("Die Zeit ist um. Stimmt jetzt ab.");
+  }, [left, isHost, speech, s.phase]);
+  useEffect(() => {
+    if (!isHost || deadline === null) return;
+    const k = setTimeout(() => dispatch({ type: "skip" }), Math.max(0, deadline + grace * 1000 - Date.now()));
+    return () => clearTimeout(k);
+  }, [isHost, deadline, grace, dispatch]);
+  if (s.phase === "night") return <Timer deadline={deadline} label="Nacht – handelt jetzt" />;
+  return left === 0 ? <p className="text-in shrink-0 text-center text-xs text-muted-foreground" data-testid="on-grace">Jetzt abstimmen – gleich wird ausgezählt.</p> : null;
 }
 
 /* ───────────── Auflösung ───────────── */

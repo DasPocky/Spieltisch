@@ -52,7 +52,7 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<UnoState, UnoAct
   return <ResultScreen winner={win.join(" & ")} subtitle={single ? "hat alle Karten abgelegt" : `mit ${ranking[0]?.score ?? 0} Punkten`} ranking={ranking} isHost={isHost} dispatch={dispatch} scoreLabel="Punkte" />;
 }
 
-function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps<UnoState, UnoAction>) {
+function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoState, UnoAction>) {
   const players = room.players;
   const local = me === null;
   const [uno, setUno] = useState(false);
@@ -128,8 +128,7 @@ function AppBoard({ room, game: s, me, online, isHost, canAct, act }: BoardProps
       {/* Hand */}
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {s.phase === "roundEnd" ? (
-          isHost ? <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
-            : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet die nächste Runde.</p>
+          <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
         ) : covered ? (
           <HandoffCover name={cur?.name ?? "?"} onReveal={reveal} />
         ) : wild ? (

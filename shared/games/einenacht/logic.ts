@@ -34,6 +34,8 @@ const STEP_ORDER: ONStep[] = ["werwolf", "guenstling", "freimaurer", "seherin", 
 
 export interface ONState {
   v: 1;
+  /** Seit wann die Nacht läuft (für den Countdown online) */
+  nightAt?: number;
   /** Eigene Karten: die App erzählt nur (Nacht, Timer), Rollen kennt sie nicht */
   own?: boolean;
   /** Eigene Karten: wer laut Host gewonnen hat */
@@ -187,6 +189,12 @@ function closeVote(s: ONState) {
   // Hat jeder genau eine Stimme, stirbt niemand
   const targets = max >= 2 ? [...tally].filter(([, n]) => n === max).map(([id]) => id) : [];
   finishVote(s, targets);
+}
+
+/** Beginn der Nacht festhalten – für den Countdown auf allen Handys */
+function stamped(prev: ONState, s: ONState, now: number): ONState {
+  if (s.phase === "night" && prev.phase !== "night") s.nightAt = now;
+  return s;
 }
 
 function apply(prev: ONState, a: ONAction, ctx: GameContext): ONState {
@@ -374,6 +382,18 @@ export const einenacht: GameLogic<ONState, ONAction> = {
         { value: "own", label: "Eigene Karten", hint: "App erzählt die Nacht und stoppt die Zeit" },
       ],
     },
+    {
+      key: "auto", label: "Automatik (ein Handy)", type: "toggle", default: true, showIf: (o: Options) => o.cards !== "own",
+      hint: "lokal: das Handy liest vor, zählt herunter und macht selbst weiter",
+    },
+    {
+      key: "tempo", label: "Tempo", type: "choice", default: "normal",
+      choices: [
+        { value: "slow", label: "Gemütlich", hint: "Rollen 30 s" },
+        { value: "normal", label: "Normal", hint: "Rollen 20 s" },
+        { value: "fast", label: "Zügig", hint: "Rollen 12 s" },
+      ],
+    },
     { key: "wolves", showIf: (o: Options) => o.cards !== "own", label: "Werwölfe", type: "choice", default: "2", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
     { key: "minutes", label: "Diskussion (Minuten)", type: "number", default: 5, min: 1, max: 15, step: 1 },
     ...ON_SPECIALS.map((r) => ({
@@ -382,7 +402,7 @@ export const einenacht: GameLogic<ONState, ONAction> = {
     })),
   ],
   setup,
-  apply,
+  apply: (prev, a, ctx) => stamped(prev, apply(prev, a, ctx), ctx.now),
   actionKind: (a) => (["ready", "startNight", "next", "peek", "see", "rob", "trouble", "drunk", "nightDone", "vote", "closeVote", "lynch", "settle"].includes(a.type) ? "player" : null),
   currentPlayerId: () => null,
   isOver: (s) => s.phase === "over",
@@ -399,7 +419,7 @@ export const einenacht: GameLogic<ONState, ONAction> = {
     if (s.phase === "reveal") startNight(s, ctx.options);
     else if (s.phase === "night") dawn(s, ctx);
     else if (s.phase === "day") closeVote(s);
-    return s;
+    return stamped(prev, s, ctx.now);
   },
   onPlayerRemoved(prev, id, ctx) {
     // Wer geht, scheidet aus: Die Runde wird ohne ihn fortgesetzt

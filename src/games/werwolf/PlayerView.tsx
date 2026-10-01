@@ -1,18 +1,22 @@
 import { useState, type ReactNode } from "react";
 import { Baby, Bird, Crosshair, Crown, Dog, Eye, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Scale, Search, Shield, Skull, Snowflake, Sun, Users, BedDouble, VenetianMask, type LucideIcon } from "lucide-react";
 import { aliveIds, holders, isWolf, knownRoles, participants, ROLES, voters, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
-import type { Player } from "@shared/platform/types";
+import type { RoomAction } from "@shared/platform/room";
+import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
+import { OnlineClock } from "./OnlineClock";
 import { RoleIcon } from "./RoleIcon";
 
 /**
  * Ansicht eines Mitspielers am eigenen Handy (online). Im Modus „App erzählt“ handelt jede Rolle hier geheim.
  * Wer nachts nichts zu tun hat, gibt einen Verdacht ab – so sieht jeder Bildschirm gleich beschäftigt aus.
  */
-export function PlayerView({ s, players, me, isHost, act, enabled }: { s: WerwolfState; players: Player[]; me: string; isHost: boolean; act: (a: WerwolfAction) => void; enabled: Role[] }) {
+export function PlayerView({ s, players, me, isHost, act, enabled, options, dispatch }: {
+  s: WerwolfState; players: Player[]; me: string; isHost: boolean; act: (a: WerwolfAction) => void; enabled: Role[]; options: Options; dispatch: (a: RoomAction) => void;
+}) {
   const role = s.roles[me];
   const alive = s.alive[me];
   const app = s.mode === "app";
@@ -21,6 +25,7 @@ export function PlayerView({ s, players, me, isHost, act, enabled }: { s: Werwol
     <>
       <AliveStrip s={s} players={players} me={me} />
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <OnlineClock s={s} players={players} isHost={isHost} options={options} dispatch={dispatch} />
         {s.phase === "assign" ? (
           app ? (
             <>

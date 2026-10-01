@@ -130,3 +130,12 @@ describe("Uno", () => {
     expect(g(r).phase).toBe("enter");
   });
 });
+
+describe("Uno – nächste Runde", () => {
+  it("darf jeder starten, nicht nur der Host", () => {
+    let r = fix(start(3), { p1: ["r-1"], p2: ["y-5"], p3: ["g-skip"] }, "r-9");
+    r = game(r, { type: "play", card: "r-1" });
+    r = game(r, { type: "nextRound" }, "p3");
+    expect(g(r).round).toBe(2);
+  });
+});

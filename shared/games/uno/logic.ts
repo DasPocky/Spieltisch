@@ -189,7 +189,6 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
   if (s.mode === "table") return applyTable(s, a, ctx, isHost);
 
   if (a.type === "nextRound") {
-    if (!isHost) throw new GameError("Die nächste Runde startet der Host.");
     if (s.phase !== "roundEnd") throw new GameError("Die Runde läuft noch.");
     s.round++;
     deal(s, ctx, s.roundWinner);

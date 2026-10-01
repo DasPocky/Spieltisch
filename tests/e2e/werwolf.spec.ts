@@ -89,6 +89,8 @@ test("Werwolf online, die App erzählt – fünf Handys", async ({ browser }) =>
   expect(roles).toContain("Seherin");
   expect(roles).toContain("Hexe");
   await expect(host.getByTestId("ww-phase")).toHaveText("Nacht 1");
+  // Countdown auf jedem Handy – nichts hängt an einem Einzelnen
+  for (const p of phones) await expect(p.getByTestId("timer")).toContainText("Nacht");
 
   // Jeder hat nachts etwas zu tippen – Wolf und Seherin handeln, die anderen verdächtigen
   const wolf = phones[roles.indexOf("Werwolf")];
