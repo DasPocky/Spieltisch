@@ -131,8 +131,8 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
           <RulesSheet gameId={room.gameId} />
         </div>
         {last ? <LastAsk e={last} players={players} viewer={viewerForText} /> : (
-          <div className="glass rounded-2xl p-4 text-center text-muted-foreground">
-            {myTurn ? "Du fängst an! Frag jemanden nach einem Wert, den du selbst hast." : `${cur?.name} fängt an.`}
+          <div className="glass shrink-0 rounded-2xl px-4 py-3 text-center text-muted-foreground">
+            {myTurn ? "Du fängst an! Frag nach einem Wert, den du selbst hast." : `${cur?.name} fängt an.`}
           </div>
         )}
         {older.length > 0 && <ul className="grid min-h-0 content-start gap-1 overflow-hidden px-1">{older.map((e, i) => <OlderAsk key={i} e={e} players={players} viewer={viewerForText} />)}</ul>}
@@ -142,7 +142,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {covered ? <HandoffCover name={cur?.name ?? "?"} onReveal={reveal} /> : (
           <>
-            {myTurn && <div className="px-1 text-sm font-bold text-ice">2 · Wonach fragst du? <span className="font-normal text-muted-foreground">Tippe einen Stapel an</span></div>}
+            {myTurn && <div className="px-1 text-sm font-bold text-ice">2 · Wonach fragst du? <span className="font-normal text-muted-foreground max-[359px]:hidden">Tippe einen Stapel an</span></div>}
             <div className="flex flex-wrap items-end justify-center gap-x-0.5 pt-2" data-testid="hand" role="group" aria-label="Wert">
               {groups.map((g) => (
                 <RankStack key={g.rank} cards={g.cards} rank={g.rank} selected={myTurn && selRank === g.rank} disabled={!myTurn} fished={s.fished} onPick={() => setRank(g.rank)} />
@@ -151,7 +151,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
             </div>
             {myTurn ? (
               <Button size="lg" className="mt-2 w-full" disabled={!selRank || !selTarget} onClick={ask}>
-                {selRank && selTarget ? `${nameOf(players, selTarget)}, hast du ${RANK_PLURAL[selRank]}?` : !selTarget ? "Erst oben einen Mitspieler antippen" : "Jetzt einen Stapel antippen"}
+                {selRank && selTarget ? `${nameOf(players, selTarget)}, hast du ${RANK_PLURAL[selRank]}?` : !selTarget ? "Erst Mitspieler wählen" : "Jetzt Stapel wählen"}
               </Button>
             ) : (
               <p className="glass mt-2 rounded-xl py-4 text-center text-muted-foreground">Warte auf <b className="text-foreground">{cur?.name}</b></p>

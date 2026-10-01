@@ -28,7 +28,7 @@ export function Panel({ title, sub, children, className }: { title?: ReactNode; 
     <section className={cn("glass flex min-h-0 flex-1 flex-col rounded-2xl p-3.5", className)}>
       {title && <h2 className="shrink-0 text-xl font-extrabold tracking-tight">{title}</h2>}
       {sub && <p className="mt-1 shrink-0 text-sm leading-snug text-muted-foreground">{sub}</p>}
-      {children && <div className="no-scrollbar mt-3 min-h-0 flex-1 overflow-y-auto">{children}</div>}
+      {children && <div className="no-scrollbar mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>}
     </section>
   );
 }

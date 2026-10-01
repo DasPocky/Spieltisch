@@ -38,7 +38,7 @@ export function Home() {
         <Logo className="size-12 shrink-0 -rotate-6 rounded-2xl" />
         <div className="min-w-0 flex-1">
           <h1 className="bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-[2rem] font-extrabold leading-none tracking-tighter text-transparent">Spieltisch</h1>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">Spiele für euren Spieleabend</p>
+          <p className="mt-1 truncate text-sm text-muted-foreground">Für euren Spieleabend</p>
         </div>
         <ThemeToggle />
         <Button variant="secondary" size="icon" className="size-11 shrink-0 rounded-full" aria-label="Profil und Einstellungen" onClick={() => navigate("/profil")}><UserRound /></Button>

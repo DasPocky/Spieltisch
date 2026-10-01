@@ -236,3 +236,7 @@
   .text-in, .card-in, .pop, .target-glow { animation: none; }
   .target-glow { box-shadow: 0 0 0 2px rgb(207 224 250 / 0.8); }
 }
+
+/* Nicht spielbare Karten: dunkel abgedunkelt, im hellen Design blass statt schlammig */
+.card-dim { filter: brightness(0.5) saturate(0.5); }
+:root[data-theme="light"] .card-dim { filter: grayscale(0.7) contrast(0.5) brightness(1.3); }

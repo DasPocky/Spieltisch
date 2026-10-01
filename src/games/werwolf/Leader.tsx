@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Crown, Pause, Play, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
+import { Check, Crown, Pause, Play, Smartphone, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
 import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, voters, type Role, type Step, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,10 @@ function GuidedReveal({ s, players, act }: { s: WerwolfState; players: Player[];
     return (
       <>
         <Panel title={`Gib das Handy an ${nameOf(players, who)}`} sub={`Rollen ansehen · ${i + 1} von ${order.length}. Die anderen schauen weg.`}>
-          <div className="grid flex-1 place-items-center"><span className="text-4xl font-extrabold" data-testid="reveal-next">{nameOf(players, who)}</span></div>
+          <div className="grid flex-1 place-content-center justify-items-center gap-3">
+            <Smartphone className="size-12 text-navy-300" />
+            <span className="text-4xl font-extrabold" data-testid="reveal-next">{nameOf(players, who)}</span>
+          </div>
         </Panel>
         <Button size="lg" className="shrink-0" onClick={() => setOpen(true)}>Ich bin {nameOf(players, who)}</Button>
       </>

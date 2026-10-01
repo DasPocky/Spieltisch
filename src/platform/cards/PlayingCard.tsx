@@ -60,7 +60,7 @@ export function PlayingCard({ card, className, dim }: { card: Card; className?: 
   const face = rank === "U" || rank === "O" || rank === "B" || rank === "D" || rank === "K";
   return (
     <div className={cn("@container aspect-[5/8] select-none", className)} role="img" aria-label={`${SUIT_NAME[suit]}-${RANK_NAME[rank]}`}>
-      <div className={cn("relative size-full overflow-hidden rounded-[10cqw] bg-paper shadow-[0_6px_14px_rgba(2,8,23,.45)] ring-1 ring-black/10 transition", dim && "brightness-[0.55] saturate-50")}>
+      <div className={cn("relative size-full overflow-hidden rounded-[10cqw] bg-paper shadow-[0_6px_14px_rgba(2,8,23,.45)] ring-1 ring-black/10 transition", dim && "card-dim")}>
         <div className="absolute top-[5cqw] left-[7cqw] flex flex-col items-center leading-none" style={{ color }}>
           <span className="text-[26cqw] font-extrabold tracking-tighter">{rank}</span>
           <SuitIcon suit={suit} className="mt-[2cqw] size-[20cqw]" />

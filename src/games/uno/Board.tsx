@@ -27,7 +27,7 @@ export function UnoCardView({ card, dim, className }: { card: Card; dim?: boolea
     : v === "plus2" ? "+2" : v === "plus4" ? "+4" : v === "wild" ? null : v;
   return (
     <div role="img" aria-label={cardLabel(card)}
-      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-extrabold text-paper shadow-md ring-1 ring-white/25 transition", dim && "brightness-[0.45] saturate-50", className)}
+      className={cn("@container relative grid aspect-[5/7] place-items-center overflow-hidden rounded-[12%] font-extrabold text-paper shadow-md ring-1 ring-white/25 transition", dim && "card-dim", className)}
       style={{ background: c ? UNO_BG[c] : MUTED.ink }}>
       {!c && (
         <div className="absolute grid aspect-square w-[68%] grid-cols-2 overflow-hidden rounded-full opacity-90">
