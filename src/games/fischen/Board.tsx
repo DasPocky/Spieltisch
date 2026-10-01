@@ -25,7 +25,7 @@ function LastAsk({ e, players, viewer }: { e: FischenEvent; players: Player[]; v
       <div className="mt-2 flex flex-wrap gap-1.5">
         {e.got
           ? <span className="rounded-full bg-ok px-3 py-1 text-sm font-bold text-navy-950">Ja! {e.got} {e.got === 1 ? "Karte" : "Karten"}</span>
-          : <span className="rounded-full bg-navy-600 px-3 py-1 text-sm font-bold text-white">Nein – geh fischen!</span>}
+          : <span className="rounded-full bg-deep-600 px-3 py-1 text-sm font-bold text-white">Nein – geh fischen!</span>}
         {e.lucky && <span className="rounded-full bg-ice px-3 py-1 text-sm font-bold text-navy-950">Glück gehabt – nochmal!</span>}
         {e.quartet && <span className="rounded-full bg-ice px-3 py-1 text-sm font-bold text-navy-950">Quartett: {RANK_PLURAL[e.quartet]}!</span>}
       </div>
@@ -112,7 +112,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
           return (
             <button key={p.id} type="button" disabled={!pickable} onClick={() => setTarget(p.id)} aria-pressed={chosen}
               className={cn("flex min-w-[6.5rem] shrink-0 flex-col items-start rounded-xl px-3 py-2 text-left text-sm outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                chosen ? "bg-ice text-navy-950" : p.id === s.curId ? "bg-gradient-to-b from-navy-400 to-primary text-white" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
+                chosen ? "bg-ice text-navy-950" : p.id === s.curId ? "bg-gradient-to-b from-deep-400 to-primary text-white" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
               <span className="flex items-center gap-1.5 font-bold">
                 {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
                 <span className="max-w-[6rem] truncate">{p.id === me ? "Du" : p.name}</span>

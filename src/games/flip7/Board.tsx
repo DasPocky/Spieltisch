@@ -18,7 +18,7 @@ export function Tile({ card, selectable, selected, onClick }: { card: F7Card; se
   // Zahlen: helles bis dunkles Navy je nach Wert; Aktionen dunkel, Plus-Karten Eisblau, Minus gedämpftes Rot
   const light = 94 - Math.min(v, 13) * 3.4;
   const style = num ? { background: `hsl(216 42% ${light}%)`, color: light < 62 ? "#fff" : "#10223d" } : undefined;
-  const cls = card.startsWith("a:") ? "bg-navy-700 text-white ring-1 ring-inset ring-navy-300/40" : card.startsWith("m:-") || card === "m:/2" ? "bg-destructive text-navy-950" : !num ? "bg-ice text-navy-950" : "";
+  const cls = card.startsWith("a:") ? "bg-deep-700 text-white ring-1 ring-inset ring-deep-400/40" : card.startsWith("m:-") || card === "m:/2" ? "bg-destructive text-navy-950" : !num ? "bg-ice text-navy-950" : "";
   const Special = card === "n:13L" ? Clover : card === "n:7U" ? Skull : null;
   return (
     <button type="button" disabled={!selectable} onClick={onClick} aria-label={cardLabel(card)} aria-pressed={selected}

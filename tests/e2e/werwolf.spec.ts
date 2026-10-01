@@ -287,8 +287,17 @@ test("Werwolf Automatik: ein Handy, niemand muss „Weiter“ tippen", async ({ 
   await shot(page, "58-ww-setup");
 
   await page.getByRole("button", { name: "Spiel starten" }).click();
-  await page.getByRole("button", { name: /Nacht beginnen/ }).click();
-  await expect(page.getByTestId("ww-clock")).toBeVisible();
+  // Geführt: das Handy geht reihum, danach beginnt die Nacht von selbst
+  for (const n of NAMES) {
+    await expect(page.getByTestId("reveal-next")).toHaveText(n);
+    await page.getByRole("button", { name: `Ich bin ${n}` }).click();
+    await page.getByRole("button", { name: "Rolle aufdecken" }).click();
+    await expect(page.getByTestId("role-goal")).toBeVisible();
+    if (n === "Anna") await shot(page, "58b-ww-guided-reveal");
+    await page.getByRole("button", { name: /^Verdeckt/ }).click();
+  }
+  await expect(page.getByText("Alle kennen ihre Rolle")).toBeVisible();
+  await expect(page.getByTestId("ww-clock")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Weiter" })).toHaveCount(0);
 
   // Jede Rolle wählt – bestätigt wird durch Gedrückthalten, weiter geht es von selbst

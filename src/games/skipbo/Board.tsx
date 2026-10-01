@@ -91,7 +91,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
       <div className="no-scrollbar -mx-4 flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Mitspieler">
         {others.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId} aria-label={`${p.name}: Vorrat ${s.stockCounts[p.id] ?? 0}`}
-            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm", p.id === s.curId && s.phase === "play" ? "bg-gradient-to-b from-navy-400 to-primary text-white" : "glass")}>
+            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm", p.id === s.curId && s.phase === "play" ? "bg-gradient-to-b from-deep-400 to-primary text-white" : "glass")}>
             <div className="grid gap-0.5">
               <span className="flex max-w-[6rem] items-center gap-1.5 truncate font-semibold">
                 {online && <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}{p.name}

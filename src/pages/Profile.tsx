@@ -12,7 +12,9 @@ import { Confirm } from "@/components/Confirm";
 import { getGameUI } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { NAME_KEY } from "@/lib/storage";
-import { adoptProfile, deleteProfile, fetchStats, myName, myProfile, saveName } from "@/lib/profile";
+import { adoptProfile, deleteProfile, fetchStats, myName, myProfile, saveName, wipeAllData } from "@/lib/profile";
+import { ThemeSwitch } from "@/platform/ThemeSwitch";
+import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { cn, fmt } from "@/lib/utils";
 
@@ -51,7 +53,7 @@ export function Profile() {
       <header className="flex h-14 shrink-0 items-center">
         <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate("/")}><ChevronLeft />Spieltisch</Button>
       </header>
-      <h1 className="text-3xl font-extrabold tracking-tight">Dein Profil</h1>
+      <h1 className="text-3xl font-extrabold tracking-tight">Profil & Einstellungen</h1>
 
       <Card className="grid gap-2">
         <Label htmlFor="profile-name">Dein Name</Label>
@@ -127,10 +129,28 @@ export function Profile() {
         </div>
       </Card>
 
-      <Confirm title="Profil löschen?" description="Deine Statistik wird vom Server gelöscht. Dieses Gerät bekommt ein neues, leeres Profil." confirmLabel="Löschen"
-        onConfirm={async () => { await deleteProfile(); setId(myProfile().id); setShowCode(false); toast("Profil gelöscht"); }}>
-        <Button variant="ghost" className="text-muted-foreground">Profil und Statistik löschen</Button>
-      </Confirm>
+      <Card className="grid gap-2.5">
+        <h2 className="font-bold">Darstellung</h2>
+        <ThemeSwitch />
+      </Card>
+
+      <Card className="grid gap-2.5">
+        <h2 className="font-bold">Stimme</h2>
+        <VoiceSettings />
+      </Card>
+
+      <Card className="grid gap-2.5">
+        <h2 className="font-bold">Daten</h2>
+        <p className="text-sm text-muted-foreground">Gespeichert sind dein Name, dein Profil mit Statistik, die letzten Mitspieler und Spielstände auf diesem Gerät.</p>
+        <Confirm title="Profil löschen?" description="Deine Statistik wird vom Server gelöscht. Dieses Gerät bekommt ein neues, leeres Profil." confirmLabel="Löschen"
+          onConfirm={async () => { await deleteProfile(); setId(myProfile().id); setShowCode(false); toast("Profil gelöscht"); }}>
+          <Button variant="secondary">Profil und Statistik löschen</Button>
+        </Confirm>
+        <Confirm title="Alle Daten löschen?" description="Profil, Statistik, Namen, Spielstände und Einstellungen werden von diesem Gerät (und das Profil vom Server) gelöscht." confirmLabel="Alles löschen"
+          onConfirm={async () => { await wipeAllData(); toast("Alle Daten gelöscht"); navigate("/"); location.reload(); }}>
+          <Button variant="ghost" className="text-destructive">Alle Daten auf diesem Gerät löschen</Button>
+        </Confirm>
+      </Card>
     </main>
   );
 }

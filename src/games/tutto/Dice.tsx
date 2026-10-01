@@ -74,7 +74,7 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
     <button type="button" onClick={onClick} disabled={disabled}
       className={cn(
         "h-14 whitespace-nowrap rounded-xl px-3 text-base font-bold outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-40",
-        primary ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]" : "bg-secondary ring-1 ring-inset ring-border",
+        primary ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]" : "bg-secondary ring-1 ring-inset ring-border",
       )}>
       {children}
     </button>

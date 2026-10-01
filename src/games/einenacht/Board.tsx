@@ -5,7 +5,7 @@ import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { Ico, IconTitle, nameOf, Panel, Picker } from "@/games/werwolf/parts";
-import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled } from "@/games/werwolf/useSpeech";
+import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled, useSpokenCountdown } from "@/games/werwolf/useSpeech";
 import { cn } from "@/lib/utils";
 import { CenterCards, Countdown, ONCard } from "./parts";
 import { OwnNarrator, OwnPhone } from "./Own";
@@ -166,9 +166,10 @@ function DeviceStep({ s, players, act, auto, options }: { s: ONState; players: P
 
 function DeviceDay({ s, players, act }: { s: ONState; players: Player[]; act: (a: ONAction) => void }) {
   const [pick, setPick] = useState<string[]>([]);
+  const speech = useSpeechEnabled(true);
   return (
     <>
-      <Countdown s={s} />
+      <Countdown s={s} voice={speech} />
       <Panel title={<IconTitle icon={Sun}>Wer stirbt?</IconTitle>} sub="Zeigt alle gleichzeitig auf eine Person. Wer die meisten Finger hat, stirbt (bei Gleichstand alle). Hat jeder nur einen, stirbt niemand. Stirbt der Jäger, wählt auch aus, auf wen er gezeigt hat.">
         <Picker ids={ids(s)} players={players} selected={pick} onPick={(id) => setPick((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))} />
       </Panel>
@@ -275,6 +276,7 @@ function HostClock({ s, isHost, options, dispatch }: { s: ONState; isHost: boole
   const speech = useSpeechEnabled(true);
   const said = useRef("");
   const grace = s.phase === "night" ? 15 : 30;
+  useSpokenCountdown(left, isHost && speech, s.phase === "night" ? t.wolves + t.role : s.minutes * 60);
   useEffect(() => {
     if (!isHost || !speech || said.current === s.phase) return;
     said.current = s.phase;
@@ -283,7 +285,6 @@ function HostClock({ s, isHost, options, dispatch }: { s: ONState; isHost: boole
   }, [isHost, speech, s.phase, s.minutes]);
   useEffect(() => {
     if (!isHost || !speech || s.phase !== "day") return;
-    if (left === 60) void speak("Noch eine Minute.");
     if (left === 0) void speak("Die Zeit ist um. Stimmt jetzt ab.");
   }, [left, isHost, speech, s.phase]);
   useEffect(() => {
@@ -305,7 +306,7 @@ function Result({ s, players, isHost, dispatch }: { s: ONState; players: Player[
   const final = s.final ?? s.start;
   return (
     <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[3vh] pb-6 text-center">
-      <h2 className="bg-gradient-to-b from-white to-navy-200 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent" data-testid="winner">
+      <h2 className="bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent" data-testid="winner">
         {winLine(s.winners)}
       </h2>
       {s.own ? (

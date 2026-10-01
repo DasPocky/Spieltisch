@@ -18,7 +18,8 @@ async function startLocal(page: Page, names: string[], real = false) {
 
 test("Kniffel auf der Startseite und Regeln", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /Kniffel/ }).click();
+  await page.getByRole("button", { name: /Online-Raum erstellen/ }).click();
+  await page.getByRole("button", { name: /^Kniffel/ }).click();
   await expect(page.getByRole("heading", { name: "Kniffel" })).toBeVisible();
   await expectNoScroll(page);
   await page.getByRole("button", { name: "Regeln" }).click();

@@ -6,7 +6,7 @@ import type { WerwolfState } from "@shared/games/werwolf/logic";
 import { tempoOf, Timer, useCountdown } from "./Auto";
 import { newsSay } from "./Leader";
 import { DAWN_SAY } from "./script";
-import { setSpeech, speak, speechSupported, useSpeechEnabled } from "./useSpeech";
+import { setSpeech, speak, speechSupported, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
 
 /** Wie lange eine Phase online dauert (Sekunden) – null: kein Countdown */
 function phaseSeconds(s: WerwolfState, o: Options): number | null {
@@ -32,6 +32,7 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
   const grace = s.phase === "night" ? 15 : 30;
   const key = `${s.phase}-${s.night}-${(s.runoff ?? []).join()}`;
   const said = useRef("");
+  useSpokenCountdown(left, talk, secs ?? undefined);
 
   // Ansagen beim Phasenwechsel (nur das Host-Handy)
   useEffect(() => {
@@ -44,7 +45,6 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
   }, [talk, key, s, players, options]);
   useEffect(() => {
     if (!talk) return;
-    if (left === 60 && s.phase === "day" && !s.runoff) void speak("Noch eine Minute.");
     if (left === 0 && s.phase !== "night") void speak("Die Zeit ist um. Stimmt jetzt ab.");
   }, [left, talk, s.phase, s.runoff]);
   // Nach der Nachfrist beendet das Host-Handy die Phase

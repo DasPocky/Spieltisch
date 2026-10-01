@@ -88,7 +88,7 @@ export function RoleCard({ role, hidden: startHidden = true, compact }: { role: 
     <button type="button" onClick={() => setHidden((h) => !h)} aria-label={hidden ? "Rolle aufdecken" : `Deine Rolle: ${r.name}. Tippen zum Verdecken`}
       className={cn("relative w-full overflow-hidden rounded-2xl text-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
         compact ? "px-3 py-2.5" : "px-4 py-5",
-        hidden ? "card-back text-paper" : r.team === "werwolf" ? "bg-gradient-to-b from-navy-700 to-navy-950 text-white ring-1 ring-inset ring-destructive/50" : "bg-paper text-paper-ink")}>
+        hidden ? "card-back text-paper" : r.team === "werwolf" ? "bg-gradient-to-b from-deep-700 to-deep-950 text-white ring-1 ring-inset ring-destructive/50" : "bg-paper text-paper-ink")}>
       {hidden ? (
         <span className="flex items-center justify-center gap-2 font-bold"><Eye className="size-5" />Tippen: Rolle ansehen</span>
       ) : (

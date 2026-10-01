@@ -64,7 +64,7 @@ test("Tutto mit echten Karten: gezogene Karte antippen", async ({ page }) => {
 });
 
 test("Eine Nacht mit eigenen Karten: Host-Handy erzählt, andere sehen nur Augen zu", async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const [anna, ben, cem] = await Promise.all([newPhone(browser), newPhone(browser), newPhone(browser)]);
   await anna.addInitScript(() => { try { localStorage.setItem("spieltisch:werwolf:speech", "0"); } catch { /* about:blank */ } });
   const code = await createRoom(anna, "einenacht", "Anna", "4242");

@@ -53,3 +53,12 @@ export async function reportLocal(result: Omit<RecentGame, "at" | "online">) {
     await fetch(`/api/profile/${myProfile().id}/result`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(result) });
   } catch { /* offline – dann eben ohne Statistik */ }
 }
+
+/** Alles auf diesem Gerät löschen: Profil (auch auf dem Server), Namen, Spielstände, Einstellungen */
+export async function wipeAllData() {
+  await deleteProfile();
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("spieltisch")) localStorage.removeItem(k);
+    sessionStorage.clear();
+  } catch { /* egal */ }
+}

@@ -37,6 +37,7 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
 
   // Startseite: Kniffel weg, Flip 7 mit Schloss
   await page.goto("/");
+  await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   await expect(page.getByRole("button", { name: /^Tutto/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Kniffel/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Flip 7/ })).toHaveAccessibleName(/Flip 7/);

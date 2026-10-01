@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
 import { RoleIcon } from "./RoleIcon";
 import { AUTO_SAY, DAWN_SAY, SCRIPT } from "./script";
-import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled } from "./useSpeech";
+import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
 import { AutoRunner, HoldButton, Timer, INFO_STEPS, RESULT_STEPS, stepSeconds, tempoOf, useCountdown } from "./Auto";
 
 /**
@@ -23,7 +23,10 @@ export function Leader({ s, players, act, online, enabled, options }: { s: Werwo
   const auto = !online && s.mode === "app" && options.auto !== false;
   const step = s.phase === "night" ? s.pending[0] : null;
   // In der Automatik liest der Nachtschritt selbst vor (mit Wartezeiten), der Tag seine Nachrichten
-  const say = s.phase === "election" ? "Das Dorf wählt einen Hauptmann." : step && !auto ? SCRIPT[step].say : "";
+  const say = s.phase === "election" ? "Das Dorf wählt einen Hauptmann."
+    : s.phase === "hunter" ? `${nameOf(players, s.hunters[0])} war Jäger und nimmt jemanden mit in den Tod.`
+    : s.phase === "successor" ? "Der Hauptmann ist tot. Er bestimmt einen Nachfolger."
+    : step && !auto ? SCRIPT[step].say : "";
   useSpeak(say, speech && s.phase !== "reveal");
 
   return (
@@ -36,13 +39,64 @@ export function Leader({ s, players, act, online, enabled, options }: { s: Werwo
           </button>
         )}
         {s.phase === "assign" && <Assign s={s} players={players} act={act} enabled={enabled} />}
-        {s.phase === "reveal" && <Reveal s={s} players={players} act={act} online={online} />}
+        {s.phase === "reveal" && (auto ? <GuidedReveal s={s} players={players} act={act} /> : <Reveal s={s} players={players} act={act} online={online} />)}
         {s.phase === "election" && <Election s={s} players={players} act={act} />}
         {s.phase === "successor" && <Successor s={s} players={players} act={act} />}
         {s.phase === "night" && step && <NightStep key={`${s.night}-${step}`} s={s} players={players} act={act} showRoles={showRoles} auto={auto} options={options} />}
         {s.phase === "day" && <Day key={s.night} s={s} players={players} act={act} options={options} speech={speech && s.mode === "app"} />}
         {s.phase === "hunter" && <Hunter s={s} players={players} act={act} />}
       </div>
+    </>
+  );
+}
+
+/**
+ * Automatik: Das Handy geht der Reihe nach herum („Gib das Handy an …“). Hat jeder seine Rolle gesehen,
+ * kommt das Handy in die Mitte und die Nacht beginnt von selbst.
+ */
+function GuidedReveal({ s, players, act }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void }) {
+  const order = participants(s);
+  const [i, setI] = useState(0);
+  const [open, setOpen] = useState(false);
+  const done = i >= order.length;
+  const [doneAt, setDoneAt] = useState<number | null>(null);
+  const left = useCountdown(doneAt === null ? null : doneAt + 6000, false);
+  useEffect(() => {
+    if (!done) return;
+    setDoneAt(Date.now());
+    void speak("Alle kennen ihre Rolle. Legt das Handy in die Mitte.");
+    const t = setTimeout(() => act({ type: "startNight" }), 6000);
+    return () => clearTimeout(t);
+  }, [done, act]);
+  if (done) {
+    return (
+      <Panel title="Alle kennen ihre Rolle" sub="Legt das Handy in die Mitte – gleich beginnt die Nacht.">
+        <div className="grid flex-1 place-content-center justify-items-center gap-2">
+          <Moon className="size-12 text-ice" />
+          <span className="text-5xl font-extrabold tabular-nums">{left ?? 6}</span>
+        </div>
+        <Button variant="secondary" onClick={() => act({ type: "startNight" })}>Jetzt beginnen</Button>
+      </Panel>
+    );
+  }
+  const who = order[i];
+  if (!open) {
+    return (
+      <>
+        <Panel title={`Gib das Handy an ${nameOf(players, who)}`} sub={`Rollen ansehen · ${i + 1} von ${order.length}. Die anderen schauen weg.`}>
+          <div className="grid flex-1 place-items-center"><span className="text-4xl font-extrabold" data-testid="reveal-next">{nameOf(players, who)}</span></div>
+        </Panel>
+        <Button size="lg" className="shrink-0" onClick={() => setOpen(true)}>Ich bin {nameOf(players, who)}</Button>
+      </>
+    );
+  }
+  return (
+    <>
+      <Panel title={<span className="flex items-center justify-between gap-2">Nur {nameOf(players, who)} schaut!<RulesSheet gameId="werwolf" focus={s.roles[who]} /></span>}
+        sub="Tippe auf die Karte, merk dir Rolle und Ziel und verdecke sie wieder.">
+        <RoleCard role={s.roles[who]} />
+      </Panel>
+      <Button size="lg" className="shrink-0" onClick={() => { setOpen(false); setI(i + 1); }}>{i + 1 < order.length ? "Verdeckt – weitergeben" : "Verdeckt – fertig"}</Button>
     </>
   );
 }
@@ -200,7 +254,7 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
       {body}
     </Panel>
   );
-  if (auto) return <AutoStep step={step} acted={acted} options={options} act={act} panel={panel} confirm={confirm} />;
+  if (auto) return <AutoStep verdict={verdictSay(s, players)} step={step} acted={acted} options={options} act={act} panel={panel} confirm={confirm} />;
   // Ohne Automatik (Spielleiter oder Automatik aus): Richtzeit als Orientierung, weiter geht es per Hand
   const guide = step !== "sleep" && !acted && s.stepAt ? s.stepAt + stepSeconds(step, options) * 1000 : null;
   return (
@@ -215,13 +269,13 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
 }
 
 /** Werwolf-Nachtschritt in der Automatik (Ablauf siehe AutoRunner) */
-function AutoStep({ step, acted, options, act, panel, confirm }: {
+function AutoStep({ step, acted, options, act, panel, confirm, verdict }: {
   step: Step; acted: boolean; options: Options; act: (a: WerwolfAction) => void; panel: React.ReactNode;
-  confirm: { label: string; ok: boolean; run: () => void } | null;
+  confirm: { label: string; ok: boolean; run: () => void } | null; verdict: string;
 }) {
   const info = INFO_STEPS.includes(step) || step === "sleep";
   return (
-    <AutoRunner say={AUTO_SAY[step] ?? SCRIPT[step].say} after={SCRIPT[step].after} total={step === "sleep" ? 2 : stepSeconds(step, options)}
+    <AutoRunner say={`${step === "sleep" ? verdict : ""}${AUTO_SAY[step] ?? SCRIPT[step].say}`} after={SCRIPT[step].after} total={step === "sleep" ? 2 : stepSeconds(step, options)}
       required={!info} acted={acted} result={RESULT_STEPS.includes(step)} onNext={() => act({ type: "next" })} confirm={confirm}>
       {panel}
     </AutoRunner>
@@ -273,6 +327,15 @@ function Witch({ s, players, hold, onDone }: { s: WerwolfState; players: Player[
 }
 
 /** Was in der Nacht passiert ist – zum Vorlesen (nur Namen und, falls aufgedeckt, Rollen) */
+/** Urteil des Dorfes zum Vorlesen, wenn danach die Nacht beginnt */
+function verdictSay(s: WerwolfState, players: Player[]) {
+  if (s.news?.kind !== "day") return "";
+  const d = s.news.deaths;
+  if (s.news.idiot) return `${nameOf(players, s.news.idiot)} ist der Dorfdepp und bleibt am Leben. `;
+  if (!d.length) return "Das Dorf hat niemanden verurteilt. ";
+  return d.map((x) => `${nameOf(players, x.id)} ist tot${s.revealDead ? ` und war ${ROLES[s.roles[x.id]].name}` : ""}.`).join(" ") + " ";
+}
+
 export function newsSay(s: WerwolfState, players: Player[]) {
   const d = s.news?.kind === "night" ? s.news.deaths : [];
   if (!d.length) return "Heute Nacht ist niemand gestorben.";
@@ -295,6 +358,7 @@ function Day({ s, players, act, options, speech }: { s: WerwolfState; players: P
   const [tie, setTie] = useState<string[]>([]);
   const left = useCountdown(deadline, pausedLeft !== null);
   const say = (text: string) => (speech ? speak(text) : Promise.resolve());
+  useSpokenCountdown(stage === "talk" && pausedLeft === null ? left : null, speech, minutes * 60);
 
   useEffect(() => {
     let alive = true;
@@ -304,7 +368,6 @@ function Day({ s, players, act, options, speech }: { s: WerwolfState; players: P
   }, []);
   useEffect(() => {
     if (stage !== "talk" || pausedLeft !== null) return;
-    if (left === 60) void say("Noch eine Minute.");
     if (left === 0) startVote(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left]);

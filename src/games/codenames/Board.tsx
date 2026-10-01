@@ -9,6 +9,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { SmoothText } from "@/platform/SmoothText";
 import { Timer, useCountdown } from "@/platform/Countdown";
+import { useSpeechEnabled, useSpokenCountdown } from "@/games/werwolf/useSpeech";
 import { cn, vibrate } from "@/lib/utils";
 import { MUTED } from "@/lib/palette";
 
@@ -120,6 +121,8 @@ function Hourglass({ s, room, me, isHost, dispatch }: { s: CNState; room: BoardP
     return () => clearTimeout(t);
   }, [leader, deadline, dispatch]);
   useEffect(() => { if (left === 10) vibrate([30, 60, 30]); }, [left]);
+  const speech = useSpeechEnabled(true);
+  useSpokenCountdown(left, leader && speech, secs);
   if (deadline === null) return null;
   return <Timer deadline={deadline} label={`Team ${TEAM_NAME[s.turn]}`} />;
 }

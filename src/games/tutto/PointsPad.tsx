@@ -82,7 +82,7 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
     <button type="button" onClick={onClick} disabled={disabled}
       className={cn("disabled:opacity-40",
         "flex h-13 min-w-0 flex-col items-center justify-center rounded-xl px-1.5 leading-tight font-bold outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring",
-        kind === "primary" ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]"
+        kind === "primary" ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_20px_rgb(63_122_224/0.35)]"
           : kind === "ice" ? "bg-ice text-navy-950 shadow-[0_6px_20px_rgb(207_224_250/0.25)]" : "bg-secondary ring-1 ring-inset ring-border",
       )}>
       {sub && <span className="max-w-full truncate text-[0.7rem] font-semibold opacity-80">{sub}</span>}

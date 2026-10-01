@@ -62,7 +62,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
         {players.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId}
             className={cn("flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold",
-              p.id === s.curId ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass")}>
+              p.id === s.curId ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass")}>
             {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
             <span className="max-w-[7rem] truncate">{p.id === me ? "Du" : p.name}</span>
             <span className="flex items-center gap-1 tabular-nums" aria-label={`${s.counts[p.id] ?? 0} Karten`}>

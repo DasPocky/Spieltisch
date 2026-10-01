@@ -63,9 +63,10 @@ const TEAMS = [["dorf", "Dorf"], ["werwolf", "Werwölfe"], ["gerber", "Gerber"]]
 function OwnDay({ s, players, act }: { s: ONState; players: Player[]; act: (a: ONAction) => void }) {
   const [team, setTeam] = useState<"dorf" | "werwolf" | "gerber" | null>(null);
   const [won, setWon] = useState<string[]>([]);
+  const speech = useSpeechEnabled(true);
   return (
     <>
-      <Countdown s={s} />
+      <Countdown s={s} voice={speech} />
       <Panel title={<IconTitle icon={Sun}>Aufdecken und eintragen</IconTitle>} sub="Nach der Abstimmung deckt ihr alle Karten auf. Wer hat gewonnen? Für die Statistik die Gewinner antippen.">
         <div className="mb-2 grid grid-cols-3 gap-1.5">
           {TEAMS.map(([id, label]) => (

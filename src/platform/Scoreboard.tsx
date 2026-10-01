@@ -60,7 +60,7 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
               selectedId === p.id && !cur && "ring-2 ring-inset ring-navy-300/70",
               selectedId === p.id && cur && "ring-2 ring-inset ring-white/70",
               !fits && "w-26 shrink-0 snap-start",
-              cur ? "bg-gradient-to-b from-navy-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass",
+              cur ? "bg-gradient-to-b from-deep-400 to-primary text-white shadow-[0_6px_18px_rgb(63_122_224/0.4)]" : "glass",
             )}
           >
             <div className="flex items-center gap-1 text-xs font-semibold">

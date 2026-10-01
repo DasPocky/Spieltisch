@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { ON_ROLES, type ONRole, type ONState } from "@shared/games/einenacht/logic";
 import { cn } from "@/lib/utils";
+import { useSpokenCountdown } from "@/games/werwolf/useSpeech";
 import { RoleIcon } from "./RoleIcon";
 
 /** Rollenkarte (verdeckt, bis man sie antippt) */
@@ -12,7 +13,7 @@ export function ONCard({ role, compact, label = "Deine Karte" }: { role: ONRole;
   return (
     <button type="button" onClick={() => setHidden((h) => !h)} aria-label={hidden ? `${label} aufdecken` : `${label}: ${r.name}`}
       className={cn("w-full rounded-2xl text-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring", compact ? "px-3 py-2.5" : "px-4 py-5",
-        hidden ? "card-back text-paper" : r.team === "werwolf" ? "bg-gradient-to-b from-navy-700 to-navy-950 text-white ring-1 ring-inset ring-destructive/50" : "bg-paper text-paper-ink")}>
+        hidden ? "card-back text-paper" : r.team === "werwolf" ? "bg-gradient-to-b from-deep-700 to-deep-950 text-white ring-1 ring-inset ring-destructive/50" : "bg-paper text-paper-ink")}>
       {hidden ? <span className="flex items-center justify-center gap-2 font-bold"><Eye className="size-5" />{label} ansehen</span> : (
         <span className={cn("flex items-center gap-3", compact ? "text-left" : "flex-col")}>
           <RoleIcon role={role} className={cn(compact ? "size-8" : "size-14", r.team === "werwolf" ? "text-destructive" : "text-navy-600")} />
@@ -43,11 +44,12 @@ export function CenterCards({ cards, selected, onPick, pickable }: { cards: (ONR
 }
 
 /** Restzeit der Diskussion */
-export function Countdown({ s }: { s: ONState }) {
+export function Countdown({ s, voice = false }: { s: ONState; voice?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const left = s.dayStartedAt ? Math.max(0, s.dayStartedAt + s.minutes * 60_000 - now) : 0;
+  useSpokenCountdown(s.dayStartedAt ? Math.ceil(left / 1000) : null, voice, s.minutes * 60);
   if (!s.dayStartedAt) return null;
-  const left = Math.max(0, s.dayStartedAt + s.minutes * 60_000 - now);
   const mm = Math.floor(left / 60000), ss = Math.floor((left % 60000) / 1000);
   return (
     <div className={cn("shrink-0 rounded-2xl px-4 py-2 text-center", left ? "bg-navy-950/50" : "bg-ice/20 text-ice")} data-testid="countdown">

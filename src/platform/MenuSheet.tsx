@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { PlayerManager } from "./PlayerManager";
 import { RulesSheet } from "./RulesSheet";
 import { SettingsPanel } from "./SettingsPanel";
+import { ThemeSwitch } from "./ThemeSwitch";
 import { ShareCode } from "./ShareCode";
 
 export interface MenuProps {
@@ -57,6 +58,8 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
               </button>
             ))}
           </div>
+
+          <ThemeSwitch className="mb-4" />
 
           <RulesSheet gameId={room.gameId}>
             <Button variant="secondary" className="mb-4 w-full justify-start"><BookOpen />Regeln: {name}</Button>
