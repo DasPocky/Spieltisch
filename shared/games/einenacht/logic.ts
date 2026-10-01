@@ -7,6 +7,7 @@
  */
 import { shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
+import { tempoSettings } from "../werwolf/tempo";
 
 export type ONRole = "werwolf" | "guenstling" | "freimaurer" | "seherin" | "raeuber" | "unruhestifter" | "betrunkener" | "schlaflose" | "jaeger" | "gerber" | "dorf";
 
@@ -376,26 +377,24 @@ export const einenacht: GameLogic<ONState, ONAction> = {
   joinMidGame: false,
   settings: [
     {
-      key: "cards", label: "Karten", type: "choice", default: "app",
+      key: "cards", label: "Karten", type: "choice", default: "app", group: "Ablauf",
       choices: [
         { value: "app", label: "In der App", hint: "App verteilt und tauscht" },
         { value: "own", label: "Eigene Karten", hint: "App erzählt die Nacht und stoppt die Zeit" },
       ],
     },
     {
-      key: "auto", label: "Automatik (ein Handy)", type: "toggle", default: true, showIf: (o: Options) => o.cards !== "own",
+      key: "auto", label: "Automatik (ein Handy)", type: "toggle", default: true, group: "Ablauf", showIf: (o: Options) => o.cards !== "own",
       hint: "lokal: das Handy liest vor, zählt herunter und macht selbst weiter",
     },
+    { key: "wolves", showIf: (o: Options) => o.cards !== "own", label: "Werwölfe", type: "choice", default: "2", group: "Ablauf", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
+    // Die Diskussion stellt „minutes“ ein – das Tempo regelt nur die Nacht
+    ...tempoSettings({ hints: { slow: "Rollen 30 s", normal: "Rollen 20 s", fast: "Rollen 12 s" }, talk: false }),
+    { key: "minutes", label: "Diskussion (min)", type: "number", default: 5, min: 1, max: 15, step: 1, group: "Ablauf" },
     {
-      key: "tempo", label: "Tempo", type: "choice", default: "normal",
-      choices: [
-        { value: "slow", label: "Gemütlich", hint: "Rollen 30 s" },
-        { value: "normal", label: "Normal", hint: "Rollen 20 s" },
-        { value: "fast", label: "Zügig", hint: "Rollen 12 s" },
-      ],
+      key: "ambience", label: "Nachtgeräusche", type: "toggle", default: false, group: "Ablauf",
+      hint: "leise Grillen/Wind in der Nacht – verrät nicht, wo das Handy liegt",
     },
-    { key: "wolves", showIf: (o: Options) => o.cards !== "own", label: "Werwölfe", type: "choice", default: "2", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
-    { key: "minutes", label: "Diskussion (Minuten)", type: "number", default: 5, min: 1, max: 15, step: 1 },
     ...ON_SPECIALS.map((r) => ({
       key: r, label: `${ON_ROLES[r].name}${r === "freimaurer" ? " (zwei Karten)" : ""}`, type: "toggle" as const,
       default: ["seherin", "raeuber", "unruhestifter"].includes(r), hint: ON_ROLES[r].short, group: "Rollen",

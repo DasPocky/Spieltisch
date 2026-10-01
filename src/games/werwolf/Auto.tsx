@@ -8,14 +8,10 @@ import { Timer, useCountdown } from "@/platform/Countdown";
 
 export { Timer, useCountdown };
 import { speak } from "./useSpeech";
+import { tempoOf } from "@shared/games/werwolf/tempo";
 
-/** Zeiten je Tempo: Rollen, Werwölfe, reine Info-Schritte (Sekunden), Diskussion (Minuten) */
-const TEMPO = {
-  slow: { role: 30, wolves: 45, info: 10, talk: 8 },
-  normal: { role: 20, wolves: 30, info: 8, talk: 5 },
-  fast: { role: 12, wolves: 20, info: 6, talk: 3 },
-} as const;
-export const tempoOf = (o: Options) => TEMPO[o.tempo === "slow" || o.tempo === "fast" ? o.tempo : "normal"];
+/** Zeiten je Tempo (Vorgabe oder eigene) – liegt in shared, damit es testbar bleibt */
+export { tempoOf } from "@shared/games/werwolf/tempo";
 
 /** Schritte, bei denen nur jemand die Augen öffnet und schaut (keine Eingabe) */
 export const INFO_STEPS: Step[] = ["lovers", "schwestern", "verzaubert"];

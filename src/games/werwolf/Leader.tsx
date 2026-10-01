@@ -9,6 +9,7 @@ import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, Role
 import { RoleIcon } from "./RoleIcon";
 import { AUTO_SAY, DAWN_SAY, SCRIPT } from "./script";
 import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
+import { useAmbience } from "./ambience";
 import { AutoRunner, HoldButton, Timer, INFO_STEPS, RESULT_STEPS, stepSeconds, tempoOf, useCountdown } from "./Auto";
 
 /**
@@ -28,6 +29,8 @@ export function Leader({ s, players, act, online, enabled, options }: { s: Werwo
     : s.phase === "successor" ? "Der Hauptmann ist tot. Er bestimmt einen Nachfolger."
     : step && !auto ? SCRIPT[step].say : "";
   useSpeak(say, speech && s.phase !== "reveal");
+  // Nachtgeräusche nur auf dem Handy in der Mitte, wenn die App erzählt
+  useAmbience(!online && s.mode === "app" && options.ambience === true, s.phase === "night");
 
   return (
     <>

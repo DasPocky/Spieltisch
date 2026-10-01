@@ -120,3 +120,15 @@ describe("Eine Nacht mit eigenen Karten", () => {
     expect(res.filter((x) => x.won).map((x) => x.id)).toEqual(["p2"]);
   });
 });
+
+describe("Eine Nacht: Tempo", () => {
+  it("„Eigene“ stellt die Nachtzeiten ein, die Diskussion bleibt bei „minutes“", async () => {
+    const { tempoOf } = await import("@shared/games/werwolf/tempo");
+    const keys = getGame("einenacht").settings.map((d) => d.key);
+    expect(keys).toEqual(expect.arrayContaining(["tempo", "tRole", "tWolves", "tInfo", "minutes", "ambience"]));
+    expect(keys).not.toContain("tTalk");
+    const r = start(4, false, { tempo: "custom", tRole: 40, tWolves: 50, minutes: 7 });
+    expect(tempoOf(r.options)).toMatchObject({ role: 40, wolves: 50, info: 8 });
+    expect(g(r).minutes).toBe(7);
+  });
+});

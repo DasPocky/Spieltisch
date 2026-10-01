@@ -12,6 +12,7 @@
  */
 import { randomInt, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options, type SettingDef } from "../../platform/types";
+import { tempoSettings } from "./tempo";
 
 export type Role =
   | "werwolf" | "urwolf" | "grosserwolf"
@@ -970,14 +971,10 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
       key: "auto", label: "Automatik (ein Handy)", type: "toggle", default: true, group: "Ablauf", showIf: (o) => o.narrator !== "human",
       hint: "die App liest vor, zählt herunter und macht selbst weiter – niemand muss „Weiter“ tippen",
     },
-    {
-      key: "tempo", label: "Tempo", type: "choice", default: "normal", group: "Ablauf", inGame: true,
-      choices: [
-        { value: "slow", label: "Gemütlich", hint: "Rollen 30 s · Diskussion 8 Min." },
-        { value: "normal", label: "Normal", hint: "Rollen 20 s · Diskussion 5 Min." },
-        { value: "fast", label: "Zügig", hint: "Rollen 12 s · Diskussion 3 Min." },
-      ],
-    },
+    ...tempoSettings({
+      hints: { slow: "30\u00a0s · 8\u00a0Min.", normal: "20\u00a0s · 5\u00a0Min.", fast: "12\u00a0s · 3\u00a0Min." },
+      talk: true, inGame: true, vote: (o) => o.narrator !== "human" && (o.captain === true || o.tie === "runoff"),
+    }),
     {
       key: "vote", label: "Abstimmung am Tag", type: "choice", default: "point", group: "Ablauf", inGame: true,
       choices: [
@@ -985,6 +982,10 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
         { value: "secret", label: "Geheim", hint: "Handy reihum, die App zählt" },
         { value: "talk", label: "Gemeinsam", hint: "ihr einigt euch und tippt es ein" },
       ],
+    },
+    {
+      key: "ambience", label: "Nachtgeräusche", type: "toggle", default: false, group: "Ablauf", inGame: true, showIf: (o) => o.narrator !== "human",
+      hint: "leise Grillen/Wind in der Nacht – verrät nicht, wo das Handy liegt",
     },
     { key: "revealDead", label: "Rollen der Toten aufdecken", type: "toggle", default: true, hint: "sonst erst am Spielende", group: "Hausregeln" },
     { key: "captain", label: "Hauptmann", type: "toggle", default: false, hint: "am ersten Tag gewählt, doppelte Stimme, entscheidet Gleichstand", group: "Hausregeln" },

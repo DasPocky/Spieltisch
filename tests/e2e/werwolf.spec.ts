@@ -285,7 +285,15 @@ test("Werwolf Automatik: ein Handy, niemand muss „Weiter“ tippen", async ({ 
   await expect(page.getByTestId("ww-deck")).toContainText("Jäger");
   await page.getByRole("button", { name: /Einsteiger/ }).click();
   await expect(page.getByTestId("ww-deck")).not.toContainText("Jäger");
+  // Eigene Zeiten: Felder erscheinen nur bei „Eigene“
+  await page.getByRole("radio", { name: /^Eigene selbst/ }).click();
+  await expect(page.getByTestId("setting-tRole")).toHaveText("20");
+  await page.getByRole("button", { name: "Zeit pro Rolle (s) erhöhen" }).click();
+  await expect(page.getByTestId("setting-tRole")).toHaveText("25");
   await page.getByRole("radio", { name: /Zügig/ }).click();
+  await expect(page.getByTestId("setting-tRole")).toHaveCount(0);
+  // Nachtgeräusche an – darf nichts stören
+  await page.getByRole("checkbox", { name: /Nachtgeräusche/ }).click();
   await shot(page, "58-ww-setup");
 
   await page.getByRole("button", { name: "Spiel starten" }).click();

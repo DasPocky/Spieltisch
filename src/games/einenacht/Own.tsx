@@ -10,6 +10,7 @@ import { Countdown } from "./parts";
 import { RoleIcon } from "./RoleIcon";
 import { fullSay, ON_DAWN, ON_SCRIPT } from "./script";
 import { AutoRunner, tempoOf } from "@/games/werwolf/Auto";
+import { useAmbience } from "@/games/werwolf/ambience";
 
 const ids = (s: ONState) => Object.keys(s.start);
 
@@ -26,6 +27,7 @@ export function OwnNarrator({ s, players, options, act }: { s: ONState; players:
   const step = s.phase === "night" ? s.pending[0] : null;
   useSpeak(s.phase === "day" ? ON_DAWN : "", speech);
   const t = tempoOf(options);
+  useAmbience(options.ambience === true, s.phase === "night");
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       {speechSupported() && s.phase !== "reveal" && (

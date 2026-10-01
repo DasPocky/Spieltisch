@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildDeck, checkWinner, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
+import { buildDeck, checkWinner, werwolf as werwolfLogic, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
 import { playerLimits, viewRoom, type RoomState } from "@shared/platform/room";
+import { TEMPO, tempoOf } from "@shared/games/werwolf/tempo";
 import { act, game, roomWith } from "./helpers";
 
 const g = (r: RoomState) => r.game as WerwolfState;
@@ -497,5 +498,36 @@ describe("Zeitstempel für Countdowns", () => {
     s = werwolf.apply(s, { type: "next" }, ctx(3000));
     expect(s.phaseAt).toBe(2000);
     expect(s.stepAt).toBe(3000);
+  });
+});
+
+describe("Tempo und eigene Zeiten", () => {
+  it("Vorgaben wie bisher, unbekannt = normal", () => {
+    expect(tempoOf({ tempo: "slow" })).toEqual(TEMPO.slow);
+    expect(tempoOf({ tempo: "fast" }).role).toBe(12);
+    expect(tempoOf({})).toEqual(TEMPO.normal);
+  });
+  it("„Eigene“ liefert die eingestellten Zeiten, fehlende wie normal", () => {
+    expect(tempoOf({ tempo: "custom", tRole: 45, tWolves: 60, tInfo: 5, tTalk: 10, tVote: 120 })).toEqual({ role: 45, wolves: 60, info: 5, talk: 10, vote: 120 });
+    expect(tempoOf({ tempo: "custom", tRole: 15 })).toEqual({ ...TEMPO.normal, role: 15 });
+    // ohne „Eigene“ zählen die Felder nicht
+    expect(tempoOf({ tempo: "fast", tRole: 45 }).role).toBe(12);
+  });
+  it("Felder nur bei „Eigene“ sichtbar, Standard = normal, Werte werden geprüft", () => {
+    const def = (k: string) => werwolfLogic.settings.find((d) => d.key === k)!;
+    expect(def("tRole").showIf!({ tempo: "normal" })).toBe(false);
+    expect(def("tRole").showIf!({ tempo: "custom" })).toBe(true);
+    expect(def("tRole").default).toBe(TEMPO.normal.role);
+    expect(def("tTalk").default).toBe(TEMPO.normal.talk);
+    // Wahl-Zeit nur, wenn es online eine Wahl bzw. Stichwahl geben kann
+    expect(def("tVote").showIf!({ tempo: "custom", narrator: "app", tie: "none", captain: false })).toBe(false);
+    expect(def("tVote").showIf!({ tempo: "custom", narrator: "app", tie: "runoff" })).toBe(true);
+    expect(werwolfLogic.settings.filter((d) => d.key.startsWith("t") && d.key !== "tie").every((d) => d.group === "Ablauf" && d.inGame)).toBe(true);
+    let r = act(roomWith(NAMES.slice(0, 5)), { type: "selectGame", gameId: "werwolf" });
+    expect(r.options.ambience).toBe(false);
+    r = act(r, { type: "setOption", key: "tempo", value: "custom" });
+    r = act(r, { type: "setOption", key: "tRole", value: 23 });
+    r = act(r, { type: "setOption", key: "tWolves", value: 999 });
+    expect(tempoOf(r.options)).toMatchObject({ role: 25, wolves: 120, talk: TEMPO.normal.talk });
   });
 });

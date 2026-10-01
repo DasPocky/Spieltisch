@@ -6,14 +6,15 @@ import type { WerwolfState } from "@shared/games/werwolf/logic";
 import { tempoOf, Timer, useCountdown } from "./Auto";
 import { newsSay } from "./Leader";
 import { DAWN_SAY } from "./script";
+import { useAmbience } from "./ambience";
 import { setSpeech, speak, speechSupported, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
 
 /** Wie lange eine Phase online dauert (Sekunden) – null: kein Countdown */
 function phaseSeconds(s: WerwolfState, o: Options): number | null {
   const t = tempoOf(o);
   if (s.phase === "night") return s.mode === "app" ? t.wolves + t.role : null;
-  if (s.phase === "day") return s.runoff ? 90 : t.talk * 60;
-  if (s.phase === "election") return 90;
+  if (s.phase === "day") return s.runoff ? t.vote : t.talk * 60;
+  if (s.phase === "election") return t.vote;
   return null;
 }
 
@@ -33,6 +34,8 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
   const key = `${s.phase}-${s.night}-${(s.runoff ?? []).join()}`;
   const said = useRef("");
   useSpokenCountdown(left, talk, secs ?? undefined);
+  // Nachtgeräusche auf dem Host-Handy (es erzählt ja ohnehin)
+  useAmbience(leader && options.ambience === true, s.phase === "night");
 
   // Ansagen beim Phasenwechsel (nur das Host-Handy)
   useEffect(() => {

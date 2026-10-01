@@ -12,6 +12,7 @@ import { OwnNarrator, OwnPhone } from "./Own";
 import { RoleIcon } from "./RoleIcon";
 import { fullSay, ON_DAWN, ON_SCRIPT } from "./script";
 import { AutoRunner, tempoOf, Timer, useCountdown } from "@/games/werwolf/Auto";
+import { useAmbience } from "@/games/werwolf/ambience";
 
 const ids = (s: ONState) => Object.keys(s.start);
 
@@ -34,6 +35,7 @@ function Device({ s, players, act, options }: { s: ONState; players: Player[]; a
   // Automatik: das Handy liest vor, zählt herunter und macht selbst weiter
   const auto = options.auto !== false;
   const step = s.phase === "night" ? s.pending[0] : null;
+  useAmbience(options.ambience === true, s.phase === "night");
   useSpeak(step && !auto ? fullSay(step) : s.phase === "day" ? ON_DAWN : "", speech && s.phase !== "reveal");
   return (
     <Wrap>
@@ -276,6 +278,7 @@ function HostClock({ s, isHost, options, dispatch }: { s: ONState; isHost: boole
   const speech = useSpeechEnabled(true);
   const said = useRef("");
   const grace = s.phase === "night" ? 15 : 30;
+  useAmbience(isHost && options.ambience === true, s.phase === "night");
   useSpokenCountdown(left, isHost && speech, s.phase === "night" ? t.wolves + t.role : s.minutes * 60);
   useEffect(() => {
     if (!isHost || !speech || said.current === s.phase) return;
