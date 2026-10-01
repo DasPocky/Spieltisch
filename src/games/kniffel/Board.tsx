@@ -132,7 +132,7 @@ function DiceRow({ s, disabled, onHold }: { s: KniffelState; disabled: boolean; 
               disabled ? "size-9" : "size-[min(15vw,3.4rem)]",
               s.held[i] ? "-translate-y-1 ring-[3px] ring-ice" : !disabled && "dice-in")}
             style={{ animationDelay: `${i * 40}ms` }}>
-            <Die value={v} className="size-full drop-shadow-[0_4px_6px_rgba(0,0,0,.35)]" />
+            <Die value={v} className="size-full" />
           </button>
         ))
         : Array.from({ length: 5 }, (_, i) => <span key={i} className="size-[min(15vw,3.4rem)] rounded-[22%] border-2 border-dashed border-border" />)}

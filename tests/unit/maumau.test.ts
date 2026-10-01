@@ -138,8 +138,18 @@ describe("Ziehen", () => {
     expect(g(r).curId).toBe("p2");
   });
 
-  it("passt sie nicht, ist der Zug vorbei", () => {
+  it("passt sie nicht: erst ansehen, dann selbst passen", () => {
     let r = deal(start(), { p1: ["eichel-9"], p2: ["rot-A"], p3: ["gruen-8"] }, "rot-K", ["eichel-8"]);
+    r = game(r, { type: "draw" });
+    expect(g(r).curId).toBe("p1");
+    expect(g(r).drawn).toBe("eichel-8");
+    expect(() => game(r, { type: "play", card: "eichel-8" })).toThrow();
+    r = game(r, { type: "pass" });
+    expect(g(r).curId).toBe("p2");
+  });
+
+  it("mit Automatik ist der Zug sofort vorbei, wenn sie nicht passt", () => {
+    let r = deal(start(3, { autoPass: true }), { p1: ["eichel-9"], p2: ["rot-A"], p3: ["gruen-8"] }, "rot-K", ["eichel-8"]);
     r = game(r, { type: "draw" });
     expect(g(r).curId).toBe("p2");
   });

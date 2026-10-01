@@ -79,6 +79,7 @@ export function OnlineRoom({ code }: { code: string }) {
       online={room.online}
       code={code}
       reconnecting={room.status === "connecting"}
+      pending={room.pending}
       dispatch={room.send}
       onLeave={leave}
       onCloseRoom={room.closeRoom}

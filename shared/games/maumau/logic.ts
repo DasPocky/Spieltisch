@@ -185,7 +185,7 @@ function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauStat
       if (!got[0]) {
         s.log.push("Keine Karten mehr zum Ziehen");
         endTurn();
-      } else if (canPlay(s, got[0], ctx.options)) {
+      } else if (canPlay(s, got[0], ctx.options) || ctx.options.autoPass !== true) {
         s.drawn = got[0];
       } else {
         endTurn();
@@ -237,6 +237,7 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
     { key: "unterOnUnter", showIf: APP, label: "Bube auf Bube erlaubt", type: "toggle", default: false, hint: "im deutschen Blatt: Unter auf Unter" },
     { key: "reverse9", showIf: APP, label: "9: Richtungswechsel", type: "toggle", default: false },
     { key: "againA", showIf: APP, label: "Ass: nochmal legen", type: "toggle", default: false },
+    { key: "autoPass", label: "Nach dem Ziehen automatisch weiter", type: "toggle", default: false, hint: "passt die gezogene Karte nicht, ist sofort der Nächste dran – sonst siehst du sie erst und tippst auf Passen", group: "Ablauf", inGame: true, showIf: APP },
     { key: "mau", showIf: APP, label: "„Mau“ sagen", type: "toggle", default: true, hint: "vor der vorletzten Karte, sonst eine Strafkarte" },
   ],
   /** Es muss nach dem Austeilen genug zum Ziehen bleiben */

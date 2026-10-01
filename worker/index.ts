@@ -5,7 +5,7 @@ import { ACCESS_CODE_RE, accessFor, DEFAULT_CONFIG, sanitizeConfig, type SiteCon
 import { addPlayer, applyRoomAction, cleanName, createRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
-  CALL_SESSION_RE, CALL_TRACK_RE, PIN_RE, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
+  ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
   type CallPeer, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
 
@@ -36,6 +36,10 @@ interface RoomData {
   unlocked?: boolean;
   /** playerId → Profil-ID (nur auf dem Server, nie an andere Spieler) */
   profiles?: Record<string, string>;
+  /** Zuletzt ausgeführte Aktions-IDs je Spieler – doppelt geschickte Aktionen werden nur einmal ausgeführt */
+  seen?: Record<string, string[]>;
+  /** Beitritts-Nonce → Spieler, damit ein wiederholter Beitritt keinen zweiten Spieler anlegt */
+  joins?: Record<string, string>;
   /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
   call?: Record<string, CallPeer>;
   callSessions?: Record<string, string>;
@@ -75,8 +79,13 @@ function json(data: unknown, status = 200): Response {
 export class GameRoom extends DurableObject<Env> {
   private room: RoomData | null = null;
 
+  /** Wer beim letzten Senden online war – um stille Abbrüche nur bei Änderung zu melden */
+  private lastOnline = "";
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    // Herzschlag beantwortet Cloudflare direkt, ohne das Objekt aufzuwecken
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get<RoomData>("room")) ?? null;
     });
@@ -123,6 +132,8 @@ export class GameRoom extends DurableObject<Env> {
     }
     const text = typeof raw === "string" ? raw : new TextDecoder().decode(raw);
     if (text.length > MAX_MESSAGE_BYTES) return;
+    // Falls die automatische Antwort nicht greift (lokal), selbst antworten
+    if (text === PING) { try { ws.send(PONG); } catch { /* weg */ } return; }
 
     let msg: ClientMessage;
     try {
@@ -167,6 +178,12 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    if (msg.type === "presence") {
+      // Nur melden, wenn sich etwas geändert hat (z. B. ein Handy still weggefallen ist)
+      if ([...this.onlineIds()].sort().join() !== this.lastOnline) this.broadcast();
+      return;
+    }
+
     if (msg.type === "claimHost") {
       const host = this.room.state.hostId;
       if (host === playerId) return;
@@ -181,23 +198,33 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     if (msg.type === "action" && msg.action && typeof msg.action === "object") {
+      const id = typeof msg.id === "string" && ACTION_ID_RE.test(msg.id) ? msg.id : null;
+      const seen = (this.room.seen ??= {});
+      if (id && seen[playerId]?.includes(id)) {
+        // Schon ausgeführt, nur die Bestätigung ging verloren
+        this.send(ws, { type: "ack", id });
+        this.sendState(ws, playerId);
+        return;
+      }
       const before = this.room.state;
       // Spielwechsel in der Lobby: Admin-Freigaben gelten auch hier
       if (msg.action.type === "selectGame" && isGameId(msg.action.gameId)) {
         const access = accessFor(await settingsOf(this.env).config(), msg.action.gameId);
         if (access === "off" || (access === "code" && !this.room.unlocked)) {
-          this.send(ws, { type: "error", message: access === "off" ? "Dieses Spiel ist gerade abgeschaltet." : "Dafür braucht ihr den Zugangscode." });
+          this.send(ws, { type: "error", message: access === "off" ? "Dieses Spiel ist gerade abgeschaltet." : "Dafür braucht ihr den Zugangscode.", id: id ?? undefined });
           return;
         }
       }
       try {
         this.room.state = applyRoomAction(this.room.state, msg.action, playerId);
       } catch (e) {
-        this.send(ws, { type: "error", message: e instanceof GameError ? e.message : "Das ging gerade nicht." });
+        this.send(ws, { type: "error", message: e instanceof GameError ? e.message : "Das ging gerade nicht.", id: id ?? undefined });
         return;
       }
+      if (id) seen[playerId] = [...(seen[playerId] ?? []), id].slice(-30);
       if (msg.action.type === "removePlayer") this.kick(msg.action.id);
       await this.persist();
+      if (id) this.send(ws, { type: "ack", id });
       this.broadcast();
       await this.recordIfFinished(before);
     }
@@ -283,11 +310,23 @@ export class GameRoom extends DurableObject<Env> {
     if (msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token
         && room.state.players.some((p) => p.id === msg.playerId)) {
       ws.serializeAttachment({ playerId: msg.playerId } satisfies Attachment);
+      this.dropOldSockets(msg.playerId, ws);
       if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile) && room.profiles?.[msg.playerId] !== msg.profile) {
         (room.profiles ??= {})[msg.playerId] = msg.profile;
         await this.persist();
       }
       this.send(ws, { type: "joined", playerId: msg.playerId, token: msg.token });
+      this.broadcast();
+      return;
+    }
+
+    // Derselbe Beitritt nochmal (Antwort ging unterwegs verloren): keinen zweiten Spieler anlegen
+    const nonce = typeof msg.nonce === "string" && ACTION_ID_RE.test(msg.nonce) ? msg.nonce : null;
+    const again = nonce ? room.joins?.[nonce] : undefined;
+    if (again && room.tokens[again] && room.state.players.some((p) => p.id === again)) {
+      ws.serializeAttachment({ playerId: again } satisfies Attachment);
+      this.dropOldSockets(again, ws);
+      this.send(ws, { type: "joined", playerId: again, token: room.tokens[again] });
       this.broadcast();
       return;
     }
@@ -316,11 +355,21 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
     room.tokens[playerId] = token;
+    if (nonce) room.joins = Object.fromEntries([...Object.entries(room.joins ?? {}), [nonce, playerId]].slice(-40));
     if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile)) (room.profiles ??= {})[playerId] = msg.profile;
     ws.serializeAttachment({ playerId } satisfies Attachment);
     await this.persist();
     this.send(ws, { type: "joined", playerId, token });
     this.broadcast();
+  }
+
+  /** Eine neue Verbindung desselben Spielers ersetzt alte, halb tote Verbindungen */
+  private dropOldSockets(playerId: string, keep: WebSocket): void {
+    for (const other of this.ctx.getWebSockets()) {
+      if (other === keep) continue;
+      const att = other.deserializeAttachment() as Attachment | null;
+      if (att?.playerId === playerId) { try { other.close(4001, "replaced"); } catch { /* schon zu */ } }
+    }
   }
 
   private kick(playerId: string): void {
@@ -341,9 +390,14 @@ export class GameRoom extends DurableObject<Env> {
   /** Spieler mit offener Verbindung */
   private onlineIds(): Set<string> {
     const online = new Set<string>();
+    const now = Date.now();
     for (const ws of this.ctx.getWebSockets()) {
       const att = ws.deserializeAttachment() as Attachment | null;
-      if (att?.playerId && ws.readyState === WebSocket.OPEN) online.add(att.playerId);
+      if (!att?.playerId || ws.readyState !== WebSocket.OPEN) continue;
+      // Handys schicken alle paar Sekunden einen Herzschlag. Bleibt er aus, ist die Verbindung tot – auch wenn sie noch „offen“ aussieht.
+      const beat = this.ctx.getWebSocketAutoResponseTimestamp(ws);
+      if (beat && now - beat.getTime() > STALE_MS) continue;
+      online.add(att.playerId);
     }
     return online;
   }
@@ -352,11 +406,17 @@ export class GameRoom extends DurableObject<Env> {
     if (!this.room) return;
     const sockets = this.ctx.getWebSockets();
     const onlineList = [...this.onlineIds()];
+    this.lastOnline = [...onlineList].sort().join();
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (!att?.playerId) continue;
       this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {} });
     }
+  }
+
+  private sendState(ws: WebSocket, playerId: string): void {
+    if (!this.room) return;
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {} });
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {

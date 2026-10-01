@@ -78,7 +78,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
   };
   const status = s.phase === "roundEnd" ? `${players.find((p) => p.id === s.lastRound?.winner)?.name ?? "?"} gewinnt Runde ${s.round} (+${s.lastRound?.points ?? 0})`
     : !myTurn ? `${cur?.name} ist am Zug`
-    : s.drawn ? "Gezogene Karte legen – oder passen."
+    : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
     : s.pendingDraw ? `Leg drauf oder zieh ${s.pendingDraw} Karten.`
     : hand.some(playable) ? "Leg eine passende Karte." : "Nichts passt – zieh eine Karte.";
 

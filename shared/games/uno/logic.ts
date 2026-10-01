@@ -258,7 +258,8 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
         return s;
       }
       const got = give(s, me, 1);
-      if (got[0] && canPlay(s, got[0], ctx.options, s.hands[me])) s.drawn = got[0];
+      // Ohne Automatik sieht man die gezogene Karte erst und passt selbst
+      if (got[0] && (canPlay(s, got[0], ctx.options, s.hands[me]) || ctx.options.autoPass !== true)) s.drawn = got[0];
       else endTurn();
       sync(s);
       return s;
@@ -350,6 +351,7 @@ export const uno: GameLogic<UnoState, UnoAction> = {
     },
     { key: "uno", label: "„Uno!“ sagen", type: "toggle", default: true, hint: "vergessen = 2 Strafkarten", group: "Hausregeln" },
     { key: "stack", label: "Ziehkarten stapeln", type: "toggle", default: false, hint: "+2 auf +2, +4 auf alles – der Letzte zieht alles", group: "Hausregeln" },
+    { key: "autoPass", label: "Nach dem Ziehen automatisch weiter", type: "toggle", default: false, hint: "passt die gezogene Karte nicht, ist sofort der Nächste dran – sonst siehst du sie erst und tippst auf Passen", group: "Ablauf", inGame: true, showIf: (o) => o.mode !== "table" },
     { key: "plus4Any", label: "+4 immer erlaubt", type: "toggle", default: false, hint: "sonst nur, wenn man die Farbe nicht hat", group: "Hausregeln" },
   ],
   setup,

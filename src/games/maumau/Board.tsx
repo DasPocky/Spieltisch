@@ -53,7 +53,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
     setUnter(null);
   };
   const status = !myTurn ? `${cur?.name} ist am Zug`
-    : s.drawn ? "Gezogene Karte legen – oder passen."
+    : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
     : s.pendingDraw ? `Leg eine Sieben oder zieh ${s.pendingDraw} Karten.`
     : hand.some(playable) ? "Leg eine passende Karte." : "Nichts passt – zieh eine Karte.";
 

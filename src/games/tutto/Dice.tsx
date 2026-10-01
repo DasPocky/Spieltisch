@@ -45,7 +45,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
             )}
             style={{ animationDelay: `${i * 40}ms` }}
           >
-            <Die value={v} className="size-full drop-shadow-[0_4px_6px_rgba(0,0,0,.35)]" />
+            <Die value={v} className="size-full" />
           </button>
         ))}
         {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "Tutto!" : "–"}</span>}
