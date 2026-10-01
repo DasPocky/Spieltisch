@@ -216,6 +216,7 @@ test("Werwolf lokal mit eigenen Karten und Hauptmann", async ({ page }) => {
   }
   await page.getByRole("radio", { name: /Spielleiter/ }).click();
   await page.getByRole("radio", { name: /Eigene Karten/ }).click();
+  await page.getByRole("button", { name: /^Hausregeln/ }).click();
   await page.getByRole("checkbox", { name: /Hauptmann/ }).click();
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await expect(page.getByText("Eigene Karten zuordnen")).toBeVisible();
@@ -245,6 +246,7 @@ test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser })
   const phones = await Promise.all(NAMES.map(() => newPhone(browser)));
   const [host] = phones;
   const code = await createRoom(host, "werwolf", "Anna", "8080");
+  await host.getByRole("button", { name: /^Hausregeln/ }).click();
   await host.getByRole("checkbox", { name: /Hauptmann/ }).click();
   await host.getByRole("radio", { name: /Stichwahl/ }).click();
   await host.getByRole("checkbox", { name: /^Hexe ein Heil/ }).click();

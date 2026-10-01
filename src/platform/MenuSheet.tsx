@@ -1,6 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import type { ReactNode } from "react";
-import { BookOpen, Crown, Menu, Wrench } from "lucide-react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { BookOpen, Crown, Menu, Undo2, Wrench } from "lucide-react";
+import { toast } from "sonner";
 import { getGame } from "@shared/games";
 import { skipLabel } from "@shared/platform/room";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -36,6 +37,13 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
   // Überspringen bleibt für den Host immer da – sonst könnte eine Partie hängen bleiben
   const skip = isHost ? skipLabel(room) : null;
   const hostAway = !!online && !!room.hostId && !online.has(room.hostId) && !isHost;
+  // Rückgängig: lokal jeder, online nur der Host (die Liste selbst hat nur Server/Gerät, Spieler sehen die Anzahl)
+  const undoable = room.undo?.length ?? room.undoCount ?? 0;
+  const undone = useRef(room.undone ?? 0);
+  useEffect(() => {
+    if ((room.undone ?? 0) > undone.current) toast("Letzter Zug wurde zurückgenommen.");
+    undone.current = room.undone ?? 0;
+  }, [room.undone]);
 
   return (
     <Sheet>
@@ -85,6 +93,9 @@ export function MenuSheet({ room, me, online, isHost, dispatch, board, code, onA
 
           {isHost && playing && (
             <div className="mt-4 grid gap-2">
+              <Button variant="secondary" className="justify-start" disabled={!undoable} onClick={() => dispatch({ type: "undo" })}>
+                <Undo2 />Letzten Zug zurücknehmen{undoable > 0 && <span className="ml-auto text-xs font-normal text-muted-foreground">noch {undoable}×</span>}
+              </Button>
               {skip && (
                 <Confirm title={`${skip}?`} description="Damit das Spiel weitergeht, wenn jemand nicht reagiert." confirmLabel="Ja, weiter" onConfirm={() => dispatch({ type: "skip" })}>
                   <Button variant="secondary" className="justify-start">⏭ {skip}</Button>

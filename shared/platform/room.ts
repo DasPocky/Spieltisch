@@ -24,7 +24,18 @@ export interface RoomState {
   game: unknown;
   /** zählt gestartete Partien */
   round: number;
+  /** Spielstände vor den letzten Zügen – zum Zurücknehmen. Bleibt auf Server bzw. Gerät, geht nie an Mitspieler. */
+  undo?: unknown[];
+  /** Wie viele Züge zurückgenommen werden können (nur in der Sicht für Spieler) */
+  undoCount?: number;
+  /** zählt Rücknahmen – damit alle kurz „Zug zurückgenommen“ sehen */
+  undone?: number;
 }
+
+/** So viele Züge lassen sich zurücknehmen */
+export const UNDO_DEPTH = 3;
+/** Neuer Spielstand, der alte kommt in den Rücknahme-Speicher */
+const withUndo = (prev: RoomState, game: unknown): RoomState => ({ ...prev, game, undo: [...(prev.undo ?? []), prev.game].slice(-UNDO_DEPTH) });
 
 export type RoomAction =
   | { type: "start" }
@@ -38,6 +49,8 @@ export type RoomAction =
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
   /** Host: das auflösen, worauf die Partie gerade wartet */
   | { type: "skip" }
+  /** Host (lokal: jeder): den letzten Zug zurücknehmen */
+  | { type: "undo" }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
 
 export function cleanName(name: unknown): string {
@@ -143,11 +156,12 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       s.game = logic.setup(context(s, actorId));
       s.phase = "playing";
       s.round++;
+      s.undo = [];
       return s;
     }
     case "toLobby": {
       hostOnly();
-      return { ...structuredClone(prev), phase: "lobby", game: null };
+      return { ...structuredClone(prev), phase: "lobby", game: null, undo: [] };
     }
     case "selectGame": {
       hostOnly();
@@ -188,6 +202,8 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (s.hostId === a.id) s.hostId = s.players[0]?.id ?? null;
       // Mindestzahl gilt nur beim Start – während der Partie regelt das Spiel Abgänge selbst (onPlayerRemoved)
       if (s.phase === "playing" && !s.players.length) { s.phase = "lobby"; s.game = null; }
+      // Ältere Spielstände kennen den Spieler noch – nicht mehr zurücknehmen
+      s.undo = [];
       return s;
     }
     case "movePlayer": {
@@ -203,7 +219,13 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       hostOnly();
       if (prev.phase !== "playing" || !prev.game) throw new GameError("Es läuft keine Partie.");
       if (!logic.skipTurn || !logic.skipLabel?.(prev.game, context(prev, actorId))) throw new GameError("Gerade gibt es nichts zu überspringen.");
-      return { ...prev, game: logic.skipTurn(prev.game, context(prev, actorId)) };
+      return withUndo(prev, logic.skipTurn(prev.game, context(prev, actorId)));
+    }
+    case "undo": {
+      hostOnly();
+      if (prev.phase !== "playing" || !prev.undo?.length) throw new GameError("Es gibt keinen Zug zum Zurücknehmen.");
+      const undo = prev.undo.slice(0, -1);
+      return { ...prev, game: prev.undo[prev.undo.length - 1], undo, undone: (prev.undone ?? 0) + 1 };
     }
     case "game": {
       const action = a.action;
@@ -222,7 +244,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (kind === "player" && actorId !== null && !prev.players.some((p) => p.id === actorId)) {
         throw new GameError("Du spielst in diesem Raum nicht mit.");
       }
-      return { ...prev, game: logic.apply(prev.game, action, context(prev, actorId)) };
+      return withUndo(prev, logic.apply(prev.game, action, context(prev, actorId)));
     }
     default:
       throw new GameError("Unbekannte Aktion.");
@@ -230,7 +252,10 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
 }
 
 /** Was eine Person vom Raum sehen darf (versteckte Informationen entfernt das Spiel selbst). */
-export function viewRoom(room: RoomState, viewerId: string | null): RoomState {
+export function viewRoom(full: RoomState, viewerId: string | null): RoomState {
+  // Frühere Spielstände enthalten verdeckte Karten – Spieler erfahren nur, wie viele es gibt
+  const { undo, ...rest } = full;
+  const room: RoomState = { ...rest, undoCount: undo?.length ?? 0 };
   const logic = roomGame(room);
   if (!room.game || !logic.view) return room;
   return { ...room, game: logic.view(room.game, viewerId) };

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronDown, Minus, Plus } from "lucide-react";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
 import { getGameUI } from "@/games";
@@ -26,6 +26,8 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
   const logic = getGame(room.gameId);
   const Extra = getGameUI(room.gameId).SettingsExtra;
   const playing = room.phase === "playing";
+  const shown = logic.settings.filter((def) => !def.showIf || def.showIf(room.options));
+  const groups = [...new Set(shown.map((d) => d.group).filter((g): g is string => !!g))];
   return (
     <section className={cn("grid gap-4", className)}>
       <div className="flex items-baseline justify-between">
@@ -33,20 +35,48 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
         {!editable && <span className="text-xs text-muted-foreground">legt der Host fest</span>}
       </div>
       {Extra && <Extra room={room} editable={editable && !playing} online={online} dispatch={dispatch} />}
-      {logic.settings.filter((def) => !def.showIf || def.showIf(room.options)).map((def, i, shown) => (
-        <div key={def.key} className="grid gap-4">
-          {def.group && def.group !== shown[i - 1]?.group && (
-            <h4 className="-mb-1 border-t border-border pt-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">{def.group}</h4>
-          )}
-          <Setting def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}
-            onChange={(value) => dispatch({ type: "setOption", key: def.key, value })} />
-        </div>
+      {/* Grundeinstellungen immer sichtbar, Gruppen einklappbar (Hausregeln anfangs zu) */}
+      {shown.filter((def) => !def.group).map((def) => (
+        <Setting key={def.key} def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}
+          onChange={(value) => dispatch({ type: "setOption", key: def.key, value })} />
+      ))}
+      {groups.map((g) => (
+        <Group key={g} title={g} storeKey={`${room.gameId}:${g}`} changed={shown.filter((d) => d.group === g && changedFrom(d, room.options[d.key])).length}>
+          {shown.filter((d) => d.group === g).map((def) => (
+            <Setting key={def.key} def={def} value={room.options[def.key]} editable={editable && (!playing || !!def.inGame)}
+              onChange={(value) => dispatch({ type: "setOption", key: def.key, value })} />
+          ))}
+        </Group>
       ))}
       {online && logic.turnBased && !logic.ownTurnsOnly && (
-        <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}
-          onChange={(mode) => dispatch({ type: "setEntry", mode })} />
+        <Group title="Raum" storeKey="raum" changed={room.entry !== "turn" ? 1 : 0}>
+          <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}
+            onChange={(mode) => dispatch({ type: "setEntry", mode })} />
+        </Group>
       )}
     </section>
+  );
+}
+
+const changedFrom = (def: SettingDef, value: unknown) => value !== undefined && value !== def.default;
+
+/** Einklappbare Gruppe – merkt sich auf dem Gerät, ob sie offen ist; zeigt, wie viel vom Standard abweicht */
+function Group({ title, storeKey, changed, children }: { title: string; storeKey: string; changed: number; children: ReactNode }) {
+  const key = `spieltisch:group:${storeKey}`;
+  // Hausregeln und Raum-Optionen starten eingeklappt, Wichtiges (Ablauf, Rollen) offen
+  const initial = !/Hausregeln|Raum/.test(title);
+  const [open, setOpen] = useState(() => { try { const v = localStorage.getItem(key); return v === null ? initial : v === "1"; } catch { return initial; } });
+  const toggle = () => { setOpen(!open); try { localStorage.setItem(key, open ? "0" : "1"); } catch { /* egal */ } };
+  return (
+    <div className="rounded-xl ring-1 ring-inset ring-border">
+      <button type="button" onClick={toggle} aria-expanded={open}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring rounded-xl">
+        <span className="flex-1">{title}</span>
+        {changed > 0 && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-xs font-semibold text-primary">{changed} geändert</span>}
+        <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && <div className="text-in grid gap-4 px-3 pt-1 pb-3">{children}</div>}
+    </div>
   );
 }
 

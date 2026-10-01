@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addPlayer, canPlayTurn, createRoom, playerLimits, sanitizeOption, viewRoom } from "@shared/platform/room";
 import { GAME_IDS, getGame } from "@shared/games";
-import type { TuttoState } from "@shared/games/tutto/logic";
+import { stackCard, type TuttoState } from "@shared/games/tutto/logic";
 import { act, game, roomWith } from "./helpers";
 
 describe("Spieler & Host", () => {
@@ -138,5 +138,37 @@ describe("Sicht pro Spieler", () => {
     const seen = (viewRoom(r, "p1").game as TuttoState).pile;
     expect(seen).toEqual([...pile].sort());
     expect((r.game as TuttoState).pile).toBe(pile); // Original unverändert
+  });
+});
+
+describe("Rückgängig", () => {
+  // Tutto mit Bonuskarte oben auf dem Stapel, damit Punkte eintragen sicher geht
+  const started = () => {
+    let r = act(act(roomWith(["Anna", "Ben"]), { type: "setOption", key: "autoDraw", value: false }), { type: "start" });
+    r = { ...r, game: stackCard(r.game as TuttoState, "b200") };
+    return game(r, { type: "draw" });
+  };
+  it("nimmt die letzten Züge zurück – nur der Host, Spieler sehen nur die Anzahl", () => {
+    let r = started();
+    const start = r.game;
+    r = game(r, { type: "addPts", delta: 50 });
+    expect(r.undo).toHaveLength(2);
+    expect(() => act(r, { type: "undo" }, "p2")).toThrow(/Host/);
+    const v = viewRoom(r, "p2");
+    expect(v.undo).toBeUndefined();
+    expect(v.undoCount).toBe(2);
+    r = act(r, { type: "undo" }, "p1");
+    expect(r.game).toEqual(start);
+    expect(r.undone).toBe(1);
+    r = act(r, { type: "undo" }, "p1");
+    expect(() => act(r, { type: "undo" }, "p1")).toThrow(/keinen Zug/);
+  });
+
+  it("merkt sich höchstens drei Züge und vergisst sie bei neuer Runde", () => {
+    let r = started();
+    for (let i = 0; i < 5; i++) r = game(r, { type: "addPts", delta: 50 });
+    expect(r.undo).toHaveLength(3);
+    r = act(r, { type: "restart" });
+    expect(r.undo).toEqual([]);
   });
 });
