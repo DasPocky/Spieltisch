@@ -52,6 +52,18 @@ test("Kniffel lokal mit App-Würfel", async ({ page }) => {
   await shot(page, "33-kniffel-other-sheet");
 });
 
+test("Kniffel Spielhilfe: Stern am besten freien Feld, nur mit Spielhilfen", async ({ page }) => {
+  await startLocal(page, ["Anna", "Ben"]);
+  await expect(page.getByTestId("best")).toHaveCount(0);
+  await page.getByRole("button", { name: /Würfeln/ }).click();
+  await expect(page.getByTestId("best").first()).toBeVisible();
+  await shot(page, "hints-kniffel");
+  await page.evaluate(() => localStorage.setItem("spieltisch:prefs", '{"hints":false}'));
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Würfel \d/ })).toHaveCount(5);
+  await expect(page.getByTestId("best")).toHaveCount(0);
+});
+
 test("Kniffel lokal mit echten Würfeln (Block) auf kleinem Handy", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await startLocal(page, ["Anna", "Ben", "Cem"], true);

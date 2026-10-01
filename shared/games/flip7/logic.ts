@@ -96,6 +96,35 @@ export function buildDeck(variant: Variant): F7Card[] {
   return d;
 }
 
+/**
+ * Wie viele Karten im verdeckten Stapel würden die Reihe von `id` platzen lassen? Alle anderen Karten liegen offen,
+ * also ist der Stapel bekannt: ganzes Spiel minus Tisch, Ablage und offene Aktionen. Passt die Rechnung nicht
+ * zur Stapelgröße, gibt es null (lieber keine Anzeige als eine falsche).
+ */
+export function bustOdds(s: F7State, id: string): { bust: number; total: number } | null {
+  const line = s.lines[id];
+  if (!line || line.status !== "active" || line.second || !line.nums.length) return null;
+  let pool = buildDeck(s.variant);
+  const take = (c: F7Card) => { const i = pool.indexOf(c); if (i >= 0) pool.splice(i, 1); };
+  for (const l of Object.values(s.lines)) [...l.nums, ...l.mods, ...(l.second ? ["a:second"] : [])].forEach(take);
+  s.discard.forEach(take);
+  s.queued.forEach((q) => take(q.card));
+  if (s.pending) take(s.pending.card);
+  // Leerer Stapel: als Nächstes wird die Ablage gemischt
+  if (s.deckCount === 0) pool = s.discard.slice();
+  else if (pool.length !== s.deckCount) return null;
+  const has = (v: number) => line.nums.some((c) => numValue(c) === v);
+  const one13 = line.nums.filter((c) => numValue(c) === 13).length === 1;
+  const bust = pool.filter((c) => {
+    if (!isNum(c) || c === "n:7U") return false;
+    const v = numValue(c);
+    // Glücks-13 neben einer einzelnen 13 ist erlaubt
+    if (v === 13 && one13 && (c === "n:13L" || line.nums.includes("n:13L"))) return false;
+    return has(v);
+  }).length;
+  return pool.length ? { bust, total: pool.length } : null;
+}
+
 const variantOf = (o: Options): Variant => (o.variant === "fies" ? "fies" : "classic");
 
 /** Verschiedene Zahlen in der Reihe (Glücks-13 zählt wie eine 13) */

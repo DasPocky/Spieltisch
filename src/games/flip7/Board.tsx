@@ -1,12 +1,14 @@
 import { ArrowLeftRight, Clover, Hand, Heart, Hourglass, Layers, LifeBuoy, Skull, Snowflake, Trash, type LucideIcon } from "lucide-react";
 import { useState } from "react";
-import { cardLabel, linePoints, numValue, type F7Action, type F7Card, type F7State } from "@shared/games/flip7/logic";
+import { bustOdds, cardLabel, linePoints, numValue, type F7Action, type F7Card, type F7State } from "@shared/games/flip7/logic";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { ScorePad } from "@/platform/ScorePad";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
+import { HintChip } from "@/platform/HintChip";
+import { usePrefs } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
 
 const STATUS: Record<string, string> = { active: "", stayed: "aufgehört", bust: "raus", frozen: "eingefroren", done: "fertig" };
@@ -65,6 +67,7 @@ export function Tile({ card, selectable, selected, onClick }: { card: F7Card; se
 export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<F7State, F7Action>) {
   const players = room.players;
   const [sel, setSel] = useState<{ owner: string; index: number }[]>([]);
+  const { hints } = usePrefs();
   const entries = players.map((p) => ({ id: p.id, name: p.name, score: s.scores[p.id] ?? 0, progress: (s.scores[p.id] ?? 0) / s.target }));
 
   if (s.winners.length) {
@@ -99,6 +102,9 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
     ? players.filter((x) => s.lines[x.id]?.status === "active" && (p.card === "a:freeze" || p.card === "a:flip3" || p.card === "a:flip4" || p.card === "a:one" || x.id !== p.by) && !(p.card === "a:second" && s.lines[x.id]?.second))
     : [];
   const myLine = decider ? s.lines[decider] : null;
+  // Spielhilfe: Wie wahrscheinlich platzt die Reihe bei „Noch eine!“? Der Stapel ergibt sich aus den offenen Karten.
+  const odds = hints && mine && !p && decider ? bustOdds(s, decider) : null;
+  const risk = odds ? (odds.bust / odds.total >= 0.3 ? "hoch" : odds.bust / odds.total >= 0.15 ? "mittel" : "niedrig") : null;
 
   return (
     <>
@@ -138,7 +144,10 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
       <div className="shrink-0 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="mb-2 flex items-center justify-between px-1 text-sm text-muted-foreground">
           <span>Runde {s.round} · Ziel {s.target}</span>
-          <RulesSheet gameId={room.gameId} />
+          <span className="flex items-center gap-2">
+            {risk && <HintChip testId="risk">Risiko: {risk}</HintChip>}
+            <RulesSheet gameId={room.gameId} />
+          </span>
         </div>
         {!mine ? (
           <div className="glass rounded-xl py-4 text-center text-muted-foreground">Warte auf <b className="text-foreground">{nameOf(decider)}</b>{p ? ` (${cardLabel(p.card)})` : ""}</div>

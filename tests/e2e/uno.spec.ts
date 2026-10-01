@@ -79,3 +79,19 @@ test("Uno mit echten Karten: Punkteblock", async ({ page }) => {
   await page.getByRole("button", { name: "+55 für Anna" }).click();
   await expect(page.getByText("Runde 2")).toBeVisible();
 });
+
+test("Uno Spielhilfen: spielbare Karten leuchten leise – aus im Profil, dann nicht", async ({ page }) => {
+  for (const hints of [true, false]) {
+    await local(page, ["Anna", "Ben"]);
+    if (!hints) {
+      await page.evaluate(() => localStorage.setItem("spieltisch:prefs", '{"hints":false}'));
+      await page.reload();
+    }
+    await page.getByRole("button", { name: /Karten zeigen/ }).click();
+    const playable = page.getByTestId("hand").locator("button:not([disabled])");
+    await expect(page.getByTestId("hand").getByRole("img").first()).toBeVisible();
+    const n = await playable.count();
+    await expect(page.getByTestId("hand").locator("button.hint-glow")).toHaveCount(hints ? n : 0);
+    if (hints && n) await shot(page, "hints-uno");
+  }
+});

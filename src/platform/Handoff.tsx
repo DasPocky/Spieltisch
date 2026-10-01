@@ -12,9 +12,10 @@ export function useHandoff(local: boolean, curId: string | null, players: number
 
 export function HandoffCover({ name, onReveal }: { name: string; onReveal: () => void }) {
   return (
-    <div className="glass grid gap-3 rounded-2xl p-4 text-center">
+    // Tippen irgendwo auf den Sichtschutz reicht – der Knopf bleibt für Tastatur und Vorlesen
+    <div className="glass grid cursor-pointer gap-3 rounded-2xl p-4 text-center" onClick={onReveal} data-testid="handoff">
       <p className="text-muted-foreground">Gib das Handy an <b className="text-foreground">{name}</b>.</p>
-      <Button size="lg" onClick={onReveal}>Ich bin {name} – Karten zeigen</Button>
+      <Button size="lg" onClick={(e) => { e.stopPropagation(); onReveal(); }}>Ich bin {name} – Karten zeigen</Button>
     </div>
   );
 }

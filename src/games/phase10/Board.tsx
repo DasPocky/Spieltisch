@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BoardProps } from "@/games/types";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
+import { HintChip } from "@/platform/HintChip";
+import { usePrefs } from "@/lib/prefs";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -100,6 +102,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
   const [sel, setSel] = useState<number[]>([]);
   const [slots, setSlots] = useState<number[][] | null>(null);
   const [skipPick, setSkipPick] = useState(false);
+  const { hints } = usePrefs();
   const handKey = `${s.n}|${s.step}|${hand.join(",")}`;
   useEffect(() => { setSel([]); setSlots(null); setSkipPick(false); }, [handKey]);
 
@@ -119,6 +122,13 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
   };
   const [noFind, setNoFind] = useState(false);
   useEffect(() => { setNoFind(false); }, [handKey]);
+  // Auslage öffnen – liegt die Phase schon auf der Hand, ist sie gleich eingesortiert
+  const openLay = () => { setSlots(needs.map(() => [])); setSel([]); suggest(); };
+  const playing = myTurn && s.step === "play" && !slots;
+  // Spielhilfen: Phase komplett? Welche Handkarten passen an eine liegende Gruppe?
+  const complete = hints && playing && !laidMine && !!findPhase(hand, myPhase);
+  const layers = players.filter((p) => s.laid[p.id]);
+  const hittable = (c: P10Card) => hints && playing && laidMine && layers.some((p) => s.laid[p.id].some((g) => !!extend(g, c)));
   const lay = () => { if (!slots) return; vibrate(15); act({ type: "lay", groups: slots.map((g) => g.map((i) => hand[i])) }); };
   const hit = (owner: string, g: number) => { if (!one) return; vibrate(10); act({ type: "hit", card: one, owner, g }); };
   const discard = (skip?: string) => {
@@ -134,7 +144,6 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
     : slots ? "Karten markieren, dann „Hierher“ bei der Gruppe."
     : laidMine ? "Anlegen: Karte markieren, dann Gruppe antippen. Zum Schluss eine Karte ablegen."
     : "Phase auslegen – oder eine Karte markieren und ablegen.";
-  const layers = players.filter((p) => s.laid[p.id]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -159,6 +168,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
           {/* Ausgelegte Gruppen */}
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto py-1" data-testid="table">
             <p className="mb-1.5 px-1 text-sm"><b>{viewer === me || local ? "Deine" : ""} Phase {myPhase}:</b> <span className="text-muted-foreground">{phaseLabel(myPhase)}</span></p>
+            {complete && <div className="mb-1.5"><HintChip onClick={openLay}>Deine Phase ist komplett – auslegen!</HintChip></div>}
             {layers.length === 0 && <p className="glass rounded-xl px-3 py-4 text-center text-sm text-muted-foreground">Noch hat niemand seine Phase ausgelegt.</p>}
             <ul className="grid gap-1.5">
               {layers.map((p) => (
@@ -212,7 +222,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
                     {hand.map((c, i) => inSlots.has(i) ? null : (
                       <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!myTurn || s.step !== "play"} style={dealDelay(i)} onClick={() => toggle(i)} aria-pressed={sel.includes(i)}
                         className={cn("card-in w-[min(14vw,3.6rem)] shrink-0 rounded-[12%] outline-none disabled:cursor-default",
-                          sel.includes(i) && "-translate-y-2.5 ring-[3px] ring-ice")}>
+                          sel.includes(i) ? "-translate-y-2.5 ring-[3px] ring-ice" : hittable(c) && "hint-glow")}>
                         <P10CardView card={c} />
                       </button>
                     ))}
@@ -237,7 +247,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
                   </div>
                 ) : (
                   <div className={cn("mt-2 grid gap-2 [&>button]:min-w-0 [&>button]:px-3", laidMine ? "grid-cols-1" : "grid-cols-2")}>
-                    {!laidMine && <Button size="lg" variant="secondary" disabled={!myTurn} onClick={() => { setSlots(needs.map(() => [])); setSel([]); }}>Phase auslegen</Button>}
+                    {!laidMine && <Button size="lg" variant="secondary" disabled={!myTurn} onClick={openLay}>Phase auslegen</Button>}
                     <Button size="lg" disabled={!myTurn || !one} onClick={() => discard()}>{one ? `${isWild(one) ? "Joker" : isSkip(one) ? "Aussetzen" : valueOf(one)} ablegen` : "Ablegen"}</Button>
                   </div>
                 )}

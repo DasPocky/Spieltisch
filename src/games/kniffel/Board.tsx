@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dices, Minus, Plus } from "lucide-react";
+import { Dices, Minus, Plus, Star } from "lucide-react";
 import {
   CATS, diceModeOf, extraRuleOf, isKniffel, LOWER, scoreFor, totals, UPPER, UPPER_BONUS, UPPER_BONUS_AT, winners,
   type Cat, type KniffelAction, type KniffelState,
@@ -12,6 +12,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
+import { usePrefs } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** Die laufende Kniffel-Partie: Punkteleiste, Block, Würfel bzw. Eingabe – alles auf einem Bildschirm. */
@@ -19,6 +20,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
   const app = diceModeOf(room) === "app";
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<Cat | null>(null);
+  const { hints } = usePrefs();
   // Neuer Zug oder neuer Wurf: Auswahl zurücksetzen, wieder den Block des Spielers am Zug zeigen
   useEffect(() => { setPicked(null); setSel(null); }, [s.curId, s.log.length]);
   useEffect(() => { if (app) setSel(null); }, [s.n, app]);
@@ -48,6 +50,9 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
   const t = totals(s, viewId);
   const full = mode === "full";
 
+  // Spielhilfe: Stern am freien Feld mit den meisten Punkten für diesen Wurf
+  const free = [...UPPER, ...LOWER].filter((c) => sheet[c] === undefined);
+  const best = hints && canPick && app && rolled ? Math.max(0, ...free.map((c) => potential(c) ?? 0)) : 0;
   const cell = (c: Cat) => {
     const filled = sheet[c];
     const pot = filled === undefined ? potential(c) : null;
@@ -67,6 +72,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
         <span className={cn("shrink-0 text-base font-bold tabular-nums",
           filled === 0 && "text-muted-foreground",
           pot !== null && !active && (pot > 0 ? "text-navy-300" : "text-muted-foreground/60"))}>
+          {best > 0 && pot === best && <Star className={cn("mr-0.5 inline size-3 fill-current align-[-1px]", active ? "text-navy-950" : "text-ice")} aria-label="bester Wert" data-testid="best" />}
           {filled !== undefined ? (filled === 0 ? "–" : filled) : pot ?? ""}
         </span>
       </button>

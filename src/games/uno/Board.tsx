@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BoardProps } from "@/games/types";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
+import { HintChip } from "@/platform/HintChip";
+import { usePrefs } from "@/lib/prefs";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -132,6 +134,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
   const local = me === null;
   const [uno, setUno] = useState(false);
   const [wild, setWild] = useState<Card | null>(null);
+  const { hints } = usePrefs();
   const { covered, reveal } = useHandoff(local && s.phase === "play", s.curId, players.length);
   const cur = players.find((p) => p.id === s.curId);
   const viewer = local ? s.curId : me;
@@ -149,6 +152,8 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
     setUno(false);
     setWild(null);
   };
+  // Spielhilfe: gezogene Karte passt – mit einem Tipp direkt legen
+  const drawnFits = hints && !covered && !!s.drawn && playable(s.drawn);
   const status = s.phase === "roundEnd" ? `${players.find((p) => p.id === s.lastRound?.winner)?.name ?? "?"} gewinnt Runde ${s.round} (+${s.lastRound?.points ?? 0})`
     : !myTurn ? `${cur?.name} ist am Zug`
     : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
@@ -194,7 +199,8 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>
+          {drawnFits ? <span data-testid="status"><HintChip onClick={() => (isWild(s.drawn!) ? setWild(s.drawn) : play(s.drawn!))}>Passt – direkt legen?</HintChip></span>
+            : <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>}
           {s.phase === "play" && <span aria-label={s.dir === 1 ? "Richtung im Uhrzeigersinn" : "Richtung gegen den Uhrzeigersinn"}>{s.dir === 1 ? "↻" : "↺"}</span>}
           <RulesSheet gameId={room.gameId} />
         </div>
@@ -228,7 +234,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
                     <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!ok} data-card={c} style={dealDelay(i)}
                       onClick={() => (isWild(c) ? setWild(c) : play(c))}
                       className={cn("card-in w-[min(17vw,4.5rem)] shrink-0 rounded-[12%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                        ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-ice")}>
+                        ok && "-translate-y-2.5", c === s.drawn ? "ring-[3px] ring-ice" : ok && hints && "hint-glow")}>
                       <UnoCardView card={c} dim={myTurn && !ok} />
                     </button>
                   );

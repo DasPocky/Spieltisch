@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { CardBack, PlayingCard, SuitIcon } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
+import { HintChip } from "@/platform/HintChip";
+import { usePrefs } from "@/lib/prefs";
 import { ScorePad } from "@/platform/ScorePad";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
@@ -19,6 +21,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   const local = me === null;
   const [mau, setMau] = useState(false);
   const [unter, setUnter] = useState<Card | null>(null);
+  const { hints } = usePrefs();
   // Lokal: Hand erst zeigen, wenn der Richtige das Handy hat
   const { covered, reveal } = useHandoff(local, s.curId, players.length);
 
@@ -52,6 +55,8 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
     setMau(false);
     setUnter(null);
   };
+  // Spielhilfe: gezogene Karte passt – mit einem Tipp direkt legen
+  const drawnFits = hints && !covered && !!s.drawn && playable(s.drawn);
   const status = !myTurn ? `${cur?.name} ist am Zug`
     : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
     : s.pendingDraw ? `Leg eine Sieben oder zieh ${s.pendingDraw} Karten.`
@@ -97,7 +102,8 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span data-testid="status" className={cn(myTurn && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>
+          {drawnFits ? <span data-testid="status"><HintChip onClick={() => (isJack(s.drawn!) ? setUnter(s.drawn) : play(s.drawn!))}>Passt – direkt legen?</HintChip></span>
+            : <span data-testid="status" className={cn(myTurn && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>}
           <span aria-label={s.dir === 1 ? "Richtung im Uhrzeigersinn" : "Richtung gegen den Uhrzeigersinn"}>{s.dir === 1 ? "↻" : "↺"}</span>
           <RulesSheet gameId={room.gameId} />
         </div>
@@ -129,7 +135,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
                     <button key={c} type="button" disabled={!ok} style={dealDelay(i)}
                       onClick={() => (isJack(c) ? setUnter(c) : play(c))}
                       className={cn("card-in w-[min(19vw,5rem)] shrink-0 rounded-[10%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                        ok && "-translate-y-2.5", c === s.drawn && "ring-[3px] ring-ice")}>
+                        ok && "-translate-y-2.5", c === s.drawn ? "ring-[3px] ring-ice" : ok && hints && "hint-glow")}>
                       <PlayingCard card={c} dim={myTurn && !ok} />
                     </button>
                   );

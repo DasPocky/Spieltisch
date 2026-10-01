@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BoardProps } from "@/games/types";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
+import { usePrefs } from "@/lib/prefs";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -76,6 +77,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
   const players = room.players;
   const local = me === null;
   const [pick, setPick] = useState<Pick>(null);
+  const { hints } = usePrefs();
   const { covered, reveal } = useHandoff(local && s.phase === "play", s.curId, players.length);
   const cur = players.find((p) => p.id === s.curId);
   const viewer = local ? s.curId : me;
@@ -87,6 +89,8 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
 
   const cardOf = (p: Pick): SbCard | undefined => !p ? undefined : p.from === "hand" ? p.card : p.from === "stock" ? topOf(stock) : topOf(discards[p.i]);
   const picked = cardOf(pick);
+  // Spielhilfe: noch nichts gewählt – Karten, die gerade auf einen Aufbaustapel passen, leuchten leise
+  const useful = (c: SbCard | undefined) => hints && myTurn && !pick && c !== undefined && s.builds.some((b) => fits(b, c));
   const select = (p: Source) => { if (!myTurn) return; vibrate(6); setPick((q) => (same(q, p) ? null : p)); };
   const playTo = (to: number) => {
     if (!pick || picked === undefined || !fits(s.builds[to], picked)) return;
@@ -170,7 +174,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
               <div className="grid content-start justify-items-center gap-1">
                 <Label>Vorrat</Label>
                 <button type="button" disabled={!myTurn || !stock.length} onClick={() => select({ from: "stock" })} aria-label={`Vorrat, oben ${stock.length ? topOf(stock) : "leer"}`}
-                  className={cn("relative w-[calc(var(--c)*1.05)] rounded-[12%] outline-none transition duration-200 disabled:cursor-default", pick?.from === "stock" && "-translate-y-1.5 ring-[3px] ring-ice")}>
+                  className={cn("relative w-[calc(var(--c)*1.05)] rounded-[12%] outline-none transition duration-200 disabled:cursor-default", pick?.from === "stock" ? "-translate-y-1.5 ring-[3px] ring-ice" : useful(topOf(stock)) && "hint-glow")}>
                   {/* angedeuteter Stapel darunter */}
                   <span className="absolute inset-0 translate-x-[4px] translate-y-[4px] rounded-[12%] bg-paper/20" aria-hidden="true" />
                   <span className="absolute inset-0 translate-x-[2px] translate-y-[2px] rounded-[12%] bg-paper/40" aria-hidden="true" />
@@ -195,7 +199,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
                         <button type="button" disabled={!target && !source && !sel} data-testid={`discard-${i}`}
                           onClick={() => (target ? discardTo(i) : select({ from: "discard", i }))}
                           aria-label={target ? `Auf Ablage ${i + 1} ablegen und Zug beenden` : `Ablage ${i + 1}${d.length ? `, oben ${topOf(d)}` : " leer"}`}
-                          className={cn("relative w-[calc(var(--c)*0.82)] rounded-[12%] outline-none transition duration-200 disabled:cursor-default", sel && "-translate-y-1.5 ring-[3px] ring-ice", target && "target-glow")}>
+                          className={cn("relative w-[calc(var(--c)*0.82)] rounded-[12%] outline-none transition duration-200 disabled:cursor-default", sel && "-translate-y-1.5 ring-[3px] ring-ice", target ? "target-glow" : useful(topOf(d)) && "hint-glow")}>
                           {d.length > 1 && <span className="absolute inset-0 -translate-y-[3px] rounded-[12%] bg-paper/30" aria-hidden="true" />}
                           <SbCardView key={d.length} card={topOf(d)} small className={cn("relative", d.length > 0 && "card-in")} />
                         </button>
@@ -211,7 +215,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
                   const sel = pick?.from === "hand" && pick.card === c && hand.indexOf(c) === i;
                   return (
                     <button key={`${c}-${i}`} type="button" disabled={!myTurn} onClick={() => select({ from: "hand", card: c })}
-                      className={cn("w-[min(17vw,calc(var(--c)*1.15))] rounded-[12%] outline-none transition duration-200 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", sel && "-translate-y-2 ring-[3px] ring-ice")}>
+                      className={cn("w-[min(17vw,calc(var(--c)*1.15))] rounded-[12%] outline-none transition duration-200 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", sel ? "-translate-y-2 ring-[3px] ring-ice" : useful(c) && "hint-glow")}>
                       <SbCardView card={c} className="card-in" />
                     </button>
                   );

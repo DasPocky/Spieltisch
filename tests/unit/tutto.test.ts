@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scoreDice, stackCard, type CardId, type TuttoState } from "@shared/games/tutto/logic";
+import { scoreDice, scoringDice, stackCard, type CardId, type TuttoState } from "@shared/games/tutto/logic";
 import type { RoomState } from "@shared/platform/room";
 import { act, fixDice, game, roomWith } from "./helpers";
 
@@ -25,6 +25,16 @@ describe("Würfelwertung", () => {
   ])("%j → %i", (dice, expected) => expect(scoreDice(dice)).toBe(expected));
 
   it.each([[[2]], [[1, 2]], [[3, 3]], [[]]])("%j ist nicht wertbar", (dice) => expect(scoreDice(dice)).toBeNull());
+});
+
+describe("Spielhilfe: wertbare Würfel", () => {
+  it("markiert Einsen, Fünfen und Drillinge, beste Auswahl ist alles Wertbare", () => {
+    expect(scoringDice([1, 2, 5, 3, 3, 3], "b300", [])).toEqual({ dice: [true, false, true, true, true, true], best: 450 });
+    expect(scoringDice([2, 3, 4, 6, 6, 2], "b300", [])).toEqual({ dice: [false, false, false, false, false, false], best: null });
+  });
+  it("Straße: nur Zahlen, die noch fehlen", () => {
+    expect(scoringDice([1, 2, 2], "street", [1, 3, 4, 5])).toEqual({ dice: [false, true, true], best: 0 });
+  });
 });
 
 describe("Echte Würfel", () => {

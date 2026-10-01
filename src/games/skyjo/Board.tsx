@@ -9,6 +9,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
+import { usePrefs } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
 
 const nameOf = (players: Player[], id: string | null) => players.find((p) => p.id === id)?.name ?? "?";
@@ -104,6 +105,7 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<SkState, SkActio
 function AppBoard(props: BoardProps<SkState, SkAction>) {
   const { room, game: s, me, canAct, act } = props;
   const players = room.players;
+  const { hints } = usePrefs();
   if (s.phase === "over") return <Result {...props} />;
 
   const local = me === null;
@@ -125,6 +127,10 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
     else if (s.drawn !== null) act({ type: "swap", i });
     else if (s.mustFlip) act({ type: "flip", i });
   };
+  // Spielhilfe „guter Tausch“: die höchste offene Karte, wenn die gezogene niedriger ist
+  const openVals = (grid ?? []).flatMap((c) => (c?.up && c.v !== null ? [c.v] : []));
+  const worst = hints && myTurn && s.drawn !== null && openVals.length ? Math.max(...openVals) : null;
+  const goodSwap = (c: Cell | null) => worst !== null && s.drawn !== null && worst > s.drawn && !!c?.up && c.v === worst;
   const cellTappable = (c: Cell | null) => !!c && (s.phase === "flip" ? needFlips && !c.up : myTurn && (s.drawn !== null || (s.mustFlip && !c.up)));
 
   let hint: string;
@@ -183,7 +189,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
         </div>
         {s.phase === "roundEnd" ? <RoundEnd {...props} /> : grid ? (
           <div className="grid min-h-0 w-full max-w-[22rem] flex-1 grid-cols-4 grid-rows-3 gap-1.5" role="group" aria-label="Deine Karten">
-            {grid.map((c, i) => <div key={i} className="flex min-h-0 justify-center"><div className="aspect-[5/7] h-full max-w-full"><SkCard cell={c} onClick={cellTappable(c) ? () => tap(i) : undefined} /></div></div>)}
+            {grid.map((c, i) => <div key={i} className="flex min-h-0 justify-center"><div className={cn("aspect-[5/7] h-full max-w-full rounded-[14%]", goodSwap(c) && "hint-glow")} data-hint={goodSwap(c) || undefined}><SkCard cell={c} onClick={cellTappable(c) ? () => tap(i) : undefined} /></div></div>)}
           </div>
         ) : null}
       </div>

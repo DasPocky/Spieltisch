@@ -73,3 +73,15 @@ test("Skyjo mit echten Karten: Punkteblock mit Verdopplung", async ({ page }) =>
   await expectNoScroll(page);
   await shot(page, "89b-skyjo-table");
 });
+
+test("Skyjo Spielhilfe: guter Tausch leuchtet auf der höchsten offenen Karte", async ({ page }) => {
+  await local(page, ["Anna", "Ben"]);
+  for (let k = 0; k < 4; k++) await myCards(page).and(page.getByLabel("verdeckte Karte")).first().click();
+  await page.getByRole("button", { name: /Vom Stapel ziehen/ }).click();
+  await expect(page.getByTestId("drawn")).toBeVisible();
+  const drawn = Number((await page.getByTestId("drawn").getByRole("button").getAttribute("aria-label"))!.replace("Gezogen: ", ""));
+  const open = (await myCards(page).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label"))))
+    .filter((l) => l?.startsWith("Karte ")).map((l) => Number(l!.slice(6)));
+  const max = Math.max(...open);
+  await expect(page.locator("[data-hint]")).toHaveCount(max > drawn ? open.filter((v) => v === max).length : 0);
+});

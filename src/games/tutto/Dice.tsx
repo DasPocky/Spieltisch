@@ -1,6 +1,7 @@
 import { Dices } from "lucide-react";
-import { MUST_PLAY, stopAfterTutto, NO_DICE_POINTS, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { MUST_PLAY, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
+import { usePrefs } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** App-Würfel: aktueller Wurf zum Antippen, beiseitegelegte Würfel und Status. */
@@ -9,6 +10,9 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   const card = state.turnCards[state.turnCards.length - 1];
   const sel = d && d.roll.length && !d.bust ? selectionValue(d, card) : null;
   const scoresHere = !!card && !NO_DICE_POINTS.has(card);
+  // Spielhilfe: wertbare Würfel bekommen einen leisen Ring, dazu die beste mögliche Auswahl
+  const { hints } = usePrefs();
+  const help = hints && !disabled && d && d.roll.length && !d.bust && !d.tutto ? scoringDice(d.roll, card, d.aside) : null;
 
   let status: string;
   if (!card) status = "Zieh zuerst eine Karte.";
@@ -16,7 +20,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   else if (!d || (!d.roll.length && !d.tutto)) status = "Tippe auf „Würfeln“.";
   else if (d.bust) status = card === "fire" ? "Niete – deine Punkte zählen trotzdem." : "Niete! Keine wertbaren Würfel.";
   else if (d.tutto) status = card === "clover" ? "Erstes Tutto! Noch eins zum Sieg." : card === "fire" ? "Tutto! Weiter mit allen Würfeln." : "Tutto! Aufhören oder weiterzocken?";
-  else if (!d.sel.some(Boolean)) status = "Tippe die Würfel an, die du behalten willst.";
+  else if (!d.sel.some(Boolean)) status = help?.best && scoresHere ? `Bis zu +${fmt(help.best)} – tippe die Würfel an.` : "Tippe die Würfel an, die du behalten willst.";
   else if (sel === null) status = card === "street" ? "Nur Zahlen, die dir noch fehlen." : card === "torte" ? "Nur Würfel, die in die Torte passen." : "Nur 1, 5 oder drei Gleiche zählen.";
   else status = scoresHere ? `Auswahl: +${fmt(sel)}` : "Gute Auswahl.";
 
@@ -40,7 +44,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
             onClick={() => { vibrate(6); onAction({ type: "toggleDie", i }); }}
             className={cn(
               "dice-in size-[min(13vw,3.25rem)] rounded-[22%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring",
-              d.sel[i] ? "-translate-y-1.5 ring-[3px] ring-navy-300" : "opacity-95",
+              d.sel[i] ? "-translate-y-1.5 ring-[3px] ring-navy-300" : help?.dice[i] ? "hint-glow" : "opacity-95",
               d.bust && "opacity-50 grayscale",
             )}
             style={{ animationDelay: `${i * 40}ms` }}

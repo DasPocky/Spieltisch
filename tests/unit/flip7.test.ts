@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDeck, linePoints, type F7Card, type F7State, type Line } from "@shared/games/flip7/logic";
+import { bustOdds, buildDeck, flip7, linePoints, numValue, type F7Card, type F7State, type Line } from "@shared/games/flip7/logic";
 import { playerLimits, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
 
@@ -138,5 +138,51 @@ describe("Flip 7", () => {
     u = game(u, { type: "hit" });
     expect(g(u).lines.p1.nums).toEqual(["n:7U"]);
     expect(g(u).lines.p1.mods).toEqual([]);
+  });
+
+  it("Risiko-Hilfe: zählt die Karten im verdeckten Stapel richtig, ohne den Stapel zu kennen", () => {
+    for (const variant of ["classic", "fies"]) {
+      let r = start(3, { variant });
+      let checked = 0;
+      for (let i = 0; i < 150 && !g(r).winners.length; i++) {
+        const s = g(r);
+        const id = s.pending ? s.pending.by : s.curId;
+        if (!id) break;
+        if (!s.pending) {
+          const odds = bustOdds(flip7.view!(s, id) as F7State, id);
+          const l = s.lines[id];
+          if (odds) {
+            checked++;
+            // Gegenprobe mit dem echten Stapel (der Server kennt ihn)
+            const pool = s.deck.length ? s.deck : s.discard;
+            expect(odds.total).toBe(pool.length);
+            const one13 = l.nums.filter((c) => numValue(c) === 13).length === 1;
+            expect(odds.bust).toBe(pool.filter((c) => c.startsWith("n:") && c !== "n:7U" && l.nums.some((x) => numValue(x) === numValue(c))
+              && !(numValue(c) === 13 && one13 && (c === "n:13L" || l.nums.includes("n:13L")))).length);
+          }
+          r = game(r, { type: i % 4 === 3 ? "stay" : "hit" });
+        } else if (s.pending.kind === "target") {
+          // erstes erlaubtes Ziel
+          const prev = r;
+          for (const t of Object.keys(s.lines)) { try { r = game(prev, { type: "target", target: t }); break; } catch { /* nächstes */ } }
+        } else if (s.pending.kind === "pickCard") {
+          const by = s.pending.by, steal = s.pending.card === "a:steal";
+          const owner = Object.keys(s.lines).find((x) => (!steal || x !== by) && s.lines[x].nums.length + s.lines[x].mods.length)!;
+          r = game(r, { type: "pick", owner, index: 0 });
+        } else {
+          const [a, b] = Object.keys(s.lines).filter((x) => s.lines[x].nums.length);
+          r = game(r, { type: "swap", a: { owner: a, index: 0 }, b: { owner: b, index: 0 } });
+        }
+      }
+      expect(checked).toBeGreaterThan(5);
+    }
+  });
+
+  it("Risiko-Hilfe: mit zweiter Chance oder ohne Zahlen keine Anzeige", () => {
+    const r = start();
+    const s = g(r);
+    const id = Object.keys(s.lines)[0];
+    expect(bustOdds({ ...s, lines: { ...s.lines, [id]: line({ nums: [], second: false }) } }, id)).toBeNull();
+    expect(bustOdds({ ...s, lines: { ...s.lines, [id]: line({ nums: ["n:5"], second: true }) } }, id)).toBeNull();
   });
 });

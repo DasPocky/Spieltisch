@@ -139,6 +139,19 @@ export function canScore(roll: number[], card: CardId | undefined, aside: number
   return false;
 }
 
+/** Spielhilfe: Welche Würfel des Wurfs können zu einer erlaubten Auswahl gehören, und was bringt die beste Auswahl? */
+export function scoringDice(roll: number[], card: CardId | undefined, aside: number[]): { dice: boolean[]; best: number | null } {
+  const dice = roll.map(() => false);
+  let best: number | null = null;
+  for (let m = 1; m < 1 << roll.length; m++) {
+    const v = pickValue(roll.filter((_, i) => m & (1 << i)), card, aside);
+    if (v === null) continue;
+    roll.forEach((_, i) => { if (m & (1 << i)) dice[i] = true; });
+    best = Math.max(best ?? 0, v);
+  }
+  return { dice, best };
+}
+
 /** Ist die Auswahl gültig? Liefert die Punkte (bei Straße und Torte 0) oder null. */
 export function selectionValue(d: DiceState, card: CardId | undefined): number | null {
   return pickValue(d.roll.filter((_, i) => d.sel[i]), card, d.aside);

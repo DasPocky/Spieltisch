@@ -279,3 +279,8 @@
 /* Kartenfächer: Abstand kommt aus <Fan>, Karten gleiten beim Ziehen und Ausspielen an ihren Platz */
 .fan > * { transition: margin-left 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .fan > * + * { margin-left: var(--fan-ml, 0px); }
+
+/* Spielhilfen (Profil „Spielhilfen“): ruhiger Ring in der Akzentfarbe – bewusst ohne Puls, anders als `.target-glow` */
+.hint-glow {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 55%, transparent), 0 0 12px 3px color-mix(in srgb, var(--primary) 32%, transparent);
+}
