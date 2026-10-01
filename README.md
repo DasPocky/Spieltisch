@@ -2,6 +2,8 @@
 
 Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder am eigenen Handy, Räume mit Code + PIN) oder **lokal** (ein Gerät für alle). Gebaut mit React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui, läuft kostenlos auf Cloudflare Workers mit Durable Objects.
 
+**Live:** https://spieltisch.bjoern-ef9.workers.dev/
+
 **Spiele:**
 
 - **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
@@ -60,15 +62,15 @@ Cloudflare Workers Builds baut und deployt jeden Push auf `main` automatisch:
 1. Im Cloudflare-Dashboard **Workers & Pages → Create → Import a repository**, `DasPocky/Spieltisch` wählen.
 2. Build-Befehl `npm run build`, Deploy-Befehl `npx wrangler deploy`, Produktions-Branch `main`.
 
-Die App ist dann unter `https://spieltisch.<dein-subdomain>.workers.dev` erreichbar (Name in `wrangler.jsonc`). Zusätzlich prüft GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push und Pull Request Build, Unit-Tests und die Playwright-Tests.
+Die App ist dann unter https://spieltisch.bjoern-ef9.workers.dev/ erreichbar (Name in `wrangler.jsonc`). Zusätzlich prüft GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push und Pull Request Build, Unit-Tests und die Playwright-Tests.
 
 Manuell geht es mit `npx wrangler login` und `npm run deploy`.
 
 **Sprachchat einrichten (Cloudflare Realtime):**
 
 1. Im Cloudflare-Dashboard **Realtime → Serverless SFU → Create application** (Name z. B. `spieltisch`).
-2. Die angezeigte **App ID** und das **App Token** (API-Token der App) kopieren.
-3. Unter **Workers & Pages → spieltisch → Settings → Variables and Secrets** zwei Secrets anlegen: `REALTIME_APP_ID` und `REALTIME_APP_TOKEN` (oder `npx wrangler secret put …`).
+2. Die angezeigte **App ID** und das **App Secret** kopieren.
+3. Unter **Workers & Pages → spieltisch → Settings → Variables and Secrets → Add** (Typ **Secret**) zwei Secrets anlegen: `REALTIME_APP_ID` (= App ID) und `REALTIME_APP_TOKEN` (= App Secret) (oder `npx wrangler secret put …`).
 
 Ohne diese Secrets ist der Knopf 📞 einfach nicht da. Das Token bleibt auf dem Server: Die App spricht nur mit unserem Worker (`/api/rooms/<CODE>/call`), der prüft, dass nur Mitspieler des Raums eine Sitzung anlegen, nur eigene Sitzungen benutzen und nur Spuren von Mitspielern desselben Raums abholen. Ton und Bild laufen über das SFU von Cloudflare und werden nicht gespeichert. Für die Playwright-Tests simuliert der Worker das SFU (`REALTIME_FAKE=1` in `.dev.vars`, legt `scripts/test-env.mjs` an).
 
