@@ -16,7 +16,7 @@ const tint = (hex: string, a: number) => `${hex}${Math.round(a * 255).toString(1
 /** Kräftige Kartenfarben nah am Original (Rahmen, Titel, Bild) */
 const COLOR: Record<CardType["id"], string> = {
   b200: "#e3a400", b300: "#e3a400", b400: "#e3a400", b500: "#e3a400", b600: "#e3a400",
-  x2: "#6a3fb5", fire: "#e2541c", street: "#1f6db8", pm: "#2e9a48", stop: "#d42a26", clover: "#2e9a48", torte: "#d6487a",
+  x2: "#6a3fb5", fire: "#e2541c", street: "#1f6db8", pm: "#2e9a48", stop: "#d42a26", clover: "#2e9a48", torte: "#d6487a", chance: "#2f8a8f",
 };
 const RED = "#d42a26";
 
@@ -40,8 +40,8 @@ const star = (cx: number, cy: number, r1: number, r2: number, n: number) =>
   }).join(" ");
 
 function Art({ card, c }: { card: CardType; c: string }) {
-  // Chance: gleiche Wirkung wie Feuerwerk – Sternschnuppe auf Nachthimmel
-  if (card.id === "fire" && card.name === "Chance") {
+  // Chance: Sternschnuppe auf Nachthimmel
+  if (card.id === "chance") {
     const star = (cx: number, cy: number, r: number, fill: string) => {
       const pts = Array.from({ length: 10 }, (_, i) => {
         const a = -Math.PI / 2 + (i * Math.PI) / 5;
@@ -170,14 +170,14 @@ function Art({ card, c }: { card: CardType; c: string }) {
 const TITLE: Partial<Record<CardType["id"], string>> = { b200: "Bonus", b300: "Bonus", b400: "Bonus", b500: "Bonus", b600: "Bonus", pm: "Plus / Minus", x2: "Verdoppeln" };
 
 /** Kurztext unten auf Karten ohne Punktwert – Bonus und ×2 zeigen unten ihren Wert wie auf der echten Karte */
-const FOOT: Partial<Record<CardType["id"], string>> = { fire: "Bis zur Niete", stop: "Zug vorbei", clover: "Sofort-Sieg", x2: "Punkte ×2" };
+const FOOT: Partial<Record<CardType["id"], string>> = { chance: "+1 Versuch", fire: "Bis zur Niete", stop: "Zug vorbei", clover: "Sofort-Sieg", x2: "Punkte ×2" };
 
 /**
  * Vorderseite im Stil der Tutto-Karten: kräftiger farbiger Rahmen, weißes Feld mit Titel oben,
  * großes Bild in der Mitte und unten immer an derselben Stelle Punktwert oder Kurztext.
  */
 export function CardFace({ card }: { card: CardType }) {
-  const c = card.name === "Chance" ? card.color : COLOR[card.id] ?? card.color;
+  const c = COLOR[card.id] ?? card.color;
   const title = TITLE[card.id] ?? card.name;
   const foot = FOOT[card.id];
   // Plus/Minus: Rahmen halb grün, halb rot

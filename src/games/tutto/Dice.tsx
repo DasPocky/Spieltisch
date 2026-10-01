@@ -1,7 +1,7 @@
 import { Dices } from "lucide-react";
 import { MUST_PLAY, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** App-Würfel: aktueller Wurf zum Antippen, beiseitegelegte Würfel und Status. */
@@ -11,7 +11,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   const sel = d && d.roll.length && !d.bust ? selectionValue(d, card) : null;
   const scoresHere = !!card && !NO_DICE_POINTS.has(card);
   // Spielhilfe: wertbare Würfel bekommen einen leisen Ring, dazu die beste mögliche Auswahl
-  const { hints } = usePrefs();
+  const hints = useHints();
   const help = hints && !disabled && d && d.roll.length && !d.bust && !d.tutto ? scoringDice(d.roll, card, d.aside) : null;
 
   let status: string;
@@ -85,8 +85,19 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   );
 
   if (!card) return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
+  if (card === "chance") return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Chance! Nächste Karte ziehen</Btn></div>;
   if (card === "stop") return <div className="grid"><Btn primary onClick={() => book(true)}>Stopp – nächster Spieler</Btn></div>;
   if (!d || (!d.roll.length && !d.tutto)) return <div className="grid"><Btn primary onClick={roll}><Dices className="mr-1.5 inline size-5 align-[-4px]" />Würfeln</Btn></div>;
+  const chances = state.chances ?? 0;
+  if (d.bust && chances > 0) {
+    // Chance: dieselben Würfel nochmal – oder freiwillig aufgeben
+    return (
+      <div className="grid grid-cols-[1.4fr_1fr] gap-2.5">
+        <Btn primary onClick={() => { vibrate(15); onAction({ type: "useChance" }); }}>Chance nutzen{chances > 1 ? ` (${chances})` : ""}</Btn>
+        {card === "fire" ? <Btn onClick={() => book()}>{pts} eintragen</Btn> : <Btn onClick={() => book(true)}>Aufgeben</Btn>}
+      </div>
+    );
+  }
   if (d.bust) {
     return <div className="grid">{card === "fire"
       ? <Btn primary onClick={() => book()}>{pts} eintragen</Btn>

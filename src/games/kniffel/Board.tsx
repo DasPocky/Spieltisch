@@ -12,7 +12,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** Die laufende Kniffel-Partie: Punkteleiste, Block, Würfel bzw. Eingabe – alles auf einem Bildschirm. */
@@ -20,7 +20,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
   const app = diceModeOf(room) === "app";
   const [picked, setPicked] = useState<string | null>(null);
   const [sel, setSel] = useState<Cat | null>(null);
-  const { hints } = usePrefs();
+  const hints = useHints();
   // Neuer Zug oder neuer Wurf: Auswahl zurücksetzen, wieder den Block des Spielers am Zug zeigen
   useEffect(() => { setPicked(null); setSel(null); }, [s.curId, s.log.length]);
   useEffect(() => { if (app) setSel(null); }, [s.n, app]);

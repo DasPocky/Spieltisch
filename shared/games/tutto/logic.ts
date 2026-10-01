@@ -54,6 +54,8 @@ export interface TuttoState {
   pile: CardId[];
   turnCards: CardId[];
   turnPts: number;
+  /** Chancen in diesem Zug: so oft darf eine Niete neu geworfen werden */
+  chances?: number;
   /** Punkte, die vor der aktuellen Karte schon sicher waren (durch ein Tutto) */
   cardStart?: number;
   /** Tuttos mit der aktuellen Karte (Kleeblatt bei echten Würfeln) */
@@ -77,11 +79,13 @@ export type TuttoAction =
   /** `victim`: bei Plus/Minus „Wählen“ – wer die 1.000 verliert */
   | { type: "book"; zero?: boolean; victim?: string }
   | { type: "roll" }
+  /** Niete mit Chance: die Niete-Würfel neu werfen (App-Würfel) bzw. einfach nochmal werfen (echte Würfel) */
+  | { type: "useChance" }
   | { type: "toggleDie"; i: number }
   | { type: "undo" }
   | { type: "shuffle" };
 
-const TURN_ACTIONS = new Set<string>(["draw", "addPts", "clearPts", "tutto", "book", "roll", "toggleDie"]);
+const TURN_ACTIONS = new Set<string>(["draw", "addPts", "clearPts", "tutto", "book", "roll", "toggleDie", "useChance"]);
 const HOST_ACTIONS = new Set<string>(["undo", "shuffle"]);
 
 export const score = (s: TuttoState, id: string) => s.scores[id] ?? 0;
@@ -185,7 +189,8 @@ export function freshPile(options: GameContext["options"] = {}): CardId[] {
   const pile: CardId[] = [];
   for (const c of CARDS) {
     if (c.promo && !options[c.id]) continue;
-    for (let i = 0; i < c.count; i++) pile.push(c.id);
+    const n = c.id === "chance" ? Math.max(0, Math.min(10, Number(options.chance) || 0)) : c.count;
+    for (let i = 0; i < n; i++) pile.push(c.id);
   }
   return shuffle(pile);
 }
@@ -194,7 +199,7 @@ export function freshPile(options: GameContext["options"] = {}): CardId[] {
 function drawCard(s: TuttoState, ctx: GameContext, pick?: CardId) {
   if (!s.pile.length) s.pile = freshPile(ctx.options);
   if (realCardsOf(ctx)) {
-    if (!pick || !CARD_BY_ID[pick] || (pick === "torte" && !ctx.options.torte)) throw new GameError("Welche Karte hast du gezogen?");
+    if (!pick || !CARD_BY_ID[pick] || (pick === "torte" && !ctx.options.torte) || (pick === "chance" && !(Number(ctx.options.chance) > 0))) throw new GameError("Welche Karte hast du gezogen?");
     // Den Stapel in der App mitführen, damit „noch im Stapel“ zum echten Stapel passt
     let i = s.pile.lastIndexOf(pick);
     if (i < 0) { s.pile = freshPile(ctx.options); i = s.pile.lastIndexOf(pick); }
@@ -205,12 +210,18 @@ function drawCard(s: TuttoState, ctx: GameContext, pick?: CardId) {
   s.cardTuttos = 0;
   s.afterTutto = false;
   s.dice = diceModeOf(ctx) === "app" ? freshDice() : null;
+  // Chance: bleibt liegen, gibt einen Versuch mehr – mit App-Karten kommt die nächste Karte sofort
+  if (s.turnCards[s.turnCards.length - 1] === "chance") {
+    s.chances = (s.chances ?? 0) + 1;
+    if (!realCardsOf(ctx)) drawCard(s, ctx);
+  }
 }
 
 /** Zu Beginn eines Zugs die Karte gleich aufdecken, wenn so eingestellt */
 function startTurn(s: TuttoState, ctx: GameContext) {
   s.turnCards = [];
   s.turnPts = 0;
+  s.chances = 0;
   s.cardStart = 0;
   s.cardTuttos = 0;
   s.afterTutto = false;
@@ -298,7 +309,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
 
   switch (a.type) {
     case "draw": {
-      if (card) {
+      if (card && card !== "chance") {
         if (card === "stop") throw new GameError("Stopp – der Zug ist vorbei.");
         if (appDice) {
           const d = s.dice;
@@ -311,6 +322,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       return s;
     }
     case "tutto": {
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
       if (appDice) throw new GameError("Das Tutto erkennt der App-Würfel selbst.");
       if (!card) throw new GameError("Zieh zuerst eine Karte.");
       if (card === "stop") throw new GameError("Stopp – in diesem Zug wird nicht gewürfelt.");
@@ -320,9 +332,25 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       applyTutto(s, card, ctx);
       return s;
     }
+    case "useChance": {
+      if (!(s.chances ?? 0)) throw new GameError("Du hast keine Chance mehr.");
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
+      if (appDice) {
+        const d = s.dice;
+        if (!d?.bust) throw new GameError("Eine Chance gibt es nur bei einer Niete.");
+        // Genau die Niete-Würfel nochmal – die Punkte des Zugs bleiben
+        d.roll = rollDice(d.roll.length);
+        d.sel = d.roll.map(() => false);
+        d.bust = !canScore(d.roll, card!, d.aside);
+        d.n++;
+      }
+      s.chances = (s.chances ?? 0) - 1;
+      return s;
+    }
     case "roll": {
       if (!appDice) throw new GameError("Der App-Würfel ist aus.");
       if (!card) throw new GameError("Zieh zuerst eine Karte.");
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
       if (card === "stop") throw new GameError("Stopp – in diesem Zug wird nicht gewürfelt.");
       const d = s.dice ?? freshDice();
       if (d.bust) throw new GameError("Niete – der Zug ist vorbei.");
@@ -374,6 +402,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       return s;
     case "book": {
       const p = cur!;
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
       // Feuerwerk mit echten Würfeln: Eintragen heißt „Niete geworfen“, die kostet hier nichts
       const fireEnd = card === "fire" && !appDice && !s.afterTutto;
       let zero = !!a.zero && !fireEnd;
@@ -460,11 +489,11 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
     { key: "target", label: "Spielziel", type: "number", default: 6000, min: 1000, max: 50000, step: 1000, inGame: true },
     { key: "autoDraw", showIf: (o) => o.cards !== "real", label: "Karte zu Zugbeginn automatisch aufdecken", hint: "nach einem Tutto entscheidet ihr selbst: aufhören oder weiterzocken", type: "toggle", default: true, inGame: true },
     {
-      key: "fireName", label: "Feuerwerk-Karte heißt", type: "choice", default: "fire", group: "Karten & Hausregeln",
+      key: "chance", label: "Chance-Karten im Stapel", type: "choice", default: "0", group: "Karten & Hausregeln",
       choices: [
-        { value: "fire", label: "Feuerwerk", hint: "wie im Original" },
-        { value: "chance", label: "Chance", hint: "gleiche Wirkung" },
-        { value: "both", label: "Beide", hint: "gemischt im Stapel" },
+        { value: "0", label: "Keine", hint: "wie im Original" },
+        { value: "3", label: "3 Karten", hint: "selten" },
+        { value: "5", label: "5 Karten", hint: "öfter" },
       ],
     },
     {

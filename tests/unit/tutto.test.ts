@@ -375,3 +375,44 @@ describe("Echte Karten", () => {
     expect(g(r).turnCards).toEqual([]);
   });
 });
+
+describe("Chance (Hausregel)", () => {
+  it("ist nur im Stapel, wenn eingestellt", () => {
+    expect(g(start()).pile).not.toContain("chance");
+    expect(g(start(["Anna", "Ben"], { chance: "3" })).pile.filter((c) => c === "chance")).toHaveLength(3);
+  });
+
+  it("App-Karten: sofort die nächste Karte, jede Chance ein Versuch mehr", () => {
+    let r = start(["Anna", "Ben"], { chance: "5" });
+    // oben: Chance, darunter Chance, darunter Bonus 300
+    r = { ...r, game: { ...g(r), pile: [...g(r).pile, "b300", "chance", "chance"] } };
+    r = game(r, { type: "draw" });
+    expect(g(r).turnCards).toEqual(["chance", "chance", "b300"]);
+    expect(g(r).chances).toBe(2);
+  });
+
+  it("Echte Würfel: Niete mit Chance kostet nichts, ohne Chance geht es nicht", () => {
+    let r = start(["Anna", "Ben"], { chance: "5" });
+    r = { ...r, game: stackCard(stackCard(g(r), "b300"), "chance") };
+    r = pts(game(r, { type: "draw" }), 500);
+    r = game(r, { type: "useChance" });
+    expect(g(r).chances).toBe(0);
+    expect(g(r).turnPts).toBe(500);
+    expect(g(r).curId).toBe("p1");
+    expect(() => game(r, { type: "useChance" })).toThrow(/keine Chance/);
+  });
+
+  it("App-Würfel: Chance wirft genau die Niete-Würfel nochmal", () => {
+    let r = start(["Anna", "Ben"], { chance: "5", diceMode: "app" });
+    r = { ...r, game: stackCard(stackCard(g(r), "b300"), "chance") };
+    r = game(r, { type: "draw" });
+    fixDice([2, 3, 4, 6, 2, 3]); // Niete
+    r = game(r, { type: "roll" });
+    expect(g(r).dice!.bust).toBe(true);
+    fixDice([1, 3, 4, 6, 2, 3]);
+    r = game(r, { type: "useChance" });
+    expect(g(r).dice!.bust).toBe(false);
+    expect(g(r).dice!.roll).toHaveLength(6);
+    expect(g(r).chances).toBe(0);
+  });
+});

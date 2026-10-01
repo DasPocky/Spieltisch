@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import type { BoardProps } from "@/games/types";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -134,7 +134,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
   const local = me === null;
   const [uno, setUno] = useState(false);
   const [wild, setWild] = useState<Card | null>(null);
-  const { hints } = usePrefs();
+  const hints = useHints();
   const { covered, reveal } = useHandoff(local && s.phase === "play", s.curId, players.length);
   const cur = players.find((p) => p.id === s.curId);
   const viewer = local ? s.curId : me;

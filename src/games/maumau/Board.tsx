@@ -8,7 +8,7 @@ import type { BoardProps } from "@/games/types";
 import { CardBack, PlayingCard, SuitIcon } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { ScorePad } from "@/platform/ScorePad";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
@@ -21,7 +21,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   const local = me === null;
   const [mau, setMau] = useState(false);
   const [unter, setUnter] = useState<Card | null>(null);
-  const { hints } = usePrefs();
+  const hints = useHints();
   // Lokal: Hand erst zeigen, wenn der Richtige das Handy hat
   const { covered, reveal } = useHandoff(local, s.curId, players.length);
 

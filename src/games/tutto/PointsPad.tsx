@@ -89,13 +89,18 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
       <span className="max-w-full truncate text-base">{children}</span>
     </button>
   );
-  const niete = state.turnPts > 0 ? (
+  const chances = state.chances ?? 0;
+  // Mit Chance: Niete kostet nichts, einfach dieselben Würfel nochmal werfen
+  const niete = chances > 0 ? (
+    <Btn sub={`Niete – Chance nutzen${chances > 1 ? ` (${chances})` : ""}`} kind="ice" onClick={() => { vibrate(15); onAction({ type: "useChance" }); }}>Nochmal</Btn>
+  ) : state.turnPts > 0 ? (
     <Confirm title="Wirklich Niete?" description={`Die ${pts} Punkte dieses Zugs verfallen.`} confirmLabel="Niete" onConfirm={() => book(true)}>
       <Btn sub="Nichts gewertet">Niete</Btn>
     </Confirm>
   ) : <Btn sub="Nichts gewertet" onClick={() => book(true)}>Niete</Btn>;
 
   if (!card) return <div className="grid"><Btn kind="primary" onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
+  if (card === "chance") return <div className="grid"><Btn sub="Chance – +1 Versuch bei Niete" kind="primary" onClick={() => onAction({ type: "draw" })}>Nächste Karte ziehen</Btn></div>;
   if (state.afterTutto) {
     return (
       <div className="grid grid-cols-2 gap-2">

@@ -18,6 +18,8 @@ export interface RoomState {
   entry: EntryMode;
   /** Host hat die Spielleiter-Funktionen an (für andere handeln, überspringen …) – sonst spielt er ganz normal mit */
   hostTools?: boolean;
+  /** Spielhilfen im Raum aus (Host-Schalter) – fehlt: an */
+  noHints?: boolean;
   /** Einstellungen des gewählten Spiels */
   options: Options;
   phase: "lobby" | "playing";
@@ -50,6 +52,7 @@ export type RoomAction =
   | { type: "setOption"; key: string; value: OptionValue }
   | { type: "setEntry"; mode: EntryMode }
   | { type: "setHostTools"; on: boolean }
+  | { type: "setHints"; on: boolean }
   | { type: "removePlayer"; id: string }
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
   /** Host: das auflösen, worauf die Partie gerade wartet */
@@ -190,6 +193,10 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     case "setEntry": {
       hostOnly();
       return { ...structuredClone(prev), entry: a.mode === "all" || a.mode === "host" ? a.mode : "turn" };
+    }
+    case "setHints": {
+      hostOnly();
+      return { ...structuredClone(prev), noHints: a.on !== true };
     }
     case "setHostTools": {
       hostOnly();

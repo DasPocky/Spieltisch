@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { DECKS, fullDeck } from "@shared/cards/deck";
-import { CARDS, CHANCE } from "@shared/games/tutto/cards";
+import { CARDS } from "@shared/games/tutto/cards";
 import { buildDeck as unoDeck } from "@shared/games/uno/logic";
 import { buildDeck as f7Deck } from "@shared/games/flip7/logic";
 import { UnoBack, UnoCardView } from "@/games/uno/Board";
@@ -43,7 +43,7 @@ export function CardGallery() {
       <Row title="Phase 10">{p10.map((c) => <div key={c} className="w-12"><P10CardView card={c} /></div>)}</Row>
       <Row title="Phase 10 Fächer"><Fan>{p10.slice(0, 12).map((c) => <P10CardView key={c} card={c} />)}</Fan><Fan>{["r-10", "b-11", "g-12", "y-11", "W", "S"].map((c) => <P10CardView key={c} card={c} dim />)}</Fan></Row>
       <Row title="Flip 7">{f7.map((c) => <Tile key={c} card={c} />)}</Row>
-      <Row title="Tutto">{[...CARDS, CHANCE].map((c) => <div key={c.name} className="aspect-[5/7] w-24"><CardFace card={c} /></div>)}</Row>
+      <Row title="Tutto">{CARDS.map((c) => <div key={c.name} className="aspect-[5/7] w-24"><CardFace card={c} /></div>)}</Row>
       <Row title="Spielkarten FR / DE">{[...fullDeck(DECKS.fr32).slice(0, 8), ...fullDeck(DECKS.de32).filter((_, i) => i % 4 === 0)].map((c) => <div key={c} className="w-12"><PlayingCard card={c} /></div>)}</Row>
     </main>
   );

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { createContext, useContext, useSyncExternalStore } from "react";
 
 /** Persönliche Einstellungen fürs Spielen – nur auf diesem Gerät */
 export interface Prefs {
@@ -44,4 +44,12 @@ if (typeof window !== "undefined") {
 
 export function usePrefs(): Prefs {
   return useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l); }, () => current);
+}
+
+/** Raum-Schalter des Hosts: Spielhilfen für alle im Raum aus */
+export const RoomHints = createContext(true);
+
+/** Spielhilfen anzeigen? Nur wenn sie im Profil an sind und der Raum sie erlaubt */
+export function useHints(): boolean {
+  return usePrefs().hints && useContext(RoomHints);
 }

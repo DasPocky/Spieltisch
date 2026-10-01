@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import type { BoardProps } from "@/games/types";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -102,7 +102,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
   const [sel, setSel] = useState<number[]>([]);
   const [slots, setSlots] = useState<number[][] | null>(null);
   const [skipPick, setSkipPick] = useState(false);
-  const { hints } = usePrefs();
+  const hints = useHints();
   const handKey = `${s.n}|${s.step}|${hand.join(",")}`;
   useEffect(() => { setSel([]); setSlots(null); setSkipPick(false); }, [handKey]);
 

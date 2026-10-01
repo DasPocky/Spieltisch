@@ -10,6 +10,9 @@ import { cn, fmt } from "@/lib/utils";
 import { Segmented } from "./Segmented";
 import { DeckPicker } from "./cards/DeckPicker";
 
+/** Spiele mit Spielhilfen (siehe useHints) */
+const HINT_GAMES = new Set(["uno", "maumau", "phase10", "skipbo", "skyjo", "kniffel", "flip7", "tutto"]);
+
 const ENTRY_OPTIONS = [
   { value: "turn", label: "Wer dran ist", hint: "am eigenen Handy" },
   { value: "all", label: "Alle", hint: "jeder für jeden" },
@@ -27,6 +30,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
   const Extra = getGameUI(room.gameId).SettingsExtra;
   const playing = room.phase === "playing";
   const shown = logic.settings.filter((def) => !def.showIf || def.showIf(room.options));
+  const entryChoice = online && logic.turnBased && !logic.ownTurnsOnly;
   const groups = [...new Set(shown.map((d) => d.group).filter((g): g is string => !!g))];
   return (
     <section className={cn("grid gap-4", className)}>
@@ -48,10 +52,18 @@ export function SettingsPanel({ room, editable, online, dispatch, className }: {
           ))}
         </Group>
       ))}
-      {online && logic.turnBased && !logic.ownTurnsOnly && (
-        <Group title="Raum" storeKey="raum" changed={room.entry !== "turn" ? 1 : 0}>
-          <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}
-            onChange={(mode) => dispatch({ type: "setEntry", mode })} />
+      {(entryChoice || HINT_GAMES.has(room.gameId)) && (
+        <Group title="Raum" storeKey="raum" changed={(entryChoice && room.entry !== "turn" ? 1 : 0) + (room.noHints ? 1 : 0)}>
+          {HINT_GAMES.has(room.gameId) && (
+            <label className="flex items-center gap-3 text-sm">
+              <Checkbox checked={!room.noHints} disabled={!editable} onCheckedChange={(c) => dispatch({ type: "setHints", on: c === true })} />
+              <span><span className="font-semibold">Spielhilfen erlauben</span><span className="block text-xs text-muted-foreground">Leuchten bei passenden Karten und Würfeln – nur für den Spieler am Zug. Aus: für alle im Raum aus.</span></span>
+            </label>
+          )}
+          {entryChoice && (
+            <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}
+              onChange={(mode) => dispatch({ type: "setEntry", mode })} />
+          )}
         </Group>
       )}
     </section>

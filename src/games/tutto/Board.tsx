@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cardTypeFor, diceModeOf, realCardsOf, KEEP_CARD, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import type { Options } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
@@ -31,7 +31,7 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
     act(a);
   };
   // Feuerwerk oder Chance – je Karte gleich bleibend
-  const typeOf = (id: CardId, i = state.turnCards.length - 1) => cardTypeFor(id, room.options, state.log.length * 7 + i);
+  const typeOf = (id: CardId, _i?: number) => CARD_BY_ID[id];
 
   if (winner) {
     return (
@@ -50,7 +50,7 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
   const latest = state.turnCards[state.turnCards.length - 1];
   const d = state.dice;
   // Mit App-Würfel nur ziehen, wenn es gerade erlaubt ist – sonst würde ein versehentliches Antippen stören
-  const canDraw = !latest || (appDice ? !!d && d.tutto && !d.bust && latest !== "fire" && latest !== "clover" && latest !== "stop" : !!state.afterTutto);
+  const canDraw = !latest || latest === "chance" || (appDice ? !!d && d.tutto && !d.bust && latest !== "fire" && latest !== "clover" && latest !== "stop" : !!state.afterTutto);
 
   return (
     <>
@@ -84,7 +84,7 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
           )}
         </div>
       </div>
-      {picking && <CardPicker torte={room.options.torte === true} fireName={String(room.options.fireName ?? "fire")} onClose={() => setPicking(false)} onPick={(card) => { setPicking(false); act({ type: "draw", card }); }} />}
+      {picking && <CardPicker torte={room.options.torte === true} chance={Number(room.options.chance) > 0} onClose={() => setPicking(false)} onPick={(card) => { setPicking(false); act({ type: "draw", card }); }} />}
       {victimFor && (
         <div className="fixed inset-0 z-50 flex items-end bg-navy-950/60 backdrop-blur-sm" role="dialog" aria-label="Wer verliert 1.000 Punkte?" onClick={() => setVictimFor(null)}>
           <div className="glass mx-auto w-full max-w-md rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
@@ -127,6 +127,7 @@ function TurnHint({ state, canAct, full, gameId, typeOf, options }: { state: Tut
           {fresh ? <b className="text-ice" data-testid="tutto-banner">Tutto! {fmt(state.turnPts)} Punkte – aufhören oder weiterzocken? Bei Stopp oder Niete ist alles weg.</b>
             : lost ? <b className="text-destructive" data-testid="stop-lost">Stopp nach dem Tutto – die {fmt(state.turnPts)} Punkte verfallen.</b>
             : card ? ruleOf(card, options) : idle}
+          {(state.chances ?? 0) > 0 && latest !== "chance" && <span className="ml-1 font-semibold text-primary" data-testid="chances">· {state.chances === 1 ? "1 Chance" : `${state.chances} Chancen`} übrig</span>}
         </p>
         {full && state.turnCards.length > 1 && (
           <div className="no-scrollbar mt-1.5 flex justify-center gap-1.5 overflow-x-auto">

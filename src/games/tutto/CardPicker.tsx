@@ -1,12 +1,11 @@
-import { CARDS, CHANCE, type CardId, type CardType } from "@shared/games/tutto/logic";
+import { CARDS, type CardId } from "@shared/games/tutto/logic";
 import { Button } from "@/components/ui/button";
 import { vibrate } from "@/lib/utils";
 import { CardFace } from "./CardFace";
 
 /** Echte Karten: Welche Karte liegt jetzt offen? Antippen, dann rechnet die App wie gewohnt. */
-export function CardPicker({ torte, fireName = "fire", onPick, onClose }: { torte: boolean; fireName?: string; onPick: (c: CardId) => void; onClose: () => void }) {
-  // Feuerwerk und Chance wirken gleich – je nach Einstellung eine oder beide zum Antippen
-  const cards: CardType[] = CARDS.filter((c) => !c.promo || torte).flatMap((c) => c.id !== "fire" ? [c] : fireName === "chance" ? [CHANCE] : fireName === "both" ? [c, CHANCE] : [c]);
+export function CardPicker({ torte, chance = false, onPick, onClose }: { torte: boolean; chance?: boolean; onPick: (c: CardId) => void; onClose: () => void }) {
+  const cards = CARDS.filter((c) => (c.id === "chance" ? chance : !c.promo || torte));
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-navy-950/70 backdrop-blur-sm" role="dialog" aria-label="Gezogene Karte wählen" onClick={onClose}>
       <div className="glass mx-auto w-full max-w-md rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>

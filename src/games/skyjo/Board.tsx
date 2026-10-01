@@ -9,7 +9,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
 
 const nameOf = (players: Player[], id: string | null) => players.find((p) => p.id === id)?.name ?? "?";
@@ -105,7 +105,7 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<SkState, SkActio
 function AppBoard(props: BoardProps<SkState, SkAction>) {
   const { room, game: s, me, canAct, act } = props;
   const players = room.players;
-  const { hints } = usePrefs();
+  const hints = useHints();
   if (s.phase === "over") return <Result {...props} />;
 
   const local = me === null;

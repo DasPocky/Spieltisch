@@ -24,6 +24,7 @@ import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
 import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
 import { useGameFeedback } from "./useGameFeedback";
+import { RoomHints } from "@/lib/prefs";
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
@@ -78,7 +79,7 @@ export function RoomScreen(props: Props) {
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} />}
-      {board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}
+      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
     </AvatarContext.Provider>
   );

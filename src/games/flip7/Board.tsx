@@ -8,7 +8,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { HintChip } from "@/platform/HintChip";
-import { usePrefs } from "@/lib/prefs";
+import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
 
 const STATUS: Record<string, string> = { active: "", stayed: "aufgehört", bust: "raus", frozen: "eingefroren", done: "fertig" };
@@ -67,7 +67,7 @@ export function Tile({ card, selectable, selected, onClick }: { card: F7Card; se
 export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<F7State, F7Action>) {
   const players = room.players;
   const [sel, setSel] = useState<{ owner: string; index: number }[]>([]);
-  const { hints } = usePrefs();
+  const hints = useHints();
   const entries = players.map((p) => ({ id: p.id, name: p.name, score: s.scores[p.id] ?? 0, progress: (s.scores[p.id] ?? 0) / s.target }));
 
   if (s.winners.length) {
