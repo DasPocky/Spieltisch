@@ -1,3 +1,4 @@
+import type { RoomState } from "@shared/platform/room";
 import { maumau, type MauMauAction, type MauMauState } from "@shared/games/maumau/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
@@ -34,4 +35,12 @@ function MenuExtras({ game }: BoardProps<MauMauState, MauMauAction>) {
   );
 }
 
-export const maumauUI: GameUI<MauMauState, MauMauAction> = { logic: maumau, Icon, Board, Rules, MenuExtras, HeaderExtra };
+/** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
+const log = (s: MauMauState) => (s.mode === "table" ? [] : s.log);
+const overview = (s: MauMauState, room: RoomState) => s.mode === "table" ? null : ({
+  cols: ["Karten"],
+  rows: Object.fromEntries(room.players.map((p) => [p.id, [s.counts[p.id] ?? 0]])),
+  curId: s.winnerId ? null : s.curId,
+});
+
+export const maumauUI: GameUI<MauMauState, MauMauAction> = { logic: maumau, Icon, Board, Rules, MenuExtras, HeaderExtra, log, overview };

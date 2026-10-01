@@ -2,7 +2,7 @@
  * Mau-Mau mit französischem oder deutschem Blatt – läuft im Browser (lokal) und im Durable Object (online).
  * Hausregeln sind Einstellungen. Die Hände der anderen und der Ziehstapel bleiben geheim (view).
  */
-import { deckOf, deckSetting, DECKS, drawCards, isCardOf, isJack, rankOf, shuffledDeck, sortHand, suitOf, type Card, type DeckId, type Suit } from "../../cards/deck";
+import { cardName, deckOf, deckSetting, DECKS, drawCards, isCardOf, isJack, rankOf, SUIT_NAME, shuffledDeck, sortHand, suitOf, type Card, type DeckId, type Suit } from "../../cards/deck";
 import { shuffle } from "../../platform/random";
 import { nextPlayerId } from "../../platform/turns";
 import { applyPad, isPadAction, newPad, padRemove, type Pad, type PadAction } from "../../platform/pad";
@@ -153,6 +153,7 @@ function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauStat
       hand.splice(hand.indexOf(a.card), 1);
       s.discard.push(a.card);
       s.wish = jack ? a.wish! : null;
+      s.log.push(`${nameOf(ctx, me)}: ${cardName(a.card)}${jack ? ` – wünscht ${SUIT_NAME[a.wish!]}` : ""}`);
       if (hand.length === 0) {
         s.winnerId = me;
         s.log.push(`${nameOf(ctx, me)} hat keine Karten mehr – Mau-Mau!`);
@@ -182,6 +183,7 @@ function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauStat
         return s;
       }
       const got = give(s, me, 1);
+      if (got[0]) s.log.push(`${nameOf(ctx, me)} zieht eine Karte`);
       if (!got[0]) {
         s.log.push("Keine Karten mehr zum Ziehen");
         endTurn();
@@ -195,6 +197,7 @@ function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauStat
     }
     case "pass": {
       if (!s.drawn) throw new GameError("Erst ziehen, dann passen.");
+      s.log.push(`${nameOf(ctx, me)} passt`);
       endTurn();
       sync(s);
       return s;

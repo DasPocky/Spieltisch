@@ -258,6 +258,7 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
         return s;
       }
       const got = give(s, me, 1);
+      s.log.push(`${nameOf(ctx, me)} zieht eine Karte`);
       // Ohne Automatik sieht man die gezogene Karte erst und passt selbst
       if (got[0] && (canPlay(s, got[0], ctx.options, s.hands[me]) || ctx.options.autoPass !== true)) s.drawn = got[0];
       else endTurn();
@@ -266,6 +267,7 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
     }
     case "pass": {
       if (!s.drawn) throw new GameError("Erst ziehen, dann passen.");
+      s.log.push(`${nameOf(ctx, me)} passt`);
       endTurn();
       sync(s);
       return s;

@@ -295,6 +295,7 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
       refill(s);
       const c = s.pile.pop();
       if (c) hand.push(c);
+      s.log.push(`${nameOf(ctx, me)} zieht vom Stapel`);
     }
     s.hands[me] = sortHand(hand);
     s.step = "play";
@@ -331,6 +332,7 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
       if (!ng) throw new GameError("Die Karte passt da nicht.");
       removeCards(hand, [a.card]);
       s.laid[a.owner][a.g] = ng;
+      s.log.push(`${nameOf(ctx, me)} legt ${cardLabel(a.card)} an`);
       if (!hand.length) finishAppRound(s, ctx, me);
       else checkDeadEnd(s, ctx);
       sync(s);
@@ -339,6 +341,7 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
     case "discard": {
       if (!removeCards(hand, [a.card])) throw new GameError("Diese Karte hast du nicht.");
       s.discard.push(a.card);
+      if (!isSkip(a.card)) s.log.push(`${nameOf(ctx, me)} legt ${cardLabel(a.card)} ab`);
       if (isSkip(a.card)) {
         const others = ctx.players.filter((p) => p.id !== me);
         const target = a.skip && others.some((p) => p.id === a.skip) ? a.skip : nextPlayerId(ctx.players, me)!;

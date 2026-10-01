@@ -5,7 +5,7 @@ import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction,
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getGameUI } from "@/games";
-import type { BoardProps } from "@/games/types";
+import type { BoardProps, GameUI } from "@/games/types";
 import { useViewMode } from "@/hooks/useViewMode";
 import { cn } from "@/lib/utils";
 import { pickGameKey } from "@/lib/createRoom";
@@ -18,6 +18,7 @@ import { PlayerManager } from "./PlayerManager";
 import { SettingsPanel } from "./SettingsPanel";
 import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
+import { InfoBar } from "./InfoBar";
 import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
 
 interface Props extends Omit<MenuProps, "board"> {
@@ -68,6 +69,7 @@ export function RoomScreen(props: Props) {
       {props.call && <CallStrip call={props.call} players={room.players} me={me} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
+      {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} />}
       {board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}
     </div>
   );

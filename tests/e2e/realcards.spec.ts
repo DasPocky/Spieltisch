@@ -81,7 +81,8 @@ test("Eine Nacht mit eigenen Karten: Host-Handy erzählt, andere sehen nur Augen
   // Automatik läuft – der Host kann Schritte auch überspringen
   for (let i = 0; i < 200 && !(await anna.getByText("Aufdecken und eintragen").isVisible()); i++) {
     const skip = anna.getByRole("button", { name: "Schritt überspringen" });
-    if (await skip.isVisible()) await skip.click();
+    // Der Knopf kann genau beim Tippen verschwinden (Schritt endet von selbst) – dann einfach weiter
+    if (await skip.isVisible()) await skip.click({ timeout: 1500 }).catch(() => {});
     await anna.waitForTimeout(250);
   }
   await expect(ben.getByText("Diskutiert!")).toBeVisible();

@@ -1,3 +1,4 @@
+import type { RoomState } from "@shared/platform/room";
 import { flip7, type F7Action, type F7State } from "@shared/games/flip7/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
@@ -80,4 +81,13 @@ function Rules() {
   );
 }
 
-export const flip7UI: GameUI<F7State, F7Action> = { logic: flip7, Icon, Board, Rules, MenuExtras, HeaderExtra };
+/** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
+const STATUS: Record<string, string> = { active: "spielt", stayed: "hört auf", bust: "raus", frozen: "eingefroren", done: "fertig" };
+const log = (s: F7State) => (s.mode === "table" ? [] : s.log);
+const overview = (s: F7State, room: RoomState) => s.mode === "table" ? null : ({
+  cols: ["Runde", "Karten", "Gesamt"],
+  rows: Object.fromEntries(room.players.map((p) => [p.id, [STATUS[s.lines[p.id]?.status ?? ""] ?? "–", s.lines[p.id]?.nums.length ?? 0, s.scores[p.id] ?? 0]])),
+  curId: s.pending ? s.pending.by : s.curId,
+});
+
+export const flip7UI: GameUI<F7State, F7Action> = { logic: flip7, Icon, Board, Rules, MenuExtras, HeaderExtra, log, overview };

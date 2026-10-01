@@ -40,6 +40,11 @@ test("Uno lokal: weitergeben, legen – passt auf 320 px", async ({ page }) => {
     await page.waitForTimeout(250);
   }
   await expectNoScroll(page);
+  // Letzter Zug steht oben, „Spieler & Verlauf“ zeigt alle mit Kartenzahl
+  await expect(page.getByTestId("infobar")).not.toContainText("Noch kein Zug");
+  await page.getByTestId("infobar").click();
+  await expect(page.getByTestId("overview")).toContainText("Karten");
+  await expect(page.getByTestId("history").locator("li").first()).toBeVisible();
 });
 
 test("Uno online: jeder sieht nur seine Hand", async ({ browser }) => {

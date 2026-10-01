@@ -221,9 +221,11 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
 
   /** Aktion in den Ausgang – geht sofort raus oder nach dem Wiederverbinden */
   const send = useCallback((action: RoomAction) => {
-    // Gleiche Aktion wartet schon (Doppeltipp, Timer feuert erneut): nicht ein zweites Mal ausführen
+    // Doppeltipp: dieselbe Aktion kurz hintereinander nur einmal. Später gleiche Aktionen (z. B. „Weiter“
+    // der Automatik) sind gewollt und gehen raus, auch wenn die vorige noch auf Bestätigung wartet.
     const key = JSON.stringify(action);
-    if (outbox.current.some((p) => p.msg.type === "action" && JSON.stringify(p.msg.action) === key)) return;
+    const now = Date.now();
+    if (outbox.current.some((p) => p.msg.type === "action" && now - p.created < 700 && JSON.stringify(p.msg.action) === key)) return;
     const id = rid();
     outbox.current.push({ id, msg: { type: "action", action, id }, created: Date.now(), sent: null });
     setPending(outbox.current.length);

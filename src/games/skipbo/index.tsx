@@ -1,3 +1,4 @@
+import type { RoomState } from "@shared/platform/room";
 import { skipbo, type SbAction, type SbState } from "@shared/games/skipbo/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
@@ -54,4 +55,12 @@ function MenuExtras({ game }: BoardProps<SbState, SbAction>) {
   );
 }
 
-export const skipboUI: GameUI<SbState, SbAction> = { logic: skipbo, Icon, Board, Rules, MenuExtras };
+/** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
+const log = (s: SbState) => (s.mode === "table" ? [] : s.log);
+const overview = (s: SbState, room: RoomState) => s.mode === "table" ? null : ({
+  cols: room.options.target === "500" ? ["Vorrat", "Hand", "Punkte"] : ["Vorrat", "Hand"],
+  rows: Object.fromEntries(room.players.map((p) => [p.id, [s.stockCounts[p.id] ?? 0, s.handCounts[p.id] ?? 0, ...(room.options.target === "500" ? [s.scores[p.id] ?? 0] : [])]])),
+  curId: s.phase === "play" ? s.curId : null,
+});
+
+export const skipboUI: GameUI<SbState, SbAction> = { logic: skipbo, Icon, Board, Rules, MenuExtras, log, overview };

@@ -1,3 +1,4 @@
+import type { RoomState } from "@shared/platform/room";
 import { DECKS, RANK_PLURAL } from "@shared/cards/deck";
 import { fischen, type FischenAction, type FischenState } from "@shared/games/fischen/logic";
 import type { GameUI } from "@/games/types";
@@ -52,4 +53,11 @@ function Rules() {
   );
 }
 
-export const fischenUI: GameUI<FischenState, FischenAction> = { logic: fischen, Icon, Board, Rules };
+/** Spielerübersicht für „Spieler & Verlauf“ */
+const overview = (s: FischenState, room: RoomState) => s.table ? null : ({
+  cols: ["Karten", "Quartette"],
+  rows: Object.fromEntries(room.players.map((p) => [p.id, [s.counts[p.id] ?? 0, s.quartets[p.id]?.length ?? 0]])),
+  curId: s.finished ? null : s.curId,
+});
+
+export const fischenUI: GameUI<FischenState, FischenAction> = { logic: fischen, Icon, Board, Rules, overview };

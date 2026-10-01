@@ -1,3 +1,4 @@
+import type { RoomState } from "@shared/platform/room";
 import { phase10, PHASES, needLabel, type P10Action, type P10State } from "@shared/games/phase10/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
@@ -53,4 +54,12 @@ function MenuExtras({ game }: BoardProps<P10State, P10Action>) {
   );
 }
 
-export const phase10UI: GameUI<P10State, P10Action> = { logic: phase10, Icon, Board, Rules, MenuExtras };
+/** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
+const log = (s: P10State) => (s.mode === "table" ? [] : s.log);
+const overview = (s: P10State, room: RoomState) => s.mode === "table" ? null : ({
+  cols: ["Phase", "Karten", "Punkte"],
+  rows: Object.fromEntries(room.players.map((p) => [p.id, [`${Math.min(s.goal, s.phase[p.id] ?? 1)}${s.laid[p.id] ? " ✓" : ""}`, s.counts[p.id] ?? 0, s.scores[p.id] ?? 0]])),
+  curId: s.step === "draw" || s.step === "play" ? s.curId : null,
+});
+
+export const phase10UI: GameUI<P10State, P10Action> = { logic: phase10, Icon, Board, Rules, MenuExtras, log, overview };

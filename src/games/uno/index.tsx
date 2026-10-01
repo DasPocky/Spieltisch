@@ -1,3 +1,4 @@
+import type { RoomState } from "@shared/platform/room";
 import { uno, type UnoAction, type UnoState } from "@shared/games/uno/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
@@ -64,4 +65,12 @@ function MenuExtras({ game }: BoardProps<UnoState, UnoAction>) {
   );
 }
 
-export const unoUI: GameUI<UnoState, UnoAction> = { logic: uno, Icon, Board, Rules, MenuExtras };
+/** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
+const log = (s: UnoState) => (s.mode === "table" ? [] : s.log);
+const overview = (s: UnoState, room: RoomState) => s.mode === "table" ? null : ({
+  cols: room.options.target === "round" ? ["Karten"] : ["Karten", "Punkte"],
+  rows: Object.fromEntries(room.players.map((p) => [p.id, room.options.target === "round" ? [s.counts[p.id] ?? 0] : [s.counts[p.id] ?? 0, s.scores[p.id] ?? 0]])),
+  curId: s.phase === "play" ? s.curId : null,
+});
+
+export const unoUI: GameUI<UnoState, UnoAction> = { logic: uno, Icon, Board, Rules, MenuExtras, log, overview };

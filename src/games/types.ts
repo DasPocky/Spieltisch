@@ -24,6 +24,14 @@ export interface BoardProps<S = unknown, A = { type: string }> {
   dispatch: (action: RoomAction) => void;
 }
 
+/** Spielerübersicht als kleine Tabelle: Spalten und je Spieler die Werte */
+export interface Overview {
+  cols: string[];
+  rows: Record<string, (string | number)[]>;
+  /** wer gerade dran ist */
+  curId?: string | null;
+}
+
 /**
  * Ein Spiel-Modul auf der Client-Seite: die gemeinsame Logik aus `shared/games/<id>`
  * plus Oberfläche, Symbol und Regelseite.
@@ -43,4 +51,8 @@ export interface GameUI<S = unknown, A = { type: string }> {
   SettingsExtra?: ComponentType<{ room: RoomState; editable: boolean; online: boolean; dispatch: (action: RoomAction) => void }>;
   /** Kleine Info rechts in der Kopfzeile (z. B. Karten im Stapel) */
   HeaderExtra?: ComponentType<BoardProps<S, A>>;
+  /** Für alle sichtbarer Verlauf (älteste zuerst) – erscheint als Leiste „Letzter Zug“ über dem Spiel */
+  log?: (game: S) => string[];
+  /** Spielerübersicht für „Spieler & Verlauf“ */
+  overview?: (game: S, room: RoomState) => Overview | null;
 }

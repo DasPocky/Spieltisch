@@ -17,26 +17,42 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
   /** zusätzliche Host-Knöpfe des Spiels */
   children?: ReactNode;
 }) {
+  // Gleichstand teilt sich den Platz
+  const places = ranking.map((p, i) => (i > 0 && ranking[i - 1].score === p.score ? -1 : i + 1));
+  for (let i = 1; i < places.length; i++) if (places[i] === -1) places[i] = places[i - 1];
   return (
-    <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[6vh] pb-6 text-center">
-      <Trophy className="mx-auto size-14 text-ice" strokeWidth={1.5} aria-hidden="true" />
-      <div className="mt-3 text-muted-foreground">Gewonnen hat</div>
-      <div className="my-1.5 bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-5xl font-bold leading-tight tracking-tight text-transparent">{winner}</div>
-      <div className="text-muted-foreground">{subtitle}</div>
-      <ol className="mt-8 grid gap-1.5 text-left">
-        {ranking.map((p, i) => (
-          <li key={p.id} className={cn("flex justify-between rounded-xl px-4 py-3 font-semibold", i === 0 ? "bg-navy-600" : "glass")}>
-            <span><span className="mr-2 text-muted-foreground">{i + 1}.</span>{p.name}</span><span className="tabular-nums">{fmt(p.score)}{scoreLabel && <span className="ml-1 text-sm font-normal text-muted-foreground">{scoreLabel}</span>}</span>
-          </li>
-        ))}
-      </ol>
-      {isHost ? (
-        <div className="mt-6 grid gap-2.5">
-          <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Neue Runde, gleiche Spieler</Button>
-          {children}
-          <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby – anderes Spiel wählen</Button>
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[4vh] pb-3 text-center">
+        <div className="pop mx-auto grid size-16 place-items-center rounded-full bg-primary/12 text-primary">
+          <Trophy className="size-9" strokeWidth={1.75} aria-hidden="true" />
         </div>
-      ) : <p className="mt-6 text-muted-foreground">Der Host kann eine neue Runde starten.</p>}
+        <div className="mt-3 text-sm text-muted-foreground">Gewonnen hat</div>
+        <div className="text-in my-0.5 text-4xl font-bold leading-tight tracking-tight" data-testid="winner">{winner}</div>
+        <div className="text-muted-foreground">{subtitle}</div>
+        <ol className="mt-6 grid gap-1.5 text-left" data-testid="ranking">
+          {ranking.map((p, i) => {
+            const place = places[i];
+            return (
+              <li key={p.id} style={{ animationDelay: `${120 + i * 60}ms` }}
+                className={cn("text-in flex items-center gap-3 rounded-xl px-3 py-2.5", place === 1 ? "bg-primary/10 ring-1 ring-inset ring-primary/30" : "glass")}>
+                <span className={cn("grid size-7 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums",
+                  place === 1 ? "bg-primary text-primary-foreground" : place === 2 ? "bg-navy-300/40" : place === 3 ? "bg-navy-400/30" : "text-muted-foreground")}>{place}</span>
+                <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
+                <span className="shrink-0 font-semibold tabular-nums">{fmt(p.score)}{scoreLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{scoreLabel}</span>}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        {isHost ? (
+          <div className="grid gap-2">
+            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Neue Runde, gleiche Spieler</Button>
+            {children}
+            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby – anderes Spiel wählen</Button>
+          </div>
+        ) : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host kann eine neue Runde starten.</p>}
+      </div>
     </section>
   );
 }

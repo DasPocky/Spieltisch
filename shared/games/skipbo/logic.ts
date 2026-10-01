@@ -183,6 +183,7 @@ function apply(prev: SbState, a: SbAction, ctx: GameContext): SbState {
       else if (a.from === "stock") s.stocks[me].pop();
       else s.discards[me][a.i].pop();
       b.push(card);
+      s.log.push(`${nameOf(ctx, me)} legt ${card === JOKER ? "Skip-Bo" : card} auf Stapel ${a.to + 1}${a.from === "stock" ? " (Vorrat)" : ""}`);
       if (b.length === 12) {
         s.done.push(...b);
         s.builds[a.to] = [];
@@ -208,6 +209,7 @@ function apply(prev: SbState, a: SbAction, ctx: GameContext): SbState {
       } else {
         hand.splice(i, 1);
         d.push(a.card);
+        s.log.push(`${nameOf(ctx, me)} legt ${a.card === JOKER ? "Skip-Bo" : a.card} ab – Zug vorbei`);
       }
       s.n++;
       beginTurn(s, nextPlayerId(ctx.players, me));
