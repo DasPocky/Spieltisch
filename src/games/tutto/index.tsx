@@ -57,7 +57,7 @@ function MenuExtras({ room, game, hostTools, act }: BoardProps<TuttoState, Tutto
                   {(e.cards.length > 0 || e.penalized.length > 0) && (
                     <span className="block text-sm text-muted-foreground">
                       {e.cards.map((c) => CARDS.find((x) => x.id === c)?.name).join(", ")}
-                      {e.penalized.length > 0 && ` · −1.000 für ${e.penalized.map(nameOf).join(", ")}`}
+                      {e.penalized.length > 0 && ` · ${e.penalized.map((id) => `−${fmt(e.penalty?.[id] ?? 1000)} ${nameOf(id)}`).join(", ")}`}
                     </span>
                   )}
                 </span>

@@ -41,10 +41,12 @@ export function Rules({ focus }: { focus?: string }) {
             <div className="@container aspect-[5/7] w-18 shrink-0 self-start"><CardFace card={c} /></div>
             <div className="min-w-0">
               <h4 className="font-bold">
-                {c.id === "b300" ? "Bonus 200 – 600" : c.name}
+                {c.id === "b300" ? "Bonus 200 – 600" : c.id === "fire" ? "Feuerwerk / Chance" : c.name}
                 <span className="block text-xs font-normal text-muted-foreground">{c.id === "b300" ? "25×" : `${c.count}×`} im Stapel{c.promo ? " – Promokarte, in den Einstellungen zuschaltbar" : ""}</span>
               </h4>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{c.id === "b300" ? c.help.replace("300", "200 bis 600") : c.help}</p>
+              {c.id === "fire" && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">In vielen Runden heißt diese Karte „Chance“ – in den Einstellungen wählbar: Feuerwerk, Chance oder beide gemischt.</p>}
+              {c.id === "pm" && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Fiese Hausregeln (Einstellung „Plus/Minus: wer verliert?“): <b className="text-foreground">Wählen</b> – du bestimmst, wer 1.000 verliert. <b className="text-foreground">Alle</b> – jeder andere verliert 1.000. <b className="text-foreground">Geteilt</b> – die anderen teilen sich −1.000.</p>}
             </div>
           </li>
         ))}

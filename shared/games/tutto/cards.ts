@@ -56,6 +56,20 @@ export const DICE_RULES = [
   ["Drei Zweien … Sechsen", "Zahl × 100"],
 ] as const;
 
+/** Feuerwerk heißt in vielen Runden „Chance“ – gleiche Wirkung, eigener Name und eigene Farbe */
+export const CHANCE: CardType = { ...CARDS.find((c) => c.id === "fire")!, name: "Chance", sub: "Chance", color: "#2f8a8f" };
+
+/**
+ * Karte, wie sie angezeigt wird: Je nach Einstellung „Feuerwerk“, „Chance“ oder gemischt.
+ * `n` unterscheidet bei „beide“ die einzelnen Karten (gleich bleibend, solange die Karte liegt).
+ */
+export function cardTypeFor(id: CardId, options: Record<string, unknown>, n = 0): CardType {
+  const t = CARD_BY_ID[id];
+  if (id !== "fire") return t;
+  const name = options.fireName;
+  return name === "chance" || (name === "both" && n % 2 === 1) ? CHANCE : t;
+}
+
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c])) as Record<CardId, CardType>;
 export const DECK_SIZE = CARDS.reduce((s, c) => s + (c.promo ? 0 : c.count), 0); // 56
 /** Würfelpunkte, die man mit echten Würfeln eintippen kann (Kartenboni rechnet die App selbst) */

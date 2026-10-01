@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { CARD_BY_ID, type CardId } from "@shared/games/tutto/logic";
+import { CARD_BY_ID, type CardId, type CardType } from "@shared/games/tutto/logic";
 import { vibrate } from "@/lib/utils";
 import { CardFace } from "./CardFace";
 
 const reduceMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Die Tutto-Karte mit Umdreh-Animation. Zeigt immer die zuletzt gezogene Karte des Zugs. */
-export function GameCard({ cards, turn, onDraw, disabled }: { cards: CardId[]; /** wechselt bei jedem neuen Zug */ turn: number; onDraw?: () => void; disabled?: boolean }) {
+export function GameCard({ cards, turn, onDraw, disabled, typeOf }: { cards: CardId[]; /** wechselt bei jedem neuen Zug */ turn: number; onDraw?: () => void; disabled?: boolean; /** Anzeige je Karte (z. B. Feuerwerk oder Chance) */ typeOf?: (id: CardId) => CardType }) {
   const latest = cards.length ? cards[cards.length - 1] : null;
   const [shown, setShown] = useState<CardId | null>(latest);
   const [flipped, setFlipped] = useState(!!latest);
@@ -31,7 +31,7 @@ export function GameCard({ cards, turn, onDraw, disabled }: { cards: CardId[]; /
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, latest]);
 
-  const t = shown ? CARD_BY_ID[shown] : null;
+  const t = shown ? (typeOf ? typeOf(shown) : CARD_BY_ID[shown]) : null;
 
   return (
     <button
@@ -48,7 +48,6 @@ export function GameCard({ cards, turn, onDraw, disabled }: { cards: CardId[]; /
               <rect width="10" height="10" rx="2" fill="#fdfdfb" />
               {[[3, 3], [7, 3], [5, 5], [3, 7], [7, 7]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="0.95" fill="#1f437f" />)}
             </svg>
-            <span className="text-[15cqw] leading-none font-bold tracking-tight text-paper">TUTTO</span>
           </div>
           {!disabled && <span className="absolute inset-x-0 bottom-[6cqw] text-center text-[6.5cqw] font-semibold text-paper/85">Tippen zum Ziehen</span>}
         </div>

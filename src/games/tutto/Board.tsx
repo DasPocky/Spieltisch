@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, stopAfterTutto, score, targetOf, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { cardTypeFor, diceModeOf, realCardsOf, KEEP_CARD, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import type { Options } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { ResultScreen } from "@/platform/ResultScreen";
@@ -21,7 +22,16 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
   // Echte Karten: „Karte ziehen“ öffnet die Auswahl, welche Karte am Tisch gezogen wurde
   const [picking, setPicking] = useState(false);
   const realCards = realCardsOf(room);
-  const onAction = (a: TuttoAction) => (a.type === "draw" && realCards && !a.card ? setPicking(true) : act(a));
+  // Plus/Minus „Wählen“: vor dem Eintragen fragen, wer die 1.000 verliert
+  const [victimFor, setVictimFor] = useState<TuttoAction | null>(null);
+  const pmChoose = state.pmOn && room.options.pmMode === "choose" && !state.dice?.bust && !stopAfterTutto(state) && room.players.length > 1;
+  const onAction = (a: TuttoAction) => {
+    if (a.type === "draw" && realCards && !a.card) return setPicking(true);
+    if (a.type === "book" && !a.zero && !a.victim && pmChoose) return setVictimFor(a);
+    act(a);
+  };
+  // Feuerwerk oder Chance – je Karte gleich bleibend
+  const typeOf = (id: CardId, i = state.turnCards.length - 1) => cardTypeFor(id, room.options, state.log.length * 7 + i);
 
   if (winner) {
     return (
@@ -53,9 +63,9 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
           <span className="text-xl font-bold tracking-tight" data-testid="current-player">{cur?.id === me ? "Du" : cur?.name}</span>
         </div>
         <div className="flex min-h-0 w-full flex-1 items-center justify-center py-2">
-          <GameCard cards={state.turnCards} turn={state.log.length} onDraw={() => onAction({ type: "draw" })} disabled={!canAct || !canDraw} />
+          <GameCard cards={state.turnCards} turn={state.log.length} onDraw={() => onAction({ type: "draw" })} disabled={!canAct || !canDraw} typeOf={(id) => typeOf(id)} />
         </div>
-        <TurnHint state={state} canAct={canAct} full={mode === "full"} gameId={room.gameId} />
+        <TurnHint state={state} canAct={canAct} full={mode === "full"} gameId={room.gameId} typeOf={typeOf} options={room.options} />
       </div>
 
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
@@ -74,14 +84,37 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
           )}
         </div>
       </div>
-      {picking && <CardPicker torte={room.options.torte === true} onClose={() => setPicking(false)} onPick={(card) => { setPicking(false); act({ type: "draw", card }); }} />}
+      {picking && <CardPicker torte={room.options.torte === true} fireName={String(room.options.fireName ?? "fire")} onClose={() => setPicking(false)} onPick={(card) => { setPicking(false); act({ type: "draw", card }); }} />}
+      {victimFor && (
+        <div className="fixed inset-0 z-50 flex items-end bg-navy-950/60 backdrop-blur-sm" role="dialog" aria-label="Wer verliert 1.000 Punkte?" onClick={() => setVictimFor(null)}>
+          <div className="glass mx-auto w-full max-w-md rounded-t-3xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+            <p className="mb-3 text-center font-semibold">Plus/Minus: Wer verliert 1.000 Punkte?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {room.players.filter((p) => p.id !== state.curId).map((p) => (
+                <Button key={p.id} variant="secondary" size="lg" className="flex-col gap-0" onClick={() => { const a = victimFor; setVictimFor(null); act({ ...(a as Extract<TuttoAction, { type: "book" }>), victim: p.id }); }}>
+                  {p.name}<span className="text-xs font-normal text-muted-foreground tabular-nums">{fmt(score(state, p.id))}</span>
+                </Button>
+              ))}
+            </div>
+            <Button variant="ghost" className="mt-2 w-full text-muted-foreground" onClick={() => setVictimFor(null)}>Abbrechen</Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
-function TurnHint({ state, canAct, full, gameId }: { state: TuttoState; canAct: boolean; full: boolean; gameId: string }) {
+/** Plus/Minus-Regel passend zur Einstellung */
+const PM_RULE: Record<string, string> = {
+  choose: "Bei einem Tutto: 1.000 Punkte für dich – und du bestimmst, wer 1.000 verliert.",
+  all: "Bei einem Tutto: 1.000 Punkte für dich, alle anderen verlieren je 1.000.",
+  split: "Bei einem Tutto: 1.000 Punkte für dich, die anderen teilen sich −1.000.",
+};
+export const ruleOf = (card: CardType, options: Options) => (card.id === "pm" && typeof options.pmMode === "string" && PM_RULE[options.pmMode]) || card.rule;
+
+function TurnHint({ state, canAct, full, gameId, typeOf, options }: { state: TuttoState; canAct: boolean; full: boolean; gameId: string; typeOf: (id: CardId, i?: number) => CardType; options: Options }) {
   const latest = state.turnCards[state.turnCards.length - 1];
-  const card = latest ? CARD_BY_ID[latest] : null;
+  const card = latest ? typeOf(latest) : null;
   const idle = canAct ? "Karte antippen, dann würfeln." : "Gleich wird eine Karte gezogen.";
   // Gerade ein Tutto geschafft und die nächste Karte liegt schon offen
   const d = state.dice;
@@ -93,13 +126,13 @@ function TurnHint({ state, canAct, full, gameId }: { state: TuttoState; canAct: 
         <p key={fresh ? "fresh" : lost ? "lost" : `${latest ?? "idle"}-${state.turnCards.length}`} className={cn("text-in min-h-[2lh]", full ? "line-clamp-3" : "line-clamp-2")}>
           {fresh ? <b className="text-ice" data-testid="tutto-banner">Tutto! {fmt(state.turnPts)} Punkte – aufhören oder weiterzocken? Bei Stopp oder Niete ist alles weg.</b>
             : lost ? <b className="text-destructive" data-testid="stop-lost">Stopp nach dem Tutto – die {fmt(state.turnPts)} Punkte verfallen.</b>
-            : card ? card.rule : idle}
+            : card ? ruleOf(card, options) : idle}
         </p>
         {full && state.turnCards.length > 1 && (
           <div className="no-scrollbar mt-1.5 flex justify-center gap-1.5 overflow-x-auto">
             {state.turnCards.map((id, i) => (
-              <span key={i} className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ color: CARD_BY_ID[id].color, background: "rgb(253 253 251 / 0.92)" }}>
-                {CARD_BY_ID[id].name}
+              <span key={i} className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ color: typeOf(id, i).color, background: "rgb(253 253 251 / 0.92)" }}>
+                {typeOf(id, i).name}
               </span>
             ))}
           </div>

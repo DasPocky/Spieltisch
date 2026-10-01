@@ -40,6 +40,18 @@ const star = (cx: number, cy: number, r1: number, r2: number, n: number) =>
   }).join(" ");
 
 function Art({ card, c }: { card: CardType; c: string }) {
+  // Chance: gleiche Wirkung wie Feuerwerk – großes Fragezeichen mit Glitzer
+  if (card.id === "fire" && card.name === "Chance") {
+    const star = (x: number, y: number, r: number) => <path key={`${x}-${y}`} d={`M${x} ${y - r} L${x + r * 0.28} ${y - r * 0.28} L${x + r} ${y} L${x + r * 0.28} ${y + r * 0.28} L${x} ${y + r} L${x - r * 0.28} ${y + r * 0.28} L${x - r} ${y} L${x - r * 0.28} ${y - r * 0.28} Z`} fill="#ffc83d" />;
+    return (
+      <g>
+        <circle cx="50" cy="52" r="34" fill={c} />
+        <circle cx="50" cy="52" r="28" fill="none" stroke="#ffffff66" strokeWidth="2" />
+        <text x="50" y="54" textAnchor="middle" dominantBaseline="central" fontSize="50" fontWeight={900} fill="#fff">?</text>
+        {[star(18, 18, 7), star(84, 22, 5), star(82, 84, 6), star(16, 80, 4)]}
+      </g>
+    );
+  }
   switch (card.id) {
     case "stop": {
       const oct = (r: number) => Array.from({ length: 8 }, (_, i) => {
@@ -145,15 +157,15 @@ function Art({ card, c }: { card: CardType; c: string }) {
 
 const TITLE: Partial<Record<CardType["id"], string>> = { b200: "Bonus", b300: "Bonus", b400: "Bonus", b500: "Bonus", b600: "Bonus", pm: "Plus / Minus", x2: "Verdoppeln" };
 
-/** Kurztext unten auf Karten ohne festen Punktwert (Bonus/×2: der Wert steht schon groß im Bild) */
-const FOOT: Partial<Record<CardType["id"], string>> = { fire: "Bis zur Niete", stop: "Zug vorbei", clover: "Sofort-Sieg", x2: "bei Tutto", b200: "bei Tutto", b300: "bei Tutto", b400: "bei Tutto", b500: "bei Tutto", b600: "bei Tutto" };
+/** Kurztext unten auf Karten ohne Punktwert – Bonus und ×2 zeigen unten ihren Wert wie auf der echten Karte */
+const FOOT: Partial<Record<CardType["id"], string>> = { fire: "Bis zur Niete", stop: "Zug vorbei", clover: "Sofort-Sieg", x2: "Punkte ×2" };
 
 /**
  * Vorderseite im Stil der Tutto-Karten: kräftiger farbiger Rahmen, weißes Feld mit Titel oben,
  * großes Bild in der Mitte und unten immer an derselben Stelle Punktwert oder Kurztext.
  */
 export function CardFace({ card }: { card: CardType }) {
-  const c = COLOR[card.id] ?? card.color;
+  const c = card.name === "Chance" ? card.color : COLOR[card.id] ?? card.color;
   const title = TITLE[card.id] ?? card.name;
   const foot = FOOT[card.id];
   // Plus/Minus: Rahmen halb grün, halb rot

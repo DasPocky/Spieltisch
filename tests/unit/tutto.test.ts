@@ -109,6 +109,28 @@ describe("Echte Würfel", () => {
     expect(g(r).curId).toBe("p2");
   });
 
+  it("Plus/Minus fies „Wählen“: der Spieler bestimmt, wer verliert", () => {
+    let r = start(["Anna", "Ben", "Cem"], { pmMode: "choose" });
+    r = game(pts(pts(draw(r, "b200"), 1000), 1000), { type: "book" }); // Anna 2000
+    r = game(draw(r, "pm"), { type: "tutto" });
+    expect(() => game(r, { type: "book" })).toThrow();
+    r = game(r, { type: "book", victim: "p3" }); // Ben 1000, Cem −1000
+    expect(g(r).scores).toMatchObject({ p1: 2000, p2: 1000, p3: -1000 });
+    r = game(r, { type: "undo" });
+    expect(g(r).scores).toMatchObject({ p1: 2000, p2: 0, p3: 0 });
+  });
+
+  it("Plus/Minus fies „Alle“ und „Geteilt“", () => {
+    let r = start(["Anna", "Ben", "Cem"], { pmMode: "all" });
+    r = game(game(draw(r, "pm"), { type: "tutto" }), { type: "book" });
+    expect(g(r).scores).toMatchObject({ p1: 1000, p2: -1000, p3: -1000 });
+    let q = start(["Anna", "Ben", "Cem"], { pmMode: "split" });
+    q = game(game(draw(q, "pm"), { type: "tutto" }), { type: "book" });
+    expect(g(q).scores).toMatchObject({ p1: 1000, p2: -500, p3: -500 });
+    q = game(q, { type: "undo" });
+    expect(g(q).scores).toMatchObject({ p1: 0, p2: 0, p3: 0 });
+  });
+
   it("Plus/Minus ohne Tutto bestraft niemanden", () => {
     let r = start();
     r = game(pts(draw(r, "b200"), 1000), { type: "book" }); // Anna 1000

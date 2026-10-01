@@ -18,8 +18,10 @@ export interface LogEntry {
   playerId: string;
   name: string;
   pts: number;
-  /** Spieler, denen durch Plus/Minus 1000 Punkte abgezogen wurden */
+  /** Spieler, denen durch Plus/Minus Punkte abgezogen wurden */
   penalized: string[];
+  /** Abzug je Spieler (fehlt: je 1.000) – für „Geteilt“ und zum Zurücknehmen */
+  penalty?: Record<string, number>;
   cards: CardId[];
   clover?: boolean;
 }
@@ -72,7 +74,8 @@ export type TuttoAction =
   | { type: "addPts"; delta: number }
   | { type: "clearPts" }
   | { type: "tutto" }
-  | { type: "book"; zero?: boolean }
+  /** `victim`: bei Plus/Minus „Wählen“ – wer die 1.000 verliert */
+  | { type: "book"; zero?: boolean; victim?: string }
   | { type: "roll" }
   | { type: "toggleDie"; i: number }
   | { type: "undo" }
@@ -224,6 +227,33 @@ function setup(ctx: GameContext): TuttoState {
   return s;
 }
 
+/**
+ * Plus/Minus: Wer verliert wie viel? Original der Führende (nicht man selbst),
+ * „Wählen“ ein beliebiger Mitspieler, „Alle“ jeder andere 1.000, „Geteilt“ die anderen zusammen 1.000.
+ */
+export function pmPenalty(s: TuttoState, ctx: GameContext, me: string, victim?: string): Record<string, number> {
+  const others = ctx.players.filter((x) => x.id !== me).map((x) => x.id);
+  if (!others.length) return {};
+  switch (ctx.options.pmMode) {
+    case "choose": {
+      if (!victim || !others.includes(victim)) throw new GameError("Wähle, wer die 1.000 Punkte verliert.");
+      return { [victim]: 1000 };
+    }
+    case "all":
+      return Object.fromEntries(others.map((id) => [id, 1000]));
+    case "split": {
+      // Gerecht auf 10er gerundet, der Rest beim Ersten
+      const each = Math.floor(1000 / others.length / 10) * 10;
+      return Object.fromEntries(others.map((id, i) => [id, each + (i === 0 ? 1000 - each * others.length : 0)]));
+    }
+    default: {
+      const max = Math.max(...ctx.players.map((x) => score(s, x.id)));
+      if (score(s, me) >= max) return {};
+      return Object.fromEntries(others.filter((id) => score(s, id) === max).map((id) => [id, 1000]));
+    }
+  }
+}
+
 /** Wirkung eines Tuttos je nach Karte – für echte und App-Würfel gleich. Liefert true, wenn die Karte bleibt. */
 function applyTutto(s: TuttoState, card: CardId, ctx: GameContext): void {
   const add = (n: number) => { s.turnPts = Math.min(MAX_TURN, s.turnPts + n); };
@@ -349,15 +379,11 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       }
       // Stopp nach einem Tutto: alle Punkte des Zugs sind weg
       const pts = zero || stopAfterTutto(s) ? 0 : s.turnPts;
-      const penalized: string[] = [];
-      if (s.pmOn && pts > 0) {
-        const max = Math.max(...ctx.players.map((x) => score(s, x.id)));
-        if (score(s, p.id) < max) {
-          for (const x of ctx.players) if (x.id !== p.id && score(s, x.id) === max) { s.scores[x.id] = score(s, x.id) - 1000; penalized.push(x.id); }
-        }
-      }
+      const penalty = s.pmOn && pts > 0 ? pmPenalty(s, ctx, p.id, a.victim) : {};
+      for (const [id, n] of Object.entries(penalty)) s.scores[id] = score(s, id) - n;
+      const penalized = Object.keys(penalty);
       s.scores[p.id] = score(s, p.id) + pts;
-      pushLog(s, { playerId: p.id, name: p.name, pts, penalized, cards: s.turnCards });
+      pushLog(s, { playerId: p.id, name: p.name, pts, penalized, penalty, cards: s.turnCards });
       if (s.scores[p.id] >= targetOf(ctx)) {
         s.winnerId = p.id;
         s.turnCards = []; s.turnPts = 0; s.pmOn = false; s.dice = null; s.afterTutto = false;
@@ -369,7 +395,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       if (!e) throw new GameError("Es gibt nichts zum Zurücknehmen.");
       s.scores[e.playerId] = score(s, e.playerId) - e.pts;
       if (ctx.players.some((p) => p.id === e.playerId)) s.curId = e.playerId;
-      for (const id of e.penalized) s.scores[id] = score(s, id) + 1000;
+      for (const id of e.penalized) s.scores[id] = score(s, id) + (e.penalty?.[id] ?? 1000);
       s.winnerId = null;
       s.cloverWin = false;
       startTurn(s, ctx);
@@ -420,7 +446,24 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
     },
     { key: "target", label: "Spielziel", type: "number", default: 6000, min: 1000, max: 50000, step: 1000, inGame: true },
     { key: "autoDraw", showIf: (o) => o.cards !== "real", label: "Karte zu Zugbeginn automatisch aufdecken", hint: "nach einem Tutto entscheidet ihr selbst: aufhören oder weiterzocken", type: "toggle", default: true, inGame: true },
-    { key: "torte", label: "Promokarte „Torte“", hint: "1× im Stapel: Drilling + zwei Fünfen + eine Eins = 1.500", type: "toggle", default: false },
+    {
+      key: "fireName", label: "Feuerwerk-Karte heißt", type: "choice", default: "fire", group: "Karten & Hausregeln",
+      choices: [
+        { value: "fire", label: "Feuerwerk", hint: "wie im Original" },
+        { value: "chance", label: "Chance", hint: "gleiche Wirkung" },
+        { value: "both", label: "Beide", hint: "gemischt im Stapel" },
+      ],
+    },
+    {
+      key: "pmMode", label: "Plus/Minus: wer verliert?", type: "choice", default: "leader", group: "Karten & Hausregeln", inGame: true,
+      choices: [
+        { value: "leader", label: "Führender", hint: "Original: −1.000" },
+        { value: "choose", label: "Wählen", hint: "fies: du bestimmst" },
+        { value: "all", label: "Alle", hint: "fies: alle je −1.000" },
+        { value: "split", label: "Geteilt", hint: "alle teilen −1.000" },
+      ],
+    },
+    { key: "torte", group: "Karten & Hausregeln", label: "Promokarte „Torte“", hint: "1× im Stapel: Drilling + zwei Fünfen + eine Eins = 1.500", type: "toggle", default: false },
   ],
   setup,
   apply,
