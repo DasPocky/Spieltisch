@@ -134,11 +134,12 @@ function DiceRow({ s, disabled, onHold }: { s: KniffelState; disabled: boolean; 
         ? s.dice.map((v, i) => (
           <button key={i} type="button" disabled={disabled || s.rollsLeft === 0} aria-pressed={s.held[i]} aria-label={`Würfel ${v}${s.held[i] ? ", gehalten" : ""}`}
             onClick={() => { vibrate(6); onHold(i); }}
-            className={cn("rounded-[22%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
+            className={cn("relative rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
               disabled ? "size-9" : "size-[min(15vw,3.4rem)]",
-              s.held[i] ? "-translate-y-1 ring-[3px] ring-ice" : !disabled && "dice-in")}
-            style={{ animationDelay: `${i * 40}ms` }}>
-            <Die value={v} className="size-full" />
+              s.held[i] && "ring-[3px] ring-primary ring-offset-2 ring-offset-background")}>
+            {/* Wurf-Animation am inneren Würfel, Gehalten-Ring am Knopf – getrennt, sonst zeigt Safari den Würfel nicht */}
+            <span className={cn("block size-full", !s.held[i] && !disabled && "dice-in")} style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" /></span>
+            {s.held[i] && <span className="absolute -top-1.5 -right-1.5 grid size-4.5 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground shadow" aria-hidden="true">✓</span>}
           </button>
         ))
         : Array.from({ length: 5 }, (_, i) => <span key={i} className="size-[min(15vw,3.4rem)] rounded-[22%] border-2 border-dashed border-border" />)}

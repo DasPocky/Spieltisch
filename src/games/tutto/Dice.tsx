@@ -43,13 +43,14 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
             aria-pressed={d.sel[i]}
             onClick={() => { vibrate(6); onAction({ type: "toggleDie", i }); }}
             className={cn(
-              "dice-in size-[min(13vw,3.25rem)] rounded-[22%] outline-none transition-transform focus-visible:ring-[3px] focus-visible:ring-ring",
-              d.sel[i] ? "-translate-y-1.5 ring-[3px] ring-navy-300" : help?.dice[i] ? "hint-glow" : "opacity-95",
+              // Auswahl nur per Ring und Häkchen – keine Verschiebung: Animation und Verschieben am selben Element zeigt Safari falsch an
+              "relative size-[min(13vw,3.25rem)] rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+              d.sel[i] ? "ring-[3px] ring-primary ring-offset-2 ring-offset-background" : help?.dice[i] ? "hint-glow" : "",
               d.bust && "opacity-50 grayscale",
             )}
-            style={{ animationDelay: `${i * 40}ms` }}
           >
-            <Die value={v} className="size-full" />
+            <span className="dice-in block size-full" style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" /></span>
+            {d.sel[i] && <span className="absolute -top-1.5 -right-1.5 grid size-4.5 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground shadow" aria-hidden="true">✓</span>}
           </button>
         ))}
         {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "Tutto!" : "–"}</span>}
