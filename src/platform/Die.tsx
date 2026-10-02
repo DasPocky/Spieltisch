@@ -11,11 +11,15 @@ const PIPS: Record<number, [number, number][]> = {
  * Ein Würfel als SVG – Papierweiß mit marineblauen Augen, die Eins rot.
  * Kante und Unterseite sind Teil der Grafik: kein CSS-Schatten, der abgeschnitten wird oder auf hellem Grund schmutzig wirkt.
  */
-export function Die({ value, className }: { value: number; className?: string }) {
+export function Die({ value, className, mark }: { value: number; className?: string; /** gewählt: blaue Kante; Hinweis: ganz leichte blaue Kante */ mark?: "selected" | "hint" }) {
+  // Markierung als Umrandung der Würfelfläche selbst – folgt genau der Form, ohne Extra-Abstand
+  const edge = mark === "selected" ? { stroke: "#2a5cbf", strokeOpacity: 0.9, strokeWidth: 5 }
+    : mark === "hint" ? { stroke: "#2a5cbf", strokeOpacity: 0.35, strokeWidth: 3.5 }
+    : { stroke: "#13213a", strokeOpacity: 0.16, strokeWidth: 1.5 };
   return (
     <svg viewBox="0 0 100 100" className={className} aria-label={`Würfel ${value}`} role="img">
-      <rect x="3" y="8" width="94" height="89" rx="20" fill="#c9d1de" />
-      <rect x="3.75" y="3.75" width="92.5" height="88.5" rx="19" fill="#fdfdfb" stroke="#13213a" strokeOpacity="0.16" strokeWidth="1.5" />
+      <rect x="3" y="8" width="94" height="89" rx="20" fill={mark === "selected" ? "#9db5e3" : "#c9d1de"} />
+      <rect x="3.75" y="3.75" width="92.5" height="88.5" rx="19" fill={mark === "selected" ? "#eef3fc" : "#fdfdfb"} {...edge} />
       <g transform="translate(5 3) scale(0.9)">
         {PIPS[value]?.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="10" fill={value === 1 ? "#a84a57" : "#16305e"} />)}
       </g>
