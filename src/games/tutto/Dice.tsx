@@ -50,7 +50,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
             )}
           >
             <span className="dice-in block size-full" style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" /></span>
-            {d.sel[i] && <span className="absolute -top-1 -right-1 grid size-3.5 place-items-center rounded-full bg-primary/85 text-[0.55rem] font-bold text-primary-foreground" aria-hidden="true">✓</span>}
+            {d.sel[i] && <span className="absolute -bottom-2 left-1/2 grid size-4 -translate-x-1/2 place-items-center rounded-full bg-primary ring-2 ring-card text-[0.55rem] font-bold text-primary-foreground" aria-hidden="true">✓</span>}
           </button>
         ))}
         {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "Tutto!" : "–"}</span>}
