@@ -136,10 +136,10 @@ function DiceRow({ s, disabled, onHold }: { s: KniffelState; disabled: boolean; 
             onClick={() => { vibrate(6); onHold(i); }}
             className={cn("relative rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
               disabled ? "size-9" : "size-[min(15vw,3.4rem)]",
-              s.held[i] && "ring-[3px] ring-primary ring-offset-2 ring-offset-background")}>
+              s.held[i] && "ring-2 ring-primary/55")}>
             {/* Wurf-Animation am inneren Würfel, Gehalten-Ring am Knopf – getrennt, sonst zeigt Safari den Würfel nicht */}
             <span className={cn("block size-full", !s.held[i] && !disabled && "dice-in")} style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" /></span>
-            {s.held[i] && <span className="absolute -top-1.5 -right-1.5 grid size-4.5 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground shadow" aria-hidden="true">✓</span>}
+            {s.held[i] && <span className="absolute -top-1 -right-1 grid size-3.5 place-items-center rounded-full bg-primary/85 text-[0.55rem] font-bold text-primary-foreground" aria-hidden="true">✓</span>}
           </button>
         ))
         : Array.from({ length: 5 }, (_, i) => <span key={i} className="size-[min(15vw,3.4rem)] rounded-[22%] border-2 border-dashed border-border" />)}

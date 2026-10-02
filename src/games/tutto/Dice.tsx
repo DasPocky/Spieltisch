@@ -45,12 +45,12 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
             className={cn(
               // Auswahl nur per Ring und Häkchen – keine Verschiebung: Animation und Verschieben am selben Element zeigt Safari falsch an
               "relative size-[min(13vw,3.25rem)] rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
-              d.sel[i] ? "ring-[3px] ring-primary ring-offset-2 ring-offset-background" : help?.dice[i] ? "hint-glow" : "",
+              d.sel[i] ? "ring-2 ring-primary/55" : help?.dice[i] ? "hint-glow" : "",
               d.bust && "opacity-50 grayscale",
             )}
           >
             <span className="dice-in block size-full" style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" /></span>
-            {d.sel[i] && <span className="absolute -top-1.5 -right-1.5 grid size-4.5 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-foreground shadow" aria-hidden="true">✓</span>}
+            {d.sel[i] && <span className="absolute -top-1 -right-1 grid size-3.5 place-items-center rounded-full bg-primary/85 text-[0.55rem] font-bold text-primary-foreground" aria-hidden="true">✓</span>}
           </button>
         ))}
         {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "Tutto!" : "–"}</span>}
