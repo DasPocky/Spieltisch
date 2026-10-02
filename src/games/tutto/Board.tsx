@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, pmDone, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import type { Options } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
@@ -50,7 +50,8 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
   const latest = state.turnCards[state.turnCards.length - 1];
   const d = state.dice;
   // Mit App-Würfel nur ziehen, wenn es gerade erlaubt ist – sonst würde ein versehentliches Antippen stören
-  const canDraw = !latest || latest === "chance" || (appDice ? !!d && d.tutto && !d.bust && latest !== "fire" && latest !== "clover" && latest !== "stop" : !!state.afterTutto);
+  // Nach Plus/Minus ist der Zug vorbei – keine neue Karte
+  const canDraw = !latest || latest === "chance" || (!pmDone(state) && (appDice ? !!d && d.tutto && !d.bust && latest !== "fire" && latest !== "clover" && latest !== "stop" : !!state.afterTutto));
 
   return (
     <>
@@ -106,9 +107,9 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
 
 /** Plus/Minus-Regel passend zur Einstellung */
 const PM_RULE: Record<string, string> = {
-  choose: "Bei einem Tutto: 1.000 Punkte für dich – und du bestimmst, wer 1.000 verliert.",
-  all: "Bei einem Tutto: 1.000 Punkte für dich, alle anderen verlieren je 1.000.",
-  split: "Bei einem Tutto: 1.000 Punkte für dich, die anderen teilen sich −1.000.",
+  choose: "Tutto würfeln: 1.000 für dich – du bestimmst, wer 1.000 verliert. Danach ist der Zug vorbei.",
+  all: "Tutto würfeln: 1.000 für dich, alle anderen verlieren je 1.000. Danach ist der Zug vorbei.",
+  split: "Tutto würfeln: 1.000 für dich, die anderen teilen sich −1.000. Danach ist der Zug vorbei.",
 };
 export const ruleOf = (card: CardType, options: Options) => (card.id === "pm" && typeof options.pmMode === "string" && PM_RULE[options.pmMode]) || card.rule;
 
@@ -119,12 +120,15 @@ function TurnHint({ state, canAct, full, gameId, typeOf, options }: { state: Tut
   // Gerade ein Tutto geschafft und die nächste Karte liegt schon offen
   const d = state.dice;
   const fresh = !!state.afterTutto || (!!d?.tutto && !!latest && !KEEP_CARD.has(latest));
+  const pm = pmDone(state);
   const lost = stopAfterTutto(state) && state.turnPts > 0;
   return (
     <div className="mx-auto mb-2 flex w-full max-w-[40ch] shrink-0 items-start gap-2 px-2 text-sm leading-snug text-muted-foreground">
       <div className="min-w-0 flex-1 text-center">
         <p key={fresh ? "fresh" : lost ? "lost" : `${latest ?? "idle"}-${state.turnCards.length}`} className={cn("text-in min-h-[2lh]", full ? "line-clamp-3" : "line-clamp-2")}>
-          {fresh ? <b className="text-ice" data-testid="tutto-banner">Tutto! {fmt(state.turnPts)} Punkte – aufhören oder weiterzocken? Bei Stopp oder Niete ist alles weg.</b>
+          {state.finalRound && <b className="mr-1 text-foreground" data-testid="final-round">Letzte Runde ·</b>}
+          {pm ? <b className="text-ice" data-testid="tutto-banner">Plus/Minus geschafft! {fmt(state.turnPts)} Punkte eintragen – der Zug ist vorbei.</b>
+            : fresh ? <b className="text-ice" data-testid="tutto-banner">Tutto! {fmt(state.turnPts)} Punkte – aufhören oder weiterzocken? Bei Stopp oder Niete ist alles weg.</b>
             : lost ? <b className="text-destructive" data-testid="stop-lost">Stopp nach dem Tutto – die {fmt(state.turnPts)} Punkte verfallen.</b>
             : card ? ruleOf(card, options) : idle}
           {(state.chances ?? 0) > 0 && latest !== "chance" && <span className="ml-1 font-semibold text-primary" data-testid="chances">· {state.chances === 1 ? "1 Chance" : `${state.chances} Chancen`} übrig</span>}

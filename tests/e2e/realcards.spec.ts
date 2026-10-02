@@ -39,6 +39,7 @@ test("Mau-Mau mit echten Karten: Siege zählen, Hausregeln ausgeblendet", async 
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await page.getByRole("button", { name: /Hausregeln/ }).click();
   await expect(page.getByText("Siebenen stapeln")).toBeVisible();
   await page.getByRole("radio", { name: /Echte Karten/ }).click();
   await expect(page.getByText("Siebenen stapeln")).toHaveCount(0);
@@ -61,6 +62,17 @@ test("Tutto mit echten Karten: gezogene Karte antippen", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expectNoScroll(page);
   await shot(page, "78-tutto-realcards");
+});
+
+test("Tutto Plus/Minus: nach dem Tutto nur eintragen, kein Weiterzocken", async ({ page }) => {
+  await local(page, "tutto", ["Anna", "Ben"], [/Echte Karten/]);
+  await page.getByRole("button", { name: "Karte ziehen" }).first().click();
+  await page.getByRole("button", { name: "Plus/Minus" }).click();
+  await page.getByRole("button", { name: /Tutto geschafft/ }).click();
+  await expect(page.getByTestId("tutto-banner")).toContainText("Zug ist vorbei");
+  await expect(page.getByRole("button", { name: /Weiterzocken/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /\+1\.000 eintragen/ }).click();
+  await expect(page.getByTestId("current-player")).toHaveText("Ben");
 });
 
 test("Eine Nacht mit eigenen Karten: Host-Handy erzählt, andere sehen nur Augen zu", async ({ browser }) => {

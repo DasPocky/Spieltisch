@@ -1,5 +1,5 @@
 import { Dices } from "lucide-react";
-import { MUST_PLAY, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { MUST_PLAY, pmDone, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
 import { useHints } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
@@ -19,7 +19,8 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   else if (card === "stop") status = stopAfterTutto(state) && state.turnPts > 0 ? "Stopp nach dem Tutto – alle Punkte sind weg." : "Stopp – dieser Zug ist vorbei.";
   else if (!d || (!d.roll.length && !d.tutto)) status = "Tippe auf „Würfeln“.";
   else if (d.bust) status = card === "fire" ? "Niete – deine Punkte zählen trotzdem." : "Niete! Keine wertbaren Würfel.";
-  else if (d.tutto) status = card === "clover" ? "Erstes Tutto! Noch eins zum Sieg." : card === "fire" ? "Tutto! Weiter mit allen Würfeln." : "Tutto! Aufhören oder weiterzocken?";
+  else if (d.tutto) status = card === "clover" ? "Erstes Tutto! Noch eins zum Sieg." : card === "fire" ? "Tutto! Weiter mit allen Würfeln." : pmDone(state) ? "Tutto! +1.000 – Zug vorbei." : "Tutto! Aufhören oder weiterzocken?";
+  else if (card === "fire") status = `Feuerwerk: alle wertbaren Würfel raus${sel ? ` – +${fmt(sel)}` : ""}.`;
   else if (!d.sel.some(Boolean)) status = help?.best && scoresHere ? `Bis zu +${fmt(help.best)} – tippe die Würfel an.` : "Tippe die Würfel an, die du behalten willst.";
   else if (sel === null) status = card === "street" ? "Nur Zahlen, die dir noch fehlen." : card === "torte" ? "Nur Würfel, die in die Torte passen." : "Nur 1, 5 oder drei Gleiche zählen.";
   else status = scoresHere ? `Auswahl: +${fmt(sel)}` : "Gute Auswahl.";
@@ -104,6 +105,8 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   }
   if (d.tutto) {
     if (card === "fire" || card === "clover") return <div className="grid"><Btn primary onClick={roll}><Dices className="mr-1.5 inline size-5 align-[-4px]" />Weiter würfeln</Btn></div>;
+    // Plus/Minus: nur eintragen, weiterzocken geht nicht
+    if (pmDone(state)) return <div className="grid"><Btn primary onClick={() => book()}>+{pts} eintragen – Zug vorbei</Btn></div>;
     return (
       <div className="grid grid-cols-2 gap-2.5">
         <Btn primary onClick={() => book()}>Aufhören: {pts}</Btn>

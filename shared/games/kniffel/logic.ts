@@ -78,7 +78,8 @@ export type KniffelAction =
 
 export type DiceMode = "app" | "real";
 export const diceModeOf = (ctx: { options: GameContext["options"] }): DiceMode => (ctx.options.diceMode === "real" ? "real" : "app");
-export const extraRuleOf = (ctx: { options: GameContext["options"] }) => ctx.options.extraKniffel === true;
+/** Weitere Kniffel nach Schmidt-Regel (+50 und Joker) – Hausregel „ohne“ schaltet das ab */
+export const extraRuleOf = (ctx: { options: GameContext["options"] }) => ctx.options.moreKniffel !== "none";
 
 function counts(dice: number[]) {
   const c = [0, 0, 0, 0, 0, 0, 0];
@@ -101,19 +102,25 @@ function hasRun(dice: number[], len: number) {
   return false;
 }
 
-/** Punkte, die ein Wurf in einer Kategorie bringt. `joker`: weiterer Kniffel zählt als Full House und Straße. */
+/** Höchstpunktzahl eines Felds – so zählt ein weiterer Kniffel als Joker (Schmidt-Regel) */
+export function maxFor(cat: Cat): number {
+  const info = CATS[cat];
+  return info.face ? 5 * info.face : info.fixed ?? 30;
+}
+
+/** Punkte, die ein Wurf in einer Kategorie bringt. `joker`: weiterer Kniffel zählt in jedem freien Feld die Höchstpunktzahl. */
 export function scoreFor(cat: Cat, dice: number[], joker = false): number {
   if (dice.length !== 5) return 0;
+  if (joker && isKniffel(dice)) return maxFor(cat);
   const c = counts(dice);
   const info = CATS[cat];
   if (info.face) return c[info.face] * info.face;
-  const jk = joker && isKniffel(dice);
   switch (cat) {
     case "three": return c.some((n) => n >= 3) ? sum(dice) : 0;
     case "four": return c.some((n) => n >= 4) ? sum(dice) : 0;
-    case "full": return jk || (c.includes(3) && c.includes(2)) ? 25 : 0;
-    case "small": return jk || hasRun(dice, 4) ? 30 : 0;
-    case "large": return jk || hasRun(dice, 5) ? 40 : 0;
+    case "full": return c.includes(3) && c.includes(2) ? 25 : 0;
+    case "small": return hasRun(dice, 4) ? 30 : 0;
+    case "large": return hasRun(dice, 5) ? 40 : 0;
     case "kniffel": return isKniffel(dice) ? 50 : 0;
     case "chance": return sum(dice);
     default: return 0;
@@ -215,11 +222,13 @@ function apply(prev: KniffelState, a: KniffelAction, ctx: GameContext): KniffelS
         if (extraKniffel) extra = EXTRA_KNIFFEL;
       } else {
         pts = Number(a.value ?? 0);
-        if (!validEntry(a.cat, pts)) throw new GameError(`${pts} Punkte gehen bei ${CATS[a.cat].name} nicht.`);
         if (a.extra) {
-          if (!extraAllowed) throw new GameError("Ein Extra-Kniffel zählt erst, wenn der Kniffel mit 50 eingetragen ist.");
+          if (!extraAllowed) throw new GameError(extraRuleOf(ctx) ? "Ein Extra-Kniffel zählt erst, wenn der Kniffel mit 50 eingetragen ist." : "Extra-Kniffel sind ausgeschaltet.");
+          // Joker: Höchstpunktzahl im gewählten Feld
+          pts = maxFor(a.cat);
           extra = EXTRA_KNIFFEL;
         }
+        if (!validEntry(a.cat, pts)) throw new GameError(`${pts} Punkte gehen bei ${CATS[a.cat].name} nicht.`);
       }
       sheet[a.cat] = pts;
       if (extra) s.extras[cur.id] = (s.extras[cur.id] ?? 0) + extra;
@@ -264,7 +273,13 @@ export const kniffel: GameLogic<KniffelState, KniffelAction> = {
         { value: "real", label: "Echte Würfel", hint: "digitaler Block" },
       ],
     },
-    { key: "extraKniffel", label: "Extra-Kniffel", type: "toggle", default: false, hint: "Jeder weitere Kniffel: +50 und Joker für Full House und Straßen" },
+    {
+      key: "moreKniffel", label: "Weitere Kniffel", type: "choice", default: "bonus",
+      choices: [
+        { value: "bonus", label: "+50 und Joker", hint: "Original: Höchstpunktzahl in einem freien Feld" },
+        { value: "none", label: "Ohne Extra", hint: "Hausregel: zählt wie ein normaler Wurf" },
+      ],
+    },
   ],
   setup,
   apply,

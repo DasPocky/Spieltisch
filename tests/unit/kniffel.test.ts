@@ -29,9 +29,15 @@ describe("Wertung", () => {
     ["kniffel", [6, 6, 6, 6, 6], 50], ["kniffel", [6, 6, 6, 6, 5], 0], ["chance", [1, 2, 3, 4, 6], 16],
   ])("%s mit %j → %i", (cat, dice, pts) => expect(scoreFor(cat, dice)).toBe(pts));
 
-  it("Joker: Kniffel zählt als Full House und Straße", () => {
+  it("Joker (Schmidt): weiterer Kniffel zählt in jedem Feld die Höchstpunktzahl", () => {
     expect(scoreFor("full", [3, 3, 3, 3, 3], true)).toBe(25);
     expect(scoreFor("large", [3, 3, 3, 3, 3], true)).toBe(40);
+    expect(scoreFor("small", [3, 3, 3, 3, 3], true)).toBe(30);
+    expect(scoreFor("four", [3, 3, 3, 3, 3], true)).toBe(30);
+    expect(scoreFor("chance", [2, 2, 2, 2, 2], true)).toBe(30);
+    expect(scoreFor("fives", [4, 4, 4, 4, 4], true)).toBe(25); // 4er-Kniffel → 25 bei den Fünfern
+    expect(scoreFor("full", [1, 1, 1, 2, 2], true)).toBe(25); // kein Kniffel: normal
+    expect(scoreFor("sixes", [1, 1, 1, 2, 2], true)).toBe(0);
   });
 
   it("Eingaben mit echten Würfeln werden geprüft", () => {
@@ -89,18 +95,28 @@ describe("Ablauf mit App-Würfel", () => {
     expect(t.bonus).toBe(35);
   });
 
-  it("Extra-Kniffel nur mit Einstellung", () => {
-    let r = start(["Anna"], { extraKniffel: true });
+  it("weiterer Kniffel: Original +50 und Joker, Hausregel „Ohne Extra“ nicht", () => {
+    let r = start(["Anna"]);
     r = turn(r, [2, 2, 2, 2, 2], "kniffel");
     r = turn(r, [2, 2, 2, 2, 2], "large");
     expect(g(r).sheets.p1.large).toBe(40);
-    expect(totals(g(r), "p1").extra).toBe(50);
+    r = turn(r, [2, 2, 2, 2, 2], "sixes");
+    expect(g(r).sheets.p1.sixes).toBe(30);
+    expect(totals(g(r), "p1").extra).toBe(100);
 
-    let c = start(["Anna"]);
+    let c = start(["Anna"], { moreKniffel: "none" });
     c = turn(c, [2, 2, 2, 2, 2], "kniffel");
     c = turn(c, [2, 2, 2, 2, 2], "large");
     expect(g(c).sheets.p1.large).toBe(0);
     expect(totals(g(c), "p1").extra).toBe(0);
+  });
+
+  it("gestrichenes Kniffel-Feld: weiterer Kniffel zählt normal", () => {
+    let r = start(["Anna"]);
+    r = turn(r, [1, 2, 3, 4, 6], "kniffel"); // gestrichen
+    r = turn(r, [3, 3, 3, 3, 3], "full");
+    expect(g(r).sheets.p1.full).toBe(0);
+    expect(totals(g(r), "p1").extra).toBe(0);
   });
 
   it("Partie endet, wenn alle Blöcke voll sind", () => {
@@ -130,13 +146,15 @@ describe("Echte Würfel (Block)", () => {
     expect(g(r).sheets.p2.full).toBe(25);
   });
 
-  it("Extra-Kniffel braucht die Einstellung und einen Kniffel", () => {
+  it("weiterer Kniffel braucht 50 im Kniffel-Feld und zählt die Höchstpunktzahl", () => {
     expect(() => game(real(), { type: "score", cat: "chance", value: 20, extra: true })).toThrow(/erst, wenn/);
-    let r = act(act(roomWith(["Anna"]), { type: "selectGame", gameId: "kniffel" }), { type: "setOption", key: "diceMode", value: "real" });
-    r = act(act(r, { type: "setOption", key: "extraKniffel", value: true }), { type: "start" });
+    let r = start(["Anna"], { diceMode: "real" });
     r = game(r, { type: "score", cat: "kniffel", value: 50 });
-    r = game(r, { type: "score", cat: "chance", value: 30, extra: true });
-    expect(totals(g(r), "p1").total).toBe(130);
+    r = game(r, { type: "score", cat: "fours", value: 8, extra: true });
+    expect(g(r).sheets.p1.fours).toBe(20);
+    expect(totals(g(r), "p1").total).toBe(120);
+    const off = game(start(["Anna"], { diceMode: "real", moreKniffel: "none" }), { type: "score", cat: "kniffel", value: 50 });
+    expect(() => game(off, { type: "score", cat: "chance", value: 30, extra: true })).toThrow(/ausgeschaltet/);
   });
 });
 

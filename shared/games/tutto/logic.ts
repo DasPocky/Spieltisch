@@ -62,8 +62,10 @@ export interface TuttoState {
   cardTuttos?: number;
   /** Echte Würfel, ohne automatisches Aufdecken: Tutto geschafft, jetzt neue Karte oder eintragen */
   afterTutto?: boolean;
-  /** Plus/Minus-Tutto in diesem Zug geschafft – beim Eintragen verliert der Führende 1.000 */
+  /** Plus/Minus-Tutto in diesem Zug geschafft – beim Eintragen verliert der Führende 1.000, weiterzocken geht nicht */
   pmOn: boolean;
+  /** Hausregel „Runde zu Ende spielen“: jemand hat das Ziel erreicht, die Runde läuft noch */
+  finalRound?: boolean;
   log: LogEntry[];
   winnerId: string | null;
   cloverWin: boolean;
@@ -94,6 +96,8 @@ export const targetOf = (ctx: { options: GameContext["options"] }) => Number(ctx
 /** Echte Karten: gezogen wird am Tisch, in der App wird die Karte nur angetippt */
 export const realCardsOf = (ctx: { options: GameContext["options"] }) => ctx.options.cards === "real";
 export const autoDrawOf = (ctx: { options: GameContext["options"] }) => ctx.options.autoDraw !== false && !realCardsOf(ctx);
+/** Hausregel: Wer das Ziel erreicht, gewinnt erst nach der laufenden Runde */
+export const endRoundOf = (ctx: { options: GameContext["options"] }) => ctx.options.endRound === true;
 
 /** Punkte einer Würfelauswahl nach Tutto-Regeln, null wenn ein Würfel nicht wertbar ist. */
 export function scoreDice(dice: number[]): number | null {
@@ -121,6 +125,15 @@ export function fitsTorte(dice: number[]): boolean {
     if (counts.every((c, f) => c <= need[f])) return true;
   }
   return false;
+}
+
+/** Feuerwerk: alle wertbaren Würfel müssen raus – alle Einsen, Fünfen und Drillinge */
+export function allScoring(roll: number[]): boolean[] {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of roll) counts[d]++;
+  // je Augenzahl: wie viele Würfel herausmüssen
+  const take = counts.map((c, f) => (f === 1 || f === 5 ? c : c - (c % 3)));
+  return roll.map((d) => take[d]-- > 0);
 }
 
 /** Ist diese Auswahl für die Karte erlaubt? Liefert die Punkte (bei Straße/Torte 0) oder null. */
@@ -169,9 +182,13 @@ export const NO_DICE_POINTS = new Set<CardId>(["street", "pm", "clover", "torte"
 export const KEEP_CARD = new Set<CardId>(["fire", "clover"]);
 
 const latestCard = (s: TuttoState): CardId | undefined => s.turnCards[s.turnCards.length - 1];
+const PM_DONE = "Plus/Minus geschafft – trag die 1.000 ein, weiterzocken geht nicht.";
 
 /** Stopp-Karte nach einem Tutto: wer weitergezockt hat, verliert alle Punkte dieses Zugs */
 export const stopAfterTutto = (s: TuttoState): boolean => s.turnCards.length > 1 && s.turnCards[s.turnCards.length - 1] === "stop";
+
+/** Plus/Minus geschafft: nur noch eintragen, der Zug ist vorbei */
+export const pmDone = (s: TuttoState): boolean => s.pmOn && latestCard(s) === "pm";
 
 /** Darf man jetzt aufhören und die Punkte eintragen? */
 export function canStop(s: TuttoState): boolean {
@@ -233,7 +250,18 @@ function startTurn(s: TuttoState, ctx: GameContext) {
 /** Zug beenden und zum nächsten Spieler wechseln */
 function endTurn(s: TuttoState, ctx: GameContext) {
   s.curId = nextPlayerId(ctx.players, s.curId);
+  // Hausregel „Runde zu Ende“: wieder beim ersten Spieler – wer jetzt vorn liegt, gewinnt
+  if (s.finalRound && s.curId === ctx.players[0]?.id) return finishRound(s, ctx);
   startTurn(s, ctx);
+}
+
+/** Ende der letzten Runde: höchster Punktestand gewinnt (bei Gleichstand der Erste in der Reihe) */
+function finishRound(s: TuttoState, ctx: GameContext) {
+  let best = ctx.players[0];
+  for (const p of ctx.players) if (score(s, p.id) > score(s, best.id)) best = p;
+  s.winnerId = best.id;
+  s.finalRound = false;
+  s.turnCards = []; s.turnPts = 0; s.pmOn = false; s.dice = null; s.afterTutto = false;
 }
 
 function pushLog(s: TuttoState, e: LogEntry) {
@@ -285,6 +313,7 @@ function applyTutto(s: TuttoState, card: CardId, ctx: GameContext): void {
   switch (card) {
     case "x2": s.turnPts = Math.min(MAX_TURN, s.turnPts * 2); break;
     case "street": add(2000); break;
+    // Plus/Minus: genau 1.000, danach ist der Zug vorbei (nur noch eintragen)
     case "pm": add(1000); s.pmOn = true; break;
     case "torte": add(1500); break;
     case "fire": return;
@@ -315,8 +344,10 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
           const d = s.dice;
           if (d?.bust) throw new GameError("Niete – der Zug ist vorbei.");
           if (!d?.tutto) throw new GameError("Erst ein Tutto würfeln, dann gibt es eine neue Karte.");
+          if (pmDone(s)) throw new GameError(PM_DONE);
           if (KEEP_CARD.has(card)) throw new GameError("Mit dieser Karte würfelst du weiter.");
         } else if (!s.afterTutto) throw new GameError("Eine neue Karte gibt es erst nach einem Tutto.");
+        else if (pmDone(s)) throw new GameError(PM_DONE);
       }
       drawCard(s, ctx, a.card);
       return s;
@@ -340,7 +371,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
         if (!d?.bust) throw new GameError("Eine Chance gibt es nur bei einer Niete.");
         // Genau die Niete-Würfel nochmal – die Punkte des Zugs bleiben
         d.roll = rollDice(d.roll.length);
-        d.sel = d.roll.map(() => false);
+        d.sel = card === "fire" ? allScoring(d.roll) : d.roll.map(() => false);
         d.bust = !canScore(d.roll, card!, d.aside);
         d.n++;
       }
@@ -355,6 +386,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       const d = s.dice ?? freshDice();
       if (d.bust) throw new GameError("Niete – der Zug ist vorbei.");
       if (d.tutto) {
+        if (pmDone(s)) throw new GameError(PM_DONE);
         if (!KEEP_CARD.has(card)) throw new GameError("Tutto! Zieh eine neue Karte oder trag die Punkte ein.");
         d.tutto = false;
       } else if (d.roll.length) {
@@ -374,7 +406,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
         }
       }
       d.roll = rollDice(6 - d.aside.length);
-      d.sel = d.roll.map(() => false);
+      d.sel = card === "fire" ? allScoring(d.roll) : d.roll.map(() => false);
       d.bust = !canScore(d.roll, card, d.aside);
       d.n++;
       s.dice = d;
@@ -384,6 +416,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       const d = s.dice;
       if (!d || !d.roll.length || d.bust) throw new GameError("Gerade gibt es nichts auszuwählen.");
       if (!Number.isInteger(a.i) || a.i < 0 || a.i >= d.roll.length) throw new GameError("Diesen Würfel gibt es nicht.");
+      if (latestCard(s) === "fire") throw new GameError("Beim Feuerwerk müssen alle wertbaren Würfel raus.");
       d.sel[a.i] = !d.sel[a.i];
       return s;
     }
@@ -426,7 +459,11 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       const penalized = Object.keys(penalty);
       s.scores[p.id] = score(s, p.id) + pts;
       pushLog(s, { playerId: p.id, name: p.name, pts, penalized, penalty, cards: s.turnCards });
-      if (s.scores[p.id] >= targetOf(ctx)) {
+      if (s.scores[p.id] >= targetOf(ctx) && endRoundOf(ctx)) {
+        // Hausregel: die Runde wird noch zu Ende gespielt
+        s.finalRound = true;
+        endTurn(s, ctx);
+      } else if (s.scores[p.id] >= targetOf(ctx)) {
         s.winnerId = p.id;
         s.turnCards = []; s.turnPts = 0; s.pmOn = false; s.dice = null; s.afterTutto = false;
       } else endTurn(s, ctx);
@@ -440,6 +477,7 @@ function apply(prev: TuttoState, a: TuttoAction, ctx: GameContext): TuttoState {
       for (const id of e.penalized) s.scores[id] = score(s, id) + (e.penalty?.[id] ?? 1000);
       s.winnerId = null;
       s.cloverWin = false;
+      s.finalRound = endRoundOf(ctx) && ctx.players.some((p) => score(s, p.id) >= targetOf(ctx));
       startTurn(s, ctx);
       return s;
     }
@@ -505,6 +543,7 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
         { value: "split", label: "Geteilt", hint: "alle teilen −1.000" },
       ],
     },
+    { key: "endRound", group: "Karten & Hausregeln", label: "Runde zu Ende spielen", hint: "Hausregel: alle kommen gleich oft dran, dann gewinnt der Höchste (Original: sofort)", type: "toggle", default: false },
     { key: "torte", group: "Karten & Hausregeln", label: "Promokarte „Torte“", hint: "1× im Stapel: Drilling + zwei Fünfen + eine Eins = 1.500", type: "toggle", default: false },
   ],
   setup,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Dices, Minus, Plus, Star } from "lucide-react";
 import {
-  CATS, diceModeOf, extraRuleOf, isKniffel, LOWER, scoreFor, totals, UPPER, UPPER_BONUS, UPPER_BONUS_AT, winners,
+  CATS, diceModeOf, extraRuleOf, isKniffel, LOWER, maxFor, scoreFor, totals, UPPER, UPPER_BONUS, UPPER_BONUS_AT, winners,
   type Cat, type KniffelAction, type KniffelState,
 } from "@shared/games/kniffel/logic";
 import { Button } from "@/components/ui/button";
@@ -159,7 +159,7 @@ function AppControls({ s, sel, joker, own, act, onPickSelf }: { s: KniffelState;
     <section className="glass rounded-2xl p-2.5">
       <DiceRow s={s} disabled={false} onHold={(i) => act({ type: "hold", i })} />
       <p className={cn("mt-2 min-h-5 text-center text-sm", joker ? "font-semibold text-ice" : "text-muted-foreground")}>
-        <SmoothText>{joker && !sel ? "Extra-Kniffel! +50 und Joker" : status}</SmoothText>
+        <SmoothText>{joker && !sel ? "Weiterer Kniffel! +50 – jedes freie Feld zählt voll" : status}</SmoothText>
       </p>
       <div className={cn("mt-2 grid gap-2.5", rolled && s.rollsLeft > 0 ? "grid-cols-2" : "grid-cols-1")}>
         {s.rollsLeft > 0 && (
@@ -220,11 +220,12 @@ function RealControls({ cat, own, extraPossible, onScore, onPickSelf }: { cat: C
       )}
       {extraPossible && (
         <label className="mt-2 flex items-center gap-2.5 px-1 text-sm">
-          <Checkbox checked={extra} onCheckedChange={(c) => setExtra(c === true)} />Das war ein weiterer Kniffel (+50)
+          {/* Joker: Höchstpunktzahl im Feld */}
+          <Checkbox checked={extra} onCheckedChange={(c) => { setExtra(c === true); if (c === true) setValue(maxFor(cat)); }} />Weiterer Kniffel: +50, hier {maxFor(cat)} Punkte
         </label>
       )}
       <Button size="lg" className="mt-2.5 w-full" disabled={value === null} onClick={() => value !== null && onScore(value, extra)}>
-        {value ? `${value} eintragen` : "Streichen"}
+        {extra ? `${maxFor(cat)} + 50 eintragen` : value ? `${value} eintragen` : "Streichen"}
       </Button>
     </section>
   );

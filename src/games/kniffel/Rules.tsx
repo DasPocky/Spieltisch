@@ -49,10 +49,11 @@ export function Rules({ focus }: { focus?: string }) {
       <ul className="grid gap-2">{LOWER.map(row)}</ul>
 
       <section className="glass mt-5 rounded-2xl p-4">
-        <h3 className="font-semibold">Extra-Kniffel (Einstellung)</h3>
+        <h3 className="font-semibold">Weitere Kniffel</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Ist die Einstellung an und steht im Kniffel-Feld schon 50, bringt jeder weitere Kniffel <b className="text-foreground">+{EXTRA_KNIFFEL} Bonus</b>.
-          Zusätzlich darfst du ihn als Joker für Full House, kleine oder große Straße mit voller Punktzahl eintragen. Ohne die Einstellung gilt die klassische Regel: kein Bonus.
+          Steht im Kniffel-Feld schon 50, bringt jeder weitere Kniffel <b className="text-foreground">+{EXTRA_KNIFFEL} Zusatzpunkte</b>.
+          Außerdem ist er ein <b className="text-foreground">Joker</b>: Du trägst ihn in ein beliebiges freies Feld mit dessen Höchstpunktzahl ein – oben fünfmal die Augenzahl (z. B. 25 bei den Fünfern, egal welcher Kniffel), unten Dreier- und Viererpasch 30, Full House 25, kleine Straße 30, große Straße 40, Chance 30.
+          Wurde das Kniffel-Feld gestrichen, zählt ein Kniffel wie ein normaler Wurf. Hausregel „Ohne Extra“ (Einstellung): kein Bonus, kein Joker.
         </p>
         <h3 className="mt-4 font-semibold">In der App</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">

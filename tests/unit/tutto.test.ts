@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scoreDice, scoringDice, stackCard, type CardId, type TuttoState } from "@shared/games/tutto/logic";
+import { allScoring, scoreDice, scoringDice, stackCard, type CardId, type TuttoState } from "@shared/games/tutto/logic";
 import type { RoomState } from "@shared/platform/room";
 import { act, fixDice, game, roomWith } from "./helpers";
 
@@ -25,6 +25,14 @@ describe("Würfelwertung", () => {
   ])("%j → %i", (dice, expected) => expect(scoreDice(dice)).toBe(expected));
 
   it.each([[[2]], [[1, 2]], [[3, 3]], [[]]])("%j ist nicht wertbar", (dice) => expect(scoreDice(dice)).toBeNull());
+});
+
+describe("Feuerwerk: alle wertbaren Würfel", () => {
+  it("Einsen, Fünfen und Drillinge – der vierte Gleiche bleibt liegen", () => {
+    expect(allScoring([1, 2, 5, 3, 3, 3])).toEqual([true, false, true, true, true, true]);
+    expect(allScoring([2, 2, 2, 2, 4, 6])).toEqual([true, true, true, false, false, false]);
+    expect(allScoring([2, 3, 4, 6])).toEqual([false, false, false, false]);
+  });
 });
 
 describe("Spielhilfe: wertbare Würfel", () => {
@@ -141,6 +149,17 @@ describe("Echte Würfel", () => {
     expect(g(q).scores).toMatchObject({ p1: 0, p2: 0, p3: 0 });
   });
 
+  it("Plus/Minus: nach dem Tutto genau 1.000 eintragen, keine neue Karte", () => {
+    let r = game(draw(start(), "pm"), { type: "tutto" });
+    expect(g(r).turnPts).toBe(1000);
+    expect(() => game(r, { type: "draw" })).toThrow(/weiterzocken geht nicht/);
+    expect(() => game(r, { type: "tutto" })).toThrow();
+    expect(() => pts(r, 100)).toThrow();
+    r = game(r, { type: "book" });
+    expect(g(r).scores.p1).toBe(1000);
+    expect(g(r).curId).toBe("p2");
+  });
+
   it("Plus/Minus ohne Tutto bestraft niemanden", () => {
     let r = start();
     r = game(pts(draw(r, "b200"), 1000), { type: "book" }); // Anna 1000
@@ -176,6 +195,29 @@ describe("Echte Würfel", () => {
     expect(g(r).scores.p1).toBe(500);
     expect(g(r).curId).toBe("p2");
     expect(g(r).turnCards).toHaveLength(1);
+  });
+
+  it("Hausregel „Runde zu Ende spielen“: die anderen kommen noch dran, dann gewinnt der Höchste", () => {
+    let r = start(["Anna", "Ben", "Cem"], { target: 1000, endRound: true });
+    r = game(pts(pts(draw(r, "b200"), 1000), 1000), { type: "book" }); // Anna 2000
+    expect(g(r).winnerId).toBeNull();
+    expect(g(r).finalRound).toBe(true);
+    expect(g(r).curId).toBe("p2");
+    r = game(r, { type: "book", zero: true }); // Ben Niete
+    expect(g(r).winnerId).toBeNull();
+    r = game(pts(pts(pts(draw(r, "b200"), 1000), 1000), 1000), { type: "book" }); // Cem 3000
+    expect(g(r).winnerId).toBe("p3");
+    r = game(r, { type: "undo" });
+    expect(g(r).winnerId).toBeNull();
+    expect(g(r).finalRound).toBe(true);
+    expect(g(r).curId).toBe("p3");
+  });
+
+  it("Hausregel „Runde zu Ende spielen“: letzter Spieler der Runde beendet sofort", () => {
+    let r = start(["Anna", "Ben"], { target: 1000, endRound: true });
+    r = game(r, { type: "book", zero: true }); // Anna
+    r = game(pts(draw(r, "b200"), 1000), { type: "book" }); // Ben 1000
+    expect(g(r).winnerId).toBe("p2");
   });
 
   it("Sieg beim Erreichen des Spielziels", () => {
@@ -283,14 +325,27 @@ describe("App-Würfel", () => {
   it("Karten mit Pflicht zum Weiterspielen", () => {
     let r = draw(app(), "fire");
     fixDice([1, 2, 3, 4, 6, 2]);
-    r = game(game(r, { type: "roll" }), { type: "toggleDie", i: 0 });
+    r = game(r, { type: "roll" });
     expect(() => game(r, { type: "book" })).toThrow(/nicht aufhören/);
+  });
+
+  it("Feuerwerk: alle wertbaren Würfel sind schon ausgewählt, abwählen geht nicht", () => {
+    let r = draw(app(), "fire");
+    fixDice([1, 5, 5, 2, 2, 2]);
+    r = game(r, { type: "roll" });
+    expect(g(r).dice!.sel).toEqual([true, true, true, true, true, true]);
+    expect(() => game(r, { type: "toggleDie", i: 0 })).toThrow(/alle wertbaren/);
+    fixDice([1, 1, 1, 5, 3, 4]); // Tutto – weiter mit 6 Würfeln, ohne neue Karte
+    r = game(r, { type: "roll" });
+    expect(g(r).turnPts).toBe(400);
+    expect(g(r).dice!.tutto).toBe(true);
+    expect(() => game(r, { type: "draw" })).toThrow(/würfelst du weiter/);
   });
 
   it("Feuerwerk: Niete behält die Punkte", () => {
     let r = draw(app(), "fire");
     fixDice([1, 2, 3, 4, 6, 2, /* Rest */ 2, 3, 4, 6, 2]);
-    r = game(game(r, { type: "roll" }), { type: "toggleDie", i: 0 });
+    r = game(r, { type: "roll" });
     r = game(r, { type: "roll" });
     expect(g(r).dice!.bust).toBe(true);
     r = game(r, { type: "book" });
@@ -304,6 +359,21 @@ describe("App-Würfel", () => {
     for (let i = 0; i < 6; i++) r = game(r, { type: "toggleDie", i });
     r = game(r, { type: "roll" });
     expect(g(r).turnPts).toBe(2000);
+  });
+
+  it("Plus/Minus: nach dem Tutto nur eintragen – kein Weiterwürfeln, keine neue Karte", () => {
+    let r = draw(app(), "pm");
+    fixDice([1, 1, 1, 5, 5, 5]);
+    r = game(r, { type: "roll" });
+    for (let i = 0; i < 6; i++) r = game(r, { type: "toggleDie", i });
+    r = game(r, { type: "roll" });
+    expect(g(r).dice!.tutto).toBe(true);
+    expect(g(r).turnPts).toBe(1000); // Würfelpunkte zählen nicht
+    expect(() => game(r, { type: "draw" })).toThrow(/weiterzocken geht nicht/);
+    expect(() => game(r, { type: "roll" })).toThrow(/weiterzocken geht nicht/);
+    r = game(r, { type: "book" });
+    expect(g(r).scores.p1).toBe(1000);
+    expect(g(r).curId).toBe("p2");
   });
 
   it("Kleeblatt: zwei Tuttos gewinnen", () => {

@@ -1,4 +1,4 @@
-import { canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, stopAfterTutto, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, pmDone, stopAfterTutto, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Confirm } from "@/components/Confirm";
 import type { ViewMode } from "@/hooks/useViewMode";
 import { cn, fmt, vibrate } from "@/lib/utils";
@@ -20,7 +20,7 @@ function tuttoLabel(card: CardId, tuttos: number): [string, string] {
 /** Hinweis statt Tasten, wenn die Würfelpunkte mit dieser Karte nicht zählen */
 const NO_PAD: Partial<Record<CardId, string>> = {
   street: "Würfle 1 bis 6 – Würfelpunkte zählen nicht.",
-  pm: "Nur das Tutto zählt: +1.000, der Führende −1.000.",
+  pm: "Nur das Tutto zählt: +1.000, der Führende −1.000. Dann ist der Zug vorbei.",
   clover: "Zweimal Tutto ohne Niete – dann Sofort-Sieg.",
   torte: "Drilling + zwei Fünfen + eine Eins = 1.500.",
   stop: "Stopp – dieser Zug ist vorbei.",
@@ -65,7 +65,7 @@ export function PointsPad({ state, onAction, disabled, mode }: { state: TuttoSta
         </div>
       ) : (
         <p className="px-1 pt-1 pb-0.5 text-sm text-muted-foreground">
-          {state.afterTutto ? "Tutto geschafft! Aufhören oder weiterzocken?" : card ? NO_PAD[card] : "Karte ziehen, dann würfeln."}
+          {pmDone(state) ? "Plus/Minus geschafft! Eintragen – der Zug ist vorbei." : state.afterTutto ? "Tutto geschafft! Aufhören oder weiterzocken?" : card ? NO_PAD[card] : "Karte ziehen, dann würfeln."}
         </p>
       )}
     </section>
@@ -101,6 +101,10 @@ export function RealActions({ state, onAction }: { state: TuttoState; onAction: 
 
   if (!card) return <div className="grid"><Btn kind="primary" onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
   if (card === "chance") return <div className="grid"><Btn sub="Chance – +1 Versuch bei Niete" kind="primary" onClick={() => onAction({ type: "draw" })}>Nächste Karte ziehen</Btn></div>;
+  // Plus/Minus geschafft: nur eintragen, weiterzocken geht nicht
+  if (state.afterTutto && pmDone(state)) {
+    return <div className="grid"><Btn sub="Zug vorbei" kind="primary" onClick={() => book()}>+{pts} eintragen</Btn></div>;
+  }
   if (state.afterTutto) {
     return (
       <div className="grid grid-cols-2 gap-2">
