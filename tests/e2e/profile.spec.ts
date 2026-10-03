@@ -1,11 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, shot } from "./util";
+import { closeSettings, createRoom, openSettings, shot } from "./util";
 
 /** Tutto mit Ziel 1.000 schnell gewinnen: bis eine Karte mit Würfelpunkten kommt, dann 1.000 eintragen */
 async function winTutto(page: Page) {
+  await openSettings(page);
   const target = page.getByRole("button", { name: "Spielziel verringern" });
   for (let i = 0; i < 5; i++) await target.click();
   await expect(page.getByTestId("setting-target")).toHaveText("1.000");
+  await closeSettings(page);
+  await expect(page.getByTestId("settings-summary")).toContainText("Spielziel 1.000");
   await page.getByRole("button", { name: "Spiel starten" }).click();
   const k = page.getByRole("button", { name: "+1.000", exact: true });
   // Karten im Stapel (Kopfzeile) – ändert sich erst, wenn der Server die nächste Karte gezogen hat

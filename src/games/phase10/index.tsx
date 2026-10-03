@@ -1,7 +1,6 @@
 import type { RoomState } from "@shared/platform/room";
 import { phase10, PHASES, needLabel, type P10Action, type P10State } from "@shared/games/phase10/logic";
-import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
+import type { GameUI } from "@/games/types";
 import { MUTED } from "@/lib/palette";
 import { Board } from "./Board";
 
@@ -45,14 +44,6 @@ function Rules() {
   );
 }
 
-function MenuExtras({ game }: BoardProps<P10State, P10Action>) {
-  return (
-    <Section title="Verlauf">
-      {game.log.length ? <ul className="text-[0.95rem]">{game.log.slice().reverse().map((e, i) => <li key={i} className="border-b border-border py-2">{e}</li>)}</ul>
-        : <p className="text-sm text-muted-foreground">Noch nichts Besonderes passiert.</p>}
-    </Section>
-  );
-}
 
 /** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
 const log = (s: P10State) => (s.mode === "table" ? [] : s.log);
@@ -62,4 +53,4 @@ const overview = (s: P10State, room: RoomState) => s.mode === "table" ? null : (
   curId: s.step === "draw" || s.step === "play" ? s.curId : null,
 });
 
-export const phase10UI: GameUI<P10State, P10Action> = { logic: phase10, Icon, Board, Rules, MenuExtras, log, overview };
+export const phase10UI: GameUI<P10State, P10Action> = { logic: phase10, Icon, Board, Rules, log, overview };

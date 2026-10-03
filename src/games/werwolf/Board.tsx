@@ -39,10 +39,10 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
         </ul>
         {isHost ? (
           <div className="mt-6 grid gap-2.5">
-            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Neue Runde, neue Rollen</Button>
-            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby – anderes Spiel wählen</Button>
+            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
+            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Anderes Spiel</Button>
           </div>
-        ) : <p className="mt-6 text-muted-foreground">Der Host kann eine neue Runde starten.</p>}
+        ) : <p className="mt-6 text-muted-foreground">Der Host kann nochmal starten oder ein anderes Spiel wählen.</p>}
       </section>
     );
   }

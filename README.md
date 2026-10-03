@@ -25,15 +25,17 @@ Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittst
 
 **Gestaltung:** schlicht in Marineblau mit Abstufungen, Eisblau als Akzent. Farben nur dort, wo ein Spiel sie als Regel braucht (Kartenfarben, Teams), und dann gedämpft (`src/lib/palette.ts`). Symbole kommen aus lucide-react statt bunter Emojis.
 
-- **Online-Räume:** Auf der Seite eines Spiels erstellt der Host einen Raum mit PIN. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
-- **Lokal:** Alle spielen an einem Gerät, ohne Server. Der Spielstand bleibt im Browser, getrennt pro Spiel.
+- **Ablauf – lokal wie online gleich:** Startseite → Spielweise wählen → **Lobby** (Spieler, Spiel wählen, Einstellungen) → Spiel → Ergebnis („Nochmal spielen“ oder „Anderes Spiel“). Verlassen führt immer zurück zur Startseite.
+- **Online-Räume:** Auf der Startseite erstellt der Host mit Name und PIN einen Raum und wählt in der Lobby das Spiel. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
+- **Lokal („Ein Handy für alle“):** Alle spielen an einem Gerät, ohne Server – gleiche Lobby wie online, nur ohne Raumcode. Der Spielstand bleibt im Browser, getrennt pro Spiel; eine laufende Partie geht beim Wiederkommen weiter.
 - **Ein Raum, mehrere Spiele:** Nach einer Partie geht der Host zurück in die Lobby und wählt ein anderes Spiel – alle bleiben im Raum.
-- **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **Spielleiter-Funktionen** (Menü) darf er für andere spielen, zurücknehmen und mischen.
+- **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Sie stehen in der Lobby als eine Zeile („App-Karten · Spielziel 6.000 · 2 Hausregeln“), die das komplette Einstellungs-Sheet öffnet. Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **„Host darf für alle spielen“** (Menü) darf er für andere spielen, zurücknehmen und mischen.
+- **Ein Menü (☰) mit festen Abschnitten:** Partie (Host: Nochmal spielen, Anderes Spiel, Letzten Zug zurücknehmen, Überspringen nur wenn etwas hängt, „Während des Spiels“ für die wenigen Einstellungen, die sich in der Partie ändern lassen) · Spieler & Verlauf (für alle Spiele, dasselbe wie die Leiste über dem Spiel) · Regeln · Einladen (online) · Mein Gerät (Ansicht, hell/dunkel, Töne, Vibration, „Spielhilfen für mich“) · Verlassen (online mit Rückfrage; Host zusätzlich „Raum schließen“).
 - **Profil und Statistik:** ohne Registrierung. Jedes Gerät bekommt eine zufällige Profil-ID; unter `/profil` stehen Partien, Siege, Quote, Bestwert und Durchschnitt je Spiel. Online zählt jede Partie im Raum, lokal der Spieler, der so heißt wie das Profil. Mit dem Profil-Code lässt sich das Profil auf ein anderes Handy übernehmen.
 - **Sprach- und Videochat (online):** über Cloudflare Realtime. Im Raum oben auf das Telefon-Symbol tippen, „Nur Sprache“ oder „Mit Video“. In der Werwolf- und Eine-Nacht-Nacht sind die Mikros automatisch aus (nur ein menschlicher Spielleiter darf sprechen).
 - **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „Mit Code“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
 - **Fairer Zufall:** `crypto.getRandomValues` mit Verwerfungsmethode (keine Modulo-Verzerrung). Online würfelt und mischt ausschließlich der Server.
-- **Ansicht „Einfach“ oder „Voll“** (im Menü, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
+- **Ansicht „Einfach“ oder „Voll“** (im Menü unter „Mein Gerät“, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
 
 ## Loslegen
 
@@ -110,7 +112,7 @@ src/
   games/
     types.ts                  Schnittstelle GameUI (Oberfläche eines Spiels)
     index.ts                  Verzeichnis aller Spiel-Oberflächen
-    tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Menü-Extras
+    tutto/                    Spielbrett, Karte, Würfel, Punkte-Tasten, Regelseite, Verlauf
     kniffel/                  Block, Würfel-Leiste, Eingabe für echte Würfel, Regelseite
     flip7/                    Tisch mit allen Reihen, Ziel- und Kartenauswahl
     werwolf/                  Spielleiter-/Geräte-Ablauf mit Vorlesen, Handy-Ansicht, Rollenkarten
@@ -119,7 +121,7 @@ src/
     uno/ skipbo/ phase10/     Karten, Tisch, Punkteblock für echte Karten
     skyjo/ codenames/         Raster bzw. Wortfeld, Schlüsselkarte, Punkteblock
     fischen/                  Fragen-Verlauf, Hand, Frage-Auswahl
-  pages/                      Startseite, Spielseite, lokales Spiel, Online-Raum
+  pages/                      Startseite, lokale Lobby/Partie, Online-Raum, Profil, Gruppen, Admin
   hooks/                      useRoom (WebSocket + Reconnect), useRoute (Mini-Router), useViewMode
   components/ui/              shadcn/ui-Komponenten
 tests/
@@ -127,7 +129,7 @@ tests/
   e2e/                        Playwright: lokal, online mit zwei Browsern, kleines Handy
 ```
 
-**Routen:** `/` Startseite · `/spiel/<id>` Spielseite · `/spiel/<id>/lokal` lokales Spiel · `/r/<CODE>` Online-Raum.
+**Routen:** `/` Startseite · `/lokal` lokale Lobby bzw. Partie · `/r/<CODE>` Online-Raum · `/profil` Mein Profil · `/gruppe`, `/g/<CODE>` Gruppen · `/admin`. Alte Links `/spiel/<id>` und `/spiel/<id>/lokal` führen in die lokale Lobby mit diesem Spiel (ein dort gespeicherter Spielstand lädt weiter).
 
 ### Grundprinzip
 
@@ -142,7 +144,7 @@ tests/
 ### Damit nichts hängen bleibt
 
 - **Host offline:** Ist der Host nicht verbunden, sehen alle anderen „Host übernehmen“. Der Server prüft, dass der Host wirklich weg ist.
-- **Spieler offline oder reagiert nicht:** Jedes Spiel beschreibt mit `skipTurn`/`skipLabel`, wie der Host auflöst, worauf gerade gewartet wird (Tutto: Niete, Kniffel: erstes freies Feld wird gestrichen, Mau-Mau: Karte ziehen, Fischen: nächster Spieler, Werwolf: Nacht bzw. Abstimmung beenden, Jäger überspringen). Ist der Spieler am Zug offline, erscheint dafür ein Balken, sonst steht es im Menü.
+- **Spieler offline oder reagiert nicht:** Jedes Spiel beschreibt mit `skipTurn`/`skipLabel`, wie der Host auflöst, worauf gerade gewartet wird (Tutto: Niete, Kniffel: erstes freies Feld wird gestrichen, Mau-Mau: Karte ziehen, Fischen: nächster Spieler, Werwolf: Nacht bzw. Abstimmung beenden, Jäger überspringen). Ist der Spieler am Zug offline, erscheint dafür ein Balken; im Menü steht es, sobald jemand offline ist oder sich 20 Sekunden nichts tut – sonst hinter „Hängt etwas?“.
 - **Geprüft per Simulation:** `tests/unit/simulate.test.ts` lässt Zufalls-Bots je Spiel und Einstellung 25 komplette Partien lokal und online spielen (gründlicher: `SIM_ROUNDS=200 npm test`). In jedem Zustand muss ein erlaubter Zug existieren, jede Partie muss enden, und Karten dürfen nicht verloren gehen.
 
 ### Zugang und Sicherheit
@@ -152,17 +154,17 @@ tests/
 - Nach dem Beitritt merkt sich das Gerät einen geheimen Token – Neuladen oder Funkloch geht ohne PIN weiter.
 - Wer den Raum erstellt, ist Host. Verlässt der Host den Raum (wird entfernt), übernimmt der nächste Spieler.
 - Nachrichten über 4 KB werden verworfen, jede Aktion wird serverseitig validiert.
-- Räume ohne Aktivität werden nach **48 Stunden** automatisch gelöscht (Durable-Object-Alarm). Der Host kann einen Raum im Menü sofort löschen.
+- Räume ohne Aktivität werden nach **48 Stunden** automatisch gelöscht (Durable-Object-Alarm). Der Host kann einen Raum im Menü sofort schließen („Raum schließen“ – alles wird gelöscht).
 - Admin: Passwort nur als Cloudflare-Secret, Vergleich in konstanter Zeit, nach 8 Fehlversuchen 10 Minuten Pause. Der Zugangscode wird gesalzen gehasht gespeichert. Abgeschaltete oder gesperrte Spiele lehnt der Server schon beim Erstellen eines Online-Raums ab; bestehende Räume laufen weiter.
 
 ## Datenhaltung
 
 | Ort | Inhalt | Wann gelöscht |
 | --- | --- | --- |
-| Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, Wiederverbindungs-Tokens, Fehlversuche, Profil-ID je Spieler (nur serverseitig, für die Statistik) | 48 h nach der letzten Aktion oder sofort über „Raum löschen“ |
+| Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, Wiederverbindungs-Tokens, Fehlversuche, Profil-ID je Spieler (nur serverseitig, für die Statistik) | 48 h nach der letzten Aktion oder sofort über „Raum schließen“ |
 | Durable Object `ProfileStore` (eines pro Profil-ID) | Profilname, Zähler je Spiel (Partien, Siege, Bestwert, Punktesumme), die letzten 30 Partien (Spiel, Datum, Sieg, Punkte, Spielerzahl) | ein Jahr nach der letzten Partie oder sofort über „Profil löschen“ |
 | Durable Object `SiteSettings` (genau eines) | Admin-Freigaben, Hinweistext, Hash + Salt des Zugangscodes, Fehlversuche | bis der Admin es ändert |
-| `localStorage` im Browser | Profil-ID (`spieltisch:profile`), Zugangscode nach richtiger Eingabe (`spieltisch:access`), eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
+| `localStorage` im Browser | Profil-ID (`spieltisch:profile`), Zugangscode nach richtiger Eingabe (`spieltisch:access`), eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`) und zuletzt lokal gewähltes Spiel (`spieltisch:localGame`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
 | `sessionStorage` im Browser | Name + PIN für genau einen Beitritt | direkt nach dem Beitritt |
 
 IP-Adressen oder Konten speichert die App nicht. Cloudflare selbst protokolliert Anfragen (Observability ist in `wrangler.jsonc` aktiv).
@@ -229,12 +231,16 @@ export const meinSpielUI: GameUI<MeinState, MeinAction> = {
   Icon,        // SVG-Symbol für Kacheln und Kopfzeile
   Board,       // die laufende Partie – bekommt BoardProps (room, game, me, canAct, act, dispatch, …)
   Rules,       // Regelseite; Abschnitt mit data-focused="true" wird angesprungen
-  MenuExtras,  // optional: Verlauf, Rückgängig o. Ä. im Menü
+  log,         // optional: Verlauf als Texte – Leiste über dem Spiel und „Spieler & Verlauf“
+  overview,    // optional: Spielertabelle für „Spieler & Verlauf“ (sonst schlichte Spielerliste)
+  History,     // optional: ausführlicher Verlauf statt `log` (z. B. Einträge mit Punkten)
+  undoEntry,   // optional: spieleigenes Zurücknehmen ({ type: "undo" }) – springt im einen Rückgängig-Knopf ein
+  MenuExtras,  // optional: zusätzliche Knöpfe im Menü-Abschnitt „Partie“
   HeaderExtra, // optional: kleine Info in der Kopfzeile
 };
 ```
 
-Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `cards/PlayingCard` (Karten beider Blätter samt Rückseite), `Handoff` (Sichtschutz beim lokalen Weitergeben), `ResultScreen` (Siegerehrung mit „Neue Runde“ und „Zur Lobby“), `RulesSheet`, `Segmented`.
+Und in `src/games/index.ts` eintragen. Bausteine zum Wiederverwenden liegen in `src/platform/`: `Scoreboard` (optional antippbar), `Die` (Würfel), `cards/PlayingCard` (Karten beider Blätter samt Rückseite), `Handoff` (Sichtschutz beim lokalen Weitergeben), `ResultScreen` (Siegerehrung mit „Nochmal spielen“ und „Anderes Spiel“), `RulesSheet`, `Segmented`.
 
 Das `Board` muss ohne Scrollen auf einen Handy-Bildschirm passen: Es sitzt in einem Flex-Container mit fester Höhe – den Platz in der Mitte mit `flex-1 min-h-0` füllen, Tasten mit `shrink-0` unten.
 

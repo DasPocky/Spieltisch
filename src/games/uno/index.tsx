@@ -1,7 +1,6 @@
 import type { RoomState } from "@shared/platform/room";
 import { uno, type UnoAction, type UnoState } from "@shared/games/uno/logic";
-import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
+import type { GameUI } from "@/games/types";
 import { MUTED } from "@/lib/palette";
 import { Board, UnoCardView } from "./Board";
 
@@ -67,14 +66,6 @@ function Rules() {
   );
 }
 
-function MenuExtras({ game }: BoardProps<UnoState, UnoAction>) {
-  return (
-    <Section title="Verlauf">
-      {game.log.length ? <ul className="text-[0.95rem]">{game.log.slice().reverse().map((e, i) => <li key={i} className="border-b border-border py-2">{e}</li>)}</ul>
-        : <p className="text-sm text-muted-foreground">Noch nichts passiert.</p>}
-    </Section>
-  );
-}
 
 /** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
 const log = (s: UnoState) => (s.mode === "table" ? [] : s.log);
@@ -84,4 +75,4 @@ const overview = (s: UnoState, room: RoomState) => s.mode === "table" ? null : (
   curId: s.phase === "play" ? s.curId : null,
 });
 
-export const unoUI: GameUI<UnoState, UnoAction> = { logic: uno, Icon, Board, Rules, MenuExtras, log, overview };
+export const unoUI: GameUI<UnoState, UnoAction> = { logic: uno, Icon, Board, Rules, log, overview };

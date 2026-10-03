@@ -1,6 +1,5 @@
-import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Lock, LogIn, Settings2, Smartphone, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, LogIn, Settings2, Smartphone, Users, type LucideIcon } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE } from "@shared/platform/protocol";
 import { cleanName, MAX_NAME } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -9,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { GAME_LIST } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { createRoom } from "@/lib/createRoom";
-import { LAST_GAME_KEY, NAME_KEY } from "@/lib/storage";
-import { IconTile, Logo } from "@/platform/Logo";
+import { LAST_GAME_KEY, LOCAL_GAME_KEY, NAME_KEY, remove, RETURN_KEY } from "@/lib/storage";
+import { myAvatar } from "@/lib/profile";
+import { Logo } from "@/platform/Logo";
 import { InstallHint } from "@/platform/InstallHint";
-import { ThemeToggle } from "@/platform/ThemeSwitch";
 import { accessFor } from "@shared/platform/access";
 import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup, useActiveGroup } from "@/lib/group";
@@ -20,6 +19,8 @@ import { leaderboard } from "@shared/platform/group";
 import { Avatar } from "@/platform/Avatar";
 
 type Way = "local" | "online";
+/** Angezeigter Schritt: nur der Online-Raum hat einen eigenen */
+type Step = "online";
 const WAY_KEY = "spieltisch:way";
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const readWay = (): Way | null => { const v = read(WAY_KEY); return v === "local" || v === "online" ? v : null; };
@@ -27,18 +28,29 @@ const readWay = (): Way | null => { const v = read(WAY_KEY); return v === "local
 /**
  * Startseite als kleiner Assistent:
  * 1. Wie spielt ihr? (ein Handy · Online-Raum · beitreten)
- * 2a. Ein Handy: Spiel wählen. 2b. Online: Name und PIN – der Raum entsteht sofort, das Spiel wählt ihr in der Lobby.
+ * 2a. Ein Handy: direkt in die lokale Lobby. 2b. Online: Name und PIN – der Raum entsteht sofort.
+ * Das Spiel wählt ihr in beiden Fällen in der Lobby.
  */
 export function Home() {
   const [code, setCode] = useState("");
-  const [way, setWay] = useState<Way | null>(null);
+  const [way, setWay] = useState<Step | null>(null);
   const last = readWay();
   const codeOk = ROOM_CODE_RE.test(code);
   const config = useSiteConfig();
   // Abgeschaltete Spiele erscheinen nicht, Spiele hinter Zugangscode bekommen ein Schloss
   const games = GAME_LIST.filter(({ id }) => !config || accessFor(config, id) !== "off");
   const locked = (id: string) => !!config && accessFor(config, id) === "code" && !savedAccess();
-  const choose = (w: Way) => { try { localStorage.setItem(WAY_KEY, w); } catch { /* egal */ } setWay(w); };
+  const remember = (w: Way) => { try { localStorage.setItem(WAY_KEY, w); } catch { /* egal */ } };
+  const [avatar] = useState(myAvatar);
+  // Ein Handy: gleich in die lokale Lobby – mit dem zuletzt lokal gewählten Spiel, falls es noch freigegeben ist
+  const playLocal = () => {
+    remember("local");
+    const ids = games.map((g) => g.id);
+    const prev = read(LOCAL_GAME_KEY);
+    const id = prev && ids.includes(prev as never) ? prev : defaultGame(ids, locked);
+    try { localStorage.setItem(LOCAL_GAME_KEY, id); } catch { /* egal */ }
+    navigate("/lokal");
+  };
 
   return (
     <main className="mx-auto flex h-dvh-safe max-w-md flex-col overflow-hidden px-4 pt-[2.5vh] pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
@@ -48,16 +60,18 @@ export function Home() {
           <h1 className="text-2xl font-bold leading-none tracking-tight">Spieltisch</h1>
           <p className="mt-1 truncate text-sm text-muted-foreground">Für euren Spieleabend</p>
         </div>
-        <ThemeToggle />
-        <Button variant="ghost" size="icon" className="shrink-0 rounded-full" aria-label="Profil und Einstellungen" onClick={() => navigate("/profil")}><UserRound /></Button>
+        <button type="button" aria-label="Mein Profil" onClick={() => { remove(RETURN_KEY, true); navigate("/profil"); }} data-testid="profile-button"
+          className="shrink-0 rounded-full outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring">
+          <Avatar avatar={avatar} className="size-11 text-2xl ring-1 ring-border" />
+        </button>
       </div>
 
       {way === null && (
         <>
           <h2 className="mt-7 mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground">Wie spielt ihr?</h2>
           <div className="glass grid shrink-0 grid-cols-[minmax(0,1fr)] divide-y divide-border overflow-hidden rounded-2xl">
-            <WayRow icon={Smartphone} title="Ein Handy für alle" text="Herumreichen oder in die Mitte legen" marked={last === "local"} onClick={() => choose("local")} />
-            <WayRow icon={Users} title="Online-Raum erstellen" text="Jeder spielt am eigenen Handy" marked={last === "online"} onClick={() => choose("online")} />
+            <WayRow icon={Smartphone} title="Ein Handy für alle" text="Herumreichen oder in die Mitte legen" marked={last === "local"} onClick={playLocal} />
+            <WayRow icon={Users} title="Online-Raum erstellen" text="Jeder spielt am eigenen Handy" marked={last === "online"} onClick={() => { remember("online"); setWay("online"); }} />
           </div>
           <form className="glass mt-3 shrink-0 rounded-2xl p-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
             <label htmlFor="code" className="flex items-center gap-2 px-1 font-semibold"><LogIn className="size-4.5 text-primary" />Raum beitreten</label>
@@ -73,27 +87,6 @@ export function Home() {
         </>
       )}
 
-      {way === "local" && (
-        <>
-          <StepHead title="Spiel wählen" sub="Ein Handy für alle" onBack={() => setWay(null)} />
-          {/* Nur die Liste scrollt, falls es einmal mehr Spiele werden, als auf den Bildschirm passen */}
-          <ul className="no-scrollbar grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pb-1">
-            {games.map(({ id, info, ui: { Icon } }) => (
-              <li key={id}>
-                <button type="button" onClick={() => navigate(`/spiel/${id}/lokal`)} aria-label={`${info.name} – ${info.category}, ${info.minPlayers}–${info.maxPlayers} Spieler`}
-                  className="glass flex h-full w-full items-center gap-2.5 rounded-2xl p-2.5 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring">
-                  <IconTile className="size-10 rounded-xl"><Icon className="size-6.5" /></IconTile>
-                  <span className="min-w-0">
-                    <span className={cn("block truncate font-semibold leading-tight", info.name.length > 8 && "text-[0.94rem] tracking-tight")}>{info.name}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{info.minPlayers}–{info.maxPlayers} Spieler · {info.duration}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
       {way === "online" && (
         <>
           <StepHead title="Online-Raum erstellen" sub="Das Spiel wählst du gleich in der Lobby" onBack={() => setWay(null)} />
@@ -102,10 +95,8 @@ export function Home() {
         </>
       )}
 
-      <nav className="flex shrink-0 items-center justify-center gap-4 pt-3 text-xs text-muted-foreground">
-        <button type="button" className="underline-offset-4 hover:underline" onClick={() => navigate("/profil")}>Profil & Daten</button>
-        <span aria-hidden="true">·</span>
-        <button type="button" className="flex items-center gap-1 underline-offset-4 hover:underline" onClick={() => navigate("/admin")}><Settings2 className="size-3.5" />Admin</button>
+      <nav className="flex shrink-0 items-center justify-center pt-3 text-xs text-muted-foreground/80">
+        <button type="button" className="flex items-center gap-1 underline-offset-4 hover:underline" onClick={() => navigate("/admin")}><Settings2 className="size-3" />Admin</button>
       </nav>
     </main>
   );

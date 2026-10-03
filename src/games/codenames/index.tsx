@@ -2,6 +2,7 @@ import { codenames, TEAM_NAME, type CNAction, type CNState, type Team } from "@s
 import { Button } from "@/components/ui/button";
 import type { BoardProps, GameUI } from "@/games/types";
 import { Section } from "@/platform/MenuSheet";
+import { LogList } from "@/platform/PlayersHistory";
 import { Board, COLOR } from "./Board";
 
 /** Symbol: kleine Schlüsselkarte mit roten und blauen Feldern */
@@ -57,13 +58,13 @@ function MenuExtras({ game: s, me, act }: BoardProps<CNState, CNAction>) {
           </div>
         </Section>
       )}
-      <Section title="Verlauf">
-        {s.log.length ? (
-          <ul className="grid gap-1 text-sm">{s.log.slice().reverse().map((l, i) => <li key={i} className="border-b border-border py-1.5">{l}</li>)}</ul>
-        ) : <p className="text-sm text-muted-foreground">Noch nichts passiert.</p>}
-      </Section>
     </>
   );
 }
 
-export const codenamesUI: GameUI<CNState, CNAction> = { logic: codenames, Icon, Board, Rules, MenuExtras };
+/** Verlauf für „Spieler & Verlauf“ */
+function History({ game: s }: BoardProps<CNState, CNAction>) {
+  return <LogList entries={s.log} />;
+}
+
+export const codenamesUI: GameUI<CNState, CNAction> = { logic: codenames, Icon, Board, Rules, MenuExtras, History };

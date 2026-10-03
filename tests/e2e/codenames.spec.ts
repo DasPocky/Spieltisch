@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 async function localPlayers(page: Page, names: string[], mode?: RegExp) {
   await page.goto("/");
@@ -9,8 +9,10 @@ async function localPlayers(page: Page, names: string[], mode?: RegExp) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await openSettings(page);
   if (mode) await page.getByRole("radio", { name: mode }).click();
   else await page.getByRole("radio", { name: "2 Min." }).click();
+  await closeSettings(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
 

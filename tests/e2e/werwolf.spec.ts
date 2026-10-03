@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 const NAMES = ["Anna", "Ben", "Cem", "Dora", "Emil"];
 
@@ -11,7 +11,9 @@ async function witch(page: Page) {
 }
 /** Manueller Ablauf mit „Weiter“ (Automatik aus) */
 async function manual(page: Page) {
+  await openSettings(page);
   await page.getByRole("checkbox", { name: /Automatik/ }).click();
+  await closeSettings(page);
 }
 /** Hauptmannwahl am Gerät (Original: am ersten Tag) – die erste Person wird Hauptmann */
 async function elect(page: Page) {
@@ -141,7 +143,9 @@ test("Werwolf online mit Spielleiter – sechs Handys", async ({ browser }) => {
   const phones = await Promise.all(names.map(() => newPhone(browser)));
   const [lead] = phones;
   const code = await createRoom(lead, "werwolf", "Leiter", "4242");
+  await openSettings(lead);
   await lead.getByRole("radio", { name: /Spielleiter/ }).click();
+  await closeSettings(lead);
   for (let i = 1; i < 6; i++) await joinRoom(phones[i], code, names[i], "4242");
   await lead.getByRole("button", { name: "Spiel starten" }).click();
 
@@ -198,12 +202,14 @@ test("Werwolf lokal mit Rollen aus allen Erweiterungen", async ({ page }) => {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await openSettings(page);
   await page.getByRole("radio", { name: /^2$/ }).click();
   for (const role of [/Wildes Kind/, /Wolfshund/, /Fuchs/, /Rabe/, /Urwolf/, /Heiler/, /Der Alte/]) {
     await page.getByRole("checkbox", { name: role }).click();
   }
-  await manual(page);
   await shot(page, "52-ww-roles-settings");
+  await closeSettings(page);
+  await manual(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await page.getByRole("button", { name: /Nacht beginnen/ }).click();
   await expect(page.getByTestId("ww-phase")).toHaveText("Nacht 1");
@@ -227,10 +233,12 @@ test("Werwolf lokal mit eigenen Karten und Hauptmann", async ({ page }) => {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await openSettings(page);
   await page.getByRole("radio", { name: /Spielleiter/ }).click();
   await page.getByRole("radio", { name: /Eigene Karten/ }).click();
   // Hauptmann ist Originalregel und schon an
   await expect(page.getByRole("checkbox", { name: /^Hauptmann/ })).toBeChecked();
+  await closeSettings(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await expect(page.getByText("Eigene Karten zuordnen")).toBeVisible();
   await page.getByRole("button", { name: "Cem", exact: true }).click();
@@ -259,16 +267,20 @@ test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser })
   const phones = await Promise.all(NAMES.map(() => newPhone(browser)));
   const [host] = phones;
   const code = await createRoom(host, "werwolf", "Anna", "8080");
+  await openSettings(host);
   await host.getByRole("button", { name: /^Hausregeln/ }).click();
   await host.getByRole("radio", { name: /Stichwahl/ }).click();
   await host.getByRole("checkbox", { name: /^Hexe ein Heil/ }).click();
   await host.getByRole("checkbox", { name: /^Seherin sieht jede/ }).click();
+  await closeSettings(host);
   for (let i = 1; i < 5; i++) await joinRoom(phones[i], code, NAMES[i], "8080");
   await host.getByRole("button", { name: "Spiel starten" }).click();
   for (const p of phones) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
   await expect(host.getByTestId("ww-phase")).toHaveText("Nacht 1");
   // Der Host beendet die Nacht (so bleibt nichts hängen, falls jemand nicht reagiert)
+  // Überspringen steht erst da, wenn etwas hängt – oder auf „Hängt etwas?“
   await host.getByRole("button", { name: "Menü" }).click();
+  await host.getByRole("button", { name: "Hängt etwas?" }).click();
   await host.getByRole("button", { name: /Nacht beenden/ }).click();
   await host.getByRole("button", { name: "Ja, weiter" }).click();
   await host.keyboard.press("Escape");
@@ -292,6 +304,7 @@ test("Werwolf Automatik: ein Handy, niemand muss „Weiter“ tippen", async ({ 
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
   // Übersicht und Vorlagen
+  await openSettings(page);
   await expect(page.getByTestId("ww-deck")).toContainText("5 Spieler bekommen");
   await page.getByRole("button", { name: /Klassisch/ }).click();
   await expect(page.getByTestId("ww-deck")).toContainText("Jäger");
@@ -307,6 +320,7 @@ test("Werwolf Automatik: ein Handy, niemand muss „Weiter“ tippen", async ({ 
   // Nachtgeräusche an – darf nichts stören
   await page.getByRole("checkbox", { name: /Nachtgeräusche/ }).click();
   await shot(page, "58-ww-setup");
+  await closeSettings(page);
 
   await page.getByRole("button", { name: "Spiel starten" }).click();
   // Geführt: das Handy geht reihum, danach beginnt die Nacht von selbst

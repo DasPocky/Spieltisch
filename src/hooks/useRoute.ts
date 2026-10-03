@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
+import { LOCAL_GAME_KEY } from "@/lib/storage";
 
 export type Route =
   | { name: "home" }
-  | { name: "game"; gameId: string }
-  | { name: "local"; gameId: string }
+  | { name: "local" }
   | { name: "room"; code: string }
   | { name: "admin" }
   | { name: "profile" }
@@ -24,8 +24,14 @@ function parse(path: string): Route {
   if (import.meta.env.DEV && path === "/dev/karten") return { name: "gallery" };
   const room = path.match(/^\/r\/([A-Za-z0-9]{5})\/?$/);
   if (room) return { name: "room", code: room[1].toUpperCase() };
+  if (/^\/lokal\/?$/.test(path)) return { name: "local" };
   const game = path.match(/^\/spiel\/([a-z0-9-]+)(\/lokal)?\/?$/);
-  if (game && isGameId(game[1])) return { name: game[2] ? "local" : "game", gameId: game[1] };
+  // Alte Spielseite und alter Link zur lokalen Partie: Spiel vormerken, weiter zur lokalen Lobby
+  if (game && isGameId(game[1])) {
+    try { localStorage.setItem(LOCAL_GAME_KEY, game[1]); } catch { /* egal */ }
+    history.replaceState(null, "", "/lokal");
+    return { name: "local" };
+  }
   return { name: "home" };
 }
 

@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { expectNoScroll, shot } from "./util";
+import { closeSettings, createRoom as createRoomAs, expectNoScroll, openSettings, shot } from "./util";
 
 async function newPhone(browser: Browser): Promise<Page> {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "de-DE" });
@@ -7,12 +7,7 @@ async function newPhone(browser: Browser): Promise<Page> {
 }
 
 async function createRoom(host: Page, name: string, pin: string): Promise<string> {
-  await host.goto("/spiel/tutto");
-  await host.getByLabel("Dein Name").fill(name);
-  await host.getByLabel("PIN (4–8 Ziffern)").fill(pin);
-  await host.getByRole("button", { name: "Raum erstellen" }).click();
-  await expect(host).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
-  const code = (await host.getByTestId("room-code").textContent())!.trim();
+  const code = await createRoomAs(host, "tutto", name, pin);
   expect(code).toMatch(/^[A-Z0-9]{5}$/);
   return code;
 }
@@ -45,10 +40,17 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
   await expect(host.getByText("Ben")).toBeVisible();
   await shot(guest, "21-online-lobby-guest");
 
-  // Nur der Host kann Einstellungen ändern
+  // Nur der Host kann Einstellungen ändern – Gäste sehen sie im selben Sheet
+  await openSettings(guest);
   await expect(guest.getByRole("radio", { name: /App-Würfel/ })).toBeDisabled();
+  await openSettings(host);
   await host.getByRole("radio", { name: /App-Würfel/ }).click();
   await expect(guest.getByRole("radio", { name: /App-Würfel/ })).toHaveAttribute("aria-checked", "true");
+  await closeSettings(guest);
+  await closeSettings(host);
+  await expect(guest.getByTestId("settings-summary")).toContainText("App-Würfel");
+  // Host kann sich nicht selbst entfernen
+  await expect(host.getByRole("button", { name: "Anna entfernen" })).toHaveCount(0);
 
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(guest.getByTestId("current-player")).toHaveText("Anna");
@@ -87,12 +89,19 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
   await expect(guest.getByTestId("current-player")).toBeVisible();
   await expect(guest.getByLabel("PIN")).toHaveCount(0);
 
-  // Host löscht den Raum – der Gast fliegt raus
+  // Gast-Menü: keine Host-Aktionen, aber Spieler & Verlauf
+  await guest.getByRole("button", { name: "Menü" }).click();
+  await expect(guest.getByRole("dialog")).toContainText("Gast · Host ist Anna");
+  await expect(guest.getByRole("button", { name: "Nochmal spielen" })).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: "Raum schließen" })).toHaveCount(0);
+  await guest.keyboard.press("Escape");
+
+  // Host schließt den Raum – der Gast fliegt raus
   await host.getByRole("button", { name: "Menü" }).click();
-  await host.getByRole("button", { name: "Raum löschen" }).click();
-  await host.getByRole("button", { name: "Löschen", exact: true }).click();
+  await host.getByRole("button", { name: "Raum schließen" }).click();
+  await host.getByRole("button", { name: "Schließen", exact: true }).click();
   await expect(guest.getByRole("heading", { name: "Raum beendet" })).toBeVisible();
-  await expect(guest.getByText("Der Host hat den Raum gelöscht.")).toBeVisible();
+  await expect(guest.getByText("Der Host hat den Raum geschlossen.")).toBeVisible();
   await shot(guest, "24-online-closed");
 
   await guest.goto(`/r/${code}`);
@@ -116,7 +125,7 @@ test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
   const code = await createRoom(host, "Anna", "2468");
   await joinRoom(guest, code, "Ben", "2468");
   await host.getByRole("button", { name: /Gespielt wird/ }).click();
-  await host.getByRole("button", { name: /Kniffel/ }).click();
+  await host.getByRole("button", { name: /^Kniffel/ }).click();
   await expect(guest.getByText("Gespielt wird")).toBeVisible();
   await expect(guest.getByRole("button", { name: /Gespielt wird Kniffel/ })).toBeVisible();
   await host.getByRole("button", { name: "Spiel starten" }).click();
@@ -150,12 +159,20 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
   await host.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
   await expect(host.getByText("Warte auf Ben")).toBeVisible();
   await host.getByRole("button", { name: "Menü" }).click();
-  await expect(host.getByRole("button", { name: /Eintrag zurücknehmen/ })).toHaveCount(0);
-  await host.getByRole("checkbox", { name: /Spielleiter-Funktionen/ }).click();
-  await expect(host.getByRole("button", { name: /Eintrag zurücknehmen/ })).toBeVisible();
+  // Ein Rückgängig-Knopf für alles (kein zweiter „Eintrag zurücknehmen“)
+  await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(1);
+  await expect(host.getByRole("button", { name: /Kartenstapel neu mischen/ })).toHaveCount(0);
+  await host.getByRole("checkbox", { name: /Host darf für alle spielen/ }).click();
+  await expect(host.getByRole("button", { name: /Kartenstapel neu mischen/ })).toBeVisible();
+  await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(1);
   await host.keyboard.press("Escape");
   await expect(host.getByText("Warte auf Ben")).toHaveCount(0);
   // Gast hat den Schalter nicht
   await guest.getByRole("button", { name: "Menü" }).click();
-  await expect(guest.getByRole("checkbox", { name: /Spielleiter-Funktionen/ })).toHaveCount(0);
+  await expect(guest.getByRole("checkbox", { name: /Host darf für alle spielen/ })).toHaveCount(0);
+  // Verlassen fragt nach – danach ist der Gast auf der Startseite
+  await guest.getByRole("button", { name: "Raum verlassen" }).click();
+  await expect(guest.getByText("brauchst du wieder Raumcode und PIN")).toBeVisible();
+  await guest.getByRole("button", { name: "Verlassen", exact: true }).click();
+  await expect(guest).toHaveURL(/\/$/);
 });

@@ -2,15 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { addPlayer, applyRoomAction, createRoom, defaultOptions, roomGame, type RoomAction, type RoomState } from "@shared/platform/room";
 import { withDefaults, type GameDefaults } from "@shared/platform/access";
-import { getGame } from "@shared/games";
+import { GAME_IDS, getGame, isGameId } from "@shared/games";
 import { GameError } from "@shared/platform/types";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { navigate } from "@/hooks/useRoute";
 import { siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
-import { localKey, readJSON, writeJSON } from "@/lib/storage";
+import { LOCAL_GAME_KEY, localKey, readJSON, writeJSON } from "@/lib/storage";
 import { myName, reportLocal } from "@/lib/profile";
 import { linkLocalPlayer, localLinks, reportGroupResult } from "@/lib/group";
 import type { GroupPick } from "@/platform/PlayerManager";
+import { AccessGate } from "@/platform/AccessGate";
 
 const isOver = (r: RoomState) => r.phase === "playing" && !!r.game && roomGame(r).isOver(r.game);
 
@@ -69,11 +70,23 @@ function useStartStats(room: RoomState) {
   }, [room.gameId, room.round, room.phase]);
 }
 
-/** Offline-Modus: ein Gerät, alle Spieler. Der Spielstand bleibt im Browser, getrennt pro Spiel. */
-export function LocalGame({ gameId }: { gameId: string }) {
-  const [room, setRoom] = useState<RoomState>(() => load(gameId));
+/** Zuletzt lokal gewähltes Spiel (Startseite bzw. alte Spiel-Links merken es vor) */
+function localGameId(): string {
+  try { const id = localStorage.getItem(LOCAL_GAME_KEY); if (isGameId(id)) return id; } catch { /* egal */ }
+  return GAME_IDS[0];
+}
 
-  useEffect(() => writeJSON(localKey(room.gameId), { ...room, gameVersion: getGame(room.gameId).version }), [room]);
+/**
+ * Offline-Modus unter /lokal: ein Gerät, alle Spieler – erst die Lobby, dann das Spiel.
+ * Der Spielstand bleibt im Browser, getrennt pro Spiel; eine laufende Partie geht beim Wiederkommen weiter.
+ */
+export function LocalGame() {
+  const [room, setRoom] = useState<RoomState>(() => load(localGameId()));
+
+  useEffect(() => {
+    writeJSON(localKey(room.gameId), { ...room, gameVersion: getGame(room.gameId).version });
+    try { localStorage.setItem(LOCAL_GAME_KEY, room.gameId); } catch { /* egal */ }
+  }, [room]);
   useLocalStats(room);
   useStartStats(room);
 
@@ -94,12 +107,8 @@ export function LocalGame({ gameId }: { gameId: string }) {
     });
   }, []);
 
-  // Spiel in der Lobby gewechselt: Spielstand liegt schon unter dem neuen Spiel, Adresse nachziehen
-  useEffect(() => {
-    if (room.gameId !== gameId) navigate(`/spiel/${room.gameId}/lokal`, true);
-  }, [room.gameId, gameId]);
-
   return (
+    <AccessGate gameId={room.gameId}>
     <RoomScreen
       room={room}
       me={null}
@@ -117,7 +126,8 @@ export function LocalGame({ gameId }: { gameId: string }) {
           return from ? { ...next, avatars: { ...next.avatars, [id]: from.avatar }, members: { ...next.members, [id]: from.member } } : next;
         });
       }}
-      onLeave={() => navigate(`/spiel/${gameId}`)}
+      onLeave={() => navigate("/")}
     />
+    </AccessGate>
   );
 }

@@ -13,8 +13,8 @@ export function writeJSON(key: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* voll oder gesperrt */ }
 }
 
-export function remove(key: string) {
-  try { localStorage.removeItem(key); } catch { /* egal */ }
+export function remove(key: string, session = false) {
+  try { (session ? sessionStorage : localStorage).removeItem(key); } catch { /* egal */ }
 }
 
 export interface RoomCreds { playerId: string; token: string }
@@ -40,3 +40,7 @@ export function takePendingJoin(code: string): { name: string; pin: string } | n
 
 /** Lokaler Spielstand pro Spiel */
 export const localKey = (gameId: string) => `spieltisch:local:${gameId}`;
+/** Zuletzt lokal gewähltes Spiel – „Ein Handy für alle“ öffnet dessen Lobby (bzw. die laufende Partie) */
+export const LOCAL_GAME_KEY = "spieltisch:localGame";
+/** Von wo aus das Profil geöffnet wurde (Menü im Spiel) – der Zurück-Knopf führt dorthin */
+export const RETURN_KEY = "spieltisch:return";

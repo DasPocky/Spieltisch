@@ -1,5 +1,19 @@
 # Spieltisch – Struktur-Audit & Umbauvorschlag
 
+## Umgesetzt (03.10.2026)
+
+Entschieden und gebaut: **A1** (ein Menü, feste Abschnitte), **B2** (immer erst Lobby, dann Spiel – auch lokal), **C2** (Einstellungen in der Lobby als Zusammenfassung + Sheet).
+
+- **Menü (☰)** – Abschnitte in fester Reihenfolge, leere fallen weg: **Partie** (Host: „Nochmal spielen“, „Anderes Spiel“, *ein* „Letzten Zug zurücknehmen“ – Kniffel/Tutto-Eintrag springt ein, wenn die Plattform nichts mehr zurücknehmen kann; Überspringen nur, wenn der Spieler am Zug offline ist oder sich 20 s nichts tut, sonst hinter „Hängt etwas?“; online „Host darf für alle spielen“ mit Erklärung; eingeklappt „Während des Spiels“ nur mit `inGame`-Optionen + „Spielhilfen erlauben“) · **Spieler & Verlauf** (gleiches Sheet wie die Leiste, für *alle* Spiele; Verlauf aus `log` bzw. neuem `GameUI.History` – Kniffel, Tutto inkl. Stapel, Werwolf, Codenames; Host: „Spieler verwalten“ eingeklappt) · **Regeln** · **Einladen** (nur online im Spiel) · **Mein Gerät** (Ansicht, hell/dunkel, Töne/Vibration/„Spielhilfen für mich“, Link „Mehr in ‚Mein Profil‘“ mit Rückweg ins Spiel) · **Verlassen** (online mit Rückfrage; Host abgesetzt „Raum schließen“ mit Rückfrage). Untertitel: „Du bist Host · Raum X“ / „Gast · Host ist Anna“ / „Ein Handy für alle“. Keine Einstellungsliste mehr im Menü.
+- **Start**: „Ein Handy für alle“ öffnet sofort die lokale Lobby (`/lokal`, zuletzt lokal gewähltes Spiel vorbelegt), Spiel wird dort über dieselbe Karte + „Was spielt ihr?“-Sheet gewählt wie online. Spielraster auf der Startseite und Spielseite `/spiel/<id>` entfallen; `/spiel/<id>` und `/spiel/<id>/lokal` leiten in die lokale Lobby mit diesem Spiel (gespeicherte Partien laden weiter). Lobby-Kopf: „‹ Lobby · Ein Handy für alle / Raum X“, Zurück = Verlassen. Verlassen führt immer zur Startseite.
+- **Lobby**: Spielkarte · (online: Raumcode, Gruppe) · Mitspieler · **eine** Zeile „Einstellungen – Echte Würfel · App-Karten · Spielziel 6.000 · 2 Hausregeln“ → Sheet mit vollem `SettingsPanel` und „Fertig“. Passt mit 6 Spielern auf 390×844, „Spiel starten“ bleibt unten. Host kann sich online nicht selbst entfernen.
+- **Startseite**: ein Profil-Knopf (Avatar) oben rechts, Hell/Dunkel-Knopf und Fußzeilen-Profil entfernt; „Admin“ klein in der Fußzeile.
+- **Begriffe**: „Nochmal spielen“, „Anderes Spiel“ (auch Ergebnis, Werwolf, Eine Nacht), „Raum schließen“ (Server-Meldung „Der Host hat den Raum geschlossen.“), „Mein Profil“, Raum-Schalter „Spielhilfen erlauben“ vs. Profil „Spielhilfen für mich“; Einstellungsgruppe „Raum“ heißt jetzt „Hilfen“ (lokal) bzw. „Mitspielen & Hilfen“ (online).
+
+**Noch offen (für später):** Regeln vorab in der Spielauswahl (ⓘ je Spiel); Profil gliedern („Im Spiel“ + „Stimme“ → „Töne & Ansagen“, evtl. Tabs); Menü als Tabs (A2) bzw. eigener Spieler-Knopf (A3), falls Rückmeldungen das nahelegen; Sprachchat-Knopf erklären; spieleigene Ergebnis-Texte als Untertitel; Admin-Link ganz von der Startseite nehmen (bewusst noch drin).
+
+---
+
 > Anlass: „Die Menüs und die Struktur der gesamten App sind aktuell noch sehr verwirrend.“
 > Grundlage: Durchklicken im Browser (390×844, de-DE, lokal + Online mit Host/Gast) am 02.10.2026 und Lesen von `App.tsx`, `useRoute.ts`, `pages/*`, `RoomScreen`, `MenuSheet`, `SettingsPanel`, `InfoBar`, `PlayerManager`, `Profile`.
 > Screenshots: `/tmp/claude-0/-home-user-Spieltisch/70548aee-656d-55e8-aff1-822877694b49/scratchpad/ia/*.png` (Dateinamen unten in `code`). Sie liegen im temporären Scratchpad – bei Bedarf ins Repo kopieren.

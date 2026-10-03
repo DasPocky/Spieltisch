@@ -54,14 +54,15 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
                     <ArrowUp />
                   </Button>
                 )}
-                <Confirm
+                {/* Online kann sich der Host nicht selbst entfernen – dafür gibt es „Raum verlassen“ */}
+                {p.id !== me && <Confirm
                   title={`${p.name} entfernen?`}
                   description={online ? "Die Person fliegt aus dem Raum und müsste mit PIN neu beitreten." : undefined}
                   confirmLabel="Entfernen"
                   onConfirm={() => dispatch({ type: "removePlayer", id: p.id })}
                 >
                   <Button variant="ghost" size="icon" aria-label={`${p.name} entfernen`} className="text-muted-foreground"><X /></Button>
-                </Confirm>
+                </Confirm>}
               </>
             )}
           </li>

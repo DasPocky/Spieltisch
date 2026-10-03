@@ -1,7 +1,6 @@
 import type { RoomState } from "@shared/platform/room";
 import { maumau, type MauMauAction, type MauMauState } from "@shared/games/maumau/logic";
 import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
 import { Board } from "./Board";
 import { Rules } from "./Rules";
 
@@ -26,14 +25,6 @@ function HeaderExtra({ game }: BoardProps<MauMauState, MauMauAction>) {
   );
 }
 
-function MenuExtras({ game }: BoardProps<MauMauState, MauMauAction>) {
-  return (
-    <Section title="Verlauf">
-      {game.log.length ? <ul className="text-[0.95rem]">{game.log.slice().reverse().map((e, i) => <li key={i} className="border-b border-border py-2">{e}</li>)}</ul>
-        : <p className="text-sm text-muted-foreground">Noch nichts Besonderes passiert.</p>}
-    </Section>
-  );
-}
 
 /** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
 const log = (s: MauMauState) => (s.mode === "table" ? [] : s.log);
@@ -43,4 +34,4 @@ const overview = (s: MauMauState, room: RoomState) => s.mode === "table" ? null 
   curId: s.winnerId ? null : s.curId,
 });
 
-export const maumauUI: GameUI<MauMauState, MauMauAction> = { logic: maumau, Icon, Board, Rules, MenuExtras, HeaderExtra, log, overview };
+export const maumauUI: GameUI<MauMauState, MauMauAction> = { logic: maumau, Icon, Board, Rules, HeaderExtra, log, overview };

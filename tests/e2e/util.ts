@@ -29,9 +29,16 @@ export async function expectInView(page: Page, locator: import("@playwright/test
   expect(box!.y, "Element oben abgeschnitten").toBeGreaterThanOrEqual(-1);
 }
 
+/** Lokale Lobby für ein Spiel öffnen (alter Link /spiel/<id>/lokal leitet dorthin weiter) */
+export async function openLocal(page: Page, gameId: string) {
+  await page.goto(`/spiel/${gameId}/lokal`);
+  await expect(page).toHaveURL(/\/lokal$/);
+  await expect(page.getByTestId("game-card")).toContainText("Gespielt wird");
+}
+
 /** Lokales Tutto mit Spielern starten */
 export async function startLocalTutto(page: Page, names: string[]) {
-  await page.goto("/spiel/tutto/lokal");
+  await openLocal(page, "tutto");
   for (const n of names) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
@@ -44,14 +51,31 @@ export async function newPhone(browser: Browser): Promise<Page> {
   return ctx.newPage();
 }
 
-/** Raum für ein Spiel erstellen, gibt den Code zurück */
+/** Online-Raum wie ein Mensch erstellen: Startseite → Name + PIN → in der Lobby das Spiel wählen. Gibt den Code zurück. */
 export async function createRoom(host: Page, gameId: string, name: string, pin: string): Promise<string> {
-  await host.goto(`/spiel/${gameId}`);
+  await host.goto("/");
+  // Als zuletzt gespieltes Spiel vormerken – so entsteht der Raum gleich mit diesem Spiel (wie beim Wiederkommen)
+  await host.evaluate((id) => localStorage.setItem("spieltisch:lastGame", id), gameId);
+  await host.getByRole("button", { name: /Online-Raum erstellen/ }).click();
   await host.getByLabel("Dein Name").fill(name);
-  await host.getByLabel("PIN (4–8 Ziffern)").fill(pin);
+  await host.getByLabel(/PIN/).fill(pin);
   await host.getByRole("button", { name: "Raum erstellen" }).click();
   await expect(host).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
+  await host.getByTestId(`pick-${gameId}`).click();
+  await expect(host.getByRole("heading", { name: "Was spielt ihr?" })).toBeHidden();
   return (await host.getByTestId("room-code").textContent())!.trim();
+}
+
+/** Lobby: Einstellungen öffnen (stehen als Zusammenfassung auf der Seite) */
+export async function openSettings(page: Page) {
+  await page.getByTestId("settings-summary").click();
+  await expect(page.getByRole("heading", { name: /^Einstellungen/ })).toBeVisible();
+}
+
+/** Einstellungen wieder zu – danach ist „Spiel starten“ erreichbar */
+export async function closeSettings(page: Page) {
+  await page.getByRole("button", { name: "Fertig", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 export async function joinRoom(page: Page, code: string, name: string, pin: string) {

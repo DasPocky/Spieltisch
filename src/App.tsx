@@ -1,6 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
 import { useRoute } from "@/hooks/useRoute";
-import { GamePage } from "@/pages/GamePage";
 import { Home } from "@/pages/Home";
 import { Admin } from "@/pages/Admin";
 import { Profile, ProfileTransfer } from "@/pages/Profile";
@@ -23,10 +22,10 @@ export default function App() {
       {route.name === "groups" && <AccessGate><Groups /></AccessGate>}
       {route.name === "group" && <AccessGate><Group key={route.code} code={route.code} /></AccessGate>}
       {route.name === "home" && <AccessGate><Home /></AccessGate>}
-      {route.name === "game" && <AccessGate gameId={route.gameId}><GamePage key={route.gameId} gameId={route.gameId} /></AccessGate>}
-      {route.name === "local" && <AccessGate gameId={route.gameId}><LocalGame key={route.gameId} gameId={route.gameId} /></AccessGate>}
+      {route.name === "local" && <LocalGame />}
       {route.name === "room" && <AccessGate><OnlineRoom key={route.code} code={route.code} /></AccessGate>}
       <Toaster />
     </>
   );
 }
+

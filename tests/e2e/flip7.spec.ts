@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 /** Kurzer Klick: Online kann sich der Tisch zwischen Abfrage und Klick ändern – dann einfach neu schauen */
 async function tap(loc: Locator) {
@@ -52,7 +52,9 @@ test("Flip 7 online „Voll fies“ mit drei Handys", async ({ browser }) => {
   const phones = await Promise.all(["Anna", "Ben", "Cem"].map(() => newPhone(browser)));
   const [host] = phones;
   const code = await createRoom(host, "flip7", "Anna", "7070");
+  await openSettings(host);
   await host.getByRole("radio", { name: /Voll fies/ }).click();
+  await closeSettings(host);
   await joinRoom(phones[1], code, "Ben", "7070");
   await joinRoom(phones[2], code, "Cem", "7070");
   await host.getByRole("button", { name: "Spiel starten" }).click();

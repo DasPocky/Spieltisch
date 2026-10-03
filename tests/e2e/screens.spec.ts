@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectInView, expectNoScroll, shot, startLocalTutto } from "./util";
+import { closeSettings, expectInView, expectNoScroll, openSettings, shot, startLocalTutto } from "./util";
 
 /** Kleine und große Handys, Tablet und Browserfenster */
 const SIZES = [
@@ -44,6 +44,7 @@ test("Kartenspiel-Auswahl mit Bild (Mau-Mau, Fischen)", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   for (const game of ["maumau", "fischen"]) {
     await page.goto(`/spiel/${game}/lokal`);
+    await openSettings(page);
     const group = page.getByRole("radiogroup", { name: "Kartenspiel" });
     await expect(group.getByRole("radio")).toHaveCount(3);
     await group.getByRole("radio", { name: /Deutsch/ }).click();
@@ -52,10 +53,12 @@ test("Kartenspiel-Auswahl mit Bild (Mau-Mau, Fischen)", async ({ page }) => {
     await group.getByRole("radio", { name: /Rommé/ }).click();
     await expect(page.getByTestId("deck-info")).toContainText("13 Vierergruppen");
     await group.scrollIntoViewIfNeeded();
-    await expectNoScroll(page).catch(() => {}); // Lobby darf senkrecht scrollen – nur nicht seitlich
+    // Das Einstellungs-Sheet darf senkrecht scrollen – nur nicht seitlich
     const w = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(w).toBeLessThanOrEqual(360);
     await shot(page, `96-deck-picker-${game}`);
+    await closeSettings(page);
+    await expectNoScroll(page);
   }
 });
 

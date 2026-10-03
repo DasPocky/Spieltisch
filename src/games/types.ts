@@ -45,13 +45,20 @@ export interface GameUI<S = unknown, A = { type: string }> {
   Board: ComponentType<BoardProps<S, A>>;
   /** Regelseite. `focus` markiert einen Abschnitt (Element mit data-rule="…"), zu dem gescrollt wird. */
   Rules: ComponentType<{ focus?: string }>;
-  /** Zusätzliche Einträge im Menü während der Partie (z. B. Verlauf, Rückgängig) */
+  /** Zusätzliche Knöpfe im Menü-Abschnitt „Partie“ (z. B. Team wechseln, Stapel mischen) */
   MenuExtras?: ComponentType<BoardProps<S, A>>;
+  /** Ausführlicher Verlauf für „Spieler & Verlauf“, wenn `log` nicht reicht (z. B. Einträge mit Punkten) */
+  History?: ComponentType<BoardProps<S, A>>;
+  /**
+   * Spieleigenes Zurücknehmen (Host-Aktion `{ type: "undo" }`) gerade möglich?
+   * Der eine Rückgängig-Knopf im Menü nutzt es, wenn die Plattform keinen Zug mehr zurücknehmen kann.
+   */
+  undoEntry?: (game: S) => boolean;
   /** Über den Einstellungen: z. B. Vorlagen und eine Übersicht der Rollenverteilung */
   SettingsExtra?: ComponentType<{ room: RoomState; editable: boolean; online: boolean; dispatch: (action: RoomAction) => void }>;
   /** Kleine Info rechts in der Kopfzeile (z. B. Karten im Stapel) */
   HeaderExtra?: ComponentType<BoardProps<S, A>>;
-  /** Für alle sichtbarer Verlauf (älteste zuerst) – erscheint als Leiste „Letzter Zug“ über dem Spiel */
+  /** Für alle sichtbarer Verlauf (älteste zuerst) – erscheint als Leiste „Letzter Zug“ über dem Spiel und unter „Spieler & Verlauf“ */
   log?: (game: S) => string[];
   /** Spielerübersicht für „Spieler & Verlauf“ */
   overview?: (game: S, room: RoomState) => Overview | null;

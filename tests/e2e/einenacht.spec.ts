@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 const NAMES = ["Anna", "Ben", "Cem", "Dora"];
 
@@ -12,7 +12,9 @@ test("Eine Nacht lokal: Karten herumreichen, Nacht am Gerät, Auflösung", async
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
   // Ablauf von Hand mit „Weiter“ (die Automatik prüft der Werwolf-Test)
+  await openSettings(page);
   await page.getByRole("checkbox", { name: /Automatik/ }).click();
+  await closeSettings(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await page.getByRole("button", { name: "Anna", exact: true }).click();
   await page.getByRole("button", { name: /Deine Karte aufdecken/ }).click();

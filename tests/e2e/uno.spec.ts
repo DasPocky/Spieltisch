@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 async function local(page: Page, names: string[], table = false) {
   await page.goto("/");
@@ -9,7 +9,11 @@ async function local(page: Page, names: string[], table = false) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
-  if (table) await page.getByRole("radio", { name: /Echte Karten/ }).click();
+  if (table) {
+    await openSettings(page);
+    await page.getByRole("radio", { name: /Echte Karten/ }).click();
+    await closeSettings(page);
+  }
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
 
@@ -107,6 +111,7 @@ test("Uno Hausregeln: 7-0 und +4-Varianten stehen unter Hausregeln", async ({ pa
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
   await page.goto("/spiel/uno/lokal");
+  await openSettings(page);
   await page.getByRole("button", { name: /Hausregeln/ }).click();
   await expect(page.getByText("7-0", { exact: true })).toBeVisible();
   await expect(page.getByText("Ziehen, bis es passt")).toBeVisible();

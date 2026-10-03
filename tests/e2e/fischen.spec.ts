@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 async function askSomething(p: Page) {
   const who = p.getByRole("group", { name: "Mitspieler" }).locator("button:not([disabled])").first();
@@ -59,9 +59,13 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
       await page.getByLabel("Name des Spielers").fill(n);
       await page.getByRole("button", { name: "Hinzufügen" }).click();
     }
+    await openSettings(page);
     await page.getByRole("radio", { name: /Echte Karten/ }).click();
     await page.getByRole("button", { name: /Hausregeln/ }).click();
     await page.getByRole("radio", { name: /Der Gefragte/ }).click();
+    await closeSettings(page);
+    // Die Zusammenfassung zeigt die geänderte Hausregel
+    await expect(page.getByTestId("settings-summary")).toContainText("1 Hausregel");
     await page.getByRole("button", { name: "Spiel starten" }).click();
     await expect(page.getByTestId("current-player")).toHaveText("Anna");
     await expectNoScroll(page);

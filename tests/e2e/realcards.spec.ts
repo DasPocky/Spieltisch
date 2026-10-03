@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
 
 /** Lokales Spiel mit Namen anlegen, Einstellungs-Radio wählen und starten */
 async function local(page: Page, gameId: string, names: string[], radios: RegExp[]) {
@@ -11,7 +11,9 @@ async function local(page: Page, gameId: string, names: string[], radios: RegExp
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await openSettings(page);
   for (const r of radios) await page.getByRole("radio", { name: r }).click();
+  await closeSettings(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
 
@@ -39,11 +41,13 @@ test("Mau-Mau mit echten Karten: Siege zählen, Hausregeln ausgeblendet", async 
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
+  await openSettings(page);
   await page.getByRole("button", { name: /Hausregeln/ }).click();
   await expect(page.getByText("Siebenen stapeln")).toBeVisible();
   await page.getByRole("radio", { name: /Echte Karten/ }).click();
   await expect(page.getByText("Siebenen stapeln")).toHaveCount(0);
   await page.getByRole("radio", { name: "3 Siege" }).click();
+  await closeSettings(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await page.getByRole("button", { name: "Ben hat die Runde gewonnen" }).click();
   await expectNoScroll(page);
@@ -82,7 +86,9 @@ test("Eine Nacht mit eigenen Karten: Host-Handy erzählt, andere sehen nur Augen
   const code = await createRoom(anna, "einenacht", "Anna", "4242");
   await joinRoom(ben, code, "Ben", "4242");
   await joinRoom(cem, code, "Cem", "4242");
+  await openSettings(anna);
   await anna.getByRole("radio", { name: /Eigene Karten/ }).click();
+  await closeSettings(anna);
   await anna.getByRole("button", { name: "Spiel starten" }).click();
   await expect(anna.getByTestId("own-roles")).toContainText("Werwolf");
   await anna.getByRole("button", { name: "Nacht beginnen" }).click();

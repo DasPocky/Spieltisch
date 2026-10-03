@@ -47,11 +47,11 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
       <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {isHost ? (
           <div className="grid gap-2">
-            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Neue Runde, gleiche Spieler</Button>
+            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
             {children}
-            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby – anderes Spiel wählen</Button>
+            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Anderes Spiel</Button>
           </div>
-        ) : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host kann eine neue Runde starten.</p>}
+        ) : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host kann nochmal starten oder ein anderes Spiel wählen.</p>}
       </div>
     </section>
   );

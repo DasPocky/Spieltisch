@@ -218,7 +218,7 @@ export class GameRoom extends DurableObject<Env> {
         this.send(ws, { type: "error", message: "Das darf nur der Host." });
         return;
       }
-      await this.destroy("Der Host hat den Raum gelöscht.");
+      await this.destroy("Der Host hat den Raum geschlossen.");
       return;
     }
 

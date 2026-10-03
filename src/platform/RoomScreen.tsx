@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Lock, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,15 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { cn } from "@/lib/utils";
 import { pickGameKey } from "@/lib/createRoom";
 import { LAST_GAME_KEY } from "@/lib/storage";
-import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
+import { savedAccess, siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
 import { accessFor } from "@shared/platform/access";
 import { IconTile } from "./Logo";
-import { MenuSheet, type MenuProps } from "./MenuSheet";
+import { Leave, MenuSheet, type MenuProps } from "./MenuSheet";
 import { PlayerManager, type GroupPick } from "./PlayerManager";
 import { Avatar, AvatarContext } from "./Avatar";
 import { loadGroup, activeGroupCode, useActiveGroup } from "@/lib/group";
-import { SettingsPanel } from "./SettingsPanel";
+import { SettingsPanel, settingsSummary } from "./SettingsPanel";
+import { Collapsible } from "./PlayersHistory";
 import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
@@ -56,29 +57,48 @@ export function RoomScreen(props: Props) {
     ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch }
     : null;
   const { Board, HeaderExtra, Icon } = ui;
+  // Im Spiel: Spieler entfernen (z. B. wer gegangen ist) – lokal auch hinzufügen, wenn das Spiel das erlaubt
+  const manage = board && isHost ? (
+    <Collapsible title="Spieler verwalten">
+      <PlayerManager room={room} me={me} online={online} editable dispatch={dispatch} onAddLocal={getGame(room.gameId).joinMidGame ? props.onAddLocal : undefined} />
+    </Collapsible>
+  ) : undefined;
 
   return (
     <AvatarContext.Provider value={room.avatars}>
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="flex h-14 shrink-0 items-center justify-between">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <IconTile><Icon className="size-6" /></IconTile>
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-lg font-bold tracking-tight">{info.name}</div>
-            {code && <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground">{code}</div>}
+        {board ? (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <IconTile><Icon className="size-6" /></IconTile>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-lg font-bold tracking-tight">{info.name}</div>
+              {code && <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground">{code}</div>}
+            </div>
           </div>
-        </div>
+        ) : (
+          // Lobby: zurück zur Startseite (online mit Rückfrage – wie „Raum verlassen“)
+          <div className="flex min-w-0 items-center gap-1">
+            <Leave code={code} isHost={isHost} onLeave={props.onLeave}>
+              <Button variant="ghost" size="icon" className="-ml-2 shrink-0" aria-label={code ? "Raum verlassen" : "Zur Startseite"}><ChevronLeft /></Button>
+            </Leave>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-lg font-bold tracking-tight">Lobby</div>
+              <div className="truncate text-xs text-muted-foreground">{code ? <>Raum <span className="font-semibold tracking-[0.18em]">{code}</span></> : "Ein Handy für alle"}</div>
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-2.5">
           {board && HeaderExtra && <HeaderExtra {...board} />}
           {props.call && <CallButton call={props.call} />}
-          <MenuSheet {...props} isHost={isHost} board={board} />
+          <MenuSheet {...props} isHost={isHost} board={board} manage={manage} />
         </div>
       </header>
 
       {props.call && <CallStrip call={props.call} players={room.players} me={me} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
-      {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} />}
+      {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
       <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
     </AvatarContext.Provider>
@@ -124,9 +144,9 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
     if (!code || !isHost) return false;
     try { const v = sessionStorage.getItem(pickGameKey(code)); sessionStorage.removeItem(pickGameKey(code)); return v === "1"; } catch { return false; }
   });
+  const [settings, setSettings] = useState(false);
   const config = useSiteConfig();
   const gameIds = GAME_IDS.filter((id) => !config || accessFor(config, id) !== "off");
-  const locked = (id: string) => !!config && accessFor(config, id) === "code" && !savedAccess();
   useEffect(() => { if (code && isHost) try { localStorage.setItem(LAST_GAME_KEY, room.gameId); } catch { /* egal */ } }, [code, isHost, room.gameId]);
   // Aktive Gruppe frisch holen (neue Mitglieder, Avatare)
   useEffect(() => { const g = activeGroupCode(); if (g) void loadGroup(g); }, []);
@@ -136,10 +156,11 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
   const limits = playerLimits(room);
   const countOk = n >= limits.min && n <= limits.max;
   const range = limits.min === limits.max ? `${limits.min}` : `${limits.min}–${limits.max}`;
+  const canPick = isHost && gameIds.length > 1;
 
   return (
     <section className="flex flex-1 flex-col pt-1">
-      <button type="button" disabled={!isHost || gameIds.length < 2} onClick={() => setPick(true)}
+      <button type="button" disabled={!canPick} onClick={() => setPick(true)} data-testid="game-card"
         className="glass flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
         <IconTile className="size-11"><Icon className="size-7" /></IconTile>
         <span className="min-w-0 flex-1">
@@ -147,17 +168,28 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
           <span className="block font-semibold">{info.name} <span className="font-normal text-muted-foreground">· {range} Spieler</span></span>
           {limits.note && <span className="block text-xs text-muted-foreground">{limits.note}</span>}
         </span>
-        {isHost && gameIds.length > 1 && <span className="flex items-center text-sm font-semibold text-primary">Wechseln<ChevronRight className="size-4" /></span>}
+        {canPick && <span className="flex items-center text-sm font-semibold text-primary">Wechseln<ChevronRight className="size-4" /></span>}
       </button>
-      {code && <div className="mt-2.5"><ShareCode code={code} gameName={info.name} /></div>}
+      {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
 
-      <h2 className="mt-5 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
-      <p className="mb-2.5 px-1 text-sm text-muted-foreground">
-        {code ? "Link schicken und PIN sagen. Die Reihenfolge ist die Zugreihenfolge." : "Die Reihenfolge ist die Zugreihenfolge."}
+      <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
+      <p className="mb-2 px-1 text-sm text-muted-foreground">
+        {code ? "Link schicken, PIN sagen. Reihenfolge = Zugreihenfolge." : "Die Reihenfolge ist die Zugreihenfolge."}
       </p>
       <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} />
-      <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} className="mt-5" />
+
+      {/* Einstellungen als eine Zeile – alles Weitere im Sheet */}
+      <button type="button" onClick={() => setSettings(true)} data-testid="settings-summary"
+        className="glass mt-3 flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
+        <SlidersHorizontal className="size-4.5 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Einstellungen</span>
+          <span className="block truncate text-sm text-muted-foreground">{settingsSummary(room, !!code)}</span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+      </button>
+
       <div className="min-h-4 flex-1" />
       {/* Start bleibt immer sichtbar unten */}
       <div className="sticky bottom-0 -mx-4 mt-4 border-t border-border bg-background/90 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md">
@@ -171,31 +203,57 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
         )}
       </div>
 
-      <Sheet open={pick} onOpenChange={setPick}>
+      <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online={!!code}
+        onPick={(id) => { dispatch({ type: "selectGame", gameId: id }); setPick(false); }} />
+
+      <Sheet open={settings} onOpenChange={setSettings}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Was spielt ihr?</SheetTitle>
-            <SheetDescription>Alle bleiben im Raum – das Spiel kannst du jederzeit in der Lobby wechseln.</SheetDescription>
+            <SheetTitle>Einstellungen: {info.name}</SheetTitle>
+            <SheetDescription>{isHost ? "Gilt für alle in dieser Partie." : "Legt der Host fest – du kannst sie nur ansehen."}</SheetDescription>
           </SheetHeader>
-          <div className="grid gap-2 overflow-y-auto px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            {gameIds.map((id) => {
-              const g = getGame(id).info;
-              const GIcon = getGameUI(id).Icon;
-              return (
-                <button key={id} type="button" onClick={() => { dispatch({ type: "selectGame", gameId: id }); setPick(false); }}
-                  className={cn("flex items-center gap-3 rounded-2xl p-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === room.gameId ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
-                  <IconTile className="size-11"><GIcon className="size-7" /></IconTile>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-semibold">{g.name}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
-                    <span className="block text-sm text-muted-foreground">{g.category} · {g.minPlayers}–{g.maxPlayers} Spieler · {g.duration}</span>
-                  </span>
-                </button>
-              );
-            })}
+          <div className="overflow-y-auto px-5 pt-3 pb-4">
+            <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} title={false} />
+          </div>
+          <div className="shrink-0 border-t border-border px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <Button className="w-full" onClick={() => setSettings(false)}>Fertig</Button>
           </div>
         </SheetContent>
       </Sheet>
     </section>
+  );
+}
+
+/** „Was spielt ihr?“ – Spielauswahl der Lobby, lokal wie online */
+function GamePicker({ open, onOpenChange, gameIds, current, online, onPick }: {
+  open: boolean; onOpenChange: (o: boolean) => void; gameIds: string[]; current: string; online: boolean; onPick: (id: string) => void;
+}) {
+  const locked = (id: string) => { const c = siteConfigNow(); return !!c && accessFor(c, id) === "code" && !savedAccess(); };
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Was spielt ihr?</SheetTitle>
+          <SheetDescription>{online ? "Alle bleiben im Raum – das Spiel kannst du jederzeit in der Lobby wechseln." : "Die Spieler bleiben – das Spiel kannst du jederzeit in der Lobby wechseln."}</SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-2 overflow-y-auto px-5 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          {gameIds.map((id) => {
+            const g = getGame(id).info;
+            const GIcon = getGameUI(id).Icon;
+            return (
+              <button key={id} type="button" onClick={() => onPick(id)} aria-current={id === current || undefined} data-testid={`pick-${id}`}
+                className={cn("flex items-center gap-3 rounded-2xl p-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === current ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
+                <IconTile className="size-11"><GIcon className="size-7" /></IconTile>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{g.name}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
+                  <span className="block text-sm text-muted-foreground">{g.category} · {g.minPlayers}–{g.maxPlayers} Spieler · {g.duration}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

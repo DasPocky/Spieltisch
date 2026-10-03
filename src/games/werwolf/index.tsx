@@ -1,7 +1,7 @@
 import { Crown, Moon, Sun } from "lucide-react";
 import { werwolf, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
+import { LogList } from "@/platform/PlayersHistory";
 import { Setup } from "./Setup";
 import { Board } from "./Board";
 import { Rules } from "./Rules";
@@ -29,14 +29,9 @@ function HeaderExtra({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
   );
 }
 
-function MenuExtras({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
-  return (
-    <Section title="Verlauf">
-      {s.log.length ? (
-        <ul className="text-[0.95rem]">{s.log.slice().reverse().map((e, i) => <li key={i} className="border-b border-border py-2">{e}</li>)}</ul>
-      ) : <p className="text-sm text-muted-foreground">Noch nichts passiert.</p>}
-    </Section>
-  );
+/** Verlauf für „Spieler & Verlauf“ */
+function History({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
+  return <LogList entries={s.log} />;
 }
 
-export const werwolfUI: GameUI<WerwolfState, WerwolfAction> = { logic: werwolf, Icon, Board, Rules, MenuExtras, HeaderExtra, SettingsExtra: Setup };
+export const werwolfUI: GameUI<WerwolfState, WerwolfAction> = { logic: werwolf, Icon, Board, Rules, History, HeaderExtra, SettingsExtra: Setup };

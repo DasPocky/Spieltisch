@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectInView, expectNoScroll, joinRoom, newPhone } from "./util";
+import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openSettings } from "./util";
 
 /** Screenshots zum Ansehen (nicht Teil der Doku-Bilder) */
 const DIR = process.env.GROUP_SHOTS ?? "test-results/groups";
@@ -7,9 +7,12 @@ const snap = async (page: Page, name: string) => { await page.waitForTimeout(400
 
 /** Tutto mit Ziel 1.000 schnell zu Ende spielen: bis eine Karte mit Würfelpunkten kommt, dann 1.000 eintragen */
 async function finishTutto(page: Page) {
+  await openSettings(page);
   const target = page.getByRole("button", { name: "Spielziel verringern" });
   for (let i = 0; i < 5; i++) await target.click();
   await expect(page.getByTestId("setting-target")).toHaveText("1.000");
+  await closeSettings(page);
+  await expect(page.getByTestId("settings-summary")).toContainText("Spielziel 1.000");
   await page.getByRole("button", { name: "Spiel starten" }).click();
   const k = page.getByRole("button", { name: "+1.000", exact: true });
   const pile = () => page.getByRole("banner").getByText(/Karten/).textContent();

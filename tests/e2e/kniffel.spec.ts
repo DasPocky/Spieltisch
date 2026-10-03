@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoScroll, shot } from "./util";
+import { closeSettings, expectNoScroll, openSettings, shot } from "./util";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -12,15 +12,21 @@ async function startLocal(page: Page, names: string[], real = false) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
-  if (real) await page.getByRole("radio", { name: /Echte Würfel/ }).click();
+  if (real) {
+    await openSettings(page);
+    await page.getByRole("radio", { name: /Echte Würfel/ }).click();
+    await closeSettings(page);
+  }
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
 
-test("Kniffel auf der Startseite und Regeln", async ({ page }) => {
+test("Kniffel: alter Link führt in die lokale Lobby, Regeln im Menü", async ({ page }) => {
   await page.goto("/spiel/kniffel");
-  await expect(page.getByRole("heading", { name: "Kniffel" })).toBeVisible();
+  await expect(page).toHaveURL(/\/lokal$/);
+  await expect(page.getByTestId("game-card")).toContainText("Kniffel");
   await expectNoScroll(page);
-  await page.getByRole("button", { name: "Regeln" }).click();
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("button", { name: "Regeln: Kniffel" }).click();
   await expect(page.getByText("Bonus +35")).toBeVisible();
   await shot(page, "30-kniffel-rules");
 });
@@ -79,6 +85,16 @@ test("Kniffel lokal mit echten Würfeln (Block) auf kleinem Handy", async ({ pag
   await page.getByRole("button", { name: "25 eintragen" }).click();
   await expect(page.getByTestId("current-player")).toHaveText("Cem");
   await page.getByRole("button", { name: "Menü" }).click();
+  // Ein Rückgängig-Knopf (kein eigenes „Letzten Eintrag zurücknehmen“ mehr)
+  await expect(page.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(1);
+  // Spieler & Verlauf gibt es auch bei Kniffel
+  await page.getByRole("button", { name: /Spieler & Verlauf/ }).click();
+  await expect(page.getByTestId("history")).toContainText("Full House");
+  await expect(page.getByTestId("overview")).toContainText("Cem");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("button", { name: "Letzten Zug zurücknehmen" }).click();
+  await expect(page.getByTestId("current-player")).toHaveText("Ben");
   await page.getByRole("radio", { name: /Voll/ }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);

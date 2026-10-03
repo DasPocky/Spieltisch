@@ -43,7 +43,7 @@ function Screen({ back, children }: { back: boolean; children: ReactNode }) {
   return (
     <main className="mx-auto flex h-dvh-safe max-w-md flex-col px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <header className="flex h-14 shrink-0 items-center">
-        {back && <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate("/")}><ChevronLeft />Alle Spiele</Button>}
+        {back && <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate("/")}><ChevronLeft />Startseite</Button>}
       </header>
       <div className="my-auto text-center">
         <Logo className="mx-auto mb-5 size-16 -rotate-6 rounded-2xl" />

@@ -1,7 +1,6 @@
 import type { RoomState } from "@shared/platform/room";
 import { flip7, type F7Action, type F7State } from "@shared/games/flip7/logic";
 import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
 import { Board, Tile } from "./Board";
 
 /** Symbol: gefächerte Zahlenkarten mit der 7 vorn */
@@ -24,14 +23,6 @@ function HeaderExtra({ game }: BoardProps<F7State, F7Action>) {
   );
 }
 
-function MenuExtras({ game }: BoardProps<F7State, F7Action>) {
-  return (
-    <Section title="Verlauf">
-      {game.log.length ? <ul className="text-[0.95rem]">{game.log.slice().reverse().map((e, i) => <li key={i} className="border-b border-border py-2">{e}</li>)}</ul>
-        : <p className="text-sm text-muted-foreground">Noch nichts passiert.</p>}
-    </Section>
-  );
-}
 
 const Row = ({ cards, title, text }: { cards: string[]; title: string; text: string }) => (
   <li className="glass flex gap-3 rounded-xl p-3">
@@ -90,4 +81,4 @@ const overview = (s: F7State, room: RoomState) => s.mode === "table" ? null : ({
   curId: s.pending ? s.pending.by : s.curId,
 });
 
-export const flip7UI: GameUI<F7State, F7Action> = { logic: flip7, Icon, Board, Rules, MenuExtras, HeaderExtra, log, overview };
+export const flip7UI: GameUI<F7State, F7Action> = { logic: flip7, Icon, Board, Rules, HeaderExtra, log, overview };

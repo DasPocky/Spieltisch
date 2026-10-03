@@ -1,7 +1,6 @@
 import type { RoomState } from "@shared/platform/room";
 import { skyjo, type SkAction, type SkState } from "@shared/games/skyjo/logic";
-import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
+import type { GameUI } from "@/games/types";
 import { Board, cardColor } from "./Board";
 
 /** Symbol: drei aufgefächerte Skyjo-Karten */
@@ -46,14 +45,6 @@ function Rules() {
   );
 }
 
-function MenuExtras({ game: s }: BoardProps<SkState, SkAction>) {
-  return (
-    <Section title="Verlauf">
-      {s.log.length ? <ul className="grid gap-1 text-sm">{s.log.slice().reverse().map((l, i) => <li key={i} className="border-b border-border py-1.5">{l}</li>)}</ul>
-        : <p className="text-sm text-muted-foreground">Noch nichts passiert.</p>}
-    </Section>
-  );
-}
 
 /** Verlauf und Spielerübersicht für „Spieler & Verlauf“ */
 const log = (s: SkState) => (s.mode === "table" ? [] : s.log);
@@ -63,4 +54,4 @@ const overview = (s: SkState, room: RoomState) => s.mode === "table" ? null : ({
   curId: s.phase === "turn" ? s.curId : null,
 });
 
-export const skyjoUI: GameUI<SkState, SkAction> = { logic: skyjo, Icon, Board, Rules, MenuExtras, log, overview };
+export const skyjoUI: GameUI<SkState, SkAction> = { logic: skyjo, Icon, Board, Rules, log, overview };

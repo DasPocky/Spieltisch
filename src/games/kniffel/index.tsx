@@ -1,7 +1,5 @@
 import { ALL_CATS, CATS, kniffel, totals, type KniffelAction, type KniffelState } from "@shared/games/kniffel/logic";
-import { Button } from "@/components/ui/button";
 import type { BoardProps, GameUI } from "@/games/types";
-import { Section } from "@/platform/MenuSheet";
 import { Board } from "./Board";
 import { Rules } from "./Rules";
 
@@ -30,30 +28,19 @@ function HeaderExtra({ game, room }: BoardProps<KniffelState, KniffelAction>) {
   );
 }
 
-function MenuExtras({ game, hostTools, act }: BoardProps<KniffelState, KniffelAction>) {
+/** Verlauf für „Spieler & Verlauf“: wer was eingetragen hat */
+function History({ game }: BoardProps<KniffelState, KniffelAction>) {
+  if (!game.log.length) return <p className="text-sm text-muted-foreground">Noch keine Einträge.</p>;
   return (
-    <>
-      {hostTools && (
-        <div className="mt-2 grid gap-2">
-          <Button variant="secondary" className="justify-start" disabled={!game.log.length} onClick={() => act({ type: "undo" })}>
-            Letzten Eintrag zurücknehmen
-          </Button>
-        </div>
-      )}
-      <Section title="Verlauf">
-        {game.log.length ? (
-          <ul className="text-[0.95rem]">
-            {game.log.slice().reverse().slice(0, 30).map((e, i) => (
-              <li key={i} className="flex justify-between gap-3 border-b border-border py-2.5">
-                <span>{e.name}<span className="block text-sm text-muted-foreground">{CATS[e.cat].name}{e.extra ? " · Extra-Kniffel" : ""}</span></span>
-                <b className="tabular-nums">{e.pts || e.extra ? `+${e.pts + e.extra}` : "gestrichen"}</b>
-              </li>
-            ))}
-          </ul>
-        ) : <p className="text-sm text-muted-foreground">Noch keine Einträge.</p>}
-      </Section>
-    </>
+    <ul className="text-[0.95rem]" data-testid="history">
+      {game.log.slice().reverse().slice(0, 30).map((e, i) => (
+        <li key={i} className="flex justify-between gap-3 border-b border-border py-2.5">
+          <span>{e.name}<span className="block text-sm text-muted-foreground">{CATS[e.cat].name}{e.extra ? " · Extra-Kniffel" : ""}</span></span>
+          <b className="tabular-nums">{e.pts || e.extra ? `+${e.pts + e.extra}` : "gestrichen"}</b>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-export const kniffelUI: GameUI<KniffelState, KniffelAction> = { logic: kniffel, Icon, Board, Rules, MenuExtras, HeaderExtra };
+export const kniffelUI: GameUI<KniffelState, KniffelAction> = { logic: kniffel, Icon, Board, Rules, History, HeaderExtra, undoEntry: (g) => g.log.length > 0 };

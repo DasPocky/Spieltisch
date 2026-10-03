@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Confirm } from "@/components/Confirm";
 import { getGameUI } from "@/games";
 import { navigate } from "@/hooks/useRoute";
-import { NAME_KEY } from "@/lib/storage";
+import { NAME_KEY, remove, RETURN_KEY } from "@/lib/storage";
 import { createTransfer, deleteProfile, exportData, fetchStats, importData, myAvatar, myName, myProfile, redeemTransfer, saveAvatar, saveName, wipeAllData } from "@/lib/profile";
 import { adoptAndSync, syncMe, useMyGroups } from "@/lib/group";
 import { Avatar, AvatarPicker } from "@/platform/Avatar";
@@ -46,6 +46,8 @@ export function Profile() {
   const groups = useMyGroups();
   const otherCode = parseProfileId(other);
   const otherOk = TRANSFER_CODE_RE.test(otherCode) || PROFILE_ID_RE.test(otherCode);
+  // Aus dem Menü einer Partie gekommen: zurück dorthin
+  const [back] = useState(() => { try { return sessionStorage.getItem(RETURN_KEY); } catch { return null; } });
 
   useEffect(() => {
     let on = true;
@@ -102,9 +104,9 @@ export function Profile() {
   return (
     <main className="mx-auto flex min-h-dvh-safe max-w-md flex-col gap-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <header className="flex h-14 shrink-0 items-center">
-        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate("/")}><ChevronLeft />Spieltisch</Button>
+        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => { remove(RETURN_KEY, true); navigate(back ?? "/"); }}><ChevronLeft />{back ? "Zurück zum Spiel" : "Spieltisch"}</Button>
       </header>
-      <h1 className="text-3xl font-bold tracking-tight">Profil & Einstellungen</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Mein Profil</h1>
 
       <Card className="grid gap-2">
         <Label htmlFor="profile-name">Dein Name</Label>
@@ -253,7 +255,7 @@ const PREFS: [keyof Prefs, string, string][] = [
   ["sound", "Töne", "Leise Klänge beim Spielen."],
   ["vibration", "Vibration", "Kurz vibrieren, wenn du dran bist."],
   ["announce", "„Wer ist dran?“ ansagen", "Liest vor, wer am Zug ist."],
-  ["hints", "Spielhilfen", "Zeigt, welche Karten oder Züge gerade gehen."],
+  ["hints", "Spielhilfen für mich", "Zeigt dir, welche Karten oder Züge gerade gehen – wenn der Raum Spielhilfen erlaubt."],
 ];
 
 /** Rückmeldung während der Partie – gilt nur für dieses Gerät */

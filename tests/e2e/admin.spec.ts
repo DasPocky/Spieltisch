@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { createRoom, newPhone, shot } from "./util";
+import { createRoom, newPhone, openSettings, shot } from "./util";
 
 const PW = "test-admin";
 const allOn = { site: "on", games: {}, message: "" };
@@ -51,15 +51,16 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
   await expect(page.getByRole("status")).toHaveText("Gespeichert.");
   await shot(page, "99-admin");
 
-  // Startseite: Kniffel weg, Flip 7 mit Schloss
+  // Spielauswahl der Lobby: Kniffel weg, Flip 7 mit Schloss
   await page.goto("/");
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
+  await page.getByTestId("game-card").click();
   await expect(page.getByRole("button", { name: /^Tutto/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Kniffel/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Flip 7/ })).toHaveAccessibleName(/Flip 7/);
   await expect(page.getByRole("button", { name: /^Flip 7/ }).getByLabel("mit Zugangscode")).toBeVisible();
 
-  // Kniffel direkt aufgerufen: geschlossen
+  // Kniffel über den alten Link: geschlossen
   await page.goto("/spiel/kniffel");
   await expect(page.getByTestId("closed")).toHaveText("Kniffel ist gerade geschlossen");
 
@@ -78,7 +79,7 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
   await expect(page.getByRole("alert")).toHaveText("Der Code stimmt nicht.");
   await page.getByLabel("Zugangscode").fill("spieleabend");
   await page.getByRole("button", { name: "Freischalten" }).click();
-  await expect(page.getByRole("heading", { name: "Flip 7" })).toBeVisible();
+  await expect(page.getByTestId("game-card")).toContainText("Flip 7");
 });
 
 test("Admin: ganzer Spieltisch aus mit Hinweis", async ({ page, request }) => {
@@ -156,7 +157,7 @@ test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({
   await login(page);
   await page.getByRole("tab", { name: "Standards" }).click();
   await page.getByRole("button", { name: "Kniffel", exact: true }).click();
-  await page.getByRole("checkbox", { name: /Extra-Kniffel/ }).click();
+  await page.getByRole("radio", { name: /Ohne Extra/ }).click();
   await adminShot(page, "3-standards");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page.getByRole("status")).toHaveText("Gespeichert.");
@@ -165,15 +166,17 @@ test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({
   // Online: neuer Raum hat den Standard
   const host = await newPhone(browser);
   await createRoom(host, "kniffel", "Hanna", "4321");
-  await expect(host.getByRole("checkbox", { name: /Extra-Kniffel/ })).toBeChecked();
+  await openSettings(host);
+  await expect(host.getByRole("radio", { name: /Ohne Extra/ })).toBeChecked();
   await host.context().close();
 
   // Lokal: frischer Spielstand startet mit dem Standard, lässt sich aber ändern
   const local = await newPhone(browser);
   await local.goto("/spiel/kniffel/lokal");
-  const box = local.getByRole("checkbox", { name: /Extra-Kniffel/ });
+  await openSettings(local);
+  const box = local.getByRole("radio", { name: /Ohne Extra/ });
   await expect(box).toBeChecked();
-  await box.click();
+  await local.getByRole("radio", { name: /\+50 und Joker/ }).click();
   await expect(box).not.toBeChecked();
   await local.context().close();
 });
