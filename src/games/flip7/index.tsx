@@ -45,7 +45,7 @@ function Rules() {
     <>
       <section className="glass rounded-2xl p-4">
         <h3 className="font-semibold">Ziel</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Wer am Ende einer Runde als Erster das Spielziel (Standard 200 Punkte) erreicht, gewinnt – bei mehreren die höchste Summe.</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Wer am Ende einer Runde als Erster das Spielziel (Standard 200 Punkte) erreicht, gewinnt – bei mehreren die höchste Summe. Gleichstand an der Spitze: Es wird weitergespielt, bis einer allein vorn liegt.</p>
         <h3 className="mt-4 font-semibold">So geht's</h3>
         <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
           <li>Jeder bekommt eine offene Karte. Dann entscheidet reihum jeder: <b className="text-foreground">Noch eine!</b> oder <b className="text-foreground">Aufhören</b>.</li>
@@ -65,8 +65,8 @@ function Rules() {
         <Row cards={["a:second"]} title="Zweite Chance" text="Rettet dich einmal vor einer doppelten Zahl. Hast du schon eine, gibst du sie einem anderen aktiven Spieler." />
         <Row cards={["m:+4", "m:x2"]} title="Modifikatoren" text="+2 bis +10 und ×2 (verdoppelt nur die Zahlen)." />
       </ul>
-      <h3 className="mt-5 mb-2 font-semibold">Voll fies</h3>
-      <p className="mb-2 text-sm leading-relaxed text-muted-foreground">Angelehnt an „Flip 7: Voll fies!“ – die genaue Kartenverteilung des Originals kann abweichen. Keine zweite Chance, Zahlen bis 13 (dreizehn 13er).</p>
+      <h3 className="mt-5 mb-2 font-semibold">Voll fies <span className="text-xs font-normal text-muted-foreground">(Hausvariante)</span></h3>
+      <p className="mb-2 text-sm leading-relaxed text-muted-foreground">Eigene Variante, angelehnt an „Flip 7: Voll fies!“ – Kartenverteilung und Details weichen vom Original ab. Keine zweite Chance, Zahlen bis 13 (dreizehn 13er).</p>
       <ul className="grid gap-2">
         <Row cards={["n:13L"]} title="Glücks-13" text="Mit ihr darfst du eine zweite 13 haben, ohne rauszufliegen." />
         <Row cards={["n:7U"]} title="Unglücks-7" text="Alles andere vor dir wird abgeworfen – nur die 7 bleibt liegen." />

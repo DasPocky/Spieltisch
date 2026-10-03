@@ -236,13 +236,13 @@ export const fischen: GameLogic<FischenState, FischenAction> = {
     },
     deckSetting("fr52"),
     {
-      key: "afterFish", label: "Nach „Geh fischen!“ ist dran", type: "choice", default: "next", inGame: true,
+      key: "afterFish", label: "Nach „Geh fischen!“ ist dran", type: "choice", default: "next", inGame: true, group: "Hausregeln",
       choices: [
-        { value: "next", label: "Der Nächste", hint: "im Uhrzeigersinn" },
+        { value: "next", label: "Der Nächste", hint: "Original – im Uhrzeigersinn" },
         { value: "asked", label: "Der Gefragte", hint: "wer „Nein“ sagte" },
       ],
     },
-    { key: "luckyAgain", label: "Glück beim Fischen: nochmal", type: "toggle", default: true, hint: "wer genau den gefragten Wert zieht, ist nochmal dran" },
+    { key: "luckyAgain", label: "Glück beim Fischen: nochmal", type: "toggle", default: true, hint: "Original – wer genau den gefragten Wert zieht, ist nochmal dran", group: "Hausregeln", showIf: (o) => o.cards !== "table" },
   ],
   /** 32 Karten reichen für 6, 52 Karten für 8 Spieler */
   playerLimits: (o) => ({ min: 2, max: deckOf(o, "fr52").ranks.length > 8 ? 8 : 6 }),

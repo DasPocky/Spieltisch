@@ -112,6 +112,24 @@ describe("Flip 7", () => {
     expect(g(r).winners).toEqual(["p1"]);
   });
 
+  it("Gleichstand an der Spitze: noch eine Runde", () => {
+    let r = start(3, { target: 100 });
+    r = stack(r, [], { p1: { nums: ["n:12"] }, p2: { nums: ["n:6"] }, p3: { nums: ["n:2"], status: "stayed" } });
+    r = { ...r, game: { ...g(r), curId: "p1", scores: { p1: 95, p2: 101, p3: 0 } } };
+    r = game(game(r, { type: "stay" }), { type: "stay" });
+    expect(g(r).scores.p1).toBe(107);
+    expect(g(r).scores.p2).toBe(107);
+    expect(g(r).winners).toEqual([]);
+    expect(g(r).round).toBe(2);
+  });
+
+  it("Echte Karten: Gleichstand an der Spitze – weiter", () => {
+    let r = start(3, { mode: "table", target: 100 });
+    for (const [id, v] of [["p1", 120], ["p2", 120], ["p3", 30]] as const) r = game(r, { type: "padEnter", player: id, points: v });
+    r = game(r, { type: "padFinish" });
+    expect(g(r).winners).toEqual([]);
+  });
+
   it("Voll fies: Klauen, Minus verschenken, Glücks-13, Unglücks-7", () => {
     let r = start(3, { variant: "fies" });
     r = stack(r, ["a:steal"], { p1: { nums: ["n:4"] }, p2: { nums: ["n:9"] }, p3: { nums: ["n:2"] } });

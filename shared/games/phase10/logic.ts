@@ -218,6 +218,17 @@ function resetEntries(s: P10State, ctx: GameContext) {
   s.done = Object.fromEntries(ctx.players.map((p) => [p.id, false]));
 }
 
+/** Wen darf man aussetzen lassen? Alle anderen ohne offenes Aussetzen, in Spielreihenfolge ab dem Nächsten */
+export function skipTargets(s: P10State, players: Player[], me: string): string[] {
+  const out: string[] = [];
+  let id = nextPlayerId(players, me);
+  for (let i = 0; i < players.length && id && id !== me; i++) {
+    if (!((s.skips[id] ?? 0) > 0) && id in s.counts) out.push(id);
+    id = nextPlayerId(players, id);
+  }
+  return out;
+}
+
 /** Nächster Spieler, Aussetzer werden übersprungen */
 function advance(s: P10State, ctx: GameContext) {
   let id = nextPlayerId(ctx.players, s.curId);
@@ -343,9 +354,12 @@ function apply(prev: P10State, a: P10Action, ctx: GameContext): P10State {
       s.discard.push(a.card);
       if (!isSkip(a.card)) s.log.push(`${nameOf(ctx, me)} legt ${cardLabel(a.card)} ab`);
       if (isSkip(a.card)) {
-        const others = ctx.players.filter((p) => p.id !== me);
-        const target = a.skip && others.some((p) => p.id === a.skip) ? a.skip : nextPlayerId(ctx.players, me)!;
-        if (target !== me) { s.skips[target] = (s.skips[target] ?? 0) + 1; s.log.push(`${nameOf(ctx, me)} lässt ${nameOf(ctx, target)} aussetzen`); }
+        // Wer schon aussetzen muss, bekommt kein zweites Aussetzen (höchstens eins vor sich)
+        const free = skipTargets(s, ctx.players, me);
+        if (a.skip && a.skip !== me && ctx.players.some((p) => p.id === a.skip) && !free.includes(a.skip)) throw new GameError(`${nameOf(ctx, a.skip)} setzt schon aus.`);
+        const target = a.skip && free.includes(a.skip) ? a.skip : free[0];
+        if (target) { s.skips[target] = 1; s.log.push(`${nameOf(ctx, me)} lässt ${nameOf(ctx, target)} aussetzen`); }
+        else s.log.push(`${nameOf(ctx, me)} legt Aussetzen ab – alle anderen setzen schon aus`);
       }
       if (!hand.length) finishAppRound(s, ctx, me);
       else advance(s, ctx);

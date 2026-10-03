@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { PlayerRow } from "@/platform/PlayerRow";
-import { Bird, Crown, Eye, EyeOff, Footprints, Heart, Laugh, Music, Scale, Skull, type LucideIcon } from "lucide-react";
+import { Bird, Crown, Eye, EyeOff, Footprints, Heart, Laugh, Music, PawPrint, Scale, Skull, type LucideIcon } from "lucide-react";
 import { ALL_ROLES, knownRoles, participants, ROLES, type Death, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { Player } from "@shared/platform/types";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,7 @@ export function goalOf(role: Role): string {
   if (role === "engel") return "Dein Ziel: in der ersten Runde sterben – sonst spielst du fürs Dorf.";
   if (role === "wildeskind") return "Dein Ziel: mit dem Dorf gewinnen – bis dein Vorbild stirbt.";
   if (role === "wolfshund") return "Dein Ziel hängt von deiner Wahl ab: Dorf oder Wölfe.";
-  if (ROLES[role].team === "werwolf") return "Euer Ziel: so viele Wölfe wie Dorfbewohner – ohne aufzufliegen.";
+  if (ROLES[role].team === "werwolf") return "Euer Ziel: alle Dorfbewohner fressen – ohne aufzufliegen.";
   return "Dein Ziel: alle Werwölfe finden und verurteilen.";
 }
 
@@ -125,6 +125,7 @@ export function AliveStrip({ s, players, me, showAll }: { s: WerwolfState; playe
             {s.captain === id && <span role="img" aria-label="Hauptmann"><Ico icon={Crown} className="size-3.5 text-ice" /></span>}
             {s.lovers?.includes(id) && <span role="img" aria-label="verliebt"><Ico icon={Heart} className="size-3.5 text-navy-200" /></span>}
             {s.enchanted.includes(id) && <span role="img" aria-label="verzaubert"><Ico icon={Music} className="size-3.5 text-navy-200" /></span>}
+            {showAll && s.converted?.includes(id) && <span role="img" aria-label="vom Urwolf verwandelt"><Ico icon={PawPrint} className="size-3.5 text-destructive" /></span>}
           </span>
         );
       })}
@@ -152,7 +153,10 @@ export function News({ s, players }: { s: WerwolfState; players: Player[] }) {
         </ul>
       ) : <p className="mt-1 font-semibold">{kind === "night" ? "Niemand ist gestorben." : "Niemand wurde verurteilt."}</p>}
       {s.news.idiot && <p className="mt-1 font-semibold"><Ico icon={Laugh} className="mr-1" />{nameOf(players, s.news.idiot)} ist der Dorfdepp – das Dorf lacht und lässt ihn leben. Er darf nicht mehr abstimmen.</p>}
-      {s.news.scapegoat && <p className="mt-1 text-sm text-muted-foreground"><Ico icon={Scale} className="mr-1" />Gleichstand – der Sündenbock musste sterben.</p>}
+      {s.powersLost && deaths.some((d) => known.has(d.id) && s.roles[d.id] === "alter" && d.cause !== "wolf") && (
+        <p className="mt-1 text-sm font-semibold text-ice">Der Alte wurde getötet – alle Sonderrollen des Dorfes verlieren ihre Fähigkeiten.</p>
+      )}
+      {s.news.scapegoat &&<p className="mt-1 text-sm text-muted-foreground"><Ico icon={Scale} className="mr-1" />Gleichstand – der Sündenbock musste sterben.</p>}
       {s.news.growl && <p className="mt-1 font-semibold text-ice"><Ico icon={Footprints} className="mr-1" />Der Bär brummt! Neben dem Bärenführer sitzt ein Werwolf.</p>}
       {s.news.growl === false && <p className="mt-1 text-sm text-muted-foreground"><Ico icon={Footprints} className="mr-1" />Der Bär bleibt still.</p>}
       {s.news.raven && <p className="mt-1 text-sm text-muted-foreground"><Ico icon={Bird} className="mr-1" />Der Rabe hat {nameOf(players, s.news.raven)} markiert: +2 Stimmen bei der Abstimmung.</p>}

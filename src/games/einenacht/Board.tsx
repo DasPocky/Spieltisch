@@ -172,7 +172,7 @@ function DeviceDay({ s, players, act }: { s: ONState; players: Player[]; act: (a
   return (
     <>
       <Countdown s={s} voice={speech} />
-      <Panel title={<IconTitle icon={Sun}>Wer stirbt?</IconTitle>} sub="Zeigt alle gleichzeitig auf eine Person. Wer die meisten Finger hat, stirbt (bei Gleichstand alle). Hat jeder nur einen, stirbt niemand. Stirbt der Jäger, wählt auch aus, auf wen er gezeigt hat.">
+      <Panel title={<IconTitle icon={Sun}>Wer stirbt?</IconTitle>} sub="Zeigt alle gleichzeitig auf eine Person. Wer die meisten Finger hat, stirbt (bei Gleichstand alle). Hat niemand mehr als einen, stirbt niemand. Stirbt der Jäger, wählt auch aus, auf wen er gezeigt hat.">
         <Picker ids={ids(s)} players={players} selected={pick} onPick={(id) => setPick((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))} />
       </Panel>
       <Button size="lg" className="shrink-0" onClick={() => act({ type: "lynch", targets: pick })}>{pick.length ? `${pick.map((id) => nameOf(players, id)).join(" & ")} stirbt` : "Niemand stirbt"}</Button>

@@ -60,6 +60,7 @@ for (const size of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
       await page.getByRole("button", { name: "Hinzufügen" }).click();
     }
     await page.getByRole("radio", { name: /Echte Karten/ }).click();
+    await page.getByRole("button", { name: /Hausregeln/ }).click();
     await page.getByRole("radio", { name: /Der Gefragte/ }).click();
     await page.getByRole("button", { name: "Spiel starten" }).click();
     await expect(page.getByTestId("current-player")).toHaveText("Anna");

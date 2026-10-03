@@ -155,6 +155,8 @@ function endRound(s: SkState, ctx: GameContext) {
     const g = s.grids[p.id];
     if (!g) continue;
     for (const c of g) if (c) c.up = true;
+    // Auch beim Aufdecken am Rundenende fallen drei Gleiche in einer Spalte weg
+    clearColumns(s, p.id);
     raw[p.id] = g.reduce((t, c) => t + (c?.v ?? 0), 0);
   }
   s.curId = null;

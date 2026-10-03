@@ -84,6 +84,21 @@ describe("Phase 10", () => {
     expect(g(r).skips.p2).toBe(0);
   });
 
+  it("Aussetzen: höchstens eins pro Spieler offen", () => {
+    let r = fix(start(3), ["S", "r-1", "r-2"], { skips: { p2: 1 } });
+    expect(() => game(r, { type: "discard", card: "S", skip: "p2" })).toThrow(/setzt schon aus/);
+    // ohne Wahl trifft es den Nächsten, der noch frei ist
+    r = game(r, { type: "discard", card: "S" });
+    expect(g(r).log).toContain("Anna lässt Cem aussetzen");
+    // beide setzen aus – Anna ist gleich wieder dran
+    expect(g(r).curId).toBe("p1");
+    // alle anderen setzen schon aus: Aussetzen verfällt
+    r = fix(start(2), ["S", "r-1"], { skips: { p2: 1 } });
+    r = game(r, { type: "discard", card: "S" });
+    expect(g(r).skips.p2).toBe(0);
+    expect(g(r).curId).toBe("p1");
+  });
+
   it("Phase 10 geschafft: Spiel vorbei", () => {
     let r = fix(start(2), ["r-5", "b-5", "g-5", "y-5", "W", "r-8", "b-8", "W"], { phase: { p1: 10, p2: 3 } });
     r = game(r, { type: "lay", groups: [["r-5", "b-5", "g-5", "y-5", "W"], ["r-8", "b-8", "W"]] });

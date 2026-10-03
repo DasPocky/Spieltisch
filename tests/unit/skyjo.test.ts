@@ -99,6 +99,19 @@ describe("Skyjo", () => {
     expect(g(r).curId).toBe("p1"); // Beender beginnt
   });
 
+  it("Rundenende: drei Gleiche in einer Spalte fallen auch beim letzten Aufdecken weg", () => {
+    let r = start(3);
+    r = grids(r, { p1: [1, 2, 3, 4, 2, 3, 4, 1, 3, 4, 1, 2], p2: [5, 6, 7, 8, 6, 7, 8, 5, 7, 8, 5, 6], p3: [9, 8, 7, 6, 8, 7, 6, 6, 7, 6, 9, 6] });
+    r = flipAll2(r, ["p1", "p2", "p3"]);
+    r = { ...r, game: { ...g(r), curId: "p1", grids: { ...g(r).grids, p1: g(r).grids.p1.map((c, i) => ({ ...c!, up: i !== 11 })) } } };
+    r = game(game(r, { type: "draw", from: "deck" }), { type: "discardDrawn" });
+    r = game(r, { type: "flip", i: 11 });
+    for (const _ of ["p2", "p3"]) r = game(game(game(r, { type: "draw", from: "deck" }), { type: "discardDrawn" }), { type: "flip", i: 5 });
+    expect(g(r).phase).toBe("roundEnd");
+    expect(g(r).grids.p3[3]).toBeNull();
+    expect(g(r).rounds[0].points.p3).toBe(85 - 18);
+  });
+
   it("Echte Karten: Punkteblock mit Verdopplung und Spielende", () => {
     let r = start(2, { mode: "table", target: 50 });
     expect(() => game(r, { type: "finishRound" })).toThrow(/fehlen/);

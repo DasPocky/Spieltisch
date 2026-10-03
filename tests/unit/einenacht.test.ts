@@ -97,6 +97,37 @@ describe("Eine Nacht", () => {
     r = w(r, { type: "lynch", targets: ["p2"] });
     expect(g(r).winners).toEqual(["dorf"]);
   });
+
+  describe("Sieg nach Originalregeln", () => {
+    /** Lokal ohne Tausch direkt in den Tag, dann die Toten eintragen */
+    function verdict(cards: Record<string, ONRole>, center: ONRole[], dead: string[]) {
+      let r = withCards(start(Object.keys(cards).length), cards, center);
+      r = w(r, { type: "startNight" });
+      while (g(r).phase === "night") r = w(r, { type: "next" });
+      return g(w(r, { type: "lynch", targets: dead })).winners;
+    }
+    const noWolf = { p1: "guenstling", p2: "dorf", p3: "seherin", p4: "gerber" } as Record<string, ONRole>;
+    const mid: ONRole[] = ["werwolf", "werwolf", "dorf"];
+
+    it("keine Werwölfe unter den Spielern: Dorf gewinnt nur, wenn niemand stirbt", () => {
+      expect(verdict(noWolf, mid, [])).toEqual(["dorf"]);
+    });
+    it("… stirbt jemand anderes, gewinnt der Günstling – auch wenn er selbst mitstirbt", () => {
+      expect(verdict(noWolf, mid, ["p2"])).toEqual(["werwolf"]);
+      expect(verdict(noWolf, mid, ["p1", "p2"])).toEqual(["werwolf"]);
+    });
+    it("… stirbt nur der Günstling, gewinnt niemand", () => {
+      expect(verdict(noWolf, mid, ["p1"])).toEqual([]);
+    });
+    it("Gerber stirbt: nur er gewinnt – mit totem Werwolf auch das Dorf", () => {
+      expect(verdict(noWolf, mid, ["p4", "p2"])).toEqual(["gerber"]);
+      expect(verdict({ p1: "werwolf", p2: "dorf", p3: "gerber" }, ["dorf", "dorf", "dorf"], ["p3"])).toEqual(["gerber"]);
+      expect(verdict({ p1: "werwolf", p2: "dorf", p3: "gerber" }, ["dorf", "dorf", "dorf"], ["p1", "p3"])).toEqual(["gerber", "dorf"]);
+    });
+    it("Günstling stirbt, kein Werwolf: die Werwölfe gewinnen trotzdem", () => {
+      expect(verdict({ p1: "werwolf", p2: "guenstling", p3: "dorf" }, ["dorf", "dorf", "dorf"], ["p2"])).toEqual(["werwolf"]);
+    });
+  });
 });
 
 describe("Eine Nacht mit eigenen Karten", () => {

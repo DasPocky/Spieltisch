@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withKey, type CNState, type Color } from "@shared/games/codenames/logic";
+import { countLabel, UNLIMITED, withKey, type CNState, type Color } from "@shared/games/codenames/logic";
 import { WORDS } from "@shared/games/codenames/words";
 import { viewRoom, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
@@ -96,6 +96,22 @@ describe("Codenames", () => {
     q = game(q, { type: "clue", word: "Allesamt", count: 0 }, "p1");
     for (let i = 0; i < 9; i++) q = game(q, { type: "guess", i }, "p2");
     expect(g(q).winner).toBe("rot");
+  });
+
+  it("Hinweiszahl 0 und ∞: beliebig viele Versuche, mindestens einer; sonst 0–9", () => {
+    let r = start();
+    expect(() => game(r, { type: "clue", word: "Quatsch", count: 10 }, "p1")).toThrow(/0 und 9/);
+    expect(() => game(r, { type: "clue", word: "Quatsch", count: -2 }, "p1")).toThrow(/0 und 9/);
+    r = game(r, { type: "clue", word: "Xyloquark", count: 0 }, "p1");
+    expect(g(r).clue).toEqual({ word: "Xyloquark", count: 0 });
+    expect(() => game(r, { type: "pass" }, "p2")).toThrow(/Mindestens/);
+    for (let i = 0; i < 8; i++) r = game(r, { type: "guess", i }, "p2");
+    expect(g(r).turn).toBe("rot");
+    r = game(r, { type: "pass" }, "p2");
+    r = game(r, { type: "clue", word: "Quarxylo", count: UNLIMITED }, "p3");
+    expect(countLabel(g(r).clue!.count)).toBe("∞");
+    for (let i = 9; i < 16; i++) r = game(r, { type: "guess", i }, "p4");
+    expect(g(r).turn).toBe("blau");
   });
 
   it("Brettspiel-Hilfe: Chefs markieren, Sieg wird erkannt, Tippfehler zurücknehmbar", () => {

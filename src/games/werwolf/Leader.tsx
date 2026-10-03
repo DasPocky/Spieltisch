@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, Crown, Pause, Play, Smartphone, Crosshair, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Search, Skull, Sun, Users, Volume2, VolumeX } from "lucide-react";
-import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, voters, type Role, type Step, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
+import { aliveIds, aliveWolves, holders, isWolf, participants, ROLES, STEP_ROLE, voters, wolfAt, type Role, type Step, type WerwolfAction, type WerwolfState, wolf2Targets } from "@shared/games/werwolf/logic";
 import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { RulesSheet } from "@/platform/RulesSheet";
@@ -53,6 +53,9 @@ export function Leader({ s, players, act, online, enabled, options }: { s: Werwo
   );
 }
 
+/** Engel im Spiel: Die Partie beginnt mit einem Tag samt Abstimmung */
+const dayFirst = (s: WerwolfState) => participants(s).some((id) => s.roles[id] === "engel");
+
 /**
  * Automatik: Das Handy geht der Reihe nach herum („Gib das Handy an …“). Hat jeder seine Rolle gesehen,
  * kommt das Handy in die Mitte und die Nacht beginnt von selbst.
@@ -73,7 +76,7 @@ function GuidedReveal({ s, players, act }: { s: WerwolfState; players: Player[];
   }, [done, act]);
   if (done) {
     return (
-      <Panel title="Alle kennen ihre Rolle" sub="Legt das Handy in die Mitte – gleich beginnt die Nacht.">
+      <Panel title="Alle kennen ihre Rolle" sub={`Legt das Handy in die Mitte – gleich beginnt ${dayFirst(s) ? "der erste Tag (der Engel spielt mit)" : "die Nacht"}.`}>
         <div className="grid flex-1 place-content-center justify-items-center gap-2">
           <Moon className="size-12 text-ice" />
           <span className="text-5xl font-bold tabular-nums">{left ?? 6}</span>
@@ -123,7 +126,7 @@ function Reveal({ s, players, act, online }: { s: WerwolfState; players: Player[
             ))}
           </ul>
         </Panel>
-        <Button size="lg" className="shrink-0" onClick={() => act({ type: "startNight" })}><Moon />Nacht beginnen</Button>
+        <Button size="lg" className="shrink-0" onClick={() => act({ type: "startNight" })}><Moon />{dayFirst(s) ? "Ersten Tag beginnen" : "Nacht beginnen"}</Button>
       </>
     );
   }
@@ -148,7 +151,7 @@ function Reveal({ s, players, act, online }: { s: WerwolfState; players: Player[
         <Picker ids={participants(s)} players={players} selected={[]} onPick={setPeek} marks={Object.fromEntries(seen.map((id) => [id, <Check aria-label="gesehen" className="size-4" />]))} />
       </Panel>
       <Button size="lg" className="shrink-0" variant={all ? "default" : "secondary"} onClick={() => act({ type: "startNight" })}>
-        <Moon />{all ? "Alle kennen ihre Rolle – Nacht beginnen" : "Nacht beginnen"}
+        <Moon />{`${all ? "Alle kennen ihre Rolle – " : ""}${dayFirst(s) ? "Ersten Tag beginnen" : "Nacht beginnen"}`}
       </Button>
     </>
   );
@@ -201,10 +204,10 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
   } else if (step === "schwestern") {
     body = <p className="text-center text-2xl font-bold"><Ico icon={Users} className="mr-2 size-6 text-ice" />{who(holders(s, "schwester"))}</p>;
   } else if (step === "werwolf" && !acted) {
-    body = <Picker ids={alive.filter((id) => !isWolf(s.roles[id]))} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    body = <Picker ids={alive.filter((id) => !wolfAt(s, id))} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf", target: pick[0] }) };
   } else if (step === "weisserwolf" && !acted) {
-    body = <Picker ids={alive.filter((id) => isWolf(s.roles[id]) && s.roles[id] !== "weisserwolf")} players={players} selected={pick} onPick={(id) => toggle(id, 1)}
+    body = <Picker ids={alive.filter((id) => wolfAt(s, id) && s.roles[id] !== "weisserwolf")} players={players} selected={pick} onPick={(id) => toggle(id, 1)}
       extra={{ label: "Niemand", selected: false, onPick: () => act({ type: "white", target: null }) }} />;
     confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Wolf wählen", ok: pick.length === 1, run: () => act({ type: "white", target: pick[0] }) };
   } else if (step === "floetenspieler" && !acted) {
@@ -222,8 +225,10 @@ function NightStep({ s, players, act, showRoles, auto, options }: { s: WerwolfSt
       </div>
     ) : <Button size="lg" variant="secondary" onClick={() => act({ type: "infect", yes: false })}>Kein Opfer – weiter</Button>;
   } else if (step === "grosserwolf" && !acted) {
-    body = <Picker ids={alive.filter((id) => !isWolf(s.roles[id]) && id !== s.victim && id !== s.infected)} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
-    confirm = { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Zweites Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf2", target: pick[0] }) };
+    body = <Picker ids={alive.filter((id) => !wolfAt(s, id) && id !== s.victim && id !== s.infected)} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
+    confirm = wolf2Targets(s).length
+      ? { label: pick.length ? `${nameOf(players, pick[0])} fressen` : "Zweites Opfer wählen", ok: pick.length === 1, run: () => act({ type: "wolf2", target: pick[0] }) }
+      : { label: "Kein zweites Opfer möglich – weiter", ok: true, run: () => act({ type: "wolf2", target: null }) };
   } else if (step === "fuchs" && !acted) {
     body = <Picker ids={alive} players={players} selected={pick} onPick={(id) => toggle(id, 1)} />;
     confirm = { label: "Schnüffeln", ok: pick.length === 1, run: () => act({ type: "fox", target: pick[0] }) };
@@ -343,6 +348,8 @@ function verdictSay(s: WerwolfState, players: Player[]) {
 }
 
 export function newsSay(s: WerwolfState, players: Player[]) {
+  // Engel im Spiel: Die Partie beginnt mit einem Tag – es gab noch keine Nacht
+  if (s.night === 0) return "Der Engel ist im Spiel: Bevor die erste Nacht beginnt, stimmt das Dorf ab.";
   const d = s.news?.kind === "night" ? s.news.deaths : [];
   if (!d.length) return "Heute Nacht ist niemand gestorben.";
   return d.map((x) => `${nameOf(players, x.id)} ist tot${s.revealDead ? ` und war ${ROLES[s.roles[x.id]].name}` : ""}.`).join(" ");
@@ -368,7 +375,7 @@ function Day({ s, players, act, options, speech }: { s: WerwolfState; players: P
 
   useEffect(() => {
     let alive = true;
-    void say(`${DAWN_SAY} ${newsSay(s, players)} Ihr habt ${minutes} Minuten.`).then(() => { if (alive) setDeadline(Date.now() + minutes * 60_000); });
+    void say(`${s.night === 0 ? "" : `${DAWN_SAY} `}${newsSay(s, players)} Ihr habt ${minutes} Minuten.`).then(() => { if (alive) setDeadline(Date.now() + minutes * 60_000); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -422,25 +429,42 @@ function Day({ s, players, act, options, speech }: { s: WerwolfState; players: P
           </div>
         </Panel>
       )}
-      {stage === "secret" && <SecretVote s={s} players={players} onResult={(target, tied) => { if (tied.length) { setTie(tied); setStage("pick"); } else act({ type: "lynch", target }); }} />}
+      {stage === "secret" && <SecretVote s={s} players={players} onResult={(target, tied) => {
+        // Gleichstand ohne Wahl des Hauptmanns: am Tisch klären; sonst gilt seine Stimme (der Sündenbock geht vor)
+        if (tied.length && !target) { setTie(tied); setStage("pick"); } else act({ type: "lynch", target, tie: tied.length > 0 || undefined });
+      }} />}
       {stage === "pick" && <Verdict s={s} players={players} act={act} tie={tie} pointed={mode === "point"} />}
     </>
   );
 }
 
-/** Ergebnis eintragen: wer hat die meisten Stimmen bzw. auf wen hat sich das Dorf geeinigt? */
+/**
+ * Ergebnis eintragen: wer hat die meisten Stimmen bzw. auf wen hat sich das Dorf geeinigt?
+ * Gleichstand: Ein lebender Sündenbock stirbt (die Logik weiß, ob es ihn gibt), sonst entscheidet der Hauptmann.
+ */
 function Verdict({ s, players, act, tie, pointed }: { s: WerwolfState; players: Player[]; act: (a: WerwolfAction) => void; tie: string[]; pointed: boolean }) {
   const [pick, setPick] = useState<string | null | undefined>(undefined);
-  const sub = tie.length ? `Gleichstand zwischen ${tie.map((id) => nameOf(players, id)).join(" und ")} – einigt euch oder wählt „Niemand“.`
-    : pointed ? "Auf wen zeigen die meisten Finger? Bei Gleichstand: „Niemand“." : "Wen verurteilt das Dorf?";
+  const [tied, setTied] = useState(tie.length > 0);
+  const captain = s.captain && s.alive[s.captain] ? nameOf(players, s.captain) : null;
+  const onTie = captain ? `Gleichstand: Lebt ein Sündenbock, stirbt er. Sonst entscheidet Hauptmann ${captain} – tippt an, wen er wählt.` : "Gleichstand: Lebt ein Sündenbock, stirbt er – sonst niemand.";
+  const sub = tie.length ? `Gleichstand zwischen ${tie.map((id) => nameOf(players, id)).join(" und ")}. ${onTie}`
+    : tied ? onTie
+    : pointed ? `Auf wen zeigen die meisten Finger?${captain ? ` ${captain} zählt als Hauptmann doppelt.` : ""} Bei Gleichstand: „Gleichstand“ antippen.` : "Wen verurteilt das Dorf?";
   return (
     <>
       <Panel title={<IconTitle icon={Sun}>Urteil</IconTitle>} sub={sub}>
         <Picker ids={tie.length ? tie : aliveIds(s)} players={players} selected={pick ? [pick] : []} onPick={(id) => setPick(id === pick ? undefined : id)}
           extra={{ label: "Niemand", selected: pick === null, onPick: () => setPick(pick === null ? undefined : null) }} />
+        {!tie.length && (
+          <button type="button" aria-pressed={tied} onClick={() => setTied(!tied)}
+            className={cn("mt-1.5 h-11 shrink-0 rounded-xl px-3 font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
+              tied ? "bg-ice text-navy-950" : "text-muted-foreground ring-1 ring-inset ring-border")}>
+            Gleichstand
+          </button>
+        )}
       </Panel>
-      <Button size="lg" className="shrink-0" disabled={pick === undefined} onClick={() => act({ type: "lynch", target: pick ?? null })}>
-        {pick ? `${nameOf(players, pick)} verurteilen` : pick === null ? "Niemanden verurteilen" : "Auswahl treffen"}
+      <Button size="lg" className="shrink-0" disabled={pick === undefined} onClick={() => act({ type: "lynch", target: pick ?? null, tie: tied || undefined })}>
+        {pick ? `${nameOf(players, pick)} verurteilen` : pick === null ? (tied ? "Gleichstand – weiter" : "Niemanden verurteilen") : "Auswahl treffen"}
       </Button>
     </>
   );
@@ -464,7 +488,10 @@ function SecretVote({ s, players, onResult }: { s: WerwolfState; players: Player
     if (!tally.size) { onResult(null, []); return; }
     const max = Math.max(...tally.values());
     const top = [...tally].filter(([, n]) => n === max).map(([id]) => id);
-    onResult(top.length === 1 ? top[0] : null, top.length > 1 ? top : []);
+    if (top.length === 1) { onResult(top[0], []); return; }
+    // Gleichstand: Der Hauptmann entscheidet, wenn er für einen der Gleichstehenden gestimmt hat
+    const cv = s.captain ? next[s.captain] : null;
+    onResult(cv && top.includes(cv) ? cv : null, top);
   };
   if (!ready) {
     return (

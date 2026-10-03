@@ -34,7 +34,7 @@ function Rules() {
       </ol>
       <h3 className="mt-4 font-semibold text-foreground">Rundenende</h3>
       <p className="mt-1.5">
-        Hat jemand alle Karten offen, ist jeder andere noch genau einmal dran. Dann werden alle Karten aufgedeckt und zusammengezählt.
+        Hat jemand alle Karten offen, ist jeder andere noch genau einmal dran. Dann werden alle Karten aufgedeckt (drei Gleiche in einer Spalte fallen auch jetzt noch weg) und zusammengezählt.
         Wer die Runde beendet hat, aber <b className="text-foreground">nicht allein am wenigsten</b> Punkte hat, zahlt seine Punkte doppelt (nur bei Plus-Punkten).
       </p>
       <h3 className="mt-4 font-semibold text-foreground">Varianten</h3>

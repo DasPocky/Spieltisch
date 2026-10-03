@@ -13,6 +13,12 @@ async function witch(page: Page) {
 async function manual(page: Page) {
   await page.getByRole("checkbox", { name: /Automatik/ }).click();
 }
+/** Hauptmannwahl am Gerät (Original: am ersten Tag) – die erste Person wird Hauptmann */
+async function elect(page: Page) {
+  await expect(page.getByTestId("ww-phase")).toHaveText("Wahl");
+  await page.getByRole("group").getByRole("button").first().click();
+  await page.getByRole("button", { name: /wird Hauptmann/ }).click();
+}
 /** Am Tag: Abstimmung starten und niemanden verurteilen */
 async function nobody(page: Page) {
   const now = page.getByRole("button", { name: "Jetzt abstimmen" });
@@ -58,8 +64,9 @@ test("Werwolf lokal: Rollen herumreichen, App liest vor, Nacht und Tag", async (
     await page.getByRole("button", { name: "Weiter" }).click();
     await page.waitForTimeout(300);
   }
-  await expect(page.getByTestId("ww-phase")).toHaveText("Tag 1");
   await expect(page.getByTestId("news")).toBeVisible();
+  await elect(page);
+  await expect(page.getByTestId("ww-phase")).toHaveText("Tag 1");
   await expectNoScroll(page);
   await shot(page, "43-ww-local-day");
   await nobody(page);
@@ -110,6 +117,11 @@ test("Werwolf online, die App erzählt – fünf Handys", async ({ browser }) =>
   await shot(witch, "46-ww-online-witch");
   await witch.getByRole("button", { name: "Bestätigen" }).click();
 
+  // Original: am ersten Tag wählt das Dorf zuerst einen Hauptmann
+  for (const p of phones) await expect(p.getByTestId("ww-phase")).toHaveText("Wahl");
+  for (const p of phones) {
+    if (await p.getByText("Hauptmannwahl", { exact: true }).isVisible()) await p.getByRole("group").getByRole("button").first().click();
+  }
   for (const p of phones) await expect(p.getByTestId("ww-phase")).toHaveText("Tag 1");
   await expect(host.getByTestId("news")).toContainText("Heute Nacht");
   await expectNoScroll(seer);
@@ -154,6 +166,7 @@ test("Werwolf online mit Spielleiter – sechs Handys", async ({ browser }) => {
     await lead.getByRole("button", { name: "Weiter" }).click();
     await lead.waitForTimeout(300);
   }
+  await elect(lead);
   await expect(lead.getByTestId("ww-phase")).toHaveText("Tag 1");
   await expect(phones[2].getByTestId("news")).toBeVisible();
   await expectNoScroll(lead);
@@ -201,7 +214,7 @@ test("Werwolf lokal mit Rollen aus allen Erweiterungen", async ({ page }) => {
     if (await next.isVisible()) await next.click();
     await page.waitForTimeout(250);
   }
-  await expect(page.getByTestId("ww-phase")).toHaveText(/Tag 1|Ende/);
+  await expect(page.getByTestId("ww-phase")).toHaveText(/Tag 1|Wahl|Ende/);
   await expectNoScroll(page);
   await shot(page, "54-ww-roles-day");
 });
@@ -216,8 +229,8 @@ test("Werwolf lokal mit eigenen Karten und Hauptmann", async ({ page }) => {
   }
   await page.getByRole("radio", { name: /Spielleiter/ }).click();
   await page.getByRole("radio", { name: /Eigene Karten/ }).click();
-  await page.getByRole("button", { name: /^Hausregeln/ }).click();
-  await page.getByRole("checkbox", { name: /Hauptmann/ }).click();
+  // Hauptmann ist Originalregel und schon an
+  await expect(page.getByRole("checkbox", { name: /^Hauptmann/ })).toBeChecked();
   await page.getByRole("button", { name: "Spiel starten" }).click();
   await expect(page.getByText("Eigene Karten zuordnen")).toBeVisible();
   await page.getByRole("button", { name: "Cem", exact: true }).click();
@@ -247,7 +260,6 @@ test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser })
   const [host] = phones;
   const code = await createRoom(host, "werwolf", "Anna", "8080");
   await host.getByRole("button", { name: /^Hausregeln/ }).click();
-  await host.getByRole("checkbox", { name: /Hauptmann/ }).click();
   await host.getByRole("radio", { name: /Stichwahl/ }).click();
   await host.getByRole("checkbox", { name: /^Hexe ein Heil/ }).click();
   await host.getByRole("checkbox", { name: /^Seherin sieht jede/ }).click();

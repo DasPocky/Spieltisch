@@ -3,7 +3,7 @@ import { PlayingCard } from "@/platform/cards/PlayingCard";
 import { cn } from "@/lib/utils";
 
 const SPECIAL = [
-  { card: "herz-7", title: "Sieben: zwei ziehen", text: "Der Nächste zieht zwei Karten. Mit „Siebenen stapeln“ darf er stattdessen selbst eine Sieben legen – dann zieht der Übernächste vier, und so weiter.", opt: false },
+  { card: "herz-7", title: "Sieben: zwei ziehen", text: "Der Nächste zieht zwei Karten – oder legt selbst eine Sieben drauf, dann zieht der Übernächste vier, und so weiter (Stapeln abschaltbar).", opt: false },
   { card: "pik-8", title: "Acht: aussetzen", text: "Der nächste Spieler setzt eine Runde aus (abschaltbar).", opt: false },
   { card: "kreuz-B", title: "Bube: Farbe wünschen", text: "Der Bube (im deutschen Blatt: der Unter) passt auf jede Karte. Wer ihn legt, wünscht sich eine Farbe, die der Nächste bedienen muss. Bube auf Bube geht nur mit der Einstellung.", opt: false },
   { card: "karo-9", title: "Neun: Richtungswechsel", text: "Die Spielrichtung dreht sich um.", opt: true },
@@ -21,6 +21,10 @@ export function Rules({ focus }: { focus?: string }) {
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           Gespielt wird mit dem französischen Blatt (Kreuz, Pik, Herz, Karo) mit 32 oder 52 Karten – oder mit dem deutschen Blatt (Eichel, Grün, Rot, Schellen). Jeder bekommt 5 (oder 6) Karten, eine wird aufgedeckt.
           Reihum legt jeder eine Karte, die in <b className="text-foreground">Farbe oder Wert</b> zur obersten passt. Wer nicht kann oder will, zieht eine Karte – passt sie, darf er sie sofort legen, sonst ist der Nächste dran.
+          Eine Sieben oder Acht als aufgedeckte Startkarte gilt schon für den ersten Spieler.
+        </p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          Feste Regeln gibt es bei Mau-Mau nicht. Standard hier: Sieben, Acht und Bube wie unten. Abweichungen stellt ihr unter <b className="text-foreground">Hausregeln</b> ein.
         </p>
         <h3 className="mt-4 font-semibold">„Mau“</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
@@ -39,7 +43,7 @@ export function Rules({ focus }: { focus?: string }) {
           <li key={x.card} data-focused={focus === x.card} className={cn("flex gap-3 rounded-xl p-3", focus === x.card ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
             <PlayingCard card={x.card} className="w-12 shrink-0 self-start" />
             <div>
-              <b>{x.title}</b>{x.opt && <span className="ml-1.5 text-xs text-muted-foreground">(Einstellung)</span>}
+              <b>{x.title}</b>{x.opt && <span className="ml-1.5 text-xs text-muted-foreground">(Hausregel)</span>}
               <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{x.text}</p>
             </div>
           </li>

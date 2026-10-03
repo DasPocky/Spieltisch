@@ -31,7 +31,7 @@ function Rules() {
       <ol className="mt-1.5 list-decimal space-y-1 pl-5">
         <li>Vom Stapel ziehen oder die oberste Ablage nehmen (außer Aussetzen).</li>
         <li>Wenn du kannst: deine Phase auslegen. Danach darfst du passende Karten bei allen ausgelegten Gruppen anlegen.</li>
-        <li>Eine Karte ablegen. Mit <b className="text-foreground">Aussetzen</b> bestimmst du, wer einmal aussetzt.</li>
+        <li>Eine Karte ablegen. Mit <b className="text-foreground">Aussetzen</b> bestimmst du, wer einmal aussetzt – aber niemanden, der schon aussetzen muss (Aussetzen darf man nicht aufnehmen).</li>
       </ol>
       <p className="mt-2">Ein <b className="text-foreground">Joker</b> ersetzt jede Karte. Jede Gruppe braucht mindestens eine echte Karte.</p>
       <h3 className="mt-4 font-semibold text-foreground">Rundenende</h3>

@@ -68,7 +68,9 @@ function candidates(r: RoomState, online: boolean): Move[] {
     case "uno": {
       const s = r.game as UnoState;
       const hand = s.hands[s.curId ?? ""] ?? [];
-      for (const card of hand) add({ type: "play", card, color: pick(COLORS), uno: Math.random() < 0.9 });
+      for (const card of hand) for (const target of card.endsWith("-7") ? ids : [undefined]) add({ type: "play", card, color: pick(COLORS), uno: Math.random() < 0.9, target });
+      add({ type: "color", color: pick(COLORS) });
+      if (Math.random() < 0.5) add({ type: "doubt" });
       // Wie echte Spieler: meist legen, wenn etwas passt – sonst wachsen die Hände endlos
       if (s.phase !== "play" || !hand.some((c) => unoCanPlay(s, c, r.options, hand)) || Math.random() < 0.1) add({ type: "draw" });
       ["pass", "nextRound", "finishRound"].forEach((type) => add({ type }));
@@ -104,7 +106,7 @@ function candidates(r: RoomState, online: boolean): Move[] {
       if (found) { add({ type: "lay", groups: found }); break; }
       if (s.laid[me]) for (const c of hand) for (const [owner, gs] of Object.entries(s.laid)) gs.forEach((gr, k) => { if (p10Extend(gr, c)) add({ type: "hit", card: c, owner, g: k }); });
       if (!moves.some((m) => m.action.type === "game" && (m.action.action as { type: string }).type === "hit") || Math.random() < 0.3)
-        for (const c of hand) add({ type: "discard", card: c, skip: pick(ids) });
+        for (const c of hand) { add({ type: "discard", card: c, skip: pick(ids) }); if (c === "S") add({ type: "discard", card: c }); }
       add({ type: "nextRound" }); add({ type: "finishRound" });
       for (const id of ids) { add({ type: "enter", player: id, points: 5 * Math.floor(Math.random() * 20) }); add({ type: "setDone", player: id, done: Math.random() < 0.5 }); }
       break;
@@ -181,6 +183,7 @@ function candidates(r: RoomState, online: boolean): Move[] {
       for (const id of Object.keys(s.roles)) add({ type: "assign", id, role: pick(["werwolf", "dorf", "seherin", "jaeger"]) });
       for (const a of alive) for (const b of alive) if (a < b) add({ type: "enchant", a, b });
       for (const a of alive) add({ type: "amor", a, b: pick(alive.filter((x) => x !== a)) });
+      add({ type: "wolf2", target: null });
       for (const target of alive) ["protect", "wolf", "wolf2", "white", "see", "fox", "raven", "model", "suspect", "shoot", "vote", "lynch", "elect", "successor", "visit"].forEach((type) => add({ type, target }));
       for (const a of alive) add({ type: "enchant", a });
       add({ type: "witch", heal: Math.random() < 0.3, poison: Math.random() < 0.3 ? t() : null });
@@ -288,13 +291,14 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["tutto", 2, { target: 1000, diceMode: "app" }],
   ["tutto", 3, { target: 1000, cards: "real" }],
   ["kniffel", 3, {}],
-  ["kniffel", 2, { diceMode: "real", extraKniffel: true }],
+  ["kniffel", 2, { diceMode: "real", moreKniffel: "none" }],
   ["maumau", 4, {}],
   ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
   ["maumau", 7, { deck: "fr52", hand: "6" }],
   ["uno", 2, {}],
-  ["uno", 5, { stack: true, plus4Any: true, uno: false, target: "round" }],
+  ["uno", 5, { stack: true, plus4: "any", uno: false, target: "round" }],
   ["uno", 8, { target: "round" }],
+  ["uno", 4, { sevenZero: true, drawUntil: true, plus4: "strict" }],
   ["uno", 4, { mode: "table" }],
   ["skipbo", 2, {}],
   ["skipbo", 6, { stock: "10" }],

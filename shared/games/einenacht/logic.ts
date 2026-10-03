@@ -14,8 +14,8 @@ export type ONRole = "werwolf" | "guenstling" | "freimaurer" | "seherin" | "raeu
 export interface ONRoleInfo { id: ONRole; name: string; team: "dorf" | "werwolf" | "gerber"; short: string; help: string }
 
 export const ON_ROLES: Record<ONRole, ONRoleInfo> = {
-  werwolf: { id: "werwolf", name: "Werwolf", team: "werwolf", short: "Du siehst die anderen Werwölfe. Bist du allein, darfst du eine Karte aus der Mitte ansehen.", help: "Die Werwölfe erwachen und erkennen einander. Ist nur einer wach, darf er eine der drei Karten in der Mitte ansehen. Sie gewinnen, wenn kein Werwolf stirbt." },
-  guenstling: { id: "guenstling", name: "Günstling", team: "werwolf", short: "Du kennst die Werwölfe – sie dich nicht. Du gewinnst mit ihnen.", help: "Der Günstling sieht, wer die Werwölfe sind, sie kennen ihn aber nicht. Er gewinnt mit den Werwölfen – auch wenn er selbst stirbt. Gibt es keine Werwölfe unter den Spielern, gewinnt er, wenn jemand anderes stirbt." },
+  werwolf: { id: "werwolf", name: "Werwolf", team: "werwolf", short: "Du siehst die anderen Werwölfe. Bist du allein, darfst du eine Karte aus der Mitte ansehen.", help: "Die Werwölfe erwachen und erkennen einander. Ist nur einer wach, darf er eine der drei Karten in der Mitte ansehen. Sie gewinnen, wenn mindestens ein Werwolf unter den Spielern ist und weder ein Werwolf noch der Gerber stirbt." },
+  guenstling: { id: "guenstling", name: "Günstling", team: "werwolf", short: "Du kennst die Werwölfe – sie dich nicht. Du gewinnst mit ihnen.", help: "Der Günstling sieht, wer die Werwölfe sind, sie kennen ihn aber nicht. Er gewinnt mit den Werwölfen – auch wenn er selbst stirbt. Gibt es keine Werwölfe unter den Spielern, gewinnt er, wenn jemand anderes als er stirbt (außer dem Gerber)." },
   freimaurer: { id: "freimaurer", name: "Freimaurer", team: "dorf", short: "Du erkennst den anderen Freimaurer.", help: "Die beiden Freimaurer erwachen und erkennen einander. Ist nur einer im Spiel, weiß er, dass die andere Karte in der Mitte liegt." },
   seherin: { id: "seherin", name: "Seherin", team: "dorf", short: "Sieh dir die Karte eines Mitspielers an – oder zwei aus der Mitte.", help: "Die Seherin darf die Karte eines Mitspielers ansehen oder zwei der drei Karten in der Mitte." },
   raeuber: { id: "raeuber", name: "Räuber", team: "dorf", short: "Tausche deine Karte mit einem Mitspieler und sieh dir deine neue an.", help: "Der Räuber darf seine Karte mit der eines Mitspielers tauschen und sieht sich dann seine neue Karte an. Er ist ab jetzt diese Rolle, der andere wird Räuber (ohne es zu wissen)." },
@@ -23,7 +23,7 @@ export const ON_ROLES: Record<ONRole, ONRoleInfo> = {
   betrunkener: { id: "betrunkener", name: "Betrunkener", team: "dorf", short: "Du musst deine Karte mit einer aus der Mitte tauschen – ohne hinzusehen.", help: "Der Betrunkene muss seine Karte mit einer aus der Mitte tauschen, ohne die neue anzusehen. Er weiß also nicht, wer er jetzt ist." },
   schlaflose: { id: "schlaflose", name: "Schlaflose", team: "dorf", short: "Am Ende der Nacht siehst du nach, welche Karte du jetzt hast.", help: "Die Schlaflose erwacht als Letzte und sieht sich ihre Karte noch einmal an – so weiß sie, ob sie getauscht wurde." },
   jaeger: { id: "jaeger", name: "Jäger", team: "dorf", short: "Stirbst du, stirbt auch, auf wen du gezeigt hast.", help: "Stirbt der Jäger bei der Abstimmung, stirbt auch die Person, für die er gestimmt hat." },
-  gerber: { id: "gerber", name: "Gerber", team: "gerber", short: "Du hasst deinen Job: Du gewinnst nur, wenn du stirbst.", help: "Der Gerber gewinnt, wenn er bei der Abstimmung stirbt. Stirbt er und kein Werwolf, verlieren auch die Werwölfe." },
+  gerber: { id: "gerber", name: "Gerber", team: "gerber", short: "Du hasst deinen Job: Du gewinnst nur, wenn du stirbst.", help: "Der Gerber gewinnt, wenn er bei der Abstimmung stirbt. Dann verlieren die Werwölfe (samt Günstling) – stirbt zugleich ein Werwolf, gewinnt auch das Dorf." },
   dorf: { id: "dorf", name: "Dorfbewohner", team: "dorf", short: "Keine Fähigkeit – finde die Werwölfe!", help: "Dorfbewohner haben keine Fähigkeit." },
 };
 
@@ -178,7 +178,8 @@ function finishVote(s: ONState, targets: string[]) {
   if (wolfDied) winners.push("dorf");
   else if (wolvesInPlay && !tannerDied) winners.push("werwolf");
   else if (!wolvesInPlay && !s.dead.length) winners.push("dorf");
-  else if (!wolvesInPlay && s.dead.length && players.some((id) => final[id] === "guenstling") && !s.dead.some((id) => final[id] === "guenstling")) winners.push("werwolf");
+  // Keine Werwölfe unter den Spielern: Der Günstling gewinnt, wenn jemand anderes als er stirbt (nicht aber, wenn der Gerber stirbt)
+  else if (!wolvesInPlay && !tannerDied && players.some((id) => final[id] === "guenstling") && s.dead.some((id) => final[id] !== "guenstling")) winners.push("werwolf");
   s.winners = winners;
   s.phase = "over";
 }

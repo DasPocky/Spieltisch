@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Eye, KeyRound, Shuffle } from "lucide-react";
-import { notReady, other, remaining, TEAM_NAME, type CNAction, type CNState, type Color, type Team } from "@shared/games/codenames/logic";
+import { countLabel, notReady, other, remaining, TEAM_NAME, UNLIMITED, type CNAction, type CNState, type Color, type Team } from "@shared/games/codenames/logic";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,7 +145,7 @@ function Play({ room, game: s, me, isHost, act, dispatch }: BoardProps<CNState, 
       <Hourglass s={s} room={room} me={me} isHost={isHost} dispatch={dispatch} />
       <div className="flex shrink-0 items-center justify-between gap-2 px-1 pt-1.5 text-sm">
         {s.clue ? (
-          <span className="min-w-0 truncate" data-testid="clue">Hinweis: <b className="text-lg">{s.clue.word}</b> <b className="text-ice">{s.clue.count === 0 ? "∞" : s.clue.count}</b> · noch {s.guessesLeft} {s.guessesLeft === 1 ? "Versuch" : "Versuche"}</span>
+          <span className="min-w-0 truncate" data-testid="clue">Hinweis: <b className="text-lg">{s.clue.word}</b> <b className="text-ice">{countLabel(s.clue.count)}</b> · {s.clue.count <= 0 ? "beliebig viele Versuche" : `noch ${s.guessesLeft} ${s.guessesLeft === 1 ? "Versuch" : "Versuche"}`}</span>
         ) : <span className="text-muted-foreground">Chef {TEAM_NAME[s.turn]} überlegt einen Hinweis …</span>}
         <RulesSheet gameId={room.gameId} />
       </div>
@@ -169,9 +169,10 @@ function Play({ room, game: s, me, isHost, act, dispatch }: BoardProps<CNState, 
           <form className="grid grid-cols-[1fr_auto_auto] gap-2" onSubmit={(e) => { e.preventDefault(); act({ type: "clue", word, count }); setWord(""); setCount(1); }}>
             <Input value={word} onChange={(e) => setWord(e.target.value.replace(/\s/g, ""))} placeholder="Hinweiswort" aria-label="Hinweiswort" autoComplete="off" maxLength={30} />
             <div className="flex items-center gap-1">
-              <Button type="button" variant="secondary" size="icon" aria-label="Zahl verringern" onClick={() => setCount((c) => Math.max(0, c - 1))}>−</Button>
-              <b className="w-5 text-center text-lg tabular-nums" aria-label="Zahl">{count === 0 ? "∞" : count}</b>
-              <Button type="button" variant="secondary" size="icon" aria-label="Zahl erhöhen" onClick={() => setCount((c) => Math.min(9, c + 1))}>+</Button>
+              {/* 0, 1 … 9, ∞ – 0 und ∞ erlauben beliebig viele Versuche */}
+              <Button type="button" variant="secondary" size="icon" aria-label="Zahl verringern" onClick={() => setCount((c) => (c === UNLIMITED ? 9 : Math.max(0, c - 1)))}>−</Button>
+              <b className="w-5 text-center text-lg tabular-nums" aria-label="Zahl">{countLabel(count)}</b>
+              <Button type="button" variant="secondary" size="icon" aria-label="Zahl erhöhen" onClick={() => setCount((c) => (c === UNLIMITED || c >= 9 ? UNLIMITED : c + 1))}>+</Button>
             </div>
             <Button type="submit" disabled={!word.trim()}>Geben</Button>
           </form>

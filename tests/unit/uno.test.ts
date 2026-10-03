@@ -13,7 +13,7 @@ function start(n = 3, options: Record<string, string | number | boolean> = {}) {
 function fix(r: RoomState, hands: Record<string, UnoCard[]>, topCard: UnoCard, pile: UnoCard[] = ["r-1", "r-2", "r-3", "r-4", "r-5", "r-6", "r-7", "r-8"]): RoomState {
   const s = g(r);
   const counts = Object.fromEntries(Object.entries(hands).map(([k, v]) => [k, v.length]));
-  return { ...r, game: { ...s, hands, counts, discard: [topCard], color: topCard[0] as UnoState["color"], pile, pileCount: pile.length, curId: "p1" } };
+  return { ...r, game: { ...s, hands, counts, discard: [topCard], color: topCard[0] as UnoState["color"], pile, pileCount: pile.length, curId: "p1", dir: 1, pickColor: false, challenge: null, pendingDraw: 0 } };
 }
 
 describe("Uno", () => {
@@ -28,11 +28,11 @@ describe("Uno", () => {
     expect(cardPoints("w-wild")).toBe(50);
   });
 
-  it("Austeilen: 7 Karten, Startkarte ist eine Zahl", () => {
+  it("Austeilen: 7 Karten, eine offene Startkarte (nie +4)", () => {
     const r = start(3);
-    expect(g(r).hands.p1).toHaveLength(7);
-    expect(g(r).discard[0]).toMatch(/^[rgby]-\d$/);
-    expect(g(r).curId).toBe("p1");
+    expect(g(r).hands.p2).toHaveLength(7);
+    expect(g(r).discard).toHaveLength(1);
+    expect(g(r).discard[0]).not.toBe("w-plus4");
   });
 
   it("Farbe oder Wert bedienen, sonst Fehler", () => {
@@ -43,11 +43,86 @@ describe("Uno", () => {
     expect(g(r).curId).toBe("p2");
   });
 
-  it("+4 nur ohne passende Farbe (außer Hausregel)", () => {
-    const r = fix(start(2), { p1: ["w-plus4", "r-3", "b-1"], p2: ["y-1", "y-2"] }, "r-9");
+  it("+4 nur ohne passende Farbe (Hausregel „Nur ohne Farbe“)", () => {
+    const r = fix(start(2, { plus4: "strict" }), { p1: ["w-plus4", "r-3", "b-1"], p2: ["y-1", "y-2"] }, "r-9");
     expect(() => game(r, { type: "play", card: "w-plus4", color: "b", uno: true })).toThrow(/keine Karte in der Farbe/);
     const s = g(r);
+    expect(canPlay(s, "w-plus4", { plus4: "any" }, s.hands.p1)).toBe(true);
     expect(canPlay(s, "w-plus4", { plus4Any: true }, s.hands.p1)).toBe(true);
+  });
+
+  it("+4 Original: Bluff erlaubt – Anzweifeln erwischt den Bluffer", () => {
+    let r = fix(start(3), { p1: ["w-plus4", "r-3", "b-1"], p2: ["y-1", "y-2"], p3: ["g-1", "g-2"] }, "r-9");
+    r = game(r, { type: "play", card: "w-plus4", color: "b" });
+    expect(g(r).curId).toBe("p2");
+    expect(g(r).challenge?.by).toBe("p1");
+    // Ob geblufft wurde, sieht niemand
+    expect((viewRoom(r, "p2").game as UnoState).challenge).toEqual({ by: "p1" });
+    expect(() => game(r, { type: "play", card: "y-1" })).toThrow(/zweifle/);
+    r = game(r, { type: "doubt" });
+    expect(g(r).hands.p1).toHaveLength(6);
+    expect(g(r).hands.p2).toHaveLength(2);
+    expect(g(r).curId).toBe("p2");
+    expect(g(r).color).toBe("b");
+  });
+
+  it("+4 Original: zu Unrecht angezweifelt = 6 ziehen, annehmen = 4 ziehen", () => {
+    const base = fix(start(3), { p1: ["w-plus4", "y-3", "b-1"], p2: ["y-1", "y-2"], p3: ["g-1", "g-2"] }, "r-9", Array(12).fill("g-5"));
+    let r = game(base, { type: "play", card: "w-plus4", color: "b" });
+    r = game(r, { type: "doubt" });
+    expect(g(r).hands.p2).toHaveLength(8);
+    expect(g(r).curId).toBe("p3");
+    r = game(base, { type: "play", card: "w-plus4", color: "b" });
+    r = game(r, { type: "draw" });
+    expect(g(r).hands.p2).toHaveLength(6);
+    expect(g(r).curId).toBe("p3");
+    expect(g(r).challenge).toBeNull();
+  });
+
+  it("Letzte Karte +2: der Nächste zieht trotzdem, die Karten zählen mit", () => {
+    let r = fix(start(2), { p1: ["r-plus2"], p2: ["y-1"] }, "r-9", ["g-5", "b-skip"]);
+    r = game(r, { type: "play", card: "r-plus2" });
+    expect(g(r).hands.p2).toHaveLength(3);
+    expect(g(r).scores.p1).toBe(1 + 5 + 20);
+  });
+
+  it("Startkarte wirkt auf den Ersten", () => {
+    const seen = new Set<string>();
+    for (let k = 0; k < 400 && seen.size < 4; k++) {
+      const r = start(3);
+      const s = g(r);
+      const first = s.discard[0];
+      expect(first).not.toBe("w-plus4");
+      if (first === "w-wild") { seen.add("wild"); expect(s.pickColor).toBe(true); expect(s.curId).toBe("p1");
+        expect(() => game(r, { type: "draw" })).toThrow(/Farbe/);
+        const r2 = game(r, { type: "color", color: "g" });
+        expect(g(r2).color).toBe("g"); expect(g(r2).curId).toBe("p1"); }
+      else if (first.endsWith("-skip")) { seen.add("skip"); expect(s.curId).toBe("p2"); }
+      else if (first.endsWith("-rev")) { seen.add("rev"); expect(s.curId).toBe("p3"); expect(s.dir).toBe(-1); }
+      else if (first.endsWith("-plus2")) { seen.add("plus2"); expect(s.hands.p1).toHaveLength(9); expect(s.curId).toBe("p2"); }
+      else expect(s.curId).toBe("p1");
+    }
+    expect(seen.size).toBe(4);
+  });
+
+  it("Hausregel „Ziehen, bis es passt“", () => {
+    let r = fix(start(2, { drawUntil: true }), { p1: ["b-1", "b-2"], p2: ["y-1", "y-2"] }, "r-9", ["r-5", "g-4", "y-3"]);
+    r = game(r, { type: "draw" });
+    expect(g(r).hands.p1).toHaveLength(5);
+    expect(g(r).drawn).toBe("r-5");
+  });
+
+  it("Hausregel 7-0: 7 tauscht die Hand, 0 gibt alle Hände weiter", () => {
+    let r = fix(start(3, { sevenZero: true }), { p1: ["r-7", "b-1", "b-2"], p2: ["r-1"], p3: ["g-1", "g-2", "g-3", "r-0"] }, "r-9");
+    expect(() => game(r, { type: "play", card: "r-7" })).toThrow(/Mit wem/);
+    r = game(r, { type: "play", card: "r-7", target: "p3" });
+    expect(g(r).hands.p1).toEqual(["g-1", "g-2", "g-3", "r-0"]);
+    expect(g(r).hands.p3).toEqual(["b-1", "b-2"]);
+    r = { ...r, game: { ...g(r), curId: "p1" } };
+    r = game(r, { type: "play", card: "r-0" });
+    expect(g(r).hands.p2).toEqual(["g-1", "g-2", "g-3"]);
+    expect(g(r).hands.p3).toEqual(["r-1"]);
+    expect(g(r).hands.p1).toEqual(["b-1", "b-2"]);
   });
 
   it("+2 lässt den Nächsten ziehen und aussetzen", () => {

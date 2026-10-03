@@ -55,6 +55,10 @@ export type CNAction =
   | { type: "mark"; i: number };
 
 const SIZE = 25;
+/** Hinweiszahl „unbegrenzt“ (∞) – wie 0 beliebig viele Versuche, sagt aber nichts über die Zahl passender Karten */
+export const UNLIMITED = -1;
+/** Hinweiszahl zum Anzeigen */
+export const countLabel = (n: number) => (n === UNLIMITED ? "∞" : String(n));
 const MAX_LOG = 40;
 export const modeOf = (o: Options): Mode => (o.mode === "key" ? "key" : "app");
 
@@ -184,13 +188,13 @@ function apply(prev: CNState, a: CNAction, ctx: GameContext): CNState {
       const count = Number(a.count);
       if (!word) throw new GameError("Erst ein Hinweiswort eingeben.");
       if (/\s/.test(word)) throw new GameError("Der Hinweis ist genau ein Wort.");
-      if (!Number.isInteger(count) || count < 0 || count > 9) throw new GameError("Die Zahl muss zwischen 0 und 9 liegen.");
+      if (!Number.isInteger(count) || (count !== UNLIMITED && (count < 0 || count > 9))) throw new GameError("Die Zahl muss zwischen 0 und 9 liegen (oder ∞).");
       if (s.words.some((w, i) => !s.revealed[i] && w.toLowerCase() === word.toLowerCase())) throw new GameError("Das Wort liegt auf dem Tisch – nimm ein anderes.");
       s.clue = { word, count };
-      // 0 (oder „unbegrenzt“) heißt: so viele Versuche, wie noch Karten des Teams liegen
-      s.guessesLeft = count === 0 ? remaining(s, s.turn) + 1 : count + 1;
+      // 0 und ∞ (Original): beliebig viele Versuche – mehr als die noch liegenden eigenen Karten braucht es nie
+      s.guessesLeft = count <= 0 ? remaining(s, s.turn) + 1 : count + 1;
       s.guessed = 0;
-      log(s, `Chef ${TEAM_NAME[s.turn]}: „${word}“ ${count}`);
+      log(s, `Chef ${TEAM_NAME[s.turn]}: „${word}“ ${countLabel(count)}`);
       return s;
     }
     case "guess": {

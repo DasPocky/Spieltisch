@@ -29,10 +29,11 @@ function Rules() {
         <li>Die Agenten tippen nacheinander Wörter an – höchstens Zahl + 1.</li>
         <li>Eigene Farbe: weiterraten. Passant oder gegnerische Farbe: Zug vorbei (die gegnerische Karte zählt für die anderen).</li>
         <li><b className="text-foreground">Attentäter</b>: Das Team verliert sofort.</li>
-        <li>Nach mindestens einem Treffer darf man freiwillig aufhören („Zug beenden“). Die Zahl ∞ heißt: beliebig viele Versuche.</li>
+        <li>Mindestens ein Wort muss geraten werden, danach darf man freiwillig aufhören („Zug beenden“).</li>
+        <li>Die Zahl darf auch <b className="text-foreground">0</b> sein („keine Karte passt dazu“) oder <b className="text-foreground">∞</b> („mehrere, ich sage nicht wie viele“) – dann dürfen die Agenten beliebig oft raten.</li>
       </ol>
       <h3 className="mt-4 font-semibold text-foreground">Sieg</h3>
-      <p className="mt-1.5">Wer zuerst alle eigenen Karten gefunden hat, gewinnt.</p>
+      <p className="mt-1.5">Wer zuerst alle eigenen Karten aufgedeckt hat, gewinnt – auch wenn das gegnerische Team die letzte Karte aus Versehen aufdeckt. Wer den Attentäter aufdeckt, verliert sofort.</p>
       <h3 className="mt-4 font-semibold text-foreground">Varianten</h3>
       <p className="mt-1.5">
         <b className="text-foreground">In der App:</b> Online sehen die Chefs die Farben am eigenen Handy, die Agenten tippen. An einem Gerät hält der Chef „Chef-Ansicht“ gedrückt, um die Farben kurz zu sehen.

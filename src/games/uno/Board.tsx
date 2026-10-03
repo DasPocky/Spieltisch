@@ -134,6 +134,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
   const local = me === null;
   const [uno, setUno] = useState(false);
   const [wild, setWild] = useState<Card | null>(null);
+  const [seven, setSeven] = useState<Card | null>(null);
   const hints = useHints();
   const { covered, reveal } = useHandoff(local && s.phase === "play", s.curId, players.length);
   const cur = players.find((p) => p.id === s.curId);
@@ -145,17 +146,25 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
   const scored = room.options.target !== "round";
 
   // Nichts passt: der Stapel leuchtet, damit klar ist, was zu tun ist
-  const mustDraw = myTurn && !s.drawn && !covered && !hand.some(playable);
-  const play = (c: Card, color?: UnoColor) => {
+  const mustDraw = myTurn && !s.drawn && !covered && !s.pickColor && !hand.some(playable);
+  const play = (c: Card, color?: UnoColor, target?: string) => {
     vibrate(10);
-    act({ type: "play", card: c, color, uno });
+    act({ type: "play", card: c, color, uno, target });
     setUno(false);
     setWild(null);
+    setSeven(null);
   };
+  // Hausregel 7-0: bei der 7 erst den Tauschpartner wählen
+  const others = players.filter((p) => p.id !== viewer && p.id in s.counts);
+  const pick = (c: Card) => (isWild(c) ? setWild(c)
+    : room.options.sevenZero === true && valueOf(c) === "7" && hand.length > 1 && others.length > 1 ? setSeven(c) : play(c));
+  const byName = (id: string | null | undefined) => players.find((p) => p.id === id)?.name ?? "?";
   // Spielhilfe: gezogene Karte passt – mit einem Tipp direkt legen
   const drawnFits = hints && !covered && !!s.drawn && playable(s.drawn);
   const status = s.phase === "roundEnd" ? `${players.find((p) => p.id === s.lastRound?.winner)?.name ?? "?"} gewinnt Runde ${s.round} (+${s.lastRound?.points ?? 0})`
     : !myTurn ? `${cur?.name} ist am Zug`
+    : s.pickColor ? "Startkarte Farbwahl – du bestimmst die Farbe."
+    : s.challenge ? `${byName(s.challenge.by)} legt +4 – ziehen oder anzweifeln?`
     : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
     : s.pendingDraw ? `Leg drauf oder zieh ${s.pendingDraw} Karten.`
     : hand.some(playable) ? "Leg eine passende Karte." : "Nichts passt – zieh eine Karte.";
@@ -181,8 +190,8 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
       {/* Mitte: Stapel, Ablage, gefragte Farbe */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
         <div className="flex h-full max-h-48 min-h-0 w-full items-start justify-center gap-5 pt-5">
-          <button type="button" disabled={!myTurn || !!s.drawn || covered} onClick={() => { vibrate(8); act({ type: "draw" }); }}
-            aria-label={s.pendingDraw ? `${s.pendingDraw} Karten ziehen` : "Karte ziehen"}
+          <button type="button" disabled={!myTurn || !!s.drawn || covered || !!s.pickColor} onClick={() => { vibrate(8); act({ type: "draw" }); }}
+            aria-label={s.challenge ? "4 Karten ziehen" : s.pendingDraw ? `${s.pendingDraw} Karten ziehen` : "Karte ziehen"}
             className={cn("relative h-[68%] rounded-[12%] outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", mustDraw && "target-glow")}>
             <UnoBack count={s.pileCount} />
             {s.pendingDraw > 0 && <span className="absolute -top-2 -right-2 rounded-full bg-destructive px-2 py-0.5 text-sm font-bold text-navy-950">+{s.pendingDraw}</span>}
@@ -191,7 +200,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
           <div className="relative h-[86%]" key={s.discard.length}>
             <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 text-[0.66rem] font-bold tracking-wider whitespace-nowrap text-muted-foreground uppercase">Ablage</span>
             <UnoCardView card={top(s)} className="card-land h-full" />
-            {isWild(top(s)) && (
+            {isWild(top(s)) && !s.pickColor && (
               <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-navy-950/90 px-2.5 py-1 text-xs font-bold whitespace-nowrap ring-1 ring-border" data-testid="color">
                 <span className="size-3 rounded-full" style={{ background: UNO_BG[s.color] }} />{COLOR_NAME[s.color]}
               </span>
@@ -199,7 +208,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
           </div>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {drawnFits ? <span data-testid="status"><HintChip onClick={() => (isWild(s.drawn!) ? setWild(s.drawn) : play(s.drawn!))}>Passt – direkt legen?</HintChip></span>
+          {drawnFits ? <span data-testid="status"><HintChip onClick={() => pick(s.drawn!)}>Passt – direkt legen?</HintChip></span>
             : <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold text-foreground")}><SmoothText>{status}</SmoothText></span>}
           {s.phase === "play" && <span aria-label={s.dir === 1 ? "Richtung im Uhrzeigersinn" : "Richtung gegen den Uhrzeigersinn"}>{s.dir === 1 ? "↻" : "↺"}</span>}
           <RulesSheet gameId={room.gameId} />
@@ -212,6 +221,14 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
           <Button size="lg" className="w-full" onClick={() => act({ type: "nextRound" })}>Nächste Runde</Button>
         ) : covered ? (
           <HandoffCover name={cur?.name ?? "?"} onReveal={reveal} />
+        ) : seven ? (
+          <div className="glass rounded-2xl p-3">
+            <p className="mb-2 text-center text-sm font-semibold">Mit wem tauschst du die Karten?</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {others.map((p) => <Button key={p.id} variant="secondary" onClick={() => play(seven, undefined, p.id)}>{p.name} ({s.counts[p.id] ?? 0})</Button>)}
+            </div>
+            <Button variant="ghost" className="mt-1 w-full text-muted-foreground" onClick={() => setSeven(null)}>Abbrechen</Button>
+          </div>
         ) : wild ? (
           <div className="glass rounded-2xl p-3">
             <p className="mb-2 text-center text-sm font-semibold">Welche Farbe soll es sein?</p>
@@ -232,7 +249,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
                   const ok = playable(c);
                   return (
                     <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!ok} data-card={c} style={dealDelay(i)}
-                      onClick={() => (isWild(c) ? setWild(c) : play(c))}
+                      onClick={() => pick(c)}
                       className={cn("card-in w-[min(17vw,4.5rem)] shrink-0 rounded-[12%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                         ok && "-translate-y-2.5", c === s.drawn ? "ring-[3px] ring-ice" : ok && hints && "hint-glow")}>
                       <UnoCardView card={c} dim={myTurn && !ok} />
@@ -240,17 +257,30 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
                   );
                 })}
             </Fan>
+            {myTurn && s.pickColor ? (
+              // Startkarte Farbwahl: Farbe mit Blick auf die eigene Hand wählen
+              <div className="mt-2 grid grid-cols-4 gap-2" role="group" aria-label="Startfarbe wählen">
+                {COLORS.map((c) => (
+                  <button key={c} type="button" onClick={() => { vibrate(10); act({ type: "color", color: c }); }} aria-label={COLOR_NAME[c]}
+                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-navy-800/60 text-xs font-bold ring-1 ring-inset ring-border outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+                    <span className="size-5 rounded-full ring-2 ring-white/30" style={{ background: UNO_BG[c] }} />{COLOR_NAME[c]}
+                  </button>
+                ))}
+              </div>
+            ) : (
             <div className="mt-2 grid grid-cols-[1fr_auto_1fr] gap-2 [&>button]:min-w-0 [&>button]:px-3">
               <Button variant="secondary" size="lg" disabled={!myTurn || !!s.drawn} onClick={() => act({ type: "draw" })}>
-                {s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"}
+                {s.challenge ? "4 ziehen" : s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"}
               </Button>
               {unoRule ? (
                 <Button size="lg" variant={uno ? "ice" : "secondary"} aria-pressed={uno} disabled={!myTurn || hand.length !== 2} onClick={() => { vibrate(20); setUno((u) => !u); }}>
                   Uno!
                 </Button>
               ) : <span />}
-              <Button variant="secondary" size="lg" disabled={!myTurn || !s.drawn} onClick={() => act({ type: "pass" })}>Passen</Button>
+              {s.challenge ? <Button size="lg" disabled={!myTurn} onClick={() => act({ type: "doubt" })}>Anzweifeln</Button>
+                : <Button variant="secondary" size="lg" disabled={!myTurn || !s.drawn} onClick={() => act({ type: "pass" })}>Passen</Button>}
             </div>
+            )}
           </>
         )}
       </div>

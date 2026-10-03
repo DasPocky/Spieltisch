@@ -1,5 +1,5 @@
 /**
- * Flip 7 – Drück-dein-Glück-Kartenspiel. Klassisch oder „Voll fies“ (angelehnt an „Flip 7: Voll fies!“).
+ * Flip 7 – Drück-dein-Glück-Kartenspiel. Klassisch (Original) oder „Voll fies“ (Hausvariante, angelehnt an „Flip 7: Voll fies!“).
  * Alle Karten liegen offen, der Server zieht. Reihum: noch eine Karte („Hit“) oder aufhören („Stay“).
  * Eine doppelte Zahl heißt: raus ohne Punkte. Sieben verschiedene Zahlen: +15 und die Runde endet sofort.
  */
@@ -188,12 +188,15 @@ function endRound(s: F7State, ctx: GameContext, flip7: string | null) {
   s.lastRound = { round: s.round, points, flip7 };
   log(s, `Runde ${s.round} vorbei`);
   const best = Math.max(...ctx.players.map((p) => s.scores[p.id] ?? 0));
-  if (best >= s.target) {
-    s.winners = ctx.players.filter((p) => (s.scores[p.id] ?? 0) === best).map((p) => p.id);
+  const top = ctx.players.filter((p) => (s.scores[p.id] ?? 0) === best).map((p) => p.id);
+  // Original: Gleichstand an der Spitze → weitere Runden, bis einer allein vorn liegt
+  if (best >= s.target && top.length === 1) {
+    s.winners = top;
     s.curId = null;
     s.pending = null;
     return;
   }
+  if (best >= s.target) log(s, "Gleichstand an der Spitze – noch eine Runde");
   startRound(s, ctx.players);
   advance(s, ctx);
 }
@@ -345,7 +348,11 @@ function applyTable(s: F7State, a: F7Action, ctx: GameContext): F7State {
   s.scores = { ...s.pad.scores };
   s.round = s.pad.round;
   const ids = ctx.players.map((p) => p.id);
-  if (a.type === "padFinish" && ids.some((id) => (s.scores[id] ?? 0) >= s.target)) s.winners = padLeaders(s.pad, ids);
+  // Gleichstand an der Spitze: weiterspielen
+  if (a.type === "padFinish" && ids.some((id) => (s.scores[id] ?? 0) >= s.target)) {
+    const top = padLeaders(s.pad, ids);
+    if (top.length === 1) s.winners = top;
+  }
   return s;
 }
 
@@ -498,7 +505,7 @@ export const flip7: GameLogic<F7State, F7Action> = {
       key: "variant", label: "Variante", type: "choice", default: "classic",
       choices: [
         { value: "classic", label: "Klassisch", hint: "Einfrieren, Flip 3, zweite Chance" },
-        { value: "fies", label: "Voll fies", hint: "bis 13, Klauen, Tauschen, Minus" },
+        { value: "fies", label: "Voll fies", hint: "Hausvariante nach „Flip 7: Voll fies!“ – bis 13, Klauen, Tauschen, Minus" },
       ],
     },
     { key: "target", label: "Spielziel", type: "number", default: 200, min: 100, max: 500, step: 50 },

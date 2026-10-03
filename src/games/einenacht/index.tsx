@@ -42,13 +42,13 @@ function Rules() {
         <h3 className="mt-4 font-semibold">Ablauf</h3>
         <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground">
           <li>Karte ansehen. Online: am eigenen Handy. Lokal: Handy herumreichen.</li>
-          <li>Nacht: Die Rollen erwachen in fester Reihenfolge (Werwölfe, Günstling, Freimaurer, Seherin, Räuber, Unruhestifter, Betrunkener, Schlaflose). Online handeln alle gleichzeitig, die Tausche passieren trotzdem in dieser Reihenfolge.</li>
-          <li>Tag: Diskussion mit Timer, dann stimmen alle gleichzeitig ab. Wer die meisten Stimmen hat, stirbt (bei Gleichstand alle). Hat jeder nur eine Stimme, stirbt niemand.</li>
+          <li>Nacht: Die Rollen erwachen in fester Reihenfolge (Werwölfe, Günstling, Freimaurer, Seherin, Räuber, Unruhestifter, Betrunkener, Schlaflose). Online handeln alle gleichzeitig, die Tausche passieren trotzdem in dieser Reihenfolge. (Die Doppelgängerin des Originals ist nicht dabei.)</li>
+          <li>Tag: Diskussion mit Timer, dann zeigt jeder gleichzeitig auf einen anderen Spieler. Wer die meisten Stimmen hat, stirbt (bei Gleichstand alle). Hat niemand mehr als eine Stimme, stirbt niemand. Stirbt der Jäger, stirbt auch, auf wen er gezeigt hat.</li>
         </ol>
         <h3 className="mt-4 font-semibold">Sieg</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Es zählt die Karte, die man <b className="text-foreground">am Ende</b> hat. Stirbt mindestens ein Werwolf, gewinnt das Dorf. Stirbt keiner, gewinnen die Werwölfe (mit Günstling).
-          Sind keine Werwölfe unter den Spielern und niemand stirbt, gewinnt das Dorf. Der Gerber gewinnt, wenn er stirbt.
+          Es zählt die Karte, die man <b className="text-foreground">am Ende</b> hat. Stirbt mindestens ein Werwolf, gewinnt das Dorf – auch wenn dabei Dorfbewohner sterben. Stirbt keiner, gewinnen die Werwölfe (mit Günstling), außer der Gerber stirbt.
+          Sind keine Werwölfe unter den Spielern, gewinnt das Dorf nur, wenn niemand stirbt; der Günstling gewinnt dann, wenn jemand anderes stirbt. Der Gerber gewinnt, wenn er stirbt.
         </p>
         <h3 className="mt-4 font-semibold">Mit eigenen Karten</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">Ihr teilt eure echten Karten aus. Das Handy des Hosts liest die Nacht vor und schaltet von selbst weiter, damit alle die Augen zu lassen können. Danach laufen Timer und Abstimmung am Tisch; nach dem Aufdecken trägt der Host ein, wer gewonnen hat.</p>

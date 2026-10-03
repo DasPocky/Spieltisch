@@ -38,6 +38,10 @@ export interface UnoState {
   pendingDraw: number;
   /** In diesem Zug gezogene Karte – nur diese darf noch gelegt werden */
   drawn: UnoCard | null;
+  /** Startkarte Farbwahl: wer beginnt, bestimmt zuerst die Farbe */
+  pickColor?: boolean;
+  /** +4 liegt: der Nächste zieht 4 oder zweifelt an (guilty nur auf dem Server sichtbar) */
+  challenge?: { by: string; guilty?: boolean } | null;
   roundWinner: string | null;
   lastRound: { winner: string; points: number } | null;
   n: number;
@@ -48,27 +52,35 @@ export interface UnoState {
 }
 
 export type UnoAction =
-  | { type: "play"; card: UnoCard; color?: UnoColor; uno?: boolean }
+  | { type: "play"; card: UnoCard; color?: UnoColor; uno?: boolean; target?: string }
   | { type: "draw" }
+  | { type: "color"; color: UnoColor }
+  | { type: "doubt" }
   | { type: "pass" }
   | { type: "nextRound" }
   | { type: "enter"; player?: string; points: number | null }
   | { type: "setWinner"; player: string | null }
   | { type: "finishRound" };
 
-interface Rules { mode: Mode; target: number; stack: boolean; plus4Any: boolean; uno: boolean; hand: number }
+/** +4: „challenge“ = Original (immer legbar, aber anzweifelbar), „strict“ = nur ohne passende Farbe, „any“ = immer */
+export type Plus4Rule = "challenge" | "strict" | "any";
+interface Rules { mode: Mode; target: number; stack: boolean; plus4: Plus4Rule; uno: boolean; hand: number; drawUntil: boolean; sevenZero: boolean }
 export function rulesOf(o: Options): Rules {
   return {
     mode: o.mode === "table" ? "table" : "app",
     target: o.target === "round" ? 0 : Number(o.target) || 500,
     stack: o.stack === true,
-    plus4Any: o.plus4Any === true,
+    // alte Räume: plus4Any
+    plus4: o.plus4 === "strict" || o.plus4 === "any" || o.plus4 === "challenge" ? o.plus4 : o.plus4Any === true ? "any" : "challenge",
     uno: o.uno !== false,
     hand: 7,
+    drawUntil: o.drawUntil === true,
+    sevenZero: o.sevenZero === true,
   };
 }
 
 const MAX_LOG = 50;
+const APP = (o: Options) => o.mode !== "table";
 export const colorOf = (c: UnoCard): UnoColor | null => (c.startsWith("w-") ? null : (c[0] as UnoColor));
 export const valueOf = (c: UnoCard) => c.slice(2) as UnoValue | "wild" | "plus4";
 export const isWild = (c: UnoCard) => c.startsWith("w-");
@@ -100,11 +112,14 @@ const sortHand = (h: UnoCard[]) => h.slice().sort((a, b) => ORDER(a) - ORDER(b))
 export function canPlay(s: UnoState, card: UnoCard, o: Options, hand?: UnoCard[]): boolean {
   const r = rulesOf(o);
   const t = top(s);
+  if (s.pickColor || s.challenge) return false;
   if (s.pendingDraw > 0) {
     // Stapeln: +2 auf +2, +4 auf alles Ziehen
     return card === "w-plus4" || (valueOf(card) === "plus2" && valueOf(t) === "plus2");
   }
-  if (card === "w-plus4") return r.plus4Any || !(hand ?? []).some((c) => colorOf(c) === s.color);
+  // Mit „Stapeln“ gibt es kein Anzweifeln – dann gilt die Farbregel fest
+  const strict = r.plus4 === "strict" || (r.plus4 === "challenge" && r.stack);
+  if (card === "w-plus4") return !strict || !(hand ?? []).some((c) => colorOf(c) === s.color);
   if (isWild(card)) return true;
   return colorOf(card) === s.color || valueOf(card) === valueOf(t);
 }
@@ -144,24 +159,32 @@ function deal(s: UnoState, ctx: GameContext, starter: string | null) {
   s.pile = shuffle(buildDeck());
   s.hands = {};
   for (const p of ctx.players) s.hands[p.id] = sortHand(s.pile.splice(s.pile.length - r.hand, r.hand));
-  // Startkarte: eine Zahlenkarte (Aktionen und Farbwahl kommen zurück in den Stapel)
+  // Startkarte: +4 kommt zurück in den Stapel, alle anderen wirken auf den ersten Spieler (Originalregel)
   let first = s.pile.pop()!;
-  while (!/^[rgby]-\d$/.test(first)) { s.pile.unshift(first); first = s.pile.pop()!; }
+  while (first === "w-plus4") { s.pile.unshift(first); first = s.pile.pop()!; }
   s.discard = [first];
-  s.color = colorOf(first)!;
-  s.curId = starter && ctx.players.some((p) => p.id === starter) ? starter : ctx.players[0]?.id ?? null;
+  const start = starter && ctx.players.some((p) => p.id === starter) ? starter : ctx.players[0]?.id ?? null;
+  s.curId = start;
   s.dir = 1;
   s.pendingDraw = 0;
   s.drawn = null;
+  s.challenge = null;
+  s.pickColor = first === "w-wild";
+  s.color = colorOf(first) ?? "r";
   s.roundWinner = null;
   s.phase = "play";
+  const v = valueOf(first);
+  if (v === "skip") { s.log.push(`Startkarte Aussetzen: ${nameOf(ctx, start)} setzt aus`); s.curId = step(ctx.players, start, 1); }
+  // Richtungswechsel: der Geber (rechts vom Ersten) beginnt, dann geht es andersherum
+  if (v === "rev") { s.dir = -1; s.curId = step(ctx.players, start, -1); s.log.push("Startkarte Richtungswechsel: andersherum"); }
+  if (v === "plus2" && start) { give(s, start, 2); s.log.push(`Startkarte +2: ${nameOf(ctx, start)} zieht 2 und setzt aus`); s.curId = step(ctx.players, start, 1); }
 }
 
 function setup(ctx: GameContext): UnoState {
   const r = rulesOf(ctx.options);
   const s: UnoState = {
     v: 1, mode: r.mode, round: 1, scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), phase: "play",
-    hands: {}, counts: {}, pile: [], pileCount: 0, discard: [], color: "r", curId: null, dir: 1, pendingDraw: 0, drawn: null,
+    hands: {}, counts: {}, pile: [], pileCount: 0, discard: [], color: "r", curId: null, dir: 1, pendingDraw: 0, drawn: null, pickColor: false, challenge: null,
     roundWinner: null, lastRound: null, n: 0, log: [], entries: {}, tableWinner: null,
   };
   if (r.mode === "table") { s.phase = "enter"; s.entries = Object.fromEntries(ctx.players.map((p) => [p.id, null])); }
@@ -206,7 +229,35 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
     s.n++;
   };
 
+  if (s.pickColor && a.type !== "color") throw new GameError("Wähle zuerst die Farbe.");
+  if (s.challenge && a.type !== "draw" && a.type !== "doubt") throw new GameError("Zieh 4 Karten oder zweifle das +4 an.");
+
   switch (a.type) {
+    case "color": {
+      if (!s.pickColor) throw new GameError("Die Farbe steht schon fest.");
+      if (!COLORS.includes(a.color)) throw new GameError("Wähle eine Farbe.");
+      s.color = a.color;
+      s.pickColor = false;
+      s.log.push(`${nameOf(ctx, me)} wählt ${COLOR_NAME[a.color]}`);
+      sync(s);
+      return s;
+    }
+    case "doubt": {
+      const c = s.challenge;
+      if (!c) throw new GameError("Hier gibt es nichts anzuzweifeln.");
+      s.challenge = null;
+      if (c.guilty && s.hands[c.by]) {
+        // Geblufft: wer das +4 gelegt hat, zieht 4 – der Zweifler spielt normal
+        give(s, c.by, 4);
+        s.log.push(`${nameOf(ctx, me)} zweifelt an – ${nameOf(ctx, c.by)} hatte die Farbe und zieht 4`);
+      } else {
+        give(s, me, 6);
+        s.log.push(`${nameOf(ctx, me)} zweifelt an – zu Unrecht, zieht 6 und setzt aus`);
+        endTurn();
+      }
+      sync(s);
+      return s;
+    }
     case "play": {
       const i = hand.indexOf(a.card);
       if (i < 0) throw new GameError("Diese Karte hast du nicht.");
@@ -216,25 +267,56 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
           : a.card === "w-plus4" ? "+4 nur, wenn du keine Karte in der Farbe hast." : `Das passt nicht – gefragt ist ${COLOR_NAME[s.color]} oder ${valueLabel(valueOf(top(s)))}.`);
       }
       if (isWild(a.card) && (!a.color || !COLORS.includes(a.color))) throw new GameError("Wähle eine Farbe.");
+      const v = valueOf(a.card);
+      const others = ctx.players.filter((p) => p.id !== me && s.hands[p.id]);
+      // 7-0: mit der 7 tauscht man die Hand mit jemandem
+      const swap7 = r.sevenZero && v === "7" && hand.length > 1;
+      const swapWith = swap7 ? (a.target ?? (others.length === 1 ? others[0].id : undefined)) : undefined;
+      if (swap7 && (!swapWith || !others.some((p) => p.id === swapWith))) throw new GameError("Mit wem tauschst du die Karten?");
+      // Bluff-Prüfung für das Anzweifeln: hatte man die gefragte Farbe?
+      const guilty = a.card === "w-plus4" && hand.some((c) => colorOf(c) === s.color);
       hand.splice(i, 1);
       s.discard.push(a.card);
       s.color = isWild(a.card) ? a.color! : colorOf(a.card)!;
-      const v = valueOf(a.card);
       s.log.push(`${nameOf(ctx, me)}: ${cardLabel(a.card)}${isWild(a.card) ? ` → ${COLOR_NAME[s.color]}` : ""}`);
       if (hand.length === 0) {
+        // Letzte Karte +2/+4: der Nächste zieht trotzdem – die Karten zählen mit
+        const owed = v === "plus2" || v === "plus4" ? (v === "plus2" ? 2 : 4) + (r.stack ? s.pendingDraw : 0) : 0;
+        if (owed) {
+          const victim = step(ctx.players, me, s.dir)!;
+          give(s, victim, owed);
+          s.log.push(`${nameOf(ctx, victim)} zieht ${owed}`);
+          s.pendingDraw = 0;
+        }
         const points = ctx.players.reduce((t, p) => t + (p.id === me ? 0 : (s.hands[p.id] ?? []).reduce((u, c) => u + cardPoints(c), 0)), 0);
         s.drawn = null;
         winRound(s, ctx, me, points);
         sync(s);
         return s;
       }
-      if (hand.length === 1 && r.uno && !a.uno) {
+      const swap0 = r.sevenZero && v === "0";
+      if (hand.length === 1 && r.uno && !a.uno && !swap7 && !swap0) {
         give(s, me, 2);
         s.log.push(`${nameOf(ctx, me)} hat „Uno“ vergessen und zieht 2 Strafkarten`);
       }
+      if (swap7 && swapWith) {
+        [s.hands[me], s.hands[swapWith]] = [s.hands[swapWith], s.hands[me]];
+        s.log.push(`${nameOf(ctx, me)} tauscht die Karten mit ${nameOf(ctx, swapWith)}`);
+      }
+      if (swap0) {
+        // 0: alle geben ihre Hand in Spielrichtung weiter
+        const ids = ctx.players.filter((p) => s.hands[p.id]).map((p) => p.id);
+        const old = Object.fromEntries(ids.map((id) => [id, s.hands[id]]));
+        for (const id of ids) s.hands[step(ctx.players.filter((p) => s.hands[p.id]), id, s.dir)!] = old[id];
+        s.log.push("Alle geben ihre Karten weiter");
+      }
       const two = ctx.players.filter((p) => s.hands[p.id]).length === 2;
       if (v === "rev") s.dir = s.dir === 1 ? -1 : 1;
-      if (v === "plus2" || v === "plus4") {
+      if (v === "plus4" && !r.stack && r.plus4 === "challenge") {
+        // Original: der Nächste entscheidet – 4 ziehen oder anzweifeln
+        s.challenge = { by: me, guilty };
+        endTurn();
+      } else if (v === "plus2" || v === "plus4") {
         const n = v === "plus2" ? 2 : 4;
         if (r.stack) { s.pendingDraw += n; endTurn(); }
         else {
@@ -249,6 +331,14 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
     }
     case "draw": {
       if (s.drawn) throw new GameError("Du hast schon gezogen – leg die Karte oder passe.");
+      if (s.challenge) {
+        s.challenge = null;
+        give(s, me, 4);
+        s.log.push(`${nameOf(ctx, me)} zieht 4 und setzt aus`);
+        endTurn();
+        sync(s);
+        return s;
+      }
       if (s.pendingDraw > 0) {
         const got = give(s, me, s.pendingDraw);
         s.log.push(`${nameOf(ctx, me)} zieht ${got.length} Karten`);
@@ -257,10 +347,13 @@ function apply(prev: UnoState, a: UnoAction, ctx: GameContext): UnoState {
         sync(s);
         return s;
       }
-      const got = give(s, me, 1);
-      s.log.push(`${nameOf(ctx, me)} zieht eine Karte`);
+      // Hausregel „Ziehen, bis es passt“: so lange ziehen, bis eine Karte passt oder der Stapel leer ist
+      let got: UnoCard | undefined;
+      let n = 0;
+      do { got = give(s, me, 1)[0]; if (got) n++; } while (r.drawUntil && got && !canPlay(s, got, ctx.options, s.hands[me]));
+      s.log.push(`${nameOf(ctx, me)} zieht ${n === 1 ? "eine Karte" : `${n} Karten`}`);
       // Ohne Automatik sieht man die gezogene Karte erst und passt selbst
-      if (got[0] && (canPlay(s, got[0], ctx.options, s.hands[me]) || ctx.options.autoPass !== true)) s.drawn = got[0];
+      if (got && (canPlay(s, got, ctx.options, s.hands[me]) || ctx.options.autoPass !== true)) s.drawn = got;
       else endTurn();
       sync(s);
       return s;
@@ -351,25 +444,35 @@ export const uno: GameLogic<UnoState, UnoAction> = {
         { value: "500", label: "Bis 500", hint: "Punkte sammeln" },
       ],
     },
-    { key: "uno", label: "„Uno!“ sagen", type: "toggle", default: true, hint: "vergessen = 2 Strafkarten", group: "Hausregeln" },
-    { key: "stack", label: "Ziehkarten stapeln", type: "toggle", default: false, hint: "+2 auf +2, +4 auf alles – der Letzte zieht alles", group: "Hausregeln" },
-    { key: "autoPass", label: "Nach dem Ziehen automatisch weiter", type: "toggle", default: false, hint: "passt die gezogene Karte nicht, ist sofort der Nächste dran – sonst siehst du sie erst und tippst auf Passen", group: "Ablauf", inGame: true, showIf: (o) => o.mode !== "table" },
-    { key: "plus4Any", label: "+4 immer erlaubt", type: "toggle", default: false, hint: "sonst nur, wenn man die Farbe nicht hat", group: "Hausregeln" },
+    { key: "uno", label: "„Uno!“ sagen", type: "toggle", default: true, hint: "Original – vergessen = 2 Strafkarten", group: "Hausregeln", showIf: APP },
+    {
+      key: "plus4", label: "+4 legen", type: "choice", default: "challenge", group: "Hausregeln", showIf: APP,
+      choices: [
+        { value: "challenge", label: "Anzweifeln", hint: "Original: Bluff erlaubt, der Nächste darf anzweifeln" },
+        { value: "strict", label: "Nur ohne Farbe", hint: "kein Bluff möglich" },
+        { value: "any", label: "Immer", hint: "ohne Anzweifeln" },
+      ],
+    },
+    { key: "stack", label: "Ziehkarten stapeln", type: "toggle", default: false, hint: "+2 auf +2, +4 auf alles – der Letzte zieht alles (dann kein Anzweifeln)", group: "Hausregeln", showIf: APP },
+    { key: "drawUntil", label: "Ziehen, bis es passt", type: "toggle", default: false, hint: "statt nur einer Karte", group: "Hausregeln", showIf: APP },
+    { key: "sevenZero", label: "7-0", type: "toggle", default: false, hint: "7: Hand mit jemandem tauschen, 0: alle geben ihre Hand weiter", group: "Hausregeln", showIf: APP },
+    { key: "autoPass", label: "Nach dem Ziehen automatisch weiter", type: "toggle", default: false, hint: "passt die gezogene Karte nicht, ist sofort der Nächste dran – sonst siehst du sie erst und tippst auf Passen", group: "Ablauf", inGame: true, showIf: APP },
   ],
   setup,
   apply,
-  actionKind: (a) => (a.type === "play" || a.type === "draw" || a.type === "pass" ? "turn" : "player"),
+  actionKind: (a) => (["play", "draw", "pass", "color", "doubt"].includes(a.type) ? "turn" : "player"),
   currentPlayerId: (s) => (s.phase === "play" ? s.curId : null),
   isOver: (s) => s.phase === "over",
   results: (s, ctx) => {
     const win = leaders(s, ctx.players);
     return ctx.players.map((p) => ({ id: p.id, won: win.includes(p.id), score: s.scores[p.id] ?? 0 }));
   },
-  skipLabel: (s, ctx) => (s.phase === "play" && s.curId ? `Zug von ${nameOf(ctx, s.curId)} überspringen (zieht ${s.drawn ? "nichts mehr" : s.pendingDraw || 1})` : null),
+  skipLabel: (s, ctx) => (s.phase === "play" && s.curId ? `Zug von ${nameOf(ctx, s.curId)} überspringen (zieht ${s.drawn ? "nichts mehr" : s.challenge ? 4 : s.pendingDraw || 1})` : null),
   skipTurn(prev, ctx) {
     const s = structuredClone(prev);
     if (s.phase !== "play" || !s.curId) return s;
-    if (!s.drawn) { give(s, s.curId, s.pendingDraw || 1); s.pendingDraw = 0; }
+    s.pickColor = false;
+    if (!s.drawn) { give(s, s.curId, s.challenge ? 4 : s.pendingDraw || 1); s.pendingDraw = 0; s.challenge = null; }
     s.log.push(`Zug von ${nameOf(ctx, s.curId)} übersprungen`);
     s.drawn = null;
     s.curId = step(ctx.players, s.curId, s.dir);
@@ -382,11 +485,13 @@ export const uno: GameLogic<UnoState, UnoAction> = {
     if (s.hands[id]) { s.pile.unshift(...s.hands[id]); delete s.hands[id]; }
     delete s.entries[id];
     if (s.tableWinner === id) s.tableWinner = null;
-    if (s.curId === id) { s.curId = step(ctx.players, id, s.dir); s.drawn = null; }
+    if (s.challenge?.by === id) s.challenge = null;
+    if (s.curId === id) { s.curId = step(ctx.players, id, s.dir); s.drawn = null; s.challenge = null; s.pickColor = false; }
     const rest = ctx.players.filter((p) => p.id !== id);
     if (s.phase === "play" && rest.length === 1) winRound(s, { ...ctx, players: rest }, rest[0].id, 0);
     sync(s);
     return s;
   },
-  view: (s, viewer) => (viewer === null ? s : { ...s, pile: [], hands: viewer in s.hands ? { [viewer]: s.hands[viewer] } : {} }),
+  // Ob das +4 ein Bluff war, verrät erst das Anzweifeln
+  view: (s, viewer) => (viewer === null ? s : { ...s, pile: [], challenge: s.challenge ? { by: s.challenge.by } : null, hands: viewer in s.hands ? { [viewer]: s.hands[viewer] } : {} }),
 };

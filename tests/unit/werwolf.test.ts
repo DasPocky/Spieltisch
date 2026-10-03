@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDeck, checkWinner, werwolf as werwolfLogic, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
+import { autoWolves, buildDeck, checkWinner, rulesOf, werwolf as werwolfLogic, type Role, type WerwolfState } from "@shared/games/werwolf/logic";
 import { playerLimits, viewRoom, type RoomState } from "@shared/platform/room";
 import { TEMPO, tempoOf } from "@shared/games/werwolf/tempo";
 import { act, game, roomWith } from "./helpers";
@@ -7,10 +7,10 @@ import { act, game, roomWith } from "./helpers";
 const g = (r: RoomState) => r.game as WerwolfState;
 const NAMES = ["Anna", "Ben", "Cem", "Dora", "Emil", "Finn", "Gina"];
 
-/** Werwolf-Raum starten; `actor` null = lokal, sonst Start durch den Host p1 (online) */
+/** Werwolf-Raum starten; `actor` null = lokal, sonst Start durch den Host p1 (online). Ohne Hauptmann, außer es wird verlangt */
 function start(n: number, options: Record<string, string | boolean> = {}, online = false) {
   let r = act(roomWith(NAMES.slice(0, n)), { type: "selectGame", gameId: "werwolf" });
-  for (const [key, value] of Object.entries(options)) r = act(r, { type: "setOption", key, value });
+  for (const [key, value] of Object.entries({ captain: false, ...options })) r = act(r, { type: "setOption", key, value });
   return act(r, { type: "start" }, online ? "p1" : null);
 }
 /** Rollen gezielt festlegen */
@@ -134,8 +134,10 @@ describe("Spielleiter bzw. lokal (schrittweise)", () => {
     r = w(w(r, { type: "amor", a: "p4", b: "p6" }, "p1"), { type: "next" }, "p1");
     expect(g(r).pending[0]).toBe("lovers");
     r = w(r, { type: "next" }, "p1");
-    r = w(w(r, { type: "wolf", target: "p4" }, "p1"), { type: "next" }, "p1");
+    // Original: die Seherin erwacht vor den Werwölfen
+    expect(g(r).pending.slice(0, 2)).toEqual(["seherin", "werwolf"]);
     r = w(w(r, { type: "see", target: "p2" }, "p1"), { type: "next" }, "p1");
+    r = w(w(r, { type: "wolf", target: "p4" }, "p1"), { type: "next" }, "p1");
     // Jäger tot, Geliebte stirbt aus Kummer, Jäger schießt
     expect(g(r).phase).toBe("hunter");
     expect(g(r).alive.p6).toBe(false);
@@ -163,8 +165,15 @@ describe("Spielleiter bzw. lokal (schrittweise)", () => {
 });
 
 describe("Sieg", () => {
-  it("Wölfe gewinnen bei Gleichstand der Zahl", () => {
+  it("Original: Wölfe gewinnen erst, wenn kein Dorfbewohner mehr lebt", () => {
     const s = g(start(5));
+    const st: WerwolfState = { ...s, roles: { a: "werwolf", b: "dorf", c: "dorf" }, alive: { a: true, b: true, c: false }, lovers: null };
+    expect(checkWinner(st)).toBeNull();
+    expect(checkWinner({ ...st, alive: { a: true, b: false, c: false } })).toBe("werwolf");
+  });
+
+  it("Hausregel: Wölfe gewinnen schon bei Gleichstand der Zahl", () => {
+    const s = g(start(5, { parity: true }));
     const st: WerwolfState = { ...s, roles: { a: "werwolf", b: "dorf", c: "dorf" }, alive: { a: true, b: true, c: false }, lovers: null };
     expect(checkWinner(st)).toBe("werwolf");
   });
@@ -258,8 +267,34 @@ describe("Rollen aus den Erweiterungen", () => {
     let r = night1({ p1: "urwolf", p2: "dorf", p3: "dorf", p4: "dorf", p5: "dorf", p6: "dorf", p7: "werwolf" });
     r = runNight(r, { werwolf: { type: "wolf", target: "p2" }, urwolf: { type: "infect", yes: true } });
     expect(g(r).alive.p2).toBe(true);
-    expect(g(r).roles.p2).toBe("werwolf");
+    // Die Karte bleibt, die Person spielt aber für die Wölfe
+    expect(g(r).roles.p2).toBe("dorf");
+    expect(g(r).converted).toEqual(["p2"]);
     expect(g(r).infectUsed).toBe(true);
+  });
+
+  it("Urwolf: eine verwandelte Seherin schaut weiter, jagt mit und gilt für die Seherin als Seherin", () => {
+    let r = start(7, { urwolf: true, wolves: "2" }, true);
+    r = withRoles(r, { p1: "urwolf", p2: "seherin", p3: "dorf", p4: "dorf", p5: "dorf", p6: "dorf", p7: "werwolf" });
+    r = w(r, { type: "startNight" }, "p1");
+    r = w(w(r, { type: "wolf", target: "p2" }, "p1"), { type: "wolf", target: "p2" }, "p7");
+    r = w(r, { type: "see", target: "p3" }, "p2");
+    r = w(r, { type: "infect", yes: true }, "p1");
+    expect(g(r).phase).toBe("day");
+    expect(g(r).converted).toEqual(["p2"]);
+    // Die Wölfe sehen die Verwandelte als Werwolf, nicht ihre Karte
+    const v1 = g(viewRoom(r, "p1"));
+    expect(v1.known).toContain("p2");
+    expect(v1.roles.p2).toBe("werwolf");
+    expect(g(viewRoom(r, "p3")).known).toEqual(["p3"]);
+    r = w(r, { type: "closeVote" }, "p1");
+    expect(g(r).pending).toEqual(expect.arrayContaining(["seherin", "werwolf"]));
+    // Sie stimmt mit dem Rudel ab und schaut als Seherin
+    expect(() => w(r, { type: "wolf", target: "p3" }, "p2")).not.toThrow();
+    expect(g(viewRoom(r, "p2")).pending).toEqual(expect.arrayContaining(["seherin", "werwolf"]));
+    // Für das Siegergebnis zählt sie zum Rudel
+    const res = werwolfLogic.results!({ ...g(r), winner: "werwolf", phase: "over" }, {} as never);
+    expect(res.find((x) => x.id === "p2")!.won).toBe(true);
   });
 
   it("Großer böser Wolf frisst ein zweites Opfer – bis ein Wolf stirbt", () => {
@@ -462,14 +497,32 @@ describe("Hausregeln, eigene Karten, Solo-Rollen, Dieb", () => {
     expect(g(r).winner).toBe("floete");
   });
 
-  it("Engel gewinnt, wenn er am ersten Tag verurteilt wird", () => {
+  it("Engel: Das Spiel beginnt mit einer Abstimmung – wird er verurteilt, gewinnt er", () => {
     let r = start(5, { engel: true });
     r = withRoles(r, { p1: "werwolf", p2: "engel", p3: "dorf", p4: "dorf", p5: "dorf" });
     r = w(r, { type: "startNight" });
-    r = w(r, { type: "next" });
-    r = w(w(r, { type: "wolf", target: "p5" }), { type: "next" });
+    expect(g(r).phase).toBe("day");
+    expect(g(r).night).toBe(0);
     r = w(r, { type: "lynch", target: "p2" });
     expect(g(r).winner).toBe("engel");
+  });
+
+  it("Engel: stirbt er in der ersten Nacht, gewinnt er – am Tag danach nicht mehr", () => {
+    const roles = { p1: "werwolf", p2: "engel", p3: "dorf", p4: "dorf", p5: "dorf", p6: "dorf" } as Record<string, Role>;
+    let r = withRoles(start(6, { engel: true }), roles);
+    r = w(w(r, { type: "startNight" }), { type: "lynch", target: null });
+    expect(g(r).night).toBe(1);
+    r = w(r, { type: "next" });
+    r = w(w(r, { type: "wolf", target: "p2" }), { type: "next" });
+    expect(g(r).winner).toBe("engel");
+
+    r = withRoles(start(6, { engel: true }), roles);
+    r = w(w(r, { type: "startNight" }), { type: "lynch", target: null });
+    r = w(r, { type: "next" });
+    r = w(w(r, { type: "wolf", target: "p3" }), { type: "next" });
+    r = w(r, { type: "lynch", target: "p2" });
+    expect(g(r).winner).toBeNull();
+    expect(g(r).alive.p2).toBe(false);
   });
 });
 
@@ -529,5 +582,126 @@ describe("Tempo und eigene Zeiten", () => {
     r = act(r, { type: "setOption", key: "tRole", value: 23 });
     r = act(r, { type: "setOption", key: "tWolves", value: 999 });
     expect(tempoOf(r.options)).toMatchObject({ role: 25, wolves: 120, talk: TEMPO.normal.talk });
+  });
+});
+
+describe("Originalregeln", () => {
+  it("Werwölfe nach Spielerzahl: 8–11 → 2, 12–17 → 3, ab 18 → 4 (darunter 1)", () => {
+    expect([5, 7, 8, 11, 12, 17, 18, 20].map(autoWolves)).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
+  });
+
+  it("Hauptmann ist Standard und wird am ersten Tag gewählt", () => {
+    expect(rulesOf({}).captain).toBe(true);
+    expect(rulesOf({ captain: false }).captain).toBe(false);
+    let r = act(roomWith(NAMES.slice(0, 5)), { type: "selectGame", gameId: "werwolf" });
+    r = act(r, { type: "start" });
+    r = withRoles(r, { p1: "werwolf", p2: "dorf", p3: "dorf", p4: "dorf", p5: "dorf" });
+    r = w(r, { type: "startNight" });
+    while (g(r).phase === "night") {
+      if (g(r).pending[0] === "werwolf") r = w(r, { type: "wolf", target: "p5" });
+      r = w(r, { type: "next" });
+    }
+    expect(g(r).phase).toBe("election");
+  });
+
+  it("Nachtreihenfolge: Seherin, Fuchs, Rabe, Heiler vor den Wölfen, Hexe danach", () => {
+    let r = start(8, { wolves: "1" });
+    r = withRoles(r, { p1: "werwolf", p2: "seherin", p3: "fuchs", p4: "rabe", p5: "beschuetzer", p6: "hexe", p7: "amor", p8: "dorf" } as Record<string, Role>);
+    r = w(r, { type: "startNight" });
+    expect(g(r).pending).toEqual(["sleep", "amor", "lovers", "seherin", "fuchs", "rabe", "beschuetzer", "werwolf", "hexe"]);
+  });
+
+  it("Sündenbock stirbt bei Gleichstand – noch vor der Entscheidung des Hauptmanns", () => {
+    let r = start(7, { captain: true }, true);
+    r = withRoles(r, { p1: "dorf", p2: "suendenbock", p3: "dorf", p4: "werwolf", p5: "dorf", p6: "dorf", p7: "dorf" });
+    r = w(r, { type: "startNight" }, "p1");
+    r = w(r, { type: "wolf", target: "p7" }, "p4");
+    for (const id of ["p1", "p2", "p3", "p4", "p5", "p6"]) r = w(r, { type: "vote", target: "p3" }, id);
+    expect(g(r).captain).toBe("p3");
+    // p3 (Hauptmann, doppelt) gegen p4, p5+p6 gegen p1: 2:2
+    r = w(w(r, { type: "vote", target: "p4" }, "p3"), { type: "vote", target: "p1" }, "p5");
+    r = w(w(r, { type: "vote", target: "p1" }, "p6"), { type: "closeVote" }, "p1");
+    expect(g(r).alive.p2).toBe(false);
+    expect(g(r).alive.p4).toBe(true);
+    expect(g(r).news!.scapegoat).toBe(true);
+  });
+
+  it("Ohne Sündenbock entscheidet bei Gleichstand der Hauptmann", () => {
+    let r = start(7, { captain: true }, true);
+    r = withRoles(r, { p1: "dorf", p2: "dorf", p3: "dorf", p4: "werwolf", p5: "dorf", p6: "dorf", p7: "dorf" });
+    r = w(r, { type: "startNight" }, "p1");
+    r = w(r, { type: "wolf", target: "p7" }, "p4");
+    for (const id of ["p1", "p2", "p3", "p4", "p5", "p6"]) r = w(r, { type: "vote", target: "p3" }, id);
+    r = w(w(r, { type: "vote", target: "p4" }, "p3"), { type: "vote", target: "p1" }, "p5");
+    r = w(w(r, { type: "vote", target: "p1" }, "p6"), { type: "closeVote" }, "p1");
+    expect(g(r).winner).toBe("dorf");
+  });
+
+  it("schrittweise: „Gleichstand“ tötet den Sündenbock, sonst gilt die Wahl", () => {
+    const roles = { p1: "werwolf", p2: "suendenbock", p3: "dorf", p4: "dorf", p5: "dorf", p6: "dorf" } as Record<string, Role>;
+    let r = withRoles(start(6), roles);
+    r = w(r, { type: "startNight" });
+    while (g(r).phase === "night") {
+      if (g(r).pending[0] === "werwolf") r = w(r, { type: "wolf", target: "p6" });
+      r = w(r, { type: "next" });
+    }
+    const tie = w(r, { type: "lynch", target: "p3", tie: true });
+    expect(g(tie).alive.p2).toBe(false);
+    expect(g(tie).alive.p3).toBe(true);
+    const plain = w(r, { type: "lynch", target: null });
+    expect(g(plain).alive.p2).toBe(true);
+  });
+
+  it("Der Alte vom Dorf verurteilt: alle Sonderrollen des Dorfes verlieren ihre Fähigkeiten", () => {
+    let r = withRoles(start(7, { jaeger: true }), { p1: "werwolf", p2: "alter", p3: "seherin", p4: "jaeger", p5: "dorfdepp", p6: "dorf", p7: "dorf" });
+    r = w(r, { type: "startNight" });
+    expect(g(r).pending).toContain("seherin");
+    while (g(r).phase === "night") {
+      const step = g(r).pending[0];
+      if (step === "werwolf") r = w(r, { type: "wolf", target: "p7" });
+      if (step === "seherin") r = w(r, { type: "see", target: "p1" });
+      r = w(r, { type: "next" });
+    }
+    r = w(r, { type: "lynch", target: "p2" });
+    expect(g(r).powersLost).toBe(true);
+    expect(g(r).pending).not.toContain("seherin");
+    while (g(r).phase === "night") {
+      if (g(r).pending[0] === "werwolf") r = w(r, { type: "wolf", target: "p4" });
+      r = w(r, { type: "next" });
+    }
+    // Der Jäger schießt nicht mehr, der Dorfdepp wird nicht mehr verschont
+    expect(g(r).alive.p4).toBe(false);
+    expect(g(r).phase).toBe("day");
+    r = w(r, { type: "lynch", target: "p5" });
+    expect(g(r).alive.p5).toBe(false);
+  });
+
+  it("Der Alte von Wölfen gefressen: das Dorf behält seine Fähigkeiten", () => {
+    let r = withRoles(start(6), { p1: "werwolf", p2: "alter", p3: "seherin", p4: "dorf", p5: "dorf", p6: "dorf" });
+    for (let n = 0; n < 2; n++) {
+      if (n === 0) r = w(r, { type: "startNight" });
+      while (g(r).phase === "night") {
+        const step = g(r).pending[0];
+        if (step === "werwolf") r = w(r, { type: "wolf", target: "p2" });
+        if (step === "seherin") r = w(r, { type: "see", target: "p4" });
+        r = w(r, { type: "next" });
+      }
+      if (n === 0) r = w(r, { type: "lynch", target: null });
+    }
+    expect(g(r).alive.p2).toBe(false);
+    expect(g(r).powersLost).toBe(false);
+  });
+
+  it("Bärenführer verwandelt: der Bär brummt jeden Morgen", () => {
+    let r = withRoles(start(7, { urwolf: true, wolves: "2" }), { p1: "urwolf", p2: "dorf", p3: "baerenfuehrer", p4: "dorf", p5: "dorf", p6: "werwolf", p7: "dorf" });
+    r = w(r, { type: "startNight" });
+    while (g(r).phase === "night") {
+      const step = g(r).pending[0];
+      if (step === "werwolf") r = w(r, { type: "wolf", target: "p3" });
+      if (step === "urwolf") r = w(r, { type: "infect", yes: true });
+      r = w(r, { type: "next" });
+    }
+    expect(g(r).converted).toEqual(["p3"]);
+    expect(g(r).news!.growl).toBe(true);
   });
 });

@@ -3,7 +3,7 @@ import { dealDelay, Fan } from "@/platform/cards/Fan";
 import { PlayerRow } from "@/platform/PlayerRow";
 import { Check, ChevronLeft, SkipForward } from "lucide-react";
 import {
-  cardLabel, colorOf, extend, findPhase, isSkip, isWild, leaders, needLabel, PHASES, phaseLabel, valueOf,
+  cardLabel, colorOf, extend, findPhase, isSkip, skipTargets, isWild, leaders, needLabel, PHASES, phaseLabel, valueOf,
   type Group, type P10Action, type P10Card, type P10Color, type P10State,
 } from "@shared/games/phase10/logic";
 import { Button } from "@/components/ui/button";
@@ -133,7 +133,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
   const hit = (owner: string, g: number) => { if (!one) return; vibrate(10); act({ type: "hit", card: one, owner, g }); };
   const discard = (skip?: string) => {
     if (!one) return;
-    if (isSkip(one) && !skip && players.length > 2) { setSkipPick(true); return; }
+    if (isSkip(one) && !skip && viewer && skipTargets(s, players, viewer).length > 1) { setSkipPick(true); return; }
     vibrate(10);
     act({ type: "discard", card: one, skip });
   };
@@ -231,7 +231,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
                   <div className="glass mt-2 grid gap-2 rounded-2xl p-2.5">
                     <p className="text-center text-sm font-semibold">Wer soll aussetzen?</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                      {players.filter((p) => p.id !== viewer).map((p) => <Button key={p.id} variant="secondary" onClick={() => discard(p.id)}>{p.name}</Button>)}
+                      {players.filter((p) => p.id !== viewer).map((p) => <Button key={p.id} variant="secondary" disabled={!skipTargets(s, players, viewer!).includes(p.id)} onClick={() => discard(p.id)}>{p.name}</Button>)}
                     </div>
                   </div>
                 ) : s.step === "draw" ? (
