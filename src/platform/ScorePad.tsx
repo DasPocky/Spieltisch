@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Trophy, Undo2 } from "lucide-react";
 import type { Pad, PadAction } from "@shared/platform/pad";
 import type { Player } from "@shared/platform/types";
@@ -12,7 +12,7 @@ import { cn, vibrate } from "@/lib/utils";
  * Punkteblock für Spiele mit echten Karten. `mode="points"`: jeder trägt seine Rundenpunkte ein,
  * der Host schließt ab. `mode="wins"`: der Host tippt den Rundensieger an.
  */
-export function ScorePad({ pad, players, me, isHost, online, act, gameId, info, hint, mode = "points", lowWins, allowNegative }: {
+export function ScorePad({ pad, players, me, isHost, online, act, gameId, info, hint, mode = "points", lowWins, allowNegative, entry }: {
   pad: Pad;
   players: Player[];
   me: string | null;
@@ -26,6 +26,8 @@ export function ScorePad({ pad, players, me, isHost, online, act, gameId, info, 
   mode?: "points" | "wins";
   lowWins?: boolean;
   allowNegative?: boolean;
+  /** Eigene Eingabe statt Zahlenfeld (z. B. Karten antippen) – bekommt den Spieler und setzt die Punkte */
+  entry?: (p: Player, editable: boolean, value: number | null, set: (n: number | null) => void) => ReactNode;
 }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const local = me === null;
@@ -62,9 +64,9 @@ export function ScorePad({ pad, players, me, isHost, online, act, gameId, info, 
           ) : (
             <div key={p.id} className="glass flex items-center gap-2 rounded-xl px-2.5 py-1.5">
               <span className="min-w-0 flex-1 truncate font-semibold">{p.id === me ? `${p.name} (du)` : p.name}</span>
-              <Input value={val} disabled={!editable} inputMode={allowNegative ? "text" : "numeric"} aria-label={`Punkte ${p.name}`} className="h-10 w-20 text-center text-lg font-bold"
+              {entry ? entry(p, editable, pad.entries[p.id] ?? null, (n) => act({ type: "padEnter", player: p.id, points: n })) : <Input value={val} disabled={!editable} inputMode={allowNegative ? "text" : "numeric"} aria-label={`Punkte ${p.name}`} className="h-10 w-20 text-center text-lg font-bold"
                 onChange={(e) => setDraft((d) => ({ ...d, [p.id]: e.target.value.replace(allowNegative ? /[^\d−-]/g : /\D/g, "").slice(0, 4) }))}
-                onBlur={() => commit(p.id)} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+                onBlur={() => commit(p.id)} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />}
             </div>
           );
         })}

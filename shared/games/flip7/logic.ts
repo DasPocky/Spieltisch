@@ -143,6 +143,18 @@ export function linePoints(line: Line): number {
   return Math.max(0, sum);
 }
 
+/** Punkte aus den Karten, die jemand mit echten Karten vor sich liegen hat (Zahlen, Plus/Minus, ×2/÷2, Flip-7-Bonus) */
+export function handPoints(cards: F7Card[]): number {
+  const nums = cards.filter((c) => c.startsWith("n:"));
+  return linePoints({ nums, mods: cards.filter(isMod), second: false, status: "stayed", flip7: new Set(nums.map(numValue)).size >= 7 });
+}
+
+/** Karten zum Antippen im Punkteblock – je Wert eine */
+export function handChoices(variant: Variant): F7Card[] {
+  return [...new Set(buildDeck(variant).filter((c) => c.startsWith("n:") || isMod(c)))]
+    .sort((a, b) => (isMod(a) === isMod(b) ? (isMod(a) ? 0 : numValue(a) - numValue(b)) : isMod(a) ? 1 : -1));
+}
+
 const nameOf = (ctx: GameContext, id: string) => ctx.players.find((p) => p.id === id)?.name ?? "?";
 const log = (s: F7State, msg: string) => { s.log.push(msg); if (s.log.length > MAX_LOG) s.log.shift(); };
 const activeIds = (s: F7State, players: Player[]) => players.map((p) => p.id).filter((id) => s.lines[id]?.status === "active");
@@ -506,6 +518,13 @@ export const flip7: GameLogic<F7State, F7Action> = {
       choices: [
         { value: "classic", label: "Klassisch", hint: "Einfrieren, Flip 3, zweite Chance" },
         { value: "fies", label: "Voll fies", hint: "Hausvariante nach „Flip 7: Voll fies!“ – bis 13, Klauen, Tauschen, Minus" },
+      ],
+    },
+    {
+      key: "entry", label: "Punkte eintragen", type: "choice", default: "cards", inGame: true, showIf: (o) => o.mode === "table",
+      choices: [
+        { value: "cards", label: "Karten antippen", hint: "App rechnet" },
+        { value: "points", label: "Punkte eintippen", hint: "selbst gerechnet" },
       ],
     },
     { key: "target", label: "Spielziel", type: "number", default: 200, min: 100, max: 500, step: 50 },

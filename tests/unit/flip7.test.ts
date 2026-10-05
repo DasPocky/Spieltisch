@@ -204,3 +204,15 @@ describe("Flip 7", () => {
     expect(bustOdds({ ...s, lines: { ...s.lines, [id]: line({ nums: ["n:5"], second: true }) } }, id)).toBeNull();
   });
 });
+
+describe("Punkteblock: Karten antippen", () => {
+  it("rechnet Zahlen, Plus-Karten, ×2 und den Flip-7-Bonus", async () => {
+    const { handPoints, handChoices } = await import("@shared/games/flip7/logic");
+    expect(handPoints(["n:5", "n:12", "m:+4"])).toBe(21);
+    expect(handPoints(["n:5", "n:12", "m:x2", "m:+4"])).toBe(38);
+    expect(handPoints(["n:0", "n:1", "n:2", "n:3", "n:4", "n:5", "n:6"])).toBe(21 + 15);
+    expect(handPoints([])).toBe(0);
+    expect(handChoices("classic")).toContain("m:x2");
+    expect(handChoices("classic").filter((c) => c.startsWith("n:"))).toHaveLength(13);
+  });
+});

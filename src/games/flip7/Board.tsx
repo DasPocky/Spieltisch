@@ -1,6 +1,8 @@
 import { ArrowLeftRight, Clover, Hand, Heart, Hourglass, Layers, LifeBuoy, Skull, Snowflake, Trash, type LucideIcon } from "lucide-react";
 import { useState } from "react";
-import { bustOdds, cardLabel, linePoints, numValue, type F7Action, type F7Card, type F7State } from "@shared/games/flip7/logic";
+import { bustOdds, cardLabel, handChoices, handPoints, linePoints, numValue, type F7Action, type F7Card, type F7State, type Variant } from "@shared/games/flip7/logic";
+import type { Player } from "@shared/platform/types";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { ScorePad } from "@/platform/ScorePad";
@@ -28,8 +30,47 @@ const ACTION: Record<string, { bg: string; frame: string; ink: string; Icon: Luc
   "a:discard": { bg: "linear-gradient(160deg,#eceff3,#bcc3cf)", frame: "#7d8796", ink: "#2c3442", Icon: Trash },
 };
 
+/** Punkteblock mit echten Karten: Karten antippen statt rechnen */
+function HandEntry({ player, editable, value, variant, onSet }: { player: Player; editable: boolean; value: number | null; variant: Variant; onSet: (n: number | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const [cards, setCards] = useState<F7Card[]>([]);
+  const choices = handChoices(variant);
+  const pts = handPoints(cards);
+  const flip7 = new Set(cards.filter((c) => c.startsWith("n:")).map(numValue)).size >= 7;
+  const toggle = (c: F7Card) => setCards((cs) => (cs.includes(c) ? cs.filter((x) => x !== c) : [...cs, c]));
+  const done = (n: number) => { vibrate(10); onSet(n); setOpen(false); };
+  return (
+    <>
+      <Button variant={value === null ? "default" : "secondary"} className="h-10 min-w-24 tabular-nums" disabled={!editable} onClick={() => { setCards([]); setOpen(true); }}
+        aria-label={`Karten von ${player.name} wählen`}>
+        {value === null ? "Karten" : `${value} P.`}
+      </Button>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Karten von {player.name}</SheetTitle>
+            <SheetDescription>Tippe alle Karten an, die vor dir liegen.</SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-3 px-5 pt-1 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+            <div className="flex flex-wrap justify-center gap-1.5" data-testid="hand-pick">
+              {choices.map((c) => <Tile key={c} card={c} selectable quiet selected={cards.includes(c)} onClick={() => toggle(c)} />)}
+            </div>
+            <p className="text-center text-sm text-muted-foreground" aria-live="polite">
+              <b className="text-2xl text-foreground tabular-nums" data-testid="hand-points">{pts}</b> Punkte{flip7 && " · inkl. +15 für Flip 7"}
+            </p>
+            <div className="grid grid-cols-[1fr_1.4fr] gap-2">
+              <Button variant="secondary" size="lg" onClick={() => done(0)}>Raus – 0</Button>
+              <Button size="lg" onClick={() => done(pts)}>Eintragen</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
 /** Kleine Karte im Stil der Originalkarten: cremefarben mit farbiger Zahl, Plus-Karten orange, Aktionen mit Symbol */
-export function Tile({ card, selectable, selected, onClick }: { card: F7Card; selectable?: boolean; selected?: boolean; onClick?: () => void }) {
+export function Tile({ card, selectable, selected, onClick, quiet }: { card: F7Card; selectable?: boolean; selected?: boolean; onClick?: () => void; /** ohne Leuchten (Auswahlliste) */ quiet?: boolean }) {
   const num = card.startsWith("n:");
   const v = num ? numValue(card) : 0;
   const act = ACTION[card];
@@ -42,7 +83,7 @@ export function Tile({ card, selectable, selected, onClick }: { card: F7Card; se
   return (
     <button type="button" disabled={!selectable} onClick={onClick} aria-label={cardLabel(card)} aria-pressed={selected}
       className={cn("card-in relative flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-bold leading-none shadow-[0_1px_3px_rgba(2,8,23,.35)] ring-1 ring-black/10 outline-none transition disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
-        num ? "text-xl" : act ? "px-1 text-[0.5rem] leading-[1.1]" : "text-[0.95rem]", selectable && "target-glow", selected && "-translate-y-1 ring-[3px] ring-ice")}
+        num ? "text-xl" : act ? "px-1 text-[0.5rem] leading-[1.1]" : "text-[0.95rem]", selectable && !quiet && "target-glow", selected && (quiet ? "ring-[3px] ring-primary" : "-translate-y-1 ring-[3px] ring-ice"), quiet && !selected && "opacity-60")}
       style={{ background: bg, color: ink }}>
       {/* Feiner Innenrahmen wie auf den echten Karten */}
       <span className="pointer-events-none absolute inset-[2.5px] rounded-[5px] border-[1.5px]" style={{ borderColor: color }} aria-hidden="true" />
@@ -77,7 +118,10 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   if (s.mode === "table" && s.pad) {
     return <ScorePad pad={s.pad} players={players} me={me} isHost={isHost} online={online} act={act} gameId={room.gameId}
       info={`Runde ${s.pad.round} · bis ${s.target}`}
-      hint="Jeder trägt seine Rundenpunkte ein (Zahlen, Plus-Karten, ×2 und +15 für Flip 7 schon eingerechnet; raus = 0)." />;
+      hint={room.options.entry === "points"
+        ? "Jeder trägt seine Rundenpunkte ein (Zahlen, Plus-Karten, ×2 und +15 für Flip 7 schon eingerechnet; raus = 0)."
+        : "Jeder tippt die Karten an, die vor ihm liegen – die App rechnet (×2, Plus-Karten, +15 für Flip 7). Raus = 0."}
+      entry={room.options.entry === "points" ? undefined : (p, editable, value, set) => <HandEntry player={p} editable={editable} value={value} variant={s.variant} onSet={set} />} />;
   }
 
   const nameOf = (id: string | null) => (id === me ? "Du" : players.find((p) => p.id === id)?.name ?? "?");
