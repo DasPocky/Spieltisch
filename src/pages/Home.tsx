@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { GAME_LIST } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { createRoom } from "@/lib/createRoom";
-import { LAST_GAME_KEY, LOCAL_GAME_KEY, NAME_KEY, remove, RETURN_KEY } from "@/lib/storage";
+import { LAST_GAME_KEY, LOCAL_GAME_KEY, localKey, NAME_KEY, readJSON, remove, RETURN_KEY } from "@/lib/storage";
+import { getGame, isGameId } from "@shared/games";
 import { myAvatar } from "@/lib/profile";
 import { Logo } from "@/platform/Logo";
 import { InstallHint } from "@/platform/InstallHint";
@@ -23,6 +24,13 @@ type Way = "local" | "online";
 type Step = "online";
 const WAY_KEY = "spieltisch:way";
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+/** Läuft auf diesem Handy noch eine lokale Partie? Dann steht das auf der Startseite. */
+function runningLocal(): string | null {
+  const id = read(LOCAL_GAME_KEY);
+  if (!isGameId(id)) return null;
+  const saved = readJSON<{ phase?: string; game?: unknown }>(localKey(id));
+  return saved?.phase === "playing" && saved.game ? getGame(id).info.name : null;
+}
 const readWay = (): Way | null => { const v = read(WAY_KEY); return v === "local" || v === "online" ? v : null; };
 
 /**
@@ -42,6 +50,7 @@ export function Home() {
   const locked = (id: string) => !!config && accessFor(config, id) === "code" && !savedAccess();
   const remember = (w: Way) => { try { localStorage.setItem(WAY_KEY, w); } catch { /* egal */ } };
   const [avatar] = useState(myAvatar);
+  const [running] = useState(runningLocal);
   // Ein Handy: gleich in die lokale Lobby – mit dem zuletzt lokal gewählten Spiel, falls es noch freigegeben ist
   const playLocal = () => {
     remember("local");
@@ -70,7 +79,7 @@ export function Home() {
         <>
           <h2 className="mt-7 mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground">Wie spielt ihr?</h2>
           <div className="glass grid shrink-0 grid-cols-[minmax(0,1fr)] divide-y divide-border overflow-hidden rounded-2xl">
-            <WayRow icon={Smartphone} title="Ein Handy für alle" text="Herumreichen oder in die Mitte legen" marked={last === "local"} onClick={playLocal} />
+            <WayRow icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiterspielen` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} onClick={playLocal} />
             <WayRow icon={Users} title="Online-Raum erstellen" text="Jeder spielt am eigenen Handy" marked={last === "online"} onClick={() => { remember("online"); setWay("online"); }} />
           </div>
           <form className="glass mt-3 shrink-0 rounded-2xl p-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>

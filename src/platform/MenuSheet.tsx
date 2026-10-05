@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cloneElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { BookOpen, ChevronRight, Crown, History, Menu, Undo2, UserRound, Wrench } from "lucide-react";
+import { BookOpen, ChevronRight, Crown, Flag, History, Home, LogOut, Menu, Repeat, RotateCcw, Undo2, UserRound, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { getGame } from "@shared/games";
 import { currentPlayerId, skipLabel, type RoomState } from "@shared/platform/room";
@@ -13,6 +13,7 @@ import { navigate } from "@/hooks/useRoute";
 import { setViewMode, useViewMode } from "@/hooks/useViewMode";
 import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
 import { RETURN_KEY } from "@/lib/storage";
+import { wantGamePick } from "@/lib/pickGame";
 import { cn } from "@/lib/utils";
 import { RulesSheet } from "./RulesSheet";
 import { hasInGameSettings, HINT_GAMES, SettingsPanel } from "./SettingsPanel";
@@ -56,6 +57,8 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
     if ((room.undone ?? 0) > undone.current) toast("Letzter Zug wurde zurückgenommen.");
     undone.current = room.undone ?? 0;
   }, [room.undone]);
+  // Partie beendet, Spiel gewechselt, Raum zu: das Menü schließt sich von selbst
+  useEffect(() => { setOpen(false); }, [room.phase, room.gameId]);
   const role = !code ? "Ein Handy für alle" : isHost ? `Du bist Host · Raum ${code}` : `Gast · Host ist ${host?.name ?? "weg"}`;
 
   return (
@@ -77,18 +80,18 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
                   <Button variant="ice" className="justify-start" onClick={onClaimHost}><Crown />Host ist offline – Host übernehmen</Button>
                 )}
                 {isHost && Extras && <Extras {...board} />}
-                {code && isHost && (
-                  <label className="flex items-center gap-3 rounded-xl p-3 text-sm ring-1 ring-inset ring-border">
-                    <Checkbox checked={!!room.hostTools} onCheckedChange={(c) => dispatch({ type: "setHostTools", on: c === true })} />
-                    <span>
-                      <span className="flex items-center gap-1.5 font-semibold"><Wrench className="size-4 text-navy-300" />Host darf für alle spielen</span>
-                      <span className="block text-xs text-muted-foreground">Für andere eintragen, zurücknehmen, mischen – z. B. wenn jemand kein Handy hat. Aus: Du spielst ganz normal mit.</span>
-                    </span>
-                  </label>
-                )}
-                {isHost && hasInGameSettings(room) && (
-                  <Collapsible title="Während des Spiels" testId="ingame-settings">
-                    <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} inGame title={false} />
+                {isHost && (hasInGameSettings(room) || code) && (
+                  <Collapsible title="Einstellungen ändern" testId="ingame-settings">
+                    {code && (
+                      <label className="flex items-center gap-3 text-sm">
+                        <Checkbox checked={!!room.hostTools} onCheckedChange={(c) => dispatch({ type: "setHostTools", on: c === true })} />
+                        <span>
+                          <span className="flex items-center gap-1.5 font-semibold"><Wrench className="size-4 text-navy-300" />Host darf für alle spielen</span>
+                          <span className="block text-xs text-muted-foreground">Für andere eintragen, zurücknehmen, mischen – z. B. wenn jemand kein Handy hat.</span>
+                        </span>
+                      </label>
+                    )}
+                    {hasInGameSettings(room) && <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} inGame title={false} />}
                   </Collapsible>
                 )}
               </Section>
@@ -111,28 +114,36 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
 
             {/* In der Lobby steht der Raumcode schon auf der Seite */}
             {code && board && (
-              <Section title="Einladen">
-                <ShareCode code={code} gameName={name} />
-                <p className="px-1 text-xs text-muted-foreground">Die PIN steht nicht im Link – sag sie dazu.</p>
+              <Section title="Einladen" hideTitle>
+                <Collapsible title="Jemanden einladen" badge={<span className="text-xs font-normal tracking-[0.18em] text-muted-foreground">{code}</span>} testId="invite">
+                  <ShareCode code={code} gameName={name} />
+                  <p className="-mt-2 px-1 text-xs text-muted-foreground">Die PIN steht nicht im Link – sag sie dazu.</p>
+                </Collapsible>
               </Section>
             )}
 
-            <Section title="Mein Gerät">
-              <MyDevice room={room} />
+            <Section title="Mein Gerät" hideTitle>
+              <Collapsible title="Mein Gerät" badge={<span className="text-xs font-normal text-muted-foreground">Ansicht, Töne, hell/dunkel</span>} testId="my-device">
+                <MyDevice room={room} />
+              </Collapsible>
             </Section>
 
-            <Section title="Verlassen">
+            <Section title="Beenden">
+              {board && isHost && (
+                <Confirm title="Partie beenden?" confirmLabel="Beenden"
+                  description={code ? "Alle kommen zurück in die Lobby und bleiben im Raum. Dort könnt ihr Spiel, Spieler und Einstellungen ändern. Die Punkte dieser Partie verfallen." : "Zurück in die Lobby. Dort könnt ihr Spiel, Spieler und Einstellungen ändern. Die Punkte dieser Partie verfallen."}
+                  onConfirm={() => dispatch({ type: "toLobby" })}>
+                  <Row icon={Flag} label="Partie beenden" sub={code ? "Zur Lobby – alle bleiben im Raum" : "Zur Lobby – Spieler bleiben"} />
+                </Confirm>
+              )}
               <Leave code={code} isHost={isHost} onLeave={onLeave}>
-                <Button variant="secondary" className="w-full">{code ? "Raum verlassen" : "Zur Startseite"}</Button>
+                <Row icon={code ? LogOut : Home} label={code ? "Raum verlassen" : "Zur Startseite"}
+                  sub={code ? (isHost ? "Du gehst raus, der Raum bleibt offen" : "Du gehst raus, die anderen spielen weiter") : board ? "Die Partie bleibt gespeichert" : "Die Lobby bleibt gespeichert"} />
               </Leave>
-              {!code && <p className="px-1 text-xs text-muted-foreground">Die Partie bleibt auf diesem Handy gespeichert.</p>}
               {code && isHost && onCloseRoom && (
-                <div className="mt-3 grid gap-1.5 border-t border-border pt-3">
-                  <Confirm title="Raum schließen?" description="Die Partie endet für alle. Spielstand, Namen und Verlauf werden sofort vom Server gelöscht." confirmLabel="Schließen" onConfirm={onCloseRoom}>
-                    <Button variant="destructive" className="w-full">Raum schließen</Button>
-                  </Confirm>
-                  <p className="px-1 text-xs text-muted-foreground">Nur der Host kann den Raum für alle schließen.</p>
-                </div>
+                <Confirm title="Raum für alle schließen?" description="Die Partie endet für alle. Spielstand, Namen und Verlauf werden sofort vom Server gelöscht." confirmLabel="Schließen" onConfirm={onCloseRoom}>
+                  <button type="button" className="justify-self-start px-1 py-1 text-sm font-semibold text-destructive underline-offset-4 hover:underline">Raum für alle schließen</button>
+                </Confirm>
               )}
             </Section>
           </div>
@@ -158,11 +169,11 @@ function HostActions({ room, board, online, dispatch }: { room: RoomState; board
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <Confirm title="Nochmal spielen?" description="Alle Punkte werden auf 0 gesetzt. Spieler und Einstellungen bleiben." confirmLabel="Nochmal" onConfirm={() => dispatch({ type: "restart" })}>
-          <Button variant="secondary" className="px-2 text-[0.95rem] whitespace-nowrap">Nochmal spielen</Button>
+        <Confirm title="Nochmal von vorn?" description="Gleiches Spiel, gleiche Spieler und Einstellungen – alle Punkte zurück auf 0." confirmLabel="Neu starten" onConfirm={() => dispatch({ type: "restart" })}>
+          <Button variant="secondary" className="px-2 text-[0.95rem] whitespace-nowrap"><RotateCcw />Nochmal</Button>
         </Confirm>
-        <Confirm title="Anderes Spiel?" description="Die Partie endet, ihr landet in der Lobby und wählt ein anderes Spiel. Alle bleiben dabei." confirmLabel="Zur Lobby" onConfirm={() => dispatch({ type: "toLobby" })}>
-          <Button variant="secondary" className="px-2 text-[0.95rem] whitespace-nowrap">Anderes Spiel</Button>
+        <Confirm title="Spiel wechseln?" description="Die Partie endet. Gleich wählst du das neue Spiel – alle Spieler bleiben dabei." confirmLabel="Spiel wählen" onConfirm={() => { wantGamePick(); dispatch({ type: "toLobby" }); }}>
+          <Button variant="secondary" className="px-2 text-[0.95rem] whitespace-nowrap"><Repeat />Spiel wechseln</Button>
         </Confirm>
       </div>
       <Button variant="secondary" className="justify-start text-[0.95rem] whitespace-nowrap" disabled={!undoable && !entry}

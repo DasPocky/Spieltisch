@@ -95,6 +95,7 @@ test("Kniffel lokal mit echten Würfeln (Block) auf kleinem Handy", async ({ pag
   await page.getByRole("button", { name: "Menü" }).click();
   await page.getByRole("button", { name: "Letzten Zug zurücknehmen" }).click();
   await expect(page.getByTestId("current-player")).toHaveText("Ben");
+  await page.getByTestId("my-device").getByRole("button").first().click();
   await page.getByRole("radio", { name: /Voll/ }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);

@@ -1,6 +1,6 @@
 import { Feather, Heart, House, MoonStar, Music, PawPrint, Snowflake, type LucideIcon } from "lucide-react";
+import { EndActions } from "@/platform/ResultScreen";
 import { participants, ROLES, SPECIAL_ROLES, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
-import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { cn } from "@/lib/utils";
 import { useSpeak } from "@/platform/speech";
@@ -37,12 +37,7 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
             </li>
           ))}
         </ul>
-        {isHost ? (
-          <div className="mt-6 grid gap-2.5">
-            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
-            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Anderes Spiel</Button>
-          </div>
-        ) : <p className="mt-6 text-muted-foreground">Der Host kann nochmal starten oder ein anderes Spiel wählen.</p>}
+        <div className="mt-6"><EndActions isHost={isHost} dispatch={dispatch} /></div>
       </section>
     );
   }

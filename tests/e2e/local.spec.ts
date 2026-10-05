@@ -80,7 +80,7 @@ test("Alter lokaler Spielstand lädt weiter über den alten Link", async ({ page
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   // Verlassen führt zur Startseite, „Ein Handy für alle“ setzt die Partie fort
   await page.getByRole("button", { name: "Menü" }).click();
-  await page.getByRole("button", { name: "Zur Startseite" }).click();
+  await page.getByRole("button", { name: /Zur Startseite/ }).click();
   await expect(page).toHaveURL(/\/$/);
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
@@ -153,9 +153,11 @@ test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
   await shot(page, "08-small-screen");
   await page.getByRole("button", { name: "Menü" }).click();
   // Feste Abschnitte: Partie zuerst, keine Einstellungsliste mehr im Menü
-  await expect(page.getByRole("button", { name: "Nochmal spielen" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Anderes Spiel" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Nochmal" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Spiel wechseln" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Partie beenden/ })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: "Würfel" })).toHaveCount(0);
+  await page.getByTestId("my-device").getByRole("button").first().click();
   await page.getByRole("radio", { name: /Voll/ }).click();
   await shot(page, "09-menu");
   // Spieler & Verlauf: auch bei Tutto (ohne Leiste) – mit Stapel
@@ -168,4 +170,33 @@ test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
   await expect(page.getByTestId("turn-pts")).toBeVisible();
   await expectNoScroll(page);
   await shot(page, "10-full-view");
+});
+
+test("Partie beenden, Spiel wechseln, Startseite: Menü schließt sich, Auswahl kommt sofort", async ({ page }) => {
+  await startLocalTutto(page, ["Anna", "Ben"]);
+  // Spiel wechseln: Rückfrage, dann gleich die Spielauswahl – das Menü ist zu
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("button", { name: "Spiel wechseln" }).click();
+  await page.getByRole("button", { name: "Spiel wählen" }).click();
+  await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Menü" })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Kniffel/ }).click();
+  await expect(page.getByTestId("game-card")).toContainText("Kniffel");
+  await expect(page.getByText("Mitspieler · 2")).toBeVisible();
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  // Zur Startseite: die laufende Partie steht dort
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.waitForTimeout(500); // Menü fährt noch hoch
+  await expectInView(page, page.getByRole("button", { name: /Zur Startseite/ }));
+  await page.getByRole("button", { name: /Zur Startseite/ }).click();
+  await expect(page.getByRole("button", { name: /Ein Handy für alle/ })).toContainText("Kniffel läuft noch");
+  await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
+  // Partie beenden: zurück in die Lobby, Menü zu, keine Spielauswahl
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("button", { name: /Partie beenden/ }).click();
+  await page.getByRole("button", { name: "Beenden", exact: true }).click();
+  await expect(page.getByTestId("game-card")).toContainText("Kniffel");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: "Zur Startseite" }).click();
+  await expect(page.getByRole("button", { name: /Ein Handy für alle/ })).not.toContainText("läuft noch");
 });

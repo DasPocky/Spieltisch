@@ -26,6 +26,7 @@ for (const size of SIZES) {
     for (const mode of ["simple", "full"] as const) {
       if (mode === "full") {
         await page.getByRole("button", { name: "Menü" }).click();
+        await page.getByTestId("my-device").getByRole("button").first().click();
         await page.getByRole("radio", { name: /Voll/ }).click();
         await page.keyboard.press("Escape");
         await expect(page.getByRole("dialog")).toHaveCount(0);

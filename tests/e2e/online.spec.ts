@@ -92,13 +92,14 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
   // Gast-Menü: keine Host-Aktionen, aber Spieler & Verlauf
   await guest.getByRole("button", { name: "Menü" }).click();
   await expect(guest.getByRole("dialog")).toContainText("Gast · Host ist Anna");
-  await expect(guest.getByRole("button", { name: "Nochmal spielen" })).toHaveCount(0);
-  await expect(guest.getByRole("button", { name: "Raum schließen" })).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: "Nochmal" })).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: /Partie beenden/ })).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: /Raum für alle schließen/ })).toHaveCount(0);
   await guest.keyboard.press("Escape");
 
   // Host schließt den Raum – der Gast fliegt raus
   await host.getByRole("button", { name: "Menü" }).click();
-  await host.getByRole("button", { name: "Raum schließen" }).click();
+  await host.getByRole("button", { name: "Raum für alle schließen" }).click();
   await host.getByRole("button", { name: "Schließen", exact: true }).click();
   await expect(guest.getByRole("heading", { name: "Raum beendet" })).toBeVisible();
   await expect(guest.getByText("Der Host hat den Raum geschlossen.")).toBeVisible();
@@ -162,6 +163,7 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
   // Ein Rückgängig-Knopf für alles (kein zweiter „Eintrag zurücknehmen“)
   await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(1);
   await expect(host.getByRole("button", { name: /Kartenstapel neu mischen/ })).toHaveCount(0);
+  await host.getByRole("button", { name: "Einstellungen ändern" }).click();
   await host.getByRole("checkbox", { name: /Host darf für alle spielen/ }).click();
   await expect(host.getByRole("button", { name: /Kartenstapel neu mischen/ })).toBeVisible();
   await expect(host.getByRole("button", { name: /zurücknehmen/ })).toHaveCount(1);
@@ -171,7 +173,7 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
   await guest.getByRole("button", { name: "Menü" }).click();
   await expect(guest.getByRole("checkbox", { name: /Host darf für alle spielen/ })).toHaveCount(0);
   // Verlassen fragt nach – danach ist der Gast auf der Startseite
-  await guest.getByRole("button", { name: "Raum verlassen" }).click();
+  await guest.getByRole("button", { name: /Raum verlassen/ }).click();
   await expect(guest.getByText("brauchst du wieder Raumcode und PIN")).toBeVisible();
   await guest.getByRole("button", { name: "Verlassen", exact: true }).click();
   await expect(guest).toHaveURL(/\/$/);

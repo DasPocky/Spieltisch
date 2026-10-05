@@ -10,6 +10,7 @@ import type { BoardProps, GameUI } from "@/games/types";
 import { useViewMode } from "@/hooks/useViewMode";
 import { cn } from "@/lib/utils";
 import { pickGameKey } from "@/lib/createRoom";
+import { takeGamePick } from "@/lib/pickGame";
 import { LAST_GAME_KEY } from "@/lib/storage";
 import { savedAccess, siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
 import { accessFor } from "@shared/platform/access";
@@ -139,8 +140,9 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
 }
 
 function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props & { isHost: boolean }) {
-  // Frisch erstellter Raum: der Host wählt zuerst das Spiel
+  // Frisch erstellter Raum oder „Spiel wechseln“: der Host wählt zuerst das Spiel
   const [pick, setPick] = useState(() => {
+    if (takeGamePick() && isHost) return true;
     if (!code || !isHost) return false;
     try { const v = sessionStorage.getItem(pickGameKey(code)); sessionStorage.removeItem(pickGameKey(code)); return v === "1"; } catch { return false; }
   });

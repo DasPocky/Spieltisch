@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { RoomAction } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { cn, fmt } from "@/lib/utils";
+import { wantGamePick } from "@/lib/pickGame";
 import type { ScoreEntry } from "./Scoreboard";
 
 /** Siegerehrung mit Rangliste. Der Host startet von hier eine neue Runde oder geht zurück in die Lobby. */
@@ -45,14 +46,23 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
         </ol>
       </div>
       <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {isHost ? (
-          <div className="grid gap-2">
-            <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
-            {children}
-            <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Anderes Spiel</Button>
-          </div>
-        ) : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host kann nochmal starten oder ein anderes Spiel wählen.</p>}
+        <EndActions isHost={isHost} dispatch={dispatch}>{children}</EndActions>
       </div>
     </section>
+  );
+}
+
+/** Nach der Partie: nochmal, anderes Spiel oder zur Lobby (Spieler, Einstellungen) – für alle Spiele gleich */
+export function EndActions({ isHost, dispatch, children }: { isHost: boolean; dispatch: (a: RoomAction) => void; children?: ReactNode }) {
+  if (!isHost) return <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet gleich nochmal oder wählt ein anderes Spiel.</p>;
+  return (
+    <div className="grid gap-2">
+      <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
+      {children}
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" onClick={() => { wantGamePick(); dispatch({ type: "toLobby" }); }}>Spiel wechseln</Button>
+        <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby</Button>
+      </div>
+    </div>
   );
 }

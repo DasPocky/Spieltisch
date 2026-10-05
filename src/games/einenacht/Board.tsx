@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { EndActions } from "@/platform/ResultScreen";
 import { Check, Coffee, Eye, Handshake, Moon, PawPrint, Skull, Sun, VenetianMask, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { ON_ROLES, resolveNight, type ONAction, type ONRole, type ONState } from "@shared/games/einenacht/logic";
 import type { Options, Player } from "@shared/platform/types";
@@ -329,12 +330,7 @@ function Result({ s, players, isHost, dispatch }: { s: ONState; players: Player[
       </ul>
       <p className="mt-3 text-sm text-muted-foreground">Mitte: {(s.finalCenter ?? s.center).map((r, i) => <span key={i}>{i > 0 && " · "}<span className="whitespace-nowrap"><RoleIcon role={r} className="mr-1" />{ON_ROLES[r].name}</span></span>)}</p>
       </>}
-      {isHost ? (
-        <div className="mt-6 grid gap-2.5">
-          <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
-          <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Anderes Spiel</Button>
-        </div>
-      ) : <p className="mt-6 text-muted-foreground">Der Host kann nochmal starten oder ein anderes Spiel wählen.</p>}
+      <div className="mt-6"><EndActions isHost={isHost} dispatch={dispatch} /></div>
     </section>
   );
 }
