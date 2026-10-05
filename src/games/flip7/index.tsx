@@ -66,7 +66,7 @@ function Rules() {
         <Row cards={["a:swap"]} title="Tauschen" text="Tausche zwei offene Zahlenkarten zweier Spieler – auch eine eigene. Wer dadurch eine doppelte Zahl hat, fliegt raus." />
         <Row cards={["a:steal"]} title="Klauen" text="Nimm dir eine offene Karte eines anderen – doppelte Zahl heißt auch für dich: raus." />
         <Row cards={["a:discard"]} title="Abwerfen" text="Eine beliebige offene Karte auf dem Tisch kommt weg." />
-        <Row cards={["m:-4", "m:/2"]} title="Minus und ÷2" text="Diese Karten verschenkst du an einen anderen aktiven Spieler. ÷2 halbiert seine Zahlen." />
+        <Row cards={["m:-4", "m:/2"]} title="Minus und ÷2" text="Diese Karten verschenkst du an einen anderen aktiven Spieler. ÷2 halbiert seine Zahlen. Rundenpunkte und Stand können dadurch auch negativ werden." />
       </ul>
     </>
   );

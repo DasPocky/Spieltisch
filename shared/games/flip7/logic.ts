@@ -140,7 +140,8 @@ export function linePoints(line: Line): number {
   if (line.mods.includes("m:/2")) sum = Math.floor(sum / 2);
   for (const m of line.mods) if (/^m:[+-]\d+$/.test(m)) sum += parseInt(m.slice(2), 10);
   if (line.flip7) sum += 15;
-  return Math.max(0, sum);
+  // Minus-Karten (Voll fies) dürfen eine Runde auch ins Minus drücken
+  return sum;
 }
 
 /** Punkte aus den Karten, die jemand mit echten Karten vor sich liegen hat (Zahlen, Plus/Minus, ×2/÷2, Flip-7-Bonus) */
@@ -356,7 +357,7 @@ function setup(ctx: GameContext): F7State {
 function applyTable(s: F7State, a: F7Action, ctx: GameContext): F7State {
   if (!isPadAction(a) || !s.pad) throw new GameError("Mit echten Karten tragt ihr nur die Punkte ein.");
   if (s.winners.length) throw new GameError("Die Partie ist vorbei.");
-  applyPad(s.pad, a, ctx, { min: 0, max: 500 });
+  applyPad(s.pad, a, ctx, { min: -200, max: 500 });
   s.scores = { ...s.pad.scores };
   s.round = s.pad.round;
   const ids = ctx.players.map((p) => p.id);

@@ -121,6 +121,7 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
       hint={room.options.entry === "points"
         ? "Jeder trägt seine Rundenpunkte ein (Zahlen, Plus-Karten, ×2 und +15 für Flip 7 schon eingerechnet; raus = 0)."
         : "Jeder tippt die Karten an, die vor ihm liegen – die App rechnet (×2, Plus-Karten, +15 für Flip 7). Raus = 0."}
+      allowNegative
       entry={room.options.entry === "points" ? undefined : (p, editable, value, set) => <HandEntry player={p} editable={editable} value={value} variant={s.variant} onSet={set} />} />;
   }
 

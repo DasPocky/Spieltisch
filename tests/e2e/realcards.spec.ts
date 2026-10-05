@@ -42,10 +42,12 @@ test("Flip 7 mit echten Karten: Punkteblock bis zum Ziel", async ({ page }) => {
   await shot(page, "75-flip7-table");
   await page.getByRole("button", { name: "Runde 1 abschließen" }).click();
   await expect(page.getByTestId("pad-info")).toHaveText("Runde 2 · bis 200");
-  for (const [n, p] of [["Anna", "90"], ["Ben", "10"], ["Cem", "20"]]) await page.getByLabel(`Punkte ${n}`).fill(p);
+  // Negative Rundenpunkte (Minus-Karten bei Voll fies) gehen auch
+  for (const [n, p] of [["Anna", "90"], ["Ben", "-10"], ["Cem", "20"]]) await page.getByLabel(`Punkte ${n}`).fill(p);
   await page.getByLabel("Punkte Cem").blur();
   await page.getByRole("button", { name: "Runde 2 abschließen" }).click();
   await expect(page.getByText("mit 210 Punkten")).toBeVisible();
+  await expect(page.getByTestId("ranking")).toContainText("25");
 });
 
 test("Mau-Mau mit echten Karten: Siege zählen, Hausregeln ausgeblendet", async ({ page }) => {

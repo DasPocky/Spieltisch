@@ -35,7 +35,8 @@ describe("Flip 7", () => {
     expect(linePoints(line({ nums: ["n:5", "n:12"], mods: ["m:x2", "m:+4"] }))).toBe(38);
     expect(linePoints(line({ nums: ["n:1", "n:2", "n:3", "n:4", "n:5", "n:6", "n:7"], flip7: true }))).toBe(28 + 15);
     expect(linePoints(line({ nums: ["n:9"], status: "bust" }))).toBe(0);
-    expect(linePoints(line({ nums: ["n:9", "n:4"], mods: ["m:/2", "m:-8"] }))).toBe(0);
+    // Minus-Karten dürfen ins Minus führen: 13 ÷ 2 = 6, minus 8 = −2
+    expect(linePoints(line({ nums: ["n:9", "n:4"], mods: ["m:/2", "m:-8"] }))).toBe(-2);
   });
 
   it("Austeilen: jeder bekommt eine Karte, dann ist jemand dran", () => {
