@@ -146,17 +146,19 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
 
   return (
     <>
-      <Scoreboard entries={entries} currentId={s.curId} me={me} online={props.online} lowWins />
+      {/* Allein am Tisch: Punkteleiste – sonst stehen Namen und Gesamtpunkte direkt an den kleinen Auslagen */}
+      {others.length === 0 && <Scoreboard entries={entries} currentId={s.curId} me={me} online={props.online} lowWins />}
 
-      {/* Die anderen, klein */}
+      {/* Die anderen, klein – mit Gesamtpunkten */}
       {others.length > 0 && (
         <div className="no-scrollbar -mx-4 flex shrink-0 gap-2 overflow-x-auto px-4 py-1.5">
           {others.map((p) => (
             <div key={p.id} data-cur={p.id === s.curId} className={cn("shrink-0 rounded-xl px-2 py-1", p.id === s.curId ? "bg-primary/12 ring-2 ring-primary" : "glass")} data-testid={`mini-${p.name}`}>
-              <div className="flex items-baseline justify-between gap-2 text-xs"><b className="max-w-[5rem] truncate">{p.name}</b><span className="tabular-nums text-muted-foreground">{visibleSum(s.grids[p.id])}</span></div>
+              <div className="flex items-baseline justify-between gap-2 text-xs"><b className="max-w-[5rem] truncate">{p.name}</b><span className="font-semibold tabular-nums" aria-label={`${s.scores[p.id] ?? 0} Punkte gesamt`}>{s.scores[p.id] ?? 0}</span></div>
               <div className="mt-0.5 grid w-[3.6rem] grid-cols-4 grid-rows-3 gap-0.5 [@media(min-height:700px)]:w-[4.6rem]" style={{ aspectRatio: "4 / 3.9" }}>
                 {s.grids[p.id].map((c, i) => <SkCard key={i} cell={c} small />)}
               </div>
+              <div className="text-[0.65rem] leading-tight text-muted-foreground tabular-nums">offen {visibleSum(s.grids[p.id])}</div>
             </div>
           ))}
         </div>
@@ -184,7 +186,7 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
       {/* Das eigene Raster */}
       <div className="flex min-h-0 flex-1 flex-col items-center">
         <div className="mb-1 flex w-full items-center justify-between gap-2 px-1 text-sm">
-          <span className="truncate font-semibold">{s.phase === "roundEnd" ? `Runde ${s.round} vorbei` : `${focus === me ? "Deine Karten" : nameOf(players, focus)} `}{s.phase !== "roundEnd" && <span className="text-muted-foreground tabular-nums">· offen {grid ? visibleSum(grid) : 0}</span>}</span>
+          <span className="truncate font-semibold">{s.phase === "roundEnd" ? `Runde ${s.round} vorbei` : `${focus === me ? "Deine Karten" : nameOf(players, focus)} `}{s.phase !== "roundEnd" && <span className="text-muted-foreground tabular-nums">· offen {grid ? visibleSum(grid) : 0} · gesamt {focus ? s.scores[focus] ?? 0 : 0}</span>}</span>
           <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">R{s.round} · bis {s.target}<RulesSheet gameId={room.gameId} /></span>
         </div>
         {s.phase === "roundEnd" ? <RoundEnd {...props} /> : grid ? (

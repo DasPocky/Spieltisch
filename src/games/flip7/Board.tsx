@@ -1,5 +1,5 @@
 import { ArrowLeftRight, Clover, Hand, Heart, Hourglass, Layers, LifeBuoy, Skull, Snowflake, Trash, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bustOdds, cardLabel, handChoices, handPoints, linePoints, numValue, type F7Action, type F7Card, type F7State, type Variant } from "@shared/games/flip7/logic";
 import type { Player } from "@shared/platform/types";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -109,6 +109,11 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   const players = room.players;
   const [sel, setSel] = useState<{ owner: string; index: number }[]>([]);
   const hints = useHints();
+  // Viele Spieler: kompakte Zeilen, und wer gerade entscheidet, rutscht ins Bild
+  const compact = players.length > 4;
+  const tableRef = useRef<HTMLDivElement>(null);
+  const deciderId = s.pending ? s.pending.by : s.curId;
+  useEffect(() => { tableRef.current?.querySelector("[data-current]")?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [deciderId]);
   const entries = players.map((p) => ({ id: p.id, name: p.name, score: s.scores[p.id] ?? 0, progress: (s.scores[p.id] ?? 0) / s.target }));
 
   if (s.winners.length) {
@@ -161,22 +166,23 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
       )}
 
       {/* Der Tisch */}
-      <div className="no-scrollbar mt-2 grid min-h-0 flex-1 content-start gap-1.5 overflow-y-auto" data-testid="table">
+      <div ref={tableRef} className="no-scrollbar mt-2 grid min-h-0 flex-1 content-start gap-1.5 overflow-y-auto" data-testid="table">
         {players.map((x) => {
           const l = s.lines[x.id];
           if (!l) return null;
           const cards = [...l.nums, ...l.mods];
           return (
-            <div key={x.id} className={cn("rounded-xl px-2.5 py-2", x.id === decider ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass", l.status === "bust" && "opacity-50")}>
-              <div className="mb-1 flex items-center justify-between gap-2 text-sm">
-                <span className="truncate font-bold">{nameOf(x.id)}{x.id === s.dealerId && <span className="ml-1 text-xs font-normal text-muted-foreground">(Geber)</span>}</span>
+            <div key={x.id} data-current={x.id === decider || undefined}
+              className={cn("rounded-xl px-2.5 py-2", compact && "flex items-center gap-2 py-1.5", x.id === decider ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass", l.status === "bust" && "opacity-50")}>
+              <div className={cn("flex items-center justify-between gap-2 text-sm", compact ? "w-[5.5rem] shrink-0 flex-col items-start gap-0" : "mb-1")}>
+                <span className="max-w-full truncate font-bold">{nameOf(x.id)}{x.id === s.dealerId && <span className="ml-1 text-xs font-normal text-muted-foreground">{compact ? "(G)" : "(Geber)"}</span>}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs">
                   {l.second && <LifeBuoy className="size-4 text-ice" aria-label="Zweite Chance" />}
-                  {STATUS[l.status] && <span className="rounded-full bg-navy-950/60 px-2 py-0.5 font-semibold text-muted-foreground">{STATUS[l.status]}</span>}
+                  {STATUS[l.status] && <span className={cn("rounded-full bg-navy-950/60 font-semibold text-muted-foreground", compact ? "px-1.5" : "px-2 py-0.5")}>{STATUS[l.status]}</span>}
                   <b className="tabular-nums">{linePoints(l)}</b>
                 </span>
               </div>
-              <div className="no-scrollbar flex gap-1 overflow-x-auto pb-0.5">
+              <div className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
                 {cards.length ? cards.map((c, i) => (
                   <Tile key={`${c}-${i}`} card={c} selectable={canPick(x.id, i)} selected={sel.some((y) => y.owner === x.id && y.index === i)} onClick={() => toggle(x.id, i)} />
                 )) : <span className="py-2 text-xs text-muted-foreground">noch keine Karten</span>}

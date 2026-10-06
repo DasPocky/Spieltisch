@@ -174,6 +174,11 @@ test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
 
 test("Partie beenden, Spiel wechseln, Startseite: Menü schließt sich, Auswahl kommt sofort", async ({ page }) => {
   await startLocalTutto(page, ["Anna", "Ben"]);
+  // Nochmal: neu gemischt, das Menü geht von selbst zu
+  await page.getByRole("button", { name: "Menü" }).click();
+  await page.getByRole("button", { name: "Nochmal" }).click();
+  await page.getByRole("button", { name: "Neu starten" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   // Spiel wechseln: Rückfrage, dann gleich die Spielauswahl – das Menü ist zu
   await page.getByRole("button", { name: "Menü" }).click();
   await page.getByRole("button", { name: "Spiel wechseln" }).click();

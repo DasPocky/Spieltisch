@@ -5,6 +5,25 @@ import { createRoom, joinRoom, newPhone, shot } from "./util";
  * Wackeliges Netz nachstellen: Ab `cut()` verschwinden alle Nachrichten der aktuellen Verbindung spurlos –
  * ohne sauberes Schließen, genau wie bei einem Handy im Funkloch. Neue Verbindungen laufen wieder normal.
  */
+/**
+ * Uno startet: Die Startkarte ist zufällig – +2, Aussetzen oder Farbwahl würden den Test verfälschen.
+ * Dann neu mischen (Host-Menü „Nochmal“), bis Anna mit 7 Karten dran ist und ziehen kann.
+ */
+async function fairUnoStart(anna: Page) {
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  const hand = anna.getByTestId("hand").getByRole("img");
+  const draw = anna.getByRole("button", { name: /ziehen/i }).first();
+  for (let i = 0; i < 15; i++) {
+    await expect(hand.first()).toBeVisible();
+    await anna.waitForTimeout(300);
+    if ((await hand.count()) === 7 && (await draw.isEnabled())) return;
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Nochmal" }).click();
+    await anna.getByRole("button", { name: "Neu starten" }).click();
+  }
+  throw new Error("Kein fairer Start nach 15 Versuchen");
+}
+
 async function flakySocket(page: Page) {
   let conn = 0;
   let dead = -1;
@@ -29,7 +48,7 @@ test("Funkloch: tote Verbindung wird erkannt, der Zug kommt genau einmal an", as
   const net = await flakySocket(anna);
   const code = await createRoom(anna, "uno", "Anna", "5555");
   await joinRoom(ben, code, "Ben", "5555");
-  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  await fairUnoStart(anna);
   await expect(anna.getByTestId("hand").getByRole("img")).toHaveCount(7);
   // Anna ist dran (Host beginnt) – die Verbindung stirbt still, dann zieht sie
   await expect(anna.getByRole("button", { name: /ziehen/i }).first()).toBeEnabled();
@@ -54,7 +73,7 @@ test("Doppelt getippt ohne Netz: Aktion wird nur einmal ausgeführt", async ({ b
   const net = await flakySocket(anna);
   const code = await createRoom(anna, "uno", "Anna", "6666");
   await joinRoom(ben, code, "Ben", "6666");
-  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  await fairUnoStart(anna);
   await expect(anna.getByTestId("hand").getByRole("img")).toHaveCount(7);
   net.cut();
   const draw = anna.getByRole("button", { name: /ziehen/i }).first();
@@ -72,7 +91,7 @@ test("Antwort geht verloren: der nachgereichte Zug wird nicht doppelt ausgeführ
   const net = await flakySocket(anna);
   const code = await createRoom(anna, "uno", "Anna", "4444");
   await joinRoom(ben, code, "Ben", "4444");
-  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  await fairUnoStart(anna);
   await expect(anna.getByTestId("hand").getByRole("img")).toHaveCount(7);
   net.deafen();
   await anna.getByRole("button", { name: /ziehen/i }).first().click();

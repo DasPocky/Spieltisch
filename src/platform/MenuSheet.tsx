@@ -57,8 +57,8 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
     if ((room.undone ?? 0) > undone.current) toast("Letzter Zug wurde zurückgenommen.");
     undone.current = room.undone ?? 0;
   }, [room.undone]);
-  // Partie beendet, Spiel gewechselt, Raum zu: das Menü schließt sich von selbst
-  useEffect(() => { setOpen(false); }, [room.phase, room.gameId]);
+  // Neu gestartet, Partie beendet, Spiel gewechselt: das Menü schließt sich von selbst
+  useEffect(() => { setOpen(false); }, [room.phase, room.gameId, room.round]);
   const role = !code ? "Ein Handy für alle" : isHost ? `Du bist Host · Raum ${code}` : `Gast · Host ist ${host?.name ?? "weg"}`;
 
   return (

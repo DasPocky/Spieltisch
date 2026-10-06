@@ -390,7 +390,7 @@ export const einenacht: GameLogic<ONState, ONAction> = {
     },
     { key: "wolves", showIf: (o: Options) => o.cards !== "own", label: "Werwölfe", type: "choice", default: "2", group: "Ablauf", choices: [{ value: "1", label: "1 Werwolf" }, { value: "2", label: "2 Werwölfe" }] },
     // Die Diskussion stellt „minutes“ ein – das Tempo regelt nur die Nacht
-    ...tempoSettings({ hints: { slow: "Rollen 30 s", normal: "Rollen 20 s", fast: "Rollen 12 s" }, talk: false }),
+    ...tempoSettings({ hints: { slow: "Rollen 30\u00a0s", normal: "Rollen 20\u00a0s", fast: "Rollen 12\u00a0s" }, talk: false }),
     { key: "minutes", label: "Diskussion (min)", type: "number", default: 5, min: 1, max: 15, step: 1, group: "Ablauf" },
     {
       key: "ambience", label: "Nachtgeräusche", type: "toggle", default: false, group: "Ablauf",
