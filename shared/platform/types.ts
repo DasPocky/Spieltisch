@@ -60,7 +60,9 @@ export interface GameContext {
  */
 export type ActionKind = "host" | "turn" | "player";
 
-export type GameCategory = "Würfel" | "Karten" | "Party";
+export type GameCategory = "Würfel" | "Karten" | "Brett" | "Party";
+/** Reihenfolge der Gruppen in der Spielauswahl */
+export const GAME_CATEGORIES: GameCategory[] = ["Würfel", "Karten", "Brett", "Party"];
 
 export interface GameInfo {
   id: string;

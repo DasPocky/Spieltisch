@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
-const PORT = 5199;
+/** Eigener Port per PW_PORT – so laufen mehrere Testläufe (z. B. in Arbeitskopien) nebeneinander */
+const PORT = Number(process.env.PW_PORT ?? 5199);
 
 /**
  * Ende-zu-Ende-Tests im Handy-Format gegen den echten Dev-Server (inkl. Worker und Durable Objects).
