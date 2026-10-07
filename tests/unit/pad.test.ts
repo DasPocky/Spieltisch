@@ -46,3 +46,34 @@ describe("Punkteblock mit echten Karten", () => {
     expect(g(r).winnerId).toBe("p2");
   });
 });
+
+describe("Spielabend", () => {
+  const finishFlip7 = (r: RoomState, pts: [string, number][]) => {
+    for (const [id, p] of pts) r = game(r, { type: "padEnter", player: id, points: p });
+    return game(r, { type: "padFinish" });
+  };
+
+  it("zählt Siege über Partien und Spiele, Rücknahme des Endes zählt nicht", () => {
+    let r = start("flip7", { mode: "table", target: 100 });
+    r = finishFlip7(r, [["p1", 120], ["p2", 10], ["p3", 0]]);
+    expect(r.evening?.wins).toEqual({ p1: 1, p2: 0, p3: 0 });
+    expect(r.evening?.log.map((x) => x.gameId)).toEqual(["flip7"]);
+    // Ende zurücknehmen: zählt nicht mehr, neu beenden zählt einmal
+    r = act(r, { type: "undo" });
+    expect(r.evening?.wins.p1).toBe(0);
+    expect(r.evening?.log).toHaveLength(0);
+    r = game(r, { type: "padFinish" });
+    expect(r.evening?.wins.p1).toBe(1);
+    // Nochmal: zweite Partie, Ben gewinnt
+    r = act(r, { type: "restart" });
+    r = finishFlip7(r, [["p1", 0], ["p2", 130], ["p3", 0]]);
+    expect(r.evening?.wins).toEqual({ p1: 1, p2: 1, p3: 0 });
+    // Anderes Spiel: Wertung bleibt
+    r = act(act(r, { type: "toLobby" }), { type: "selectGame", gameId: "kniffel" });
+    expect(r.evening?.log).toHaveLength(2);
+    // Gäste dürfen nicht zurücksetzen, Host schon
+    expect(() => act(r, { type: "resetEvening" }, "p2")).toThrow(/Host/);
+    r = act(r, { type: "resetEvening" });
+    expect(r.evening).toBeUndefined();
+  });
+});

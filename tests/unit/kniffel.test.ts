@@ -164,9 +164,28 @@ describe("Rechte und Spieler", () => {
     expect(() => game(r, { type: "roll" }, "p2")).toThrow(/Anna ist am Zug/);
   });
 
-  it("kein Beitritt während der Partie", async () => {
+  it("Beitritt während der Partie: Wartebank, ab „Nochmal“ dabei", async () => {
     const { addPlayer } = await import("@shared/platform/room");
-    expect(() => addPlayer(start(), { id: "x", name: "Cem" })).toThrow(/läuft schon/);
+    let r = addPlayer(start(), { id: "x", name: "Cem" });
+    expect(r.players.map((p) => p.name)).toEqual(["Anna", "Ben"]);
+    expect(r.bench?.map((p) => p.name)).toEqual(["Cem"]);
+    expect(() => addPlayer(r, { id: "y", name: "cem" })).toThrow(/spielt schon mit/);
+    // Wer auf der Bank sitzt, darf nicht mitspielen
+    expect(() => game(r, { type: "roll" }, "x")).toThrow();
+    r = act(r, { type: "restart" });
+    expect(r.players.map((p) => p.name)).toEqual(["Anna", "Ben", "Cem"]);
+    expect(r.bench).toBeUndefined();
+    expect(Object.keys((r.game as KniffelState).sheets)).toContain("x");
+  });
+
+  it("Wartebank: Host entfernt jemanden, Lobby holt alle rein", async () => {
+    const { addPlayer } = await import("@shared/platform/room");
+    let r = addPlayer(addPlayer(start(), { id: "x", name: "Cem" }), { id: "y", name: "Dora" });
+    r = act(r, { type: "removePlayer", id: "x" });
+    expect(r.bench?.map((p) => p.name)).toEqual(["Dora"]);
+    expect(r.phase).toBe("playing");
+    r = act(r, { type: "toLobby" });
+    expect(r.players.map((p) => p.name)).toEqual(["Anna", "Ben", "Dora"]);
   });
 
   it("Spieler am Zug wird entfernt", () => {

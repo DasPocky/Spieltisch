@@ -48,6 +48,15 @@ test("Flip 7 mit echten Karten: Punkteblock bis zum Ziel", async ({ page }) => {
   await page.getByRole("button", { name: "Runde 2 abschließen" }).click();
   await expect(page.getByText("mit 210 Punkten")).toBeVisible();
   await expect(page.getByTestId("ranking")).toContainText("25");
+  // Spielabend: der Sieg zählt, auch nach dem Wechsel in die Lobby sichtbar
+  await expect(page.getByTestId("evening")).toContainText("1 Partie");
+  await expect(page.getByTestId("evening")).toContainText("Anna 1");
+  await expectNoScroll(page);
+  await shot(page, "76-evening-result");
+  await page.getByRole("button", { name: "Zur Lobby" }).click();
+  await page.getByTestId("evening").click();
+  await expect(page.getByTestId("evening-ranking")).toContainText("Anna");
+  await shot(page, "77-evening-sheet");
 });
 
 test("Mau-Mau mit echten Karten: Siege zählen, Hausregeln ausgeblendet", async ({ page }) => {

@@ -4,6 +4,7 @@ import type { RoomAction } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { cn, fmt } from "@/lib/utils";
 import { wantGamePick } from "@/lib/pickGame";
+import { EveningLine } from "./Evening";
 import type { ScoreEntry } from "./Scoreboard";
 
 /** Siegerehrung mit Rangliste. Der Host startet von hier eine neue Runde oder geht zurück in die Lobby. */
@@ -54,14 +55,20 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
 
 /** Nach der Partie: nochmal, anderes Spiel oder zur Lobby (Spieler, Einstellungen) – für alle Spiele gleich */
 export function EndActions({ isHost, dispatch, children }: { isHost: boolean; dispatch: (a: RoomAction) => void; children?: ReactNode }) {
-  if (!isHost) return <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet gleich nochmal oder wählt ein anderes Spiel.</p>;
+  if (!isHost) return (
+    <div className="grid gap-2">
+      <EveningLine />
+      <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet gleich nochmal oder wählt ein anderes Spiel.</p>
+    </div>
+  );
   return (
     <div className="grid gap-2">
+      <EveningLine />
       <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
       {children}
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="secondary" onClick={() => { wantGamePick(); dispatch({ type: "toLobby" }); }}>Spiel wechseln</Button>
-        <Button variant="secondary" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby</Button>
+        <Button variant="secondary" className="px-2 whitespace-nowrap" onClick={() => { wantGamePick(); dispatch({ type: "toLobby" }); }}>Spiel wechseln</Button>
+        <Button variant="secondary" className="px-2 whitespace-nowrap" onClick={() => dispatch({ type: "toLobby" })}>Zur Lobby</Button>
       </div>
     </div>
   );

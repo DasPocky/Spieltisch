@@ -37,6 +37,55 @@ export interface RoomState {
   avatars?: Record<string, Avatar>;
   /** Spieler → Mitglieds-ID in seiner Gruppe (öffentlich innerhalb der Gruppe, keine Profil-ID) */
   members?: Record<string, string>;
+  /**
+   * Wartebank: Wer mitten in einer Partie dazukommt (bei Spielen ohne Einstieg im laufenden Spiel),
+   * sitzt hier und spielt ab der nächsten Partie mit („Nochmal“, Start oder Lobby holt alle rein).
+   */
+  bench?: Player[];
+  /** Spielabend: Siege über alle Partien in diesem Raum (auch über verschiedene Spiele) */
+  evening?: Evening;
+}
+
+export interface Evening {
+  /** Siege je Spieler-ID */
+  wins: Record<string, number>;
+  /** Namen merken – auch wer inzwischen gegangen ist, bleibt in der Wertung */
+  names: Record<string, string>;
+  /** Beendete Partien, älteste zuerst (höchstens 50) */
+  log: { gameId: string; winners: string[]; at: number }[];
+}
+
+/** Partie gerade zu Ende gegangen? Dann zählt sie für den Spielabend. */
+function recordEvening(prev: RoomState, next: RoomState): RoomState {
+  const logic = roomGame(next);
+  if (!prev.game || !next.game || logic.isOver(prev.game) || !logic.isOver(next.game) || !logic.results) return next;
+  const results = logic.results(next.game, context(next, null));
+  const winners = results.filter((r) => r.won).map((r) => r.id);
+  const e: Evening = structuredClone(next.evening ?? { wins: {}, names: {}, log: [] });
+  for (const r of results) {
+    const name = next.players.find((p) => p.id === r.id)?.name;
+    if (name) e.names[r.id] = name;
+    e.wins[r.id] = (e.wins[r.id] ?? 0) + (r.won ? 1 : 0);
+  }
+  e.log = [...e.log, { gameId: next.gameId, winners, at: Date.now() }].slice(-50);
+  return { ...next, evening: e };
+}
+
+/** Spielabend als Rangliste: meiste Siege zuerst */
+export function eveningRanking(e: Evening | undefined): { id: string; name: string; wins: number }[] {
+  if (!e) return [];
+  return Object.entries(e.wins).map(([id, wins]) => ({ id, name: e.names[id] ?? "?", wins })).sort((a, b) => b.wins - a.wins || a.name.localeCompare(b.name));
+}
+
+/** Spieler oder auf der Wartebank – gehört zum Raum */
+export const inRoom = (room: RoomState, id: string) => room.players.some((p) => p.id === id) || !!room.bench?.some((p) => p.id === id);
+
+/** Wartebank in die Spielerliste holen (so viele, wie das Spiel erlaubt) */
+function seatBench(s: RoomState) {
+  if (!s.bench?.length) return;
+  const max = playerLimits(s).max;
+  while (s.bench.length && s.players.length < max) s.players.push(s.bench.shift()!);
+  if (!s.bench.length) delete s.bench;
 }
 
 /** So viele Züge lassen sich zurücknehmen */
@@ -59,6 +108,8 @@ export type RoomAction =
   | { type: "skip" }
   /** Host (lokal: jeder): den letzten Zug zurücknehmen */
   | { type: "undo" }
+  /** Host: Spielabend-Wertung auf null */
+  | { type: "resetEvening" }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
 
 export function cleanName(name: unknown): string {
@@ -111,16 +162,17 @@ export function addPlayer(prev: RoomState, p: { id: string; name: string }): Roo
   const name = cleanName(p.name);
   const logic = roomGame(prev);
   if (!name) throw new GameError("Bitte gib einen Namen ein.");
-  if (prev.players.length >= MAX_PLAYERS) throw new GameError(`Maximal ${MAX_PLAYERS} Spieler.`);
+  const all = [...prev.players, ...(prev.bench ?? [])];
+  if (all.length >= MAX_PLAYERS) throw new GameError(`Maximal ${MAX_PLAYERS} Spieler.`);
   // Beim Beitritt zählt das absolute Maximum des Spiels – das genaue (je nach Einstellung) prüft der Start
   const max = Math.min(MAX_PLAYERS, logic.info.maxPlayers);
-  if (prev.players.length >= max) throw new GameError(`${logic.info.name} geht mit höchstens ${max} Spielern.`);
-  if (prev.players.some((x) => x.name.toLowerCase() === name.toLowerCase()))
+  if (all.length >= max) throw new GameError(`${logic.info.name} geht mit höchstens ${max} Spielern.`);
+  if (all.some((x) => x.name.toLowerCase() === name.toLowerCase()))
     throw new GameError(`„${name}“ spielt schon mit. Nimm einen anderen Namen.`);
-  if (prev.phase === "playing" && !logic.joinMidGame)
-    throw new GameError("Die Partie läuft schon. Tritt bei, wenn der Host zurück in die Lobby geht.");
   const s = structuredClone(prev);
-  s.players.push({ id: p.id, name });
+  // Partie läuft und das Spiel erlaubt keinen Einstieg: auf die Wartebank, ab der nächsten Partie dabei
+  if (prev.phase === "playing" && !logic.joinMidGame) (s.bench ??= []).push({ id: p.id, name });
+  else s.players.push({ id: p.id, name });
   if (!s.hostId) s.hostId = p.id;
   return s;
 }
@@ -159,8 +211,9 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       hostOnly();
       if (a.type === "start" && prev.phase !== "lobby") throw new GameError("Die Partie läuft schon.");
       if (a.type === "restart" && prev.phase !== "playing") throw new GameError("Es läuft keine Partie.");
-      assertPlayerCount(prev, logic);
       const s = structuredClone(prev);
+      seatBench(s);
+      assertPlayerCount(s, logic);
       s.game = logic.setup(context(s, actorId));
       s.phase = "playing";
       s.round++;
@@ -169,7 +222,9 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     }
     case "toLobby": {
       hostOnly();
-      return { ...structuredClone(prev), phase: "lobby", game: null, undo: [] };
+      const s: RoomState = { ...structuredClone(prev), phase: "lobby", game: null, undo: [] };
+      seatBench(s);
+      return s;
     }
     case "selectGame": {
       hostOnly();
@@ -204,6 +259,15 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     }
     case "removePlayer": {
       hostOnly();
+      // Von der Wartebank: einfach weg, die Partie merkt davon nichts
+      if (prev.bench?.some((p) => p.id === a.id)) {
+        const s = structuredClone(prev);
+        s.bench = s.bench!.filter((p) => p.id !== a.id);
+        if (!s.bench.length) delete s.bench;
+        if (s.avatars) delete s.avatars[a.id];
+        if (s.members) delete s.members[a.id];
+        return s;
+      }
       const i = prev.players.findIndex((p) => p.id === a.id);
       if (i < 0) throw new GameError("Spieler nicht gefunden.");
       const s = structuredClone(prev);
@@ -233,13 +297,27 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       hostOnly();
       if (prev.phase !== "playing" || !prev.game) throw new GameError("Es läuft keine Partie.");
       if (!logic.skipTurn || !logic.skipLabel?.(prev.game, context(prev, actorId))) throw new GameError("Gerade gibt es nichts zu überspringen.");
-      return withUndo(prev, logic.skipTurn(prev.game, context(prev, actorId)));
+      return recordEvening(prev, withUndo(prev, logic.skipTurn(prev.game, context(prev, actorId))));
+    }
+    case "resetEvening": {
+      hostOnly();
+      const s = structuredClone(prev);
+      delete s.evening;
+      return s;
     }
     case "undo": {
       hostOnly();
       if (prev.phase !== "playing" || !prev.undo?.length) throw new GameError("Es gibt keinen Zug zum Zurücknehmen.");
       const undo = prev.undo.slice(0, -1);
-      return { ...prev, game: prev.undo[prev.undo.length - 1], undo, undone: (prev.undone ?? 0) + 1 };
+      const game = prev.undo[prev.undo.length - 1];
+      let evening = prev.evening;
+      // Das Ende der Partie wird zurückgenommen: dann zählt sie auch nicht mehr für den Spielabend
+      if (evening?.log.length && prev.game && logic.isOver(prev.game) && !logic.isOver(game)) {
+        const last = evening.log[evening.log.length - 1];
+        evening = { ...evening, log: evening.log.slice(0, -1), wins: { ...evening.wins } };
+        for (const id of last.winners) evening.wins[id] = Math.max(0, (evening.wins[id] ?? 0) - 1);
+      }
+      return { ...prev, game, undo, undone: (prev.undone ?? 0) + 1, evening };
     }
     case "game": {
       const action = a.action;
@@ -258,7 +336,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (kind === "player" && actorId !== null && !prev.players.some((p) => p.id === actorId)) {
         throw new GameError("Du spielst in diesem Raum nicht mit.");
       }
-      return withUndo(prev, logic.apply(prev.game, action, context(prev, actorId)));
+      return recordEvening(prev, withUndo(prev, logic.apply(prev.game, action, context(prev, actorId))));
     }
     default:
       throw new GameError("Unbekannte Aktion.");

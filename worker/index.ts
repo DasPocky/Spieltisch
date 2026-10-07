@@ -11,7 +11,7 @@ import {
   ACCESS_CODE_RE, accessFor, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
   type AccessConfig, type AdminRoom, type GameDefaults, type SiteConfig, type SiteStats, type StatKind,
 } from "../shared/platform/access";
-import { addPlayer, applyRoomAction, cleanName, createRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
+import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
   ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
@@ -208,7 +208,7 @@ export class GameRoom extends DurableObject<Env> {
 
     const att = ws.deserializeAttachment() as Attachment | null;
     const playerId = att?.playerId;
-    if (!playerId || !this.room.state.players.some((p) => p.id === playerId)) {
+    if (!playerId || !inRoom(this.room.state, playerId)) {
       this.send(ws, { type: "error", message: "Bitte tritt dem Raum zuerst bei.", code: "not_joined", fatal: true });
       return;
     }
@@ -330,7 +330,7 @@ export class GameRoom extends DurableObject<Env> {
     let member: string | null = null;
     if (code && pid) { try { member = await groupOf(this.env, code).memberOf(pid); } catch { /* egal */ } }
     const room = this.room;
-    if (!room || !room.state.players.some((p) => p.id === playerId)) return false;
+    if (!room || !inRoom(room.state, playerId)) return false;
     const state = room.state;
     const before = JSON.stringify([state.avatars?.[playerId], state.members?.[playerId], room.groups?.[playerId]]);
     const avatar = sanitizeAvatar(msg.avatar);
@@ -406,7 +406,7 @@ export class GameRoom extends DurableObject<Env> {
 
     // Wiederverbinden mit Token (ohne PIN)
     if (msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token
-        && room.state.players.some((p) => p.id === msg.playerId)) {
+        && inRoom(room.state, msg.playerId)) {
       ws.serializeAttachment({ playerId: msg.playerId } satisfies Attachment);
       this.dropOldSockets(msg.playerId, ws);
       let changed = false;
@@ -424,7 +424,7 @@ export class GameRoom extends DurableObject<Env> {
     // Derselbe Beitritt nochmal (Antwort ging unterwegs verloren): keinen zweiten Spieler anlegen
     const nonce = typeof msg.nonce === "string" && ACTION_ID_RE.test(msg.nonce) ? msg.nonce : null;
     const again = nonce ? room.joins?.[nonce] : undefined;
-    if (again && room.tokens[again] && room.state.players.some((p) => p.id === again)) {
+    if (again && room.tokens[again] && inRoom(room.state, again)) {
       ws.serializeAttachment({ playerId: again } satisfies Attachment);
       this.dropOldSockets(again, ws);
       this.send(ws, { type: "joined", playerId: again, token: room.tokens[again] });

@@ -20,6 +20,7 @@ import { hasInGameSettings, HINT_GAMES, SettingsPanel } from "./SettingsPanel";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { ShareCode } from "./ShareCode";
 import { Collapsible, lastLog, PlayersSheet } from "./PlayersHistory";
+import { EveningLine } from "./Evening";
 
 export interface MenuProps {
   board: BoardProps | null;
@@ -103,6 +104,7 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
             {board && (
               <Section title="Spieler & Verlauf" hideTitle>
                 <Row icon={History} label="Spieler & Verlauf" sub={last} onClick={() => { setOpen(false); setPlayers(true); }} />
+                <EveningLine className="rounded-xl" />
               </Section>
             )}
 

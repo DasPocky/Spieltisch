@@ -178,3 +178,37 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
   await guest.getByRole("button", { name: "Verlassen", exact: true }).click();
   await expect(guest).toHaveURL(/\/$/);
 });
+
+test("Mitten in der Partie beitreten: Wartebank, mit „Nochmal“ dabei", async ({ browser }) => {
+  const [anna, ben, cem] = await Promise.all([newPhone(browser), newPhone(browser), newPhone(browser)]);
+  const code = await createRoomAs(anna, "kniffel", "Anna", "2468");
+  const join = async (p: Page, name: string) => {
+    await p.goto(`/r/${code}`);
+    await p.getByLabel("Dein Name").fill(name);
+    await p.getByLabel("PIN").fill("2468");
+    await p.getByRole("button", { name: "Beitreten" }).click();
+  };
+  await join(ben, "Ben");
+  await expect(anna.getByText("Ben")).toBeVisible();
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  // Cem kommt zu spät: sitzt auf der Wartebank und sieht, worauf er wartet
+  await join(cem, "Cem");
+  await expect(cem.getByTestId("bench-wait")).toContainText("ab der nächsten Partie");
+  await expectNoScroll(cem);
+  await shot(cem, "30-bench-wait");
+  // Host sieht ihn unter „Spieler verwalten“
+  await anna.getByRole("button", { name: "Menü" }).click();
+  await anna.getByRole("button", { name: /Spieler & Verlauf/ }).click();
+  await anna.getByRole("button", { name: "Spieler verwalten" }).click();
+  await expect(anna.getByTestId("bench")).toContainText("Cem");
+  await anna.keyboard.press("Escape");
+  await expect(anna.getByRole("dialog")).toHaveCount(0);
+  // „Nochmal“ holt alle rein
+  await anna.getByRole("button", { name: "Menü" }).click();
+  await anna.getByRole("button", { name: "Nochmal" }).click();
+  await anna.getByRole("button", { name: "Neu starten" }).click();
+  await expect(cem.getByTestId("bench-wait")).toHaveCount(0);
+  await expect(cem.getByText(/Am Zug/)).toBeVisible();
+  await shot(cem, "31-bench-joined");
+  await expect(anna.getByText("Cem").first()).toBeVisible();
+});

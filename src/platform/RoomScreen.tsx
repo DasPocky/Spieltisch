@@ -28,6 +28,7 @@ import { InfoBar } from "./InfoBar";
 import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
+import { EveningContext, EveningLine } from "./Evening";
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
@@ -53,24 +54,27 @@ export function RoomScreen(props: Props) {
   const isHost = me === null || me === room.hostId;
   const hostTools = me === null || (isHost && !!room.hostTools);
   const playing = room.phase === "playing" && room.game !== null;
+  // Mitten in der Partie dazugekommen: wartet auf die nächste Partie
+  const benched = playing && me !== null && !!room.bench?.some((p) => p.id === me);
   const feedback = useGameFeedback(room, me);
 
-  const board: BoardProps | null = playing
+  const board: BoardProps | null = playing && !benched
     ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch }
     : null;
   const { Board, HeaderExtra, Icon } = ui;
   // Im Spiel: Spieler entfernen (z. B. wer gegangen ist) – lokal auch hinzufügen, wenn das Spiel das erlaubt
   const manage = board && isHost ? (
     <Collapsible title="Spieler verwalten">
-      <PlayerManager room={room} me={me} online={online} editable dispatch={dispatch} onAddLocal={getGame(room.gameId).joinMidGame ? props.onAddLocal : undefined} />
+      <PlayerManager room={room} me={me} online={online} editable dispatch={dispatch} onAddLocal={props.onAddLocal} />
     </Collapsible>
   ) : undefined;
 
   return (
     <AvatarContext.Provider value={room.avatars}>
+    <EveningContext.Provider value={{ room, isHost, dispatch }}>
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="flex h-14 shrink-0 items-center justify-between">
-        {board ? (
+        {playing ? (
           <div className="flex min-w-0 items-center gap-2.5">
             <IconTile><Icon className="size-6" /></IconTile>
             <div className="min-w-0 leading-tight">
@@ -101,9 +105,36 @@ export function RoomScreen(props: Props) {
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
-      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
+      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
+    </EveningContext.Provider>
     </AvatarContext.Provider>
+  );
+}
+
+/** Mitten in der Partie beigetreten: kurz erklären, wer spielt und dass es mit „Nochmal“ losgeht */
+function BenchWait({ room, me }: { room: RoomState; me: string | null }) {
+  const info = getGame(room.gameId).info;
+  const cur = currentPlayerId(room);
+  return (
+    <section className="flex flex-1 flex-col items-center justify-center gap-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center" data-testid="bench-wait">
+      <div>
+        <h2 className="text-xl font-bold tracking-tight">Du bist dabei!</h2>
+        <p className="mt-1 text-muted-foreground">{info.name} läuft gerade. Du spielst ab der nächsten Partie mit – sobald der Host „Nochmal“ wählt.</p>
+      </div>
+      <ul className="flex flex-wrap justify-center gap-1.5">
+        {room.players.map((p) => (
+          <li key={p.id} className={cn("glass flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-semibold", p.id === cur && "ring-2 ring-primary")}>
+            <Avatar avatar={room.avatars?.[p.id]} name={p.name} className="size-6" />{p.name}
+          </li>
+        ))}
+        {room.bench?.map((p) => (
+          <li key={p.id} className="flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-semibold text-muted-foreground ring-1 ring-dashed ring-border">
+            <Avatar avatar={room.avatars?.[p.id]} name={p.name} className="size-6" />{p.name}{p.id === me && " (du)"}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -175,6 +206,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
       </button>
       {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
+      <EveningLine className="mt-2" />
 
       <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
       <p className="mb-2 px-1 text-sm text-muted-foreground">

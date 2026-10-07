@@ -28,7 +28,8 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
   // Mitglieder der aktiven Gruppe, die noch nicht mitspielen – ein Tipp genügt
   const group = useActiveGroup();
   const taken = new Set(Object.values(room.members ?? {}));
-  const names = new Set(room.players.map((p) => p.name.toLowerCase()));
+  const bench = room.bench ?? [];
+  const names = new Set([...room.players, ...bench].map((p) => p.name.toLowerCase()));
   const picks = onAddLocal && group ? group.members.filter((m) => !taken.has(m.id) && !names.has(m.name.toLowerCase())) : [];
 
   return (
@@ -69,7 +70,25 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
         ))}
       </ol>
 
-      {picks.length > 0 && room.players.length < max && (
+      {/* Mitten in der Partie dazugekommen: spielt ab der nächsten Partie mit */}
+      {bench.length > 0 && (
+        <div className="mt-2.5" data-testid="bench">
+          <div className="mb-1.5 px-1 text-xs text-muted-foreground">Ab der nächsten Partie dabei</div>
+          <ul className="grid gap-1.5">
+            {bench.map((p) => (
+              <li key={p.id} className="flex h-11 items-center gap-2.5 rounded-xl pr-1.5 pl-4 ring-1 ring-inset ring-border ring-dashed">
+                <Avatar avatar={room.avatars?.[p.id]} name={p.name} className="size-7" />
+                <span className="flex-1 truncate font-semibold">{p.name}{p.id === me && <span className="font-normal text-muted-foreground"> (du)</span>}</span>
+                {editable && p.id !== me && (
+                  <Button variant="ghost" size="icon" aria-label={`${p.name} entfernen`} className="text-muted-foreground" onClick={() => dispatch({ type: "removePlayer", id: p.id })}><X /></Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {picks.length > 0 && room.players.length + bench.length < max && (
         <div className="mt-2.5" data-testid="group-picks">
           <div className="mb-1.5 px-1 text-xs text-muted-foreground">Aus {group!.name}</div>
           <div className="flex flex-wrap gap-1.5">
@@ -85,11 +104,16 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
         </div>
       )}
 
-      {onAddLocal && room.players.length < max && (
-        <form className="mt-2.5 flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" maxLength={MAX_NAME} autoComplete="off" enterKeyHint="done" aria-label="Name des Spielers" />
-          <Button type="submit" disabled={!name.trim()}>Hinzufügen</Button>
-        </form>
+      {onAddLocal && room.players.length + bench.length < max && (
+        <>
+          <form className="mt-2.5 flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" maxLength={MAX_NAME} autoComplete="off" enterKeyHint="done" aria-label="Name des Spielers" />
+            <Button type="submit" disabled={!name.trim()}>Hinzufügen</Button>
+          </form>
+          {room.phase === "playing" && !getGame(room.gameId).joinMidGame && (
+            <p className="mt-1.5 px-1 text-xs text-muted-foreground">Kommt mitten in der Partie dazu und spielt ab der nächsten Partie mit („Nochmal“).</p>
+          )}
+        </>
       )}
     </div>
   );
