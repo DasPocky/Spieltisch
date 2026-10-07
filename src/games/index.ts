@@ -12,6 +12,7 @@ import { maumauUI } from "./maumau";
 import { phase10UI } from "./phase10";
 import { skipboUI } from "./skipbo";
 import { skyjoUI } from "./skyjo";
+import { spionUI } from "./spion";
 import { tuttoUI } from "./tutto";
 import { unoUI } from "./uno";
 import { werwolfUI } from "./werwolf";
@@ -29,6 +30,7 @@ const UIS: Record<GameId, GameUI<never, never>> = {
   skipbo: skipboUI as unknown as GameUI<never, never>,
   phase10: phase10UI as unknown as GameUI<never, never>,
   fischen: fischenUI as unknown as GameUI<never, never>,
+  spion: spionUI as unknown as GameUI<never, never>,
 };
 
 export function getGameUI(id: string): GameUI {
