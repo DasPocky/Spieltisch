@@ -9,3 +9,6 @@ dist
 test-results
 playwright-report
 screenshots
+
+# Arbeitskopien von Helfern
+.claude/worktrees/
