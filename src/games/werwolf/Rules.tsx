@@ -75,7 +75,7 @@ export function Rules({ focus }: { focus?: string }) {
       <section className="glass mt-5 rounded-2xl p-4">
         <h3 className="font-semibold">Erzähler: die App</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          <b className="text-foreground">Online</b> handelt jede Rolle geheim am eigenen Handy – nachts alle gleichzeitig. Wer nichts zu tun hat, gibt einen Verdacht ab, der morgens anonym gezeigt wird. So tippt jeder, und niemand verrät sich.
+          <b className="text-foreground">Online</b> handelt jede Rolle geheim am eigenen Handy. Standard ist <b className="text-foreground">nacheinander</b> wie am Tisch: Alle schließen die Augen, das Handy des Hosts liest vor, welche Rolle erwacht – nur deren Handy zeigt dann die Auswahl. Alternativ <b className="text-foreground">gleichzeitig</b> (schneller): Alle tippen zur selben Zeit, wer nichts zu tun hat, gibt einen Verdacht ab, der morgens anonym gezeigt wird – so verrät sich niemand.
           Tagsüber stimmt jeder am Handy ab; der Host kann die Abstimmung beenden.
           <b className="text-foreground"> Lokal</b> liegt ein Handy in der Mitte, liest vor („Vorlesen“) und die aufgerufenen Rollen tippen selbst.
         </p>

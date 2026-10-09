@@ -99,22 +99,24 @@ test("Werwolf online, die App erzählt – fünf Handys", async ({ browser }) =>
   expect(roles).toContain("Hexe");
   await expect(host.getByTestId("ww-phase")).toHaveText("Nacht 1");
   // Countdown auf jedem Handy – nichts hängt an einem Einzelnen
-  for (const p of phones) await expect(p.getByTestId("timer")).toContainText("Nacht");
+  // Nacheinander: Uhr je Rolle („Wach: Seherin“)
+  for (const p of phones) await expect(p.getByTestId("timer")).toContainText("Wach:");
 
-  // Jeder hat nachts etwas zu tippen – Wolf und Seherin handeln, die anderen verdächtigen
+  // Nacheinander wie am Tisch: Augen zu, nur die aufgerufene Rolle tippt (erst Seherin, dann Wolf, dann Hexe)
   const wolf = phones[roles.indexOf("Werwolf")];
   const seer = phones[roles.indexOf("Seherin")];
   const witch = phones[roles.indexOf("Hexe")];
-  await expectNoScroll(wolf);
-  await shot(wolf, "44-ww-online-wolf");
-  await shot(phones[roles.indexOf("Dorfbewohner")], "45-ww-online-villager-night");
-  await wolf.getByRole("group").getByRole("button").first().click();
+  const villager = phones[roles.indexOf("Dorfbewohner")];
+  await expect(villager.getByTestId("eyes-closed")).toContainText("Seherin");
+  await expect(wolf.getByTestId("eyes-closed")).toBeVisible();
+  await expectNoScroll(seer);
+  await shot(villager, "45-ww-online-villager-night");
   await seer.getByRole("group").getByRole("button").first().click();
   await seer.getByRole("button", { name: "Rolle ansehen" }).click();
-  await expect(seer.getByText(/ ist .*Gib jetzt noch deinen Verdacht ab/)).toBeVisible();
-  for (const [i, p] of phones.entries()) {
-    if (["Dorfbewohner"].includes(roles[i])) await p.getByRole("group").getByRole("button").first().click();
-  }
+  await expect(seer.getByText(/Merk es dir – dann Augen zu/)).toBeVisible();
+  await expect(villager.getByTestId("eyes-closed")).toContainText("Werwölfe");
+  await shot(wolf, "44-ww-online-wolf");
+  await wolf.getByRole("group").getByRole("button").first().click();
   await expect(witch.getByText("Opfer der Werwölfe:")).toBeVisible();
   await shot(witch, "46-ww-online-witch");
   await witch.getByRole("button", { name: "Bestätigen" }).click();
@@ -270,6 +272,8 @@ test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser })
   await openSettings(host);
   await host.getByRole("button", { name: /^Hausregeln/ }).click();
   await host.getByRole("radio", { name: /Stichwahl/ }).click();
+  // Gleichzeitige Nacht: der Host beendet sie mit einem Tipp
+  await host.getByRole("radio", { name: /Gleichzeitig/ }).click();
   await host.getByRole("checkbox", { name: /^Hexe ein Heil/ }).click();
   await host.getByRole("checkbox", { name: /^Seherin sieht jede/ }).click();
   await closeSettings(host);

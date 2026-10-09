@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Baby, Bird, Crosshair, Crown, Dog, Eye, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Scale, Search, Shield, Skull, Snowflake, Sun, Users, BedDouble, VenetianMask, type LucideIcon } from "lucide-react";
 import { aliveIds, holders, isWolf, knownRoles, participants, ROLES, STEP_ROLE, voters, wolfAt, type Role, type Step, type WerwolfAction, type WerwolfState, wolf2Targets } from "@shared/games/werwolf/logic";
 import type { RoomAction } from "@shared/platform/room";
@@ -10,6 +10,8 @@ import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, Role
 import { RulesSheet } from "@/platform/RulesSheet";
 import { OnlineClock } from "./OnlineClock";
 import { RoleIcon } from "./RoleIcon";
+import { SCRIPT } from "./script";
+import { speak } from "./useSpeech";
 
 /**
  * Ansicht eines Mitspielers am eigenen Handy (online). Im Modus „App erzählt“ handelt jede Rolle hier geheim.
@@ -21,6 +23,7 @@ export function PlayerView({ s, players, me, isHost, act, enabled, options, disp
   const role = s.roles[me];
   const alive = s.alive[me];
   const app = s.mode === "app";
+  useSeqNarration(s, isHost);
 
   return (
     <>
@@ -99,7 +102,9 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
   const [pick, setPick] = useState<string[]>([]);
   const [heal, setHeal] = useState(false);
   const alive = aliveIds(s);
-  const own = (step: string) => s.pending.includes(step as never) && !s.acted.includes(step as never);
+  // Nacheinander: nur die Rolle, die gerade aufgerufen ist
+  const cur = s.awake !== undefined ? s.awake : s.pending[0];
+  const own = (step: string) => s.pending.includes(step as never) && !s.acted.includes(step as never) && (!s.seq || cur === step);
   const one = (id: string) => setPick((p) => (p[0] === id ? [] : [id]));
   const two = (id: string) => setPick((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id].slice(-2)));
   const title = <IconTitle icon={Moon}>Nacht {s.night}</IconTitle>;
@@ -281,7 +286,38 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
   const hint = seen ? say(Eye, <>{nameOf(players, seen.target)} ist <b className="text-foreground"><RoleIcon role={seen.role} className="mr-1" />{ROLES[seen.role].name}</b>. Gib jetzt noch deinen Verdacht ab.</>)
     : sniff ? say(Search, sniff.wolf ? `Bei ${nameOf(players, sniff.target)} oder den Nachbarn steckt ein Wolf! Gib jetzt noch deinen Verdacht ab.` : "Dort ist kein Wolf – dein Spürsinn ist weg. Gib noch deinen Verdacht ab.")
     : undefined;
+  if (s.seq) {
+    // Wer gerade nicht dran ist: Augen zu. Das Ergebnis der eigenen Rolle bleibt bis zum Morgen stehen.
+    return (
+      <Panel title={<IconTitle icon={Moon}>Nacht {s.night}</IconTitle>} sub={seen || sniff ? <>{seen ? say(Eye, <>{nameOf(players, seen.target)} ist <b className="text-foreground"><RoleIcon role={seen.role} className="mr-1" />{ROLES[seen.role].name}</b>.</>) : say(Search, sniff!.wolf ? `Bei ${nameOf(players, sniff!.target)} oder den Nachbarn steckt ein Wolf!` : "Dort ist kein Wolf – dein Spürsinn ist weg.")} Merk es dir – dann Augen zu.</> : undefined}>
+        <div className="grid place-items-center gap-2 py-6 text-center" data-testid="eyes-closed">
+          <MoonStar className="size-10 text-navy-300" aria-hidden="true" />
+          <div className="text-xl font-bold">Augen zu!</div>
+          <p className="text-sm text-muted-foreground">{cur ? <>Wach ist gerade: <b className="text-foreground">{SCRIPT[cur].title}</b>. Du wirst aufgerufen, wenn du dran bist.</> : "Gleich wird es Tag."}</p>
+        </div>
+      </Panel>
+    );
+  }
   return <Suspect s={s} players={players} me={me} act={act} hint={hint} />;
+}
+
+/**
+ * Nacheinander online: Das Handy des Hosts liest vor, wer erwacht und wer wieder einschläft – wie ein Erzähler am Tisch.
+ * Die anderen Handys bleiben still, damit es nicht hallt.
+ */
+function useSeqNarration(s: WerwolfState, isHost: boolean) {
+  const cur = s.phase === "night" && s.seq ? (s.awake !== undefined ? s.awake : s.pending[0]) ?? null : null;
+  const prev = useRef<{ step: Step | null; phase: string } | null>(null);
+  useEffect(() => {
+    const before = prev.current;
+    prev.current = { step: cur, phase: s.phase };
+    if (!isHost || !s.seq || !before) return;
+    const parts: string[] = [];
+    if (before.phase !== "night" && s.phase === "night") parts.push(SCRIPT.sleep.say);
+    if (before.step && before.step !== cur && SCRIPT[before.step].after) parts.push(SCRIPT[before.step].after!);
+    if (cur && cur !== before.step) parts.push(SCRIPT[cur].say);
+    if (parts.length) void speak(parts.join(" "));
+  }, [cur, s.phase, s.seq, isHost]);
 }
 
 /** Tarn-Aufgabe für alle, die nachts nichts zu tun haben */

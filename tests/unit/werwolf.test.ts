@@ -10,7 +10,8 @@ const NAMES = ["Anna", "Ben", "Cem", "Dora", "Emil", "Finn", "Gina"];
 /** Werwolf-Raum starten; `actor` null = lokal, sonst Start durch den Host p1 (online). Ohne Hauptmann, außer es wird verlangt */
 function start(n: number, options: Record<string, string | boolean> = {}, online = false) {
   let r = act(roomWith(NAMES.slice(0, n)), { type: "selectGame", gameId: "werwolf" });
-  for (const [key, value] of Object.entries({ captain: false, ...options })) r = act(r, { type: "setOption", key, value });
+  // Die meisten Tests prüfen die gleichzeitige Nacht; „nacheinander“ hat eigene Tests
+  for (const [key, value] of Object.entries({ captain: false, nightFlow: "par", ...options })) r = act(r, { type: "setOption", key, value });
   return act(r, { type: "start" }, online ? "p1" : null);
 }
 /** Rollen gezielt festlegen */
@@ -58,6 +59,45 @@ describe("Geheime Sicht", () => {
   it("Spielleiter sieht alles", () => {
     const r = start(6, { narrator: "human" }, true);
     expect(g(viewRoom(r, "p1")).known).toBeUndefined();
+  });
+});
+
+describe("App erzählt, online, nacheinander (Augen zu)", () => {
+  it("nur die aufgerufene Rolle handelt, in der Reihenfolge der Nacht", () => {
+    let r = start(7, { wolves: "2", seherin: true, hexe: true, nightFlow: "seq" }, true);
+    r = withRoles(r, { p1: "werwolf", p2: "werwolf", p3: "seherin", p4: "hexe", p5: "dorf", p6: "dorf", p7: "dorf" });
+    for (const id of ["p1", "p2", "p3", "p4", "p5", "p6", "p7"]) r = w(r, { type: "ready" }, id);
+    expect(g(r).seq).toBe(true);
+    expect(g(r).pending).toEqual(["seherin", "werwolf", "hexe"]);
+    // Wölfe sind noch nicht wach
+    expect(() => w(r, { type: "wolf", target: "p5" }, "p1")).toThrow(/Augen zu/);
+    r = w(r, { type: "see", target: "p1" }, "p3");
+    expect(g(r).pending[0]).toBe("werwolf");
+    expect(() => w(r, { type: "witch", heal: true, poison: null }, "p4")).toThrow();
+    r = w(r, { type: "wolf", target: "p5" }, "p1");
+    r = w(r, { type: "wolf", target: "p5" }, "p2");
+    expect(g(r).pending[0]).toBe("hexe");
+    r = w(r, { type: "witch", heal: true, poison: null }, "p4");
+    expect(g(r).phase).not.toBe("night");
+    expect(g(r).alive.p5).toBe(true);
+  });
+
+  it("Host überspringt nur die Rolle, die nicht reagiert", () => {
+    let r = start(7, { wolves: "2", seherin: true, hexe: true, nightFlow: "seq" }, true);
+    r = withRoles(r, { p1: "werwolf", p2: "werwolf", p3: "seherin", p4: "hexe", p5: "dorf", p6: "dorf", p7: "dorf" });
+    for (const id of ["p1", "p2", "p3", "p4", "p5", "p6", "p7"]) r = w(r, { type: "ready" }, id);
+    r = act(r, { type: "skip" }, "p1");
+    expect(g(r).phase).toBe("night");
+    expect(g(r).pending[0]).toBe("werwolf");
+    r = w(r, { type: "wolf", target: "p6" }, "p1");
+    r = act(r, { type: "skip" }, "p1");
+    expect(g(r).victim).toBe("p6");
+    expect(g(r).pending[0]).toBe("hexe");
+  });
+
+  it("gleichzeitig bleibt als Einstellung", () => {
+    const r = start(6, { nightFlow: "par" }, true);
+    expect(g(r).seq).toBe(false);
   });
 });
 

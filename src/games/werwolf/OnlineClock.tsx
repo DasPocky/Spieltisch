@@ -3,15 +3,17 @@ import { Volume2, VolumeX } from "lucide-react";
 import type { RoomAction } from "@shared/platform/room";
 import type { Options, Player } from "@shared/platform/types";
 import type { WerwolfState } from "@shared/games/werwolf/logic";
-import { tempoOf, Timer, useCountdown } from "./Auto";
+import { stepSeconds, tempoOf, Timer, useCountdown } from "./Auto";
 import { newsSay } from "./Leader";
-import { DAWN_SAY } from "./script";
+import { DAWN_SAY, SCRIPT } from "./script";
 import { useAmbience } from "./ambience";
 import { setSpeech, speak, speechSupported, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
 
 /** Wie lange eine Phase online dauert (Sekunden) – null: kein Countdown */
 function phaseSeconds(s: WerwolfState, o: Options): number | null {
   const t = tempoOf(o);
+  // Nacheinander: Zeit je Rolle, nicht für die ganze Nacht
+  if (s.phase === "night" && s.seq) return s.awake ? stepSeconds(s.awake, o) : null;
   if (s.phase === "night") return s.mode === "app" ? t.wolves + t.role : null;
   if (s.phase === "day") return s.runoff ? t.vote : t.talk * 60;
   if (s.phase === "election") return t.vote;
@@ -25,13 +27,14 @@ function phaseSeconds(s: WerwolfState, o: Options): number | null {
  */
 export function OnlineClock({ s, players, isHost, options, dispatch }: { s: WerwolfState; players: Player[]; isHost: boolean; options: Options; dispatch: (a: RoomAction) => void }) {
   const secs = phaseSeconds(s, options);
-  const deadline = secs !== null && s.phaseAt ? s.phaseAt + secs * 1000 : null;
+  const start = s.phase === "night" && s.seq ? s.stepAt : s.phaseAt;
+  const deadline = secs !== null && start ? start + secs * 1000 : null;
   const left = useCountdown(deadline, false);
   const leader = isHost && s.mode === "app";
   const speech = useSpeechEnabled(true);
   const talk = leader && speech;
-  const grace = s.phase === "night" ? 15 : 30;
-  const key = `${s.phase}-${s.night}-${(s.runoff ?? []).join()}`;
+  const grace = s.phase === "night" ? (s.seq ? 8 : 15) : 30;
+  const key = `${s.phase}-${s.night}-${(s.runoff ?? []).join()}-${s.seq ? s.awake ?? "" : ""}`;
   const said = useRef("");
   useSpokenCountdown(left, talk, secs ?? undefined);
   // Nachtgeräusche auf dem Host-Handy (es erzählt ja ohnehin)
@@ -41,7 +44,8 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
   useEffect(() => {
     if (!talk || said.current === key) return;
     said.current = key;
-    if (s.phase === "night") void speak("Es wird Nacht. Jeder schaut auf sein eigenes Handy und handelt geheim.");
+    // Nacheinander erzählt der Erzähler selbst (Aufruf je Rolle)
+    if (s.phase === "night") { if (!s.seq) void speak("Es wird Nacht. Jeder schaut auf sein eigenes Handy und handelt geheim."); }
     else if (s.phase === "day" && s.runoff) void speak("Gleichstand. Es gibt eine Stichwahl.");
     else if (s.phase === "day") void speak(`${DAWN_SAY} ${newsSay(s, players)} Ihr habt ${tempoOf(options).talk} Minuten.`);
     else if (s.phase === "election") void speak("Das Dorf wählt einen Hauptmann.");
@@ -58,7 +62,7 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
   }, [leader, deadline, grace, dispatch]);
 
   if (deadline === null) return null;
-  const label = s.phase === "night" ? "Nacht – handelt jetzt" : s.phase === "election" ? "Zeit für die Wahl" : s.runoff ? "Zeit für die Stichwahl" : "Diskussion und Abstimmung";
+  const label = s.phase === "night" ? (s.seq ? `Wach: ${s.awake ? SCRIPT[s.awake].title : "…"}` : "Nacht – handelt jetzt") : s.phase === "election" ? "Zeit für die Wahl" : s.runoff ? "Zeit für die Stichwahl" : "Diskussion und Abstimmung";
   return (
     <div className="grid shrink-0 gap-1">
       <div className="flex items-center gap-2">
@@ -71,7 +75,7 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
       </div>
       {left === 0 && (
         <p className="text-in text-center text-xs text-muted-foreground" data-testid="ww-grace">
-          {s.phase === "night" ? "Wer noch nicht gehandelt hat: jetzt! Gleich wird es Tag." : "Jetzt abstimmen – gleich wird ausgezählt."}
+          {s.phase === "night" ? (s.seq ? "Gleich geht es ohne diese Rolle weiter." : "Wer noch nicht gehandelt hat: jetzt! Gleich wird es Tag.") : "Jetzt abstimmen – gleich wird ausgezählt."}
         </p>
       )}
     </div>

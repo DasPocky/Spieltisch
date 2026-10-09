@@ -4,8 +4,9 @@
  * Zwei Erzähler-Modi:
  * - `human`: Ein Mensch leitet das Spiel (online: der Host, spielt nicht mit). Er sieht alle Rollen,
  *   liest das Skript vor und tippt die Entscheidungen der Nacht und des Dorfes ein.
- * - `app`: Die App erzählt. Online handelt jede Rolle geheim am eigenen Handy – nachts gleichzeitig,
- *   alle anderen geben derweil einen Verdacht ab, damit niemand am Tippen erkennbar ist.
+ * - `app`: Die App erzählt. Online handelt jede Rolle geheim am eigenen Handy – nacheinander wie am Tisch
+ *   (Augen zu, das Host-Handy ruft auf) oder auf Wunsch gleichzeitig; dann geben alle anderen einen Verdacht ab,
+ *   damit niemand am Tippen erkennbar ist.
  *   Lokal (ein Gerät) liest die App vor und die aufgerufenen Rollen tippen am Gerät in der Mitte.
  *
  * Ablauf „schrittweise“ (Spielleiter oder lokal): jeder Nachtschritt wird erst ausgeführt, dann mit „Weiter“ abgeschlossen.
@@ -152,6 +153,13 @@ export interface WerwolfState {
   whiteKill: string | null;
   /** Schrittweise: Spielleiter oder lokales Gerät führen durch die Nacht */
   stepwise: boolean;
+  /**
+   * Online mit App-Erzähler: Die Rollen erwachen nacheinander wie am Tisch (alle anderen haben die Augen zu).
+   * Fehlt/false: alle handeln nachts gleichzeitig.
+   */
+  seq?: boolean;
+  /** Nur in der Sicht eines Spielers (nacheinander): welcher Schritt gerade wach ist – der Erzähler sagt es ja laut */
+  awake?: Step | null;
   /** Spielleiter (nur online im Modus human) – spielt nicht mit */
   narratorId: string | null;
   revealDead: boolean;
@@ -318,7 +326,7 @@ function setup(ctx: GameContext): WerwolfState {
   return {
     v: 1, mode, rules, captain: null, captainElected: false, runoff: null, enchanted: [], enchantedTonight: [],
     extra: deck.slice(ids.length), whiteKill: null,
-    stepwise: mode === "human" || local, narratorId, revealDead: ctx.options.revealDead !== false,
+    stepwise: mode === "human" || local, seq: !(mode === "human" || local) && ctx.options.nightFlow !== "par", narratorId, revealDead: ctx.options.revealDead !== false,
     roles: Object.fromEntries(ids.map((id, i) => [id, deck[i]])), alive: Object.fromEntries(ids.map((id) => [id, true])),
     lovers: null, phase: rules.ownCards ? "assign" : "reveal", ready: [], night: 0, pending: [], acted: [],
     wolfVotes: {}, victim: null, victim2: null, protectedId: null, lastProtected: null, seer: [], fox: [], foxPower: true,
@@ -526,6 +534,8 @@ function assertStep(s: WerwolfState, step: Step, actorId: string | null) {
     return;
   }
   if ((NEEDS[step] ?? []).some((n) => open(s, n))) throw new GameError("Warte, bis die Werwölfe gewählt haben.");
+  // Nacheinander: nur die Rolle, die gerade wach ist
+  if (s.seq && s.pending[0] !== step) throw new GameError("Das ist gerade nicht dran – Augen zu!");
   if (actorId === null) return;
   const role = s.roles[actorId];
   const ok = step === "werwolf" ? wolfAt(s, actorId) : STEP_ROLE[step] === role;
@@ -618,6 +628,16 @@ function forceNight(s: WerwolfState, ctx: GameContext) {
   s.log.push(`Nacht ${s.night} vom Host beendet`);
   s.pending = [];
   dawn(s, ctx);
+}
+
+/** Nacheinander: nur den gerade wachen Schritt beenden (Rolle reagiert nicht) – die Nacht geht weiter */
+function skipStep(s: WerwolfState, ctx: GameContext) {
+  const step = s.pending[0];
+  if (!step) { dawn(s, ctx); return; }
+  if (step === "werwolf" && !s.victim) s.victim = majority(count(Object.values(s.wolfVotes)), true);
+  s.log.push(`Nacht ${s.night}: ${step === "werwolf" ? "Werwölfe" : ROLES[STEP_ROLE[step] ?? "dorf"].name} übersprungen`);
+  s.pending.shift();
+  if (!s.pending.length) dawn(s, ctx);
 }
 
 /** Zeitstempel setzen, sobald eine neue Phase (oder Stichwahl) bzw. ein neuer Nachtschritt beginnt */
@@ -955,6 +975,7 @@ function view(s: WerwolfState, viewer: string | null): WerwolfState {
     lovers: inLove ? s.lovers : null,
     pending: s.pending.filter(myStep),
     acted: s.acted.filter(myStep),
+    awake: s.seq && s.phase === "night" ? s.pending[0] ?? null : undefined,
     wolfVotes: wolf ? s.wolfVotes : {},
     victim: seesVictim ? s.victim : null,
     victim2: wolf ? s.victim2 : null,
@@ -1032,6 +1053,13 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
       talk: true, inGame: true, vote: (o) => o.narrator !== "human" && (o.captain !== false || o.tie === "runoff"),
     }),
     {
+      key: "nightFlow", label: "Nacht mit eigenen Handys", type: "choice", default: "seq", group: "Ablauf", showIf: (o) => o.narrator !== "human",
+      choices: [
+        { value: "seq", label: "Nacheinander", hint: "wie am Tisch: Augen zu, die App ruft jede Rolle auf" },
+        { value: "par", label: "Gleichzeitig", hint: "schneller: alle tippen, wer nichts tut, gibt einen Verdacht ab" },
+      ],
+    },
+    {
       key: "vote", label: "Abstimmung am Tag", type: "choice", default: "point", group: "Ablauf", inGame: true,
       choices: [
         { value: "point", label: "Zeigen", hint: "„3, 2, 1“ – alle zeigen, Ergebnis antippen" },
@@ -1101,7 +1129,7 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
     if (s.phase === "election") return s.stepwise ? null : "Hauptmannwahl beenden";
     if (s.phase === "successor") return "Nachfolger zufällig bestimmen";
     if (s.phase === "reveal") return "Nicht alle bereit – Nacht beginnen";
-    if (s.phase === "night") return "Nacht beenden (wer nicht reagiert hat, verpasst seine Aktion)";
+    if (s.phase === "night") return s.seq ? "Diese Rolle überspringen (reagiert nicht)" : "Nacht beenden (wer nicht reagiert hat, verpasst seine Aktion)";
     if (s.phase === "day" && !s.stepwise) return "Abstimmung beenden";
     if (s.phase === "hunter") return "Jäger überspringen";
     return null;
@@ -1120,7 +1148,7 @@ function skipTurn(prev: WerwolfState, ctx: GameContext): WerwolfState {
       s.captain = alive[randomInt(alive.length)];
       continueTo(s, s.afterHunter);
     } else if (s.phase === "reveal") beginGame(s);
-    else if (s.phase === "night") forceNight(s, ctx);
+    else if (s.phase === "night") (s.seq ? skipStep(s, ctx) : forceNight(s, ctx));
     else if (s.phase === "day" && !s.stepwise) closeVote(s, ctx);
     else if (s.phase === "hunter") {
       s.hunters.shift();
