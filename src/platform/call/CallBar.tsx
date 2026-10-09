@@ -15,19 +15,38 @@ export function CallButton({ call }: { call: CallControls }) {
   if (call.phase !== "off") return null;
   return (
     <div className="relative">
-      <Button variant="secondary" size="icon" aria-label="Sprachchat" onClick={() => setOpen((o) => !o)}>
+      <Button variant="secondary" size="icon" aria-label="Audio & Video" onClick={() => setOpen((o) => !o)}>
         <Phone />
         {inCall > 0 && <span className="absolute -top-1 -right-1 grid size-5 place-items-center rounded-full bg-ok text-[0.7rem] font-bold text-navy-950">{inCall}</span>}
       </Button>
       {open && (
-        <div className="glass absolute top-12 right-0 z-30 grid w-56 gap-1.5 rounded-2xl p-2 shadow-xl" role="dialog" aria-label="Sprachchat beitreten">
-          <p className="px-1 pb-1 text-xs text-muted-foreground">{inCall ? `${inCall} im Chat` : "Noch niemand im Chat"}</p>
+        <div className="glass absolute top-12 right-0 z-30 grid w-56 gap-1.5 rounded-2xl p-2 shadow-xl" role="dialog" aria-label="Audio & Video beitreten">
+          <p className="px-1 text-sm font-semibold">Audio & Video</p>
+          <p className="px-1 pb-1 text-xs text-muted-foreground">{inCall ? `${inCall} im Chat` : "Sprecht miteinander, ohne extra App"}</p>
           <Button onClick={() => { setOpen(false); void call.join(false); }}><Mic />Nur Sprache</Button>
           <Button variant="secondary" onClick={() => { setOpen(false); void call.join(true); }}><Video />Mit Video</Button>
           {call.error && <p role="alert" className="px-1 text-xs text-destructive">{call.error}</p>}
         </div>
       )}
       {!open && call.error && <p role="alert" className="absolute top-12 right-0 z-30 w-56 rounded-xl bg-destructive px-2 py-1 text-xs text-white">{call.error}</p>}
+    </div>
+  );
+}
+
+/** Lobby: Audio & Video gut sichtbar anbieten – nicht nur als kleines Symbol oben */
+export function CallInvite({ call }: { call: CallControls }) {
+  if (call.phase !== "off") return null;
+  const inCall = Object.keys(call.peers).length;
+  return (
+    <div className="glass mt-2 flex items-center gap-3 rounded-2xl py-2.5 pr-2.5 pl-4" data-testid="call-invite">
+      <Phone className="size-4.5 shrink-0 text-primary" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold">Audio & Video</div>
+        <div className="truncate text-xs text-muted-foreground">{inCall ? `${inCall} schon im Chat` : "Sprechen und sehen – direkt hier"}</div>
+        {call.error && <p role="alert" className="text-xs text-destructive">{call.error}</p>}
+      </div>
+      <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void call.join(false)} aria-label="Audio-Chat beitreten"><Mic /></Button>
+      <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void call.join(true)} aria-label="Video-Chat beitreten"><Video /></Button>
     </div>
   );
 }

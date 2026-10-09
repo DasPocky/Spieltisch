@@ -8,6 +8,7 @@ import { AccessGate } from "@/platform/AccessGate";
 import { LocalGame } from "@/pages/LocalGame";
 import { OnlineRoom } from "@/pages/OnlineRoom";
 import { lazy, Suspense } from "react";
+import { OfflineBar } from "@/platform/OfflineBar";
 
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
 
@@ -24,6 +25,7 @@ export default function App() {
       {route.name === "home" && <AccessGate><Home /></AccessGate>}
       {route.name === "local" && <LocalGame />}
       {route.name === "room" && <AccessGate><OnlineRoom key={route.code} code={route.code} /></AccessGate>}
+      <OfflineBar />
       <Toaster />
     </>
   );

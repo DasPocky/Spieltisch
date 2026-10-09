@@ -50,12 +50,12 @@ test("Sprachchat: beitreten, hören, stumm, nachts still, verlassen", async ({ b
   await joinRoom(cem, code, "Cem", "3131");
 
   // Anna tritt nur mit Sprache bei
-  await anna.getByRole("button", { name: "Sprachchat" }).click();
+  await anna.getByRole("button", { name: "Audio & Video", exact: true }).click();
   await anna.getByRole("button", { name: "Nur Sprache" }).click();
   await expect(anna.getByTestId("call-strip")).toBeVisible();
   // Ben sieht, dass schon jemand drin ist, und kommt mit Video dazu
-  await expect(ben.getByRole("button", { name: "Sprachchat" })).toContainText("1");
-  await ben.getByRole("button", { name: "Sprachchat" }).click();
+  await expect(ben.getByRole("button", { name: "Audio & Video", exact: true })).toContainText("1");
+  await ben.getByRole("button", { name: "Audio & Video", exact: true }).click();
   await ben.getByRole("button", { name: "Mit Video" }).click();
   const strip = (p: Page) => p.getByRole("group", { name: "Im Sprachchat" });
   await expect(strip(anna).getByRole("button")).toHaveCount(2);

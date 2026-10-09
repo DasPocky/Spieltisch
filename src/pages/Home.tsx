@@ -18,6 +18,7 @@ import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup, useActiveGroup } from "@/lib/group";
 import { leaderboard } from "@shared/platform/group";
 import { Avatar } from "@/platform/Avatar";
+import { useOnline } from "@/hooks/useOnline";
 
 type Way = "local" | "online";
 /** Angezeigter Schritt: nur der Online-Raum hat einen eigenen */
@@ -51,6 +52,8 @@ export function Home() {
   const remember = (w: Way) => { try { localStorage.setItem(WAY_KEY, w); } catch { /* egal */ } };
   const [avatar] = useState(myAvatar);
   const [running] = useState(runningLocal);
+  // Ohne Netz: Online-Wege sichtbar, aber gesperrt – „Ein Handy für alle“ geht immer
+  const online = useOnline();
   // Ein Handy: gleich in die lokale Lobby – mit dem zuletzt lokal gewählten Spiel, falls es noch freigegeben ist
   const playLocal = () => {
     remember("local");
@@ -80,14 +83,14 @@ export function Home() {
           <h2 className="mt-7 mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground">Wie spielt ihr?</h2>
           <div className="glass grid shrink-0 grid-cols-[minmax(0,1fr)] divide-y divide-border overflow-hidden rounded-2xl">
             <WayRow icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiterspielen` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} onClick={playLocal} />
-            <WayRow icon={Users} title="Online-Raum erstellen" text="Jeder spielt am eigenen Handy" marked={last === "online"} onClick={() => { remember("online"); setWay("online"); }} />
+            <WayRow icon={Users} title="Online-Raum erstellen" text={online ? "Jeder spielt am eigenen Handy" : "Braucht Netz – gerade offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
           </div>
           <form className="glass mt-3 shrink-0 rounded-2xl p-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
             <label htmlFor="code" className="flex items-center gap-2 px-1 font-semibold"><LogIn className="size-4.5 text-primary" />Raum beitreten</label>
             <div className="mt-2 flex gap-2">
               <Input id="code" aria-label="Raum beitreten" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))}
                 autoComplete="off" autoCapitalize="characters" placeholder="Raumcode vom Host" className="text-center text-lg font-semibold tracking-[0.3em] placeholder:text-base placeholder:font-normal placeholder:tracking-normal" />
-              <Button type="submit" disabled={!codeOk} className="shrink-0">Los</Button>
+              <Button type="submit" disabled={!codeOk || !online} className="shrink-0">Los</Button>
             </div>
           </form>
           <GroupCard />
@@ -203,10 +206,10 @@ function GroupCard() {
 }
 
 /** Eine Zeile im Assistenten */
-function WayRow({ icon: Icon, title, text, marked, onClick }: { icon: LucideIcon; title: string; text: string; marked: boolean; onClick: () => void }) {
+function WayRow({ icon: Icon, title, text, marked, disabled, onClick }: { icon: LucideIcon; title: string; text: string; marked: boolean; disabled?: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick}
-      className="flex w-full items-center gap-3 p-3.5 text-left outline-none transition hover:bg-accent/60 active:bg-accent focus-visible:bg-accent">
+    <button type="button" onClick={onClick} disabled={disabled}
+      className="flex w-full items-center gap-3 p-3.5 text-left outline-none transition hover:bg-accent/60 active:bg-accent focus-visible:bg-accent disabled:opacity-50 disabled:hover:bg-transparent">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary"><Icon className="size-5" /></span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2 font-semibold leading-tight">{title}{marked && <span className="rounded-full bg-primary/12 px-1.5 py-px text-[0.7rem] font-semibold text-primary">zuletzt</span>}</span>

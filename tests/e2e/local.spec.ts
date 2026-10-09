@@ -205,3 +205,17 @@ test("Partie beenden, Spiel wechseln, Startseite: Menü schließt sich, Auswahl 
   await page.getByRole("button", { name: "Zur Startseite" }).click();
   await expect(page.getByRole("button", { name: /Ein Handy für alle/ })).not.toContainText("läuft noch");
 });
+
+test("Ohne Netz: Hinweis oben, Online gesperrt, lokal geht weiter", async ({ page, context }) => {
+  await page.goto("/");
+  await context.setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  await expect(page.getByTestId("offline-bar")).toContainText("Kein Netz");
+  await expect(page.getByRole("button", { name: /Online-Raum erstellen/ })).toBeDisabled();
+  await shot(page, "02-offline-home");
+  await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
+  await expect(page.getByTestId("game-card")).toBeVisible();
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(page.getByTestId("offline-bar")).toHaveCount(0);
+});

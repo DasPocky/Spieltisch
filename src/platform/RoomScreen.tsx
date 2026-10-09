@@ -25,7 +25,7 @@ import { Collapsible } from "./PlayersHistory";
 import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
-import { CallButton, CallStrip, type CallControls } from "./call/CallBar";
+import { CallButton, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
@@ -171,7 +171,7 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
   );
 }
 
-function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props & { isHost: boolean }) {
+function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: Props & { isHost: boolean }) {
   // Frisch erstellter Raum oder „Spiel wechseln“: der Host wählt zuerst das Spiel
   const [pick, setPick] = useState(() => {
     if (takeGamePick() && isHost) return true;
@@ -206,6 +206,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost }: Props &
       </button>
       {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
+      {call && <CallInvite call={call} />}
       <EveningLine className="mt-2" />
 
       <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
