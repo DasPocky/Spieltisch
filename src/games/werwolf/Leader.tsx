@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AliveStrip, Ico, IconTitle, nameOf, News, Panel, Picker, RoleCard, RolePicker } from "./parts";
 import { RoleIcon } from "./RoleIcon";
 import { AUTO_SAY, DAWN_SAY, SCRIPT } from "./script";
+import { morningSay } from "./narration";
 import { setSpeech, speak, speechSupported, useSpeak, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
 import { useAmbience } from "./ambience";
 import { AutoRunner, HoldButton, Timer, INFO_STEPS, RESULT_STEPS, stepSeconds, tempoOf, useCountdown } from "./Auto";
@@ -348,11 +349,7 @@ function verdictSay(s: WerwolfState, players: Player[]) {
 }
 
 export function newsSay(s: WerwolfState, players: Player[]) {
-  // Engel im Spiel: Die Partie beginnt mit einem Tag – es gab noch keine Nacht
-  if (s.night === 0) return "Der Engel ist im Spiel: Bevor die erste Nacht beginnt, stimmt das Dorf ab.";
-  const d = s.news?.kind === "night" ? s.news.deaths : [];
-  if (!d.length) return "Heute Nacht ist niemand gestorben.";
-  return d.map((x) => `${nameOf(players, x.id)} ist tot${s.revealDead ? ` und war ${ROLES[s.roles[x.id]].name}` : ""}.`).join(" ");
+  return morningSay(s, players);
 }
 
 type DayStage = "talk" | "count" | "pick" | "secret";

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Baby, Bird, Crosshair, Crown, Dog, Eye, FlaskConical, Heart, House, Moon, MoonStar, Music, PawPrint, Scale, Search, Shield, Skull, Snowflake, Sun, Users, BedDouble, VenetianMask, type LucideIcon } from "lucide-react";
 import { aliveIds, holders, isWolf, knownRoles, participants, ROLES, STEP_ROLE, voters, wolfAt, type Role, type Step, type WerwolfAction, type WerwolfState, wolf2Targets } from "@shared/games/werwolf/logic";
 import type { RoomAction } from "@shared/platform/room";
@@ -11,7 +11,6 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { OnlineClock } from "./OnlineClock";
 import { RoleIcon } from "./RoleIcon";
 import { SCRIPT } from "./script";
-import { speak } from "./useSpeech";
 
 /**
  * Ansicht eines Mitspielers am eigenen Handy (online). Im Modus „App erzählt“ handelt jede Rolle hier geheim.
@@ -23,7 +22,6 @@ export function PlayerView({ s, players, me, isHost, act, enabled, options, disp
   const role = s.roles[me];
   const alive = s.alive[me];
   const app = s.mode === "app";
-  useSeqNarration(s, isHost);
 
   return (
     <>
@@ -301,24 +299,7 @@ function AppNight({ s, players, me, act }: { s: WerwolfState; players: Player[];
   return <Suspect s={s} players={players} me={me} act={act} hint={hint} />;
 }
 
-/**
- * Nacheinander online: Das Handy des Hosts liest vor, wer erwacht und wer wieder einschläft – wie ein Erzähler am Tisch.
- * Die anderen Handys bleiben still, damit es nicht hallt.
- */
-function useSeqNarration(s: WerwolfState, isHost: boolean) {
-  const cur = s.phase === "night" && s.seq ? (s.awake !== undefined ? s.awake : s.pending[0]) ?? null : null;
-  const prev = useRef<{ step: Step | null; phase: string } | null>(null);
-  useEffect(() => {
-    const before = prev.current;
-    prev.current = { step: cur, phase: s.phase };
-    if (!isHost || !s.seq || !before) return;
-    const parts: string[] = [];
-    if (before.phase !== "night" && s.phase === "night") parts.push(SCRIPT.sleep.say);
-    if (before.step && before.step !== cur && SCRIPT[before.step].after) parts.push(SCRIPT[before.step].after!);
-    if (cur && cur !== before.step) parts.push(SCRIPT[cur].say);
-    if (parts.length) void speak(parts.join(" "));
-  }, [cur, s.phase, s.seq, isHost]);
-}
+
 
 /** Tarn-Aufgabe für alle, die nachts nichts zu tun haben */
 function Suspect({ s, players, me, act, hint }: { s: WerwolfState; players: Player[]; me: string; act: (a: WerwolfAction) => void; hint?: ReactNode }) {

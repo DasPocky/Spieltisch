@@ -3,7 +3,9 @@ import { EndActions } from "@/platform/ResultScreen";
 import { participants, ROLES, SPECIAL_ROLES, type Role, type WerwolfAction, type WerwolfState } from "@shared/games/werwolf/logic";
 import type { BoardProps } from "@/games/types";
 import { cn } from "@/lib/utils";
-import { useSpeak } from "@/platform/speech";
+import { speak } from "@/platform/speech";
+import { useEffect } from "react";
+import { endSay } from "./narration";
 import { Leader } from "./Leader";
 import { Ico, nameOf } from "./parts";
 import { RoleIcon } from "./RoleIcon";
@@ -27,7 +29,7 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
       <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[4vh] pb-6 text-center">
         <w.icon aria-hidden="true" className="mx-auto size-14 text-ice" />
         <h2 className="mt-3 bg-gradient-to-b from-foreground to-navy-300 bg-clip-text text-4xl font-bold leading-tight tracking-tight text-transparent" data-testid="winner">{w.title}</h2>
-        {me === null && <SayOnce text={`${w.title}. ${w.text}`} />}
+        {(me === null || (isHost && s.mode === "app")) && <SayOnce text={endSay(s, players, `${w.title}. ${w.text}`)} />}
         <p className="text-muted-foreground">{w.text}</p>
         <ul className="mt-6 grid gap-1.5 text-left">
           {participants(s).map((id) => (
@@ -50,7 +52,13 @@ export function Board({ room, game: s, me, isHost, act, dispatch }: BoardProps<W
 }
 
 /** Liest einen Text einmal vor (z. B. den Sieger am Ende) */
+/** Einmal vorlesen – auch wenn die Ansicht neu gezeichnet wird */
+let lastSaid = "";
 function SayOnce({ text }: { text: string }) {
-  useSpeak(text, true);
+  useEffect(() => {
+    if (lastSaid === text) return;
+    lastSaid = text;
+    void speak(text);
+  }, [text]);
   return null;
 }

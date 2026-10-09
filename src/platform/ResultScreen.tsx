@@ -56,13 +56,13 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
 /** Nach der Partie: nochmal, anderes Spiel oder zur Lobby (Spieler, Einstellungen) – für alle Spiele gleich */
 export function EndActions({ isHost, dispatch, children }: { isHost: boolean; dispatch: (a: RoomAction) => void; children?: ReactNode }) {
   if (!isHost) return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
       <EveningLine />
       <p className="glass rounded-xl py-3 text-center text-muted-foreground">Der Host startet gleich nochmal oder wählt ein anderes Spiel.</p>
     </div>
   );
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
       <EveningLine />
       <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
       {children}

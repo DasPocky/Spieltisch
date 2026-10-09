@@ -4,8 +4,8 @@ import type { RoomAction } from "@shared/platform/room";
 import type { Options, Player } from "@shared/platform/types";
 import type { WerwolfState } from "@shared/games/werwolf/logic";
 import { stepSeconds, tempoOf, Timer, useCountdown } from "./Auto";
-import { newsSay } from "./Leader";
-import { DAWN_SAY, SCRIPT } from "./script";
+import { SCRIPT } from "./script";
+import { onlineSay } from "./narration";
 import { useAmbience } from "./ambience";
 import { setSpeech, speak, speechSupported, useSpeechEnabled, useSpokenCountdown } from "./useSpeech";
 
@@ -34,22 +34,23 @@ export function OnlineClock({ s, players, isHost, options, dispatch }: { s: Werw
   const speech = useSpeechEnabled(true);
   const talk = leader && speech;
   const grace = s.phase === "night" ? (s.seq ? 8 : 15) : 30;
-  const key = `${s.phase}-${s.night}-${(s.runoff ?? []).join()}-${s.seq ? s.awake ?? "" : ""}`;
-  const said = useRef("");
   useSpokenCountdown(left, talk, secs ?? undefined);
   // Nachtgeräusche auf dem Host-Handy (es erzählt ja ohnehin)
   useAmbience(leader && options.ambience === true, s.phase === "night");
 
-  // Ansagen beim Phasenwechsel (nur das Host-Handy)
+  // Ansagen wie ein Spielleiter (nur das Host-Handy, damit es nicht hallt)
+  const prev = useRef<WerwolfState | null>(null);
   useEffect(() => {
-    if (!talk || said.current === key) return;
-    said.current = key;
-    // Nacheinander erzählt der Erzähler selbst (Aufruf je Rolle)
-    if (s.phase === "night") { if (!s.seq) void speak("Es wird Nacht. Jeder schaut auf sein eigenes Handy und handelt geheim."); }
-    else if (s.phase === "day" && s.runoff) void speak("Gleichstand. Es gibt eine Stichwahl.");
-    else if (s.phase === "day") void speak(`${DAWN_SAY} ${newsSay(s, players)} Ihr habt ${tempoOf(options).talk} Minuten.`);
-    else if (s.phase === "election") void speak("Das Dorf wählt einen Hauptmann.");
-  }, [talk, key, s, players, options]);
+    const before = prev.current;
+    prev.current = s;
+    if (!talk || before === s) return;
+    if (!before) {
+      if (s.phase === "reveal") void speak("Willkommen in Düsterwald. Jeder schaut sich jetzt geheim seine Rolle an. Sind alle bereit, beginnt die erste Nacht.");
+      return;
+    }
+    const parts = onlineSay(before, s, players, options);
+    if (parts.length) void speak(parts.join(" "));
+  }, [talk, s, players, options]);
   useEffect(() => {
     if (!talk) return;
     if (left === 0 && s.phase !== "night") void speak("Die Zeit ist um. Stimmt jetzt ab.");
