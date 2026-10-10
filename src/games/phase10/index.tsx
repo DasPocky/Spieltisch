@@ -1,20 +1,10 @@
 import type { RoomState } from "@shared/platform/room";
 import { phase10, PHASES, needLabel, type P10Action, type P10State } from "@shared/games/phase10/logic";
 import type { GameUI } from "@/games/types";
-import { MUTED } from "@/lib/palette";
 import { Board } from "./Board";
+import { Icon } from "./Icon";
 
-/** Symbol: Karte mit „10“ vor zwei Karten */
-function Icon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
-      <rect x="7" y="9" width="15" height="21" rx="2.5" fill="#fdfdfb" stroke={MUTED.navy} strokeWidth="0.8" transform="rotate(-14 14 20)" />
-      <rect x="18" y="9" width="15" height="21" rx="2.5" fill="#fdfdfb" stroke={MUTED.navy} strokeWidth="0.8" transform="rotate(12 26 20)" />
-      <rect x="12.5" y="8" width="15" height="22" rx="2.5" fill="#fdfdfb" stroke={MUTED.navy} strokeWidth="0.8" />
-      <text x="20" y="23" textAnchor="middle" fontSize="10" fontWeight="800" fill={MUTED.blue}>10</text>
-    </svg>
-  );
-}
+
 
 function Rules() {
   return (

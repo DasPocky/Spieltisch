@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Confirm } from "@/components/Confirm";
-import { getGameUI } from "@/games";
+import { gameIcon } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { NAME_KEY, remove, RETURN_KEY } from "@/lib/storage";
 import { createTransfer, deleteProfile, exportData, fetchStats, importData, myAvatar, myName, myProfile, redeemTransfer, saveAvatar, saveName, wipeAllData } from "@/lib/profile";
@@ -144,7 +144,7 @@ export function Profile() {
             </div>
             <ul className="grid gap-1.5">
               {games.map(([g, s]) => {
-                const { Icon } = getGameUI(g);
+                const Icon = gameIcon(g);
                 return (
                   <li key={g} className="flex items-center gap-2.5 rounded-xl bg-navy-950/30 px-2.5 py-2">
                     <IconTile className="size-9 rounded-lg"><Icon className="size-6" /></IconTile>

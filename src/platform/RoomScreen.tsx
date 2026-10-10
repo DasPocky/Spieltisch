@@ -5,7 +5,7 @@ import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { getGameUI } from "@/games";
+import { gameIcon, getGameUI, loadGameUI } from "@/games";
 import type { BoardProps, GameUI } from "@/games/types";
 import { useViewMode } from "@/hooks/useViewMode";
 import { cn } from "@/lib/utils";
@@ -185,7 +185,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: P
   // Aktive Gruppe frisch holen (neue Mitglieder, Avatare)
   useEffect(() => { const g = activeGroupCode(); if (g) void loadGroup(g); }, []);
   const info = getGame(room.gameId).info;
-  const { Icon } = getGameUI(room.gameId);
+  const Icon = gameIcon(room.gameId);
   const n = room.players.length;
   const limits = playerLimits(room);
   const countOk = n >= limits.min && n <= limits.max;
@@ -240,7 +240,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: P
       </div>
 
       <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online={!!code}
-        onPick={(id) => { dispatch({ type: "selectGame", gameId: id }); setPick(false); }} />
+        onPick={(id) => { setPick(false); void loadGameUI(id).then(() => dispatch({ type: "selectGame", gameId: id }), () => toast("Das Spiel lädt gerade nicht – kurz Netz prüfen.")); }} />
 
       <Sheet open={settings} onOpenChange={setSettings}>
         <SheetContent>
@@ -282,7 +282,7 @@ function GamePicker({ open, onOpenChange, gameIds, current, online, onPick }: {
                 <h3 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{cat}</h3>
                 {ids.map((id) => {
                   const g = getGame(id).info;
-                  const GIcon = getGameUI(id).Icon;
+                  const GIcon = gameIcon(id);
                   return (
                     <button key={id} type="button" onClick={() => onPick(id)} aria-current={id === current || undefined} data-testid={`pick-${id}`}
                       className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === current ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>

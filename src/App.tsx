@@ -8,14 +8,18 @@ import { AccessGate } from "@/platform/AccessGate";
 import { LocalGame } from "@/pages/LocalGame";
 import { OnlineRoom } from "@/pages/OnlineRoom";
 import { lazy, Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { OfflineBar } from "@/platform/OfflineBar";
+import { LoadError } from "@/platform/LoadError";
 
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
 
 export default function App() {
   const route = useRoute();
   return (
-    <>
+    // Spiele laden erst beim Öffnen – solange zeigt sich kurz ein Ladekreis
+    <LoadError>
+    <Suspense fallback={<div className="grid h-dvh-safe place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>}>
       {route.name === "admin" && <Admin />}
       {route.name === "gallery" && <Suspense><CardGallery /></Suspense>}
       {route.name === "profile" && <AccessGate><Profile /></AccessGate>}
@@ -27,7 +31,8 @@ export default function App() {
       {route.name === "room" && <AccessGate><OnlineRoom key={route.code} code={route.code} /></AccessGate>}
       <OfflineBar />
       <Toaster />
-    </>
+    </Suspense>
+    </LoadError>
   );
 }
 

@@ -5,8 +5,10 @@ import type { BoardProps } from "@/games/types";
 import { useHints } from "@/lib/prefs";
 import { vibrate } from "@/lib/utils";
 import { BoardBox, DuelBar, DuelFooter, HintChip, playerName } from "@/games/_board/Duel";
+import { DISC } from "./colors";
 
-export const DISC = ["#e0484f", "#f5c431"] as const;
+export { DISC };
+
 const DISC_DARK = ["#a8262f", "#c99412"] as const;
 const FRAME = "#2559c4";
 const FRAME_DARK = "#1b4396";

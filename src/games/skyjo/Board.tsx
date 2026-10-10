@@ -11,17 +11,12 @@ import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
+import { cardColor } from "./colors";
 
 const nameOf = (players: Player[], id: string | null) => players.find((p) => p.id === id)?.name ?? "?";
 
 /** Farben wie im Original: Minus Dunkelblau, 0 Hellblau, 1–4 Grün, 5–8 Gelb, 9–12 Rot */
-export function cardColor(v: number): { bg: string; fg: string } {
-  if (v < 0) return { bg: "#2b3a9b", fg: "#fff" };
-  if (v === 0) return { bg: "#3fb6e6", fg: "#fff" };
-  if (v <= 4) return { bg: "#5cb431", fg: "#fff" };
-  if (v <= 8) return { bg: "#f2c919", fg: "#1c1c1c" };
-  return { bg: "#e4372a", fg: "#fff" };
-}
+export { cardColor };
 
 /** Zahl mit Kontur (Farbe gegenläufig zur Füllung) */
 function SkNum({ v, x, y, size, fg, rot }: { v: number; x: number; y: number; size: number; fg: string; rot?: boolean }) {
