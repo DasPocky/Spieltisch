@@ -183,6 +183,22 @@ function candidates(r: RoomState, online: boolean): Move[] {
       if (Math.random() < 0.02) add({ type: "tBack" });
       break;
     }
+    case "spion": {
+      const st = r.game as { pool: string[]; place: string | null };
+      ["seen", "accuse", "cancelVote", "reveal", "timeUp", "nextRound"].forEach((type) => add({ type }));
+      for (const id of ids) {
+        add({ type: "seen", player: id });
+        add({ type: "ask", to: id });
+        add({ type: "accuse", by: id });
+        add({ type: "vote", target: id });
+        add({ type: "verdict", target: id });
+        add({ type: "reveal", spy: id });
+      }
+      add({ type: "verdict", target: null });
+      add({ type: "guess", place: pick(st.pool) });
+      if (st.place && Math.random() < 0.3) add({ type: "guess", place: st.place });
+      break;
+    }
     case "einenacht": {
       const ids2 = r.players.map((p) => p.id);
       ["ready", "startNight", "next", "nightDone", "closeVote"].forEach((type) => add({ type }));
@@ -370,6 +386,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["einenacht", 9, { seherin: true, raeuber: true, unruhestifter: true, betrunkener: true, schlaflose: true, jaeger: true, gerber: true, guenstling: true, freimaurer: true }],
   ["einenacht", 3, { wolves: "1" }],
   ["einenacht", 5, { cards: "own", betrunkener: true }],
+  ["spion", 3, {}],
+  ["spion", 6, { spies: "2", lastChance: true, verdict: "unanimous", rounds: 3 }],
+  ["spion", 12, { scoring: "rounds", roles: false, pack_alltag: false, pack_urlaub: false, rounds: 4 }],
+  ["spion", 4, { pack_alltag: false, pack_urlaub: false, pack_arbeit: false, pack_abenteuer: false, rounds: 2 }],
   ["werwolf", 9, { captain: true, tie: "runoff", aura: true, peaceful: true, selfHeal: false, hexe: true, jaeger: true, dieb: true, floetenspieler: true, engel: true, weisserwolf: true, wolves: "3" }],
   ["werwolf", 6, { cards: "own", captain: true, narrator: "human" }],
   ["werwolf", 20, {
