@@ -400,6 +400,7 @@ export const spion: GameLogic<SpionState, SpionAction> = {
         { value: "unanimous", label: "Einstimmig", hint: "alle außer dem Verdächtigen" },
       ],
     },
+    { key: "narrate", label: "Vorlesen", type: "toggle", default: true, group: "Ablauf", hint: "Das Handy sagt an, wer fragt, wie viel Zeit bleibt und wie die Runde ausgeht (online: das Handy des Hosts)" },
     { key: "roles", label: "Rollen am Ort", type: "toggle", default: true, group: "Orte", hint: "z. B. Bahnhof – Zugbegleiter" },
     ...PACKS.map((p) => ({ key: `pack_${p.id}`, label: `Paket ${p.name}`, type: "toggle" as const, default: true, group: "Orte", hint: p.hint })),
     {

@@ -85,3 +85,24 @@ export async function joinRoom(page: Page, code: string, name: string, pin: stri
   await page.getByRole("button", { name: "Beitreten" }).click();
   await expect(page.getByText(/Warte, bis der Host/)).toBeVisible();
 }
+
+/** Sprachausgabe mitschreiben statt abspielen – vor dem ersten goto aufrufen. Auslesen mit `spoken()`. */
+export async function captureSpeech(page: Page) {
+  await page.addInitScript(() => {
+    const said: string[] = [];
+    (window as unknown as { __said: string[] }).__said = said;
+    const fake = {
+      speak: (u: SpeechSynthesisUtterance) => { said.push(u.text); setTimeout(() => u.onend?.(new Event("end") as SpeechSynthesisEvent), 10); },
+      cancel: () => {}, getVoices: () => [], addEventListener: () => {}, removeEventListener: () => {}, speaking: false, pending: false, paused: false,
+    };
+    Object.defineProperty(window, "speechSynthesis", { value: fake, configurable: true });
+  });
+}
+
+export const spoken = async (page: Page) => (await page.evaluate(() => (window as unknown as { __said?: string[] }).__said ?? [])).join(" ");
+
+/** Die Ansagen kommen in dieser Reihenfolge vor */
+export function expectInOrder(text: string, parts: string[]) {
+  let at = -1;
+  for (const p of parts) { const i = text.indexOf(p, at + 1); expect(i, `Ansage „${p}“ fehlt oder kommt zu früh`).toBeGreaterThan(at); at = i; }
+}

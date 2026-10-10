@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
+import { captureSpeech, closeSettings, createRoom, expectInOrder, expectInView, expectNoScroll, joinRoom, newPhone, openSettings, shot, spoken } from "./util";
 
 const NAMES = ["Anna", "Ben", "Cem", "Dora"];
 
@@ -36,6 +36,7 @@ async function passAround(page: Page, names: string[], shots = false) {
 }
 
 test("Spion lokal: Karten reihum, fragen, abstimmen, Spion rät, Ergebnis", async ({ page }) => {
+  await captureSpeech(page);
   await localGame(page, NAMES.slice(0, 3));
   const { spy, place } = await passAround(page, NAMES.slice(0, 3), true);
   expect(spy).not.toBe("");
@@ -76,6 +77,9 @@ test("Spion lokal: Karten reihum, fragen, abstimmen, Spion rät, Ergebnis", asyn
   await expect(page.getByTestId("ranking")).toContainText(r2.spy);
   await expectNoScroll(page);
   await shot(page, "spion-08-result");
+  // Das Handy hat wie ein Spielleiter angesagt
+  expectInOrder(await spoken(page), ["Runde 1 von 2", "Jeder schaut sich geheim seine Karte an", "Ihr habt", "Anna fängt an", "Ben fragt",
+    "Anna will abstimmen", "Eins, zwei, drei", "Der Ort war", "Runde 2 von 2", "enttarnt sich als Spion", "richtig", "Das Spiel ist aus"]);
 });
 
 test("Spion lokal auf kleinem Handy (320×568) mit 8 Spielern", async ({ page }) => {

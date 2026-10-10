@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Eye, EyeOff, MapPin, MessageCircleQuestion, Pause, Timer as TimerIcon, VenetianMask, Vote } from "lucide-react";
 import { deadlineOf, scoringOf, timeLeft, verdictOf, type SpionAction, type SpionState } from "@shared/games/spion/logic";
 import { PLACE_BY_ID, placeName } from "@shared/games/spion/places";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { nameOf, Panel, Picker } from "@/games/werwolf/parts";
 import { useCountdown } from "@/platform/Countdown";
+import { speak, useSpokenCountdown } from "@/platform/speech";
+import { spionSay } from "./narration";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
@@ -17,8 +19,23 @@ type P = BoardProps<SpionState, SpionAction>;
 const ids = (s: SpionState) => Object.keys(s.scores);
 const names = (players: Player[], list: string[]) => list.map((id) => nameOf(players, id)).join(" & ");
 
+/** Vorlesen wie ein Spielleiter: lokal das Gerät, online nur das Handy des Hosts (sonst hallt es) */
+function useNarration({ game: s, me, isHost, room }: P) {
+  const on = room.options.narrate !== false && (me === null || isHost);
+  const prev = useRef<SpionState | null>(null);
+  useEffect(() => {
+    const before = prev.current;
+    prev.current = s;
+    if (!on || before === s) return;
+    const parts = spionSay(before, s, room.players);
+    if (parts.length) void speak(parts.join(" "));
+  }, [on, s, room.players]);
+  return on;
+}
+
 export function Board(props: P) {
   const { game: s, me } = props;
+  useNarration(props);
   if (s.phase === "over") return <Over {...props} />;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 pt-1.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
@@ -65,7 +82,7 @@ function SecretCard({ s, id, compact, startOpen = false }: { s: SpionState; id: 
 }
 
 /** Restzeit der Runde – auf allen Handys gleich (Startzeit kommt vom Server). Ist sie um, meldet das Handy es. */
-function Clock({ s, leader, act }: { s: SpionState; leader: boolean; act: P["act"] }) {
+function Clock({ s, leader, act, talk = false }: { s: SpionState; leader: boolean; act: P["act"]; talk?: boolean }) {
   const deadline = deadlineOf(s);
   const paused = s.pausedAt !== null;
   const ticking = useCountdown(paused ? null : deadline, false);
@@ -81,6 +98,7 @@ function Clock({ s, leader, act }: { s: SpionState; leader: boolean; act: P["act
     return () => { clearTimeout(t); if (iv) clearInterval(iv); };
   }, [s.phase, deadline, paused, leader, act]);
   useEffect(() => { if (left === 30 || left === 10) vibrate([30, 60, 30]); }, [left]);
+  useSpokenCountdown(paused ? null : left, talk, s.minutes * 60);
   if (left === null) {
     return s.timeUp ? <div className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-destructive/15 px-3 py-1.5 text-sm font-semibold text-destructive" data-testid="clock">Zeit ist um</div> : null;
   }
@@ -242,7 +260,7 @@ function Device({ room, game: s, act }: P) {
   if (s.phase === "vote" && s.vote) {
     return (
       <>
-        <Clock s={s} leader act={act} />
+        <Clock s={s} leader act={act} talk={room.options.narrate !== false} />
         <Panel title={s.vote.final ? "Zeit ist um – wer ist der Spion?" : "Abstimmung"} sub={<>Auf drei zeigen alle auf ihren Verdacht. {verdictHint(room.options)}</>}>
           <Picker ids={order} players={players} selected={pick ? [pick] : []} onPick={(id) => setPick(id === pick ? undefined : id)}
             extra={{ label: "Keine Mehrheit", selected: pick === null, onPick: () => setPick(pick === null ? undefined : null) }} />
@@ -289,7 +307,7 @@ function Device({ room, game: s, act }: P) {
   if (step === "accuse") {
     return (
       <>
-        <Clock s={s} leader act={act} />
+        <Clock s={s} leader act={act} talk={room.options.narrate !== false} />
         <Panel title="Wer startet die Abstimmung?" sub="Jeder darf das einmal pro Runde. Wer den Spion so entlarvt, bekommt einen Extrapunkt.">
           <Picker ids={order} players={players} selected={[]} disabled={(id) => s.accusers.includes(id)} onPick={(id) => act({ type: "accuse", by: id })} />
         </Panel>
@@ -300,7 +318,7 @@ function Device({ room, game: s, act }: P) {
   if (step === "reveal") {
     return (
       <>
-        <Clock s={s} leader act={act} />
+        <Clock s={s} leader act={act} talk={room.options.narrate !== false} />
         <Panel title="Wer ist der Spion?" sub="Der Spion deckt auf und rät dann den Ort.">
           <Picker ids={order} players={players} selected={[]} onPick={(id) => act({ type: "reveal", spy: id })} />
         </Panel>
@@ -310,7 +328,7 @@ function Device({ room, game: s, act }: P) {
   }
   return (
     <>
-      <Clock s={s} leader act={act} />
+      <Clock s={s} leader act={act} talk={room.options.narrate !== false} />
       <Asker s={s} players={players}>
         <Chips list={order.filter((id) => id !== s.asker)} players={players} label="… und fragt:" disabled={(id) => id === s.prevAsker && order.length > 2}
           onPick={(id) => act({ type: "ask", to: id })} />
@@ -385,7 +403,7 @@ function Phone({ room, game: s, me, isHost, act }: P & { me: string }) {
     const count = Object.keys(s.vote.votes).length;
     return (
       <>
-        <Clock s={s} leader={isHost} act={act} />
+        <Clock s={s} leader={isHost} act={act} talk={isHost && room.options.narrate !== false} />
         <Panel title={s.vote.final ? "Zeit ist um – wer ist der Spion?" : "Abstimmung"}
           sub={<>{s.vote.by ? `${nameOf(players, s.vote.by)} hat abstimmen lassen. ` : ""}{verdictHint(room.options)}</>}>
           {playing && <Picker ids={order.filter((id) => id !== me)} players={players} selected={mine && mine !== "?" ? [mine] : []} onPick={(id) => act({ type: "vote", target: id })} />}
@@ -425,7 +443,7 @@ function Phone({ room, game: s, me, isHost, act }: P & { me: string }) {
   const myAsk = s.asker === me;
   return (
     <>
-      <Clock s={s} leader={isHost} act={act} />
+      <Clock s={s} leader={isHost} act={act} talk={isHost && room.options.narrate !== false} />
       {playing && <SecretCard key={s.round} s={s} id={me} compact />}
       <Asker s={s} players={players}>
         {myAsk ? (
