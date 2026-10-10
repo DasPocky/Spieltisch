@@ -1,0 +1,6 @@
+/* Ludo: erlaubte Figuren leuchten sanft, Zielfelder laufen langsam */
+@keyframes ludo-glow { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.95; } }
+.ludo-glow { animation: ludo-glow 1.4s ease-in-out infinite; }
+@keyframes ludo-dash { to { stroke-dashoffset: -0.52; } }
+.ludo-target { animation: ludo-dash 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .ludo-glow, .ludo-target { animation: none; } }

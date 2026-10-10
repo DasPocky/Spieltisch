@@ -1,0 +1,40 @@
+/* Brettspiele zu zweit: Steine fallen, gleiten und erscheinen weich */
+@keyframes bd-drop {
+  0% { transform: translateY(var(--dy, -400px)); }
+  70% { transform: translateY(0); }
+  85% { transform: translateY(calc(var(--bounce, 12px) * -1)); }
+  100% { transform: translateY(0); }
+}
+.bd-drop { animation: bd-drop var(--dur, 0.45s) cubic-bezier(0.55, 0, 0.9, 0.6) backwards; }
+
+@keyframes bd-slide {
+  from { transform: translate(var(--fx, 0px), var(--fy, 0px)); }
+  to { transform: translate(0, 0); }
+}
+.bd-slide { animation: bd-slide 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+
+@keyframes bd-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.bd-pop { animation: bd-pop 0.28s ease-out backwards; transform-box: fill-box; transform-origin: center; }
+
+@keyframes bd-fade {
+  from { opacity: 0.85; }
+  to { opacity: 0; }
+}
+.bd-fade { animation: bd-fade 0.6s ease-out forwards; }
+
+@keyframes bd-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.bd-pulse { animation: bd-pulse 1.4s ease-in-out infinite; }
+
+.bd-hit { cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; }
+.bd-hit:focus-visible .bd-focus { stroke: var(--ring); stroke-width: 6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-drop, .bd-slide, .bd-pop, .bd-pulse { animation: none; }
+}

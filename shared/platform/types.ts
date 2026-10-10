@@ -50,6 +50,8 @@ export interface GameContext {
   options: Options;
   /** Zeitpunkt der Aktion in ms (Server- bzw. Gerätezeit) – für Timer; nie für Zufall verwenden */
   now: number;
+  /** Wie viele Partien in diesem Raum schon gestartet wurden (beim Start: die bisherigen) – z. B. damit „Nochmal“ die anfangende Farbe wechselt */
+  round?: number;
 }
 
 /**

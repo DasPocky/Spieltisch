@@ -14,6 +14,11 @@ import { phase10UI } from "./phase10";
 import { skipboUI } from "./skipbo";
 import { skyjoUI } from "./skyjo";
 import { spionUI } from "./spion";
+import { maexchenUI } from "./maexchen";
+import { ludoUI } from "./ludo";
+import { vierUI } from "./vier";
+import { muehleUI } from "./muehle";
+import { dameUI } from "./dame";
 import { tuttoUI } from "./tutto";
 import { unoUI } from "./uno";
 import { werwolfUI } from "./werwolf";
@@ -33,6 +38,11 @@ const UIS: Record<GameId, GameUI<never, never>> = {
   fischen: fischenUI as unknown as GameUI<never, never>,
   hellseher: hellseherUI as unknown as GameUI<never, never>,
   spion: spionUI as unknown as GameUI<never, never>,
+  maexchen: maexchenUI as unknown as GameUI<never, never>,
+  ludo: ludoUI as unknown as GameUI<never, never>,
+  vier: vierUI as unknown as GameUI<never, never>,
+  muehle: muehleUI as unknown as GameUI<never, never>,
+  dame: dameUI as unknown as GameUI<never, never>,
 };
 
 export function getGameUI(id: string): GameUI {

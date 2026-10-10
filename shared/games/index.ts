@@ -14,12 +14,17 @@ import { phase10 } from "./phase10/logic";
 import { skipbo } from "./skipbo/logic";
 import { skyjo } from "./skyjo/logic";
 import { spion } from "./spion/logic";
+import { maexchen } from "./maexchen/logic";
+import { ludo } from "./ludo/logic";
+import { vier } from "./vier/logic";
+import { muehle } from "./muehle/logic";
+import { dame } from "./dame/logic";
 import { tutto } from "./tutto/logic";
 import { uno } from "./uno/logic";
 import { werwolf } from "./werwolf/logic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const GAMES = { tutto, kniffel, flip7, skyjo, werwolf, einenacht, codenames, maumau, uno, skipbo, phase10, fischen, hellseher, spion } satisfies Record<string, GameLogic<any, any>>;
+export const GAMES = { tutto, kniffel, flip7, skyjo, werwolf, einenacht, codenames, maumau, uno, skipbo, phase10, fischen, hellseher, spion, maexchen, ludo, vier, muehle, dame } satisfies Record<string, GameLogic<any, any>>;
 
 export type GameId = keyof typeof GAMES;
 export const GAME_IDS = Object.keys(GAMES) as GameId[];

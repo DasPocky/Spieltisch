@@ -14,6 +14,10 @@ import { canPlay as unoCanPlay, COLORS, type UnoState } from "@shared/games/uno/
 import type { WerwolfState } from "@shared/games/werwolf/logic";
 import { SUITS as HS_SUITS, type HsState } from "@shared/games/hellseher/logic";
 import { POINT_STEPS } from "@shared/games/tutto/logic";
+import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "@shared/games/maexchen/logic";
+import { legalMoves as dameMoves, type DameState } from "@shared/games/dame/logic";
+import type { MuehleState } from "@shared/games/muehle/logic";
+import type { VierState } from "@shared/games/vier/logic";
 import { applyRoomAction, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { GameError } from "@shared/platform/types";
 import { act, roomWith } from "./helpers";
@@ -237,7 +241,51 @@ function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "lynch", target: null });
       break;
     }
+    case "maexchen": {
+      const st = r.game as MaexState;
+      add({ type: "roll" });
+      // Wie echte Spieler: meist knapp über der letzten Ansage, ab und zu aufdecken
+      const last = st.round.at(-1);
+      const from = last ? maexRank(last.value) + 1 : 0;
+      for (const value of MAEX_ORDER.slice(from, from + 4)) add({ type: "announce", value });
+      add({ type: "announce", value: pick(MAEX_ORDER) });
+      if (!last || last.value === 21 || Math.random() < 0.4) { add({ type: "reveal" }); add({ type: "reveal", truth: Math.random() < 0.5 }); }
+      break;
+    }
+    case "ludo": {
+      add({ type: "roll" });
+      add({ type: "roll", value: 1 + Math.floor(Math.random() * 6) });
+      for (let piece = 0; piece < 4; piece++) { add({ type: "move", piece }); add({ type: "move", piece, back: true }); }
+      break;
+    }
+    case "vier": {
+      const s = r.game as VierState;
+      for (let col = -1; col <= s.cols; col++) add({ type: "drop", col });
+      break;
+    }
+    case "muehle": {
+      const s = r.game as MuehleState;
+      for (let i = 0; i < 24; i++) {
+        add({ type: "place", to: i });
+        add({ type: "remove", at: i });
+        for (let j = 0; j < 24; j++) if (s.board[i] === s.turn && s.board[j] === null) add({ type: "move", from: i, to: j });
+      }
+      break;
+    }
+    case "dame": {
+      const s = r.game as DameState;
+      // Erlaubte Züge plus ein paar ungültige (unvollständige Schlagfolgen, fremde Steine)
+      for (const m of dameMoves(s, r.options)) {
+        add({ type: "move", from: m.from, path: m.path });
+        if (m.path.length > 1) add({ type: "move", from: m.from, path: m.path.slice(0, 1) });
+      }
+      for (const at of s.blow) add({ type: "blow", at });
+      add({ type: "move", from: Math.floor(Math.random() * s.board.length), path: [Math.floor(Math.random() * s.board.length)] });
+      add({ type: "blow", at: 0 });
+      break;
+    }
   }
+  if (["vier", "muehle", "dame"].includes(r.gameId) && Math.random() < 0.002) add({ type: "resign" });
   // Punkteblock (echte Karten), gemeinsam für alle Spiele, die ihn nutzen
   if ((r.game as { pad?: unknown }).pad) {
     for (const id of ids) add({ type: "padEnter", player: id, points: Math.floor(Math.random() * 60) });
@@ -386,6 +434,23 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["einenacht", 9, { seherin: true, raeuber: true, unruhestifter: true, betrunkener: true, schlaflose: true, jaeger: true, gerber: true, guenstling: true, freimaurer: true }],
   ["einenacht", 3, { wolves: "1" }],
   ["einenacht", 5, { cards: "own", betrunkener: true }],
+  ["maexchen", 2, {}],
+  ["maexchen", 5, { lives: 6, blind: false }],
+  ["maexchen", 10, { lives: 1, maexDouble: false }],
+  ["maexchen", 4, { mode: "table", lives: 2 }],
+  ["ludo", 2, {}],
+  ["ludo", 4, { mustHit: true, startField: "block", backward: true }],
+  ["ludo", 3, { dice: "real", start: "home", goalJump: true, outOn1: true, end: "all" }],
+  ["ludo", 4, { startField: "free", end: "all" }],
+  ["ludo", 6, { board: "6", end: "all", mustHit: true }],
+  ["ludo", 5, { board: "6", start: "home" }],
+  ["vier", 2, {}],
+  ["vier", 2, { size: "9x7" }],
+  ["muehle", 2, {}],
+  ["muehle", 2, { jump: false, draw: "20" }],
+  ["dame", 2, {}],
+  ["dame", 2, { capture: "blow", flying: false, back: false, draw: "15" }],
+  ["dame", 2, { capture: "free", size: "10" }],
   ["spion", 3, {}],
   ["spion", 6, { spies: "2", lastChance: true, verdict: "unanimous", rounds: 3 }],
   ["spion", 12, { scoring: "rounds", roles: false, pack_alltag: false, pack_urlaub: false, rounds: 4 }],
