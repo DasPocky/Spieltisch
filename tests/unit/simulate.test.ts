@@ -12,6 +12,7 @@ import { extend as p10Extend, findPhase, type P10State } from "@shared/games/pha
 import { fits as sbFits, type SbState } from "@shared/games/skipbo/logic";
 import { canPlay as unoCanPlay, COLORS, type UnoState } from "@shared/games/uno/logic";
 import type { WerwolfState } from "@shared/games/werwolf/logic";
+import { SUITS as HS_SUITS, type HsState } from "@shared/games/hellseher/logic";
 import { POINT_STEPS } from "@shared/games/tutto/logic";
 import { applyRoomAction, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { GameError } from "@shared/platform/types";
@@ -154,6 +155,34 @@ function candidates(r: RoomState, online: boolean): Move[] {
       }
       break;
     }
+    case "hellseher": {
+      const s = r.game as HsState;
+      add({ type: "trump", suit: pick(HS_SUITS) });
+      const bid = () => Math.floor(Math.random() * (s.round + 1));
+      if (s.phase === "bid" && s.curId) for (let n = 0; n <= s.round; n++) add({ type: "bid", bid: n });
+      // Verdeckt: online jeder für sich, lokal das Gerät für jeden
+      if (s.phase === "bid" && !s.curId) for (const id of ids) {
+        if (online) moves.push({ action: g({ type: "secretBid", bid: bid() }), actor: id });
+        else add({ type: "secretBid", player: id, bid: bid() });
+      }
+      for (const card of s.hands[s.curId ?? ""] ?? []) add({ type: "play", card });
+      add({ type: "nextRound" });
+      // Echte Karten: wie am Tisch – offene Felder füllen, Stiche passend zur Kartenzahl, ab und zu korrigieren
+      if (s.phase === "tableBid") {
+        const open = ids.filter((id) => s.bids[id] === null || s.bids[id] === undefined);
+        for (const id of open.length ? open : ids) add({ type: "tBid", player: id, bid: Math.floor(Math.random() * (s.round + 1)) });
+      }
+      if (s.phase === "tableTricks") {
+        const open = ids.filter((id) => s.taken[id] === null || s.taken[id] === undefined);
+        const rest = s.round - ids.reduce((t, id) => t + (s.taken[id] ?? 0), 0);
+        if (open.length === 1 && rest >= 0) add({ type: "tTricks", player: open[0], n: rest });
+        else if (open.length > 1) for (const id of open) add({ type: "tTricks", player: id, n: Math.floor(Math.random() * (Math.max(0, rest) + 1)) });
+        else if (rest !== 0) for (const id of ids) { const n = (s.taken[id] ?? 0) + rest; if (n >= 0 && n <= s.round) add({ type: "tTricks", player: id, n }); }
+      }
+      ["tBidsDone", "tFinish"].forEach((type) => add({ type }));
+      if (Math.random() < 0.02) add({ type: "tBack" });
+      break;
+    }
     case "einenacht": {
       const ids2 = r.players.map((p) => p.id);
       ["ready", "startNight", "next", "nightDone", "closeVote"].forEach((type) => add({ type }));
@@ -237,6 +266,14 @@ function checkCards(r: RoomState) {
     const n = s.deck.length + s.discard.length + (s.drawn !== null ? 1 : 0) + Object.values(s.grids).flat().filter(Boolean).length;
     expect(n).toBe(150);
   }
+  if (r.gameId === "hellseher" && (r.game as HsState).mode === "app") {
+    const s = r.game as HsState;
+    const all = [...s.deck, ...(s.trumpCard ? [s.trumpCard] : []), ...s.trick.map((p) => p.card), ...Object.values(s.hands).flat()];
+    expect(new Set(all).size).toBe(all.length);
+    // abgespielte Stiche liegen beiseite: Karten im Spiel = 60 − gespielte Stiche × Spieler
+    const played = Object.values(s.tricks).reduce((t, n) => t + n, 0) * Object.keys(s.hands).length;
+    expect(all.length + played).toBe(60);
+  }
   if (r.gameId === "fischen" && !(r.game as FischenState).table) {
     const s = r.game as FischenState;
     const n = s.pile.length + Object.values(s.hands).flat().length + Object.values(s.quartets).flat().length * 4;
@@ -315,6 +352,12 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["codenames", 4, {}],
   ["codenames", 7, {}],
   ["codenames", 2, { mode: "key" }],
+  ["hellseher", 3, { length: "half" }],
+  ["hellseher", 4, { noEven: true, length: "10" }],
+  ["hellseher", 6, {}],
+  ["hellseher", 5, { secret: true, length: "half" }],
+  ["hellseher", 3, { mode: "table", noEven: true }],
+  ["hellseher", 4, { mode: "table", secret: true, length: "half" }],
   ["fischen", 2, {}],
   ["fischen", 5, { luckyAgain: false, deck: "de32" }],
   ["fischen", 8, { deck: "fr52" }],

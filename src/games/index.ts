@@ -6,6 +6,7 @@ import type { GameUI } from "./types";
 import { codenamesUI } from "./codenames";
 import { einenachtUI } from "./einenacht";
 import { fischenUI } from "./fischen";
+import { hellseherUI } from "./hellseher";
 import { flip7UI } from "./flip7";
 import { kniffelUI } from "./kniffel";
 import { maumauUI } from "./maumau";
@@ -29,6 +30,7 @@ const UIS: Record<GameId, GameUI<never, never>> = {
   skipbo: skipboUI as unknown as GameUI<never, never>,
   phase10: phase10UI as unknown as GameUI<never, never>,
   fischen: fischenUI as unknown as GameUI<never, never>,
+  hellseher: hellseherUI as unknown as GameUI<never, never>,
 };
 
 export function getGameUI(id: string): GameUI {

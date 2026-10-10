@@ -6,6 +6,7 @@ import type { GameLogic } from "../platform/types";
 import { codenames } from "./codenames/logic";
 import { einenacht } from "./einenacht/logic";
 import { fischen } from "./fischen/logic";
+import { hellseher } from "./hellseher/logic";
 import { flip7 } from "./flip7/logic";
 import { kniffel } from "./kniffel/logic";
 import { maumau } from "./maumau/logic";
@@ -17,7 +18,7 @@ import { uno } from "./uno/logic";
 import { werwolf } from "./werwolf/logic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const GAMES = { tutto, kniffel, flip7, skyjo, werwolf, einenacht, codenames, maumau, uno, skipbo, phase10, fischen } satisfies Record<string, GameLogic<any, any>>;
+export const GAMES = { tutto, kniffel, flip7, skyjo, werwolf, einenacht, codenames, maumau, uno, skipbo, phase10, fischen, hellseher } satisfies Record<string, GameLogic<any, any>>;
 
 export type GameId = keyof typeof GAMES;
 export const GAME_IDS = Object.keys(GAMES) as GameId[];
