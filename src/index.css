@@ -203,6 +203,8 @@
 
 /* Startseite: auf niedrigen Bildschirmen nur eine Reihe Schnellstart */
 @media (max-height: 700px) { .quick-extra { display: none; } }
+/* Sehr niedrig (kleines Handy im Browser): Schnellstart ganz weg – die Wege oben reichen */
+@media (max-height: 600px) { .quick-section { display: none; } }
 
 /*
  * Niedrige Bildschirme (kleines Handy, Browser mit Adress- und Werkzeugleiste, Querformat):

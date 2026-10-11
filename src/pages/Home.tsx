@@ -257,7 +257,7 @@ function QuickGames({ games, featured, order, onPick, local }: { games: string[]
   const shown = [...new Set(first)].slice(0, 7);
   if (!shown.length) return null;
   return (
-    <section className="mt-4 shrink-0" aria-label="Schnellstart">
+    <section className="quick-section mt-4 shrink-0" aria-label="Schnellstart">
       <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground">Schnellstart <span className="text-xs font-normal">{local ? "ein Handy" : "neuer Online-Raum"}</span></h2>
       <div className="grid grid-cols-4 gap-2">
         {shown.map((id, i) => {
