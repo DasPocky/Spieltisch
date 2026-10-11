@@ -85,6 +85,7 @@ export function OnlineRoom({ code }: { code: string }) {
       onCloseRoom={room.closeRoom}
       onClaimHost={room.claimHost}
       call={chat ? { ...call, peers: room.call, silent } : undefined}
+      chat={{ messages: room.chat, say: room.say }}
     />
   );
 }

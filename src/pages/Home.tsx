@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, LogIn, Settings2, Smartphone, Users, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, LogIn, Settings2, Smartphone, Users, Video, type LucideIcon } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE } from "@shared/platform/protocol";
 import { cleanName, MAX_NAME } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { useOnline } from "@/hooks/useOnline";
 
 type Way = "local" | "online";
 /** Angezeigter Schritt: nur der Online-Raum hat einen eigenen */
-type Step = "online";
+type Step = "online" | "meet";
 const WAY_KEY = "spieltisch:way";
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 /** Läuft auf diesem Handy noch eine lokale Partie? Dann steht das auf der Startseite. */
@@ -98,9 +98,25 @@ export function Home() {
               autoComplete="off" autoCapitalize="characters" placeholder="Raumcode – beitreten" className="h-10 text-center text-lg font-semibold tracking-[0.3em] placeholder:text-base placeholder:font-normal placeholder:tracking-normal" />
             <Button type="submit" disabled={!codeOk || !online} className="h-10 shrink-0">Los</Button>
           </form>
+          {online && (
+            <button type="button" onClick={() => setWay("meet")} data-testid="meet-card"
+              className="glass mt-2.5 flex w-full shrink-0 items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
+              <Video className="size-4.5 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1"><span className="block font-semibold leading-tight">Treffpunkt</span><span className="block truncate text-xs text-muted-foreground">Reden, sehen, schreiben – spielen später</span></span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+            </button>
+          )}
           <QuickGames games={games.map((g) => g.id)} featured={config?.featured ?? []} order={config?.order ?? []} onPick={(id) => playLocal(id)} />
           {features?.groups !== false && <GroupCard />}
           <InstallHint />
+          <div className="min-h-0 flex-1" />
+        </>
+      )}
+
+      {way === "meet" && (
+        <>
+          <StepHead title="Treffpunkt" sub="Video, Sprache und Chat – ein Spiel geht jederzeit" onBack={() => setWay(null)} />
+          <CreateRoom gameId={defaultGame(games.map((g) => g.id), locked)} meet />
           <div className="min-h-0 flex-1" />
         </>
       )}
@@ -127,7 +143,7 @@ function defaultGame(ids: string[], locked: (id: string) => boolean): string {
   return last && free.includes(last) ? last : free[0] ?? ids[0] ?? "tutto";
 }
 
-function CreateRoom({ gameId }: { gameId: string }) {
+function CreateRoom({ gameId, meet }: { gameId: string; meet?: boolean }) {
   const [name, setName] = useState(() => read(NAME_KEY) ?? "");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -135,7 +151,7 @@ function CreateRoom({ gameId }: { gameId: string }) {
   const ok = cleanName(name).length > 0 && PIN_RE.test(pin);
   const create = async () => {
     setBusy(true); setError(null);
-    try { await createRoom(name, pin, gameId, true); }
+    try { await createRoom(name, pin, gameId, true, meet); }
     catch (e) { setError(e instanceof Error ? e.message : "Keine Verbindung zum Server."); }
     finally { setBusy(false); }
   };

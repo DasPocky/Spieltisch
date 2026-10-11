@@ -75,12 +75,13 @@ test("Sprachchat: beitreten, hören, stumm, nachts still, verlassen", async ({ b
   await anna.getByRole("button", { name: "Spiel starten" }).click();
   for (const p of [anna, ben, cem]) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
   await expect(anna.getByTestId("call-strip").getByText("still", { exact: true })).toBeVisible();
-  await expect(strip(ben).getByRole("button", { name: "Anna (stumm)" })).toBeVisible();
+  // Im Spiel sitzen die Gesichter in der Spielerleiste – die Leiste oben ist nur noch ein kleiner Knopf
+  await expect(strip(ben).getByRole("button", { name: /2 im Chat/ })).toBeVisible();
   await shot(anna, "82-call-night");
 
   // Anna legt auf
   await anna.getByRole("button", { name: "Chat verlassen" }).click();
-  await expect(strip(ben).getByRole("button")).toHaveCount(1);
+  await expect(strip(ben).getByRole("button", { name: /1 im Chat/ })).toBeVisible();
   await expect(anna.getByTestId("call-strip")).toHaveCount(0);
 });
 
@@ -98,4 +99,54 @@ test("Sprachchat: nur Mitspieler, nur eigene Sitzungen", async ({ browser, reque
   expect(pull.status()).toBe(403);
   // Sitzung eines anderen benutzen: verboten
   expect((await call({ ...creds, op: "renegotiate", session: "fremdesession123", payload: {} })).status()).toBe(403);
+});
+
+test("Text-Chat: schreiben, Reaktion über dem Platz, Ungelesen-Zähler", async ({ browser }) => {
+  const [anna, ben] = await Promise.all([phone(browser), phone(browser)]);
+  const code = await createRoom(anna, "uno", "Anna", "3333");
+  await joinRoom(ben, code, "Ben", "3333");
+  await anna.getByTestId("chat-button").click();
+  await anna.getByLabel("Nachricht").fill("Hallo Ben!");
+  await anna.getByRole("button", { name: "Senden" }).click();
+  await expect(anna.getByTestId("chat-list")).toContainText("Hallo Ben!");
+  // Ben: Hinweis oben und Zähler am Knopf
+  await expect(ben.getByRole("button", { name: /Anna:/ })).toContainText("Hallo Ben!");
+  await expect(ben.getByTestId("chat-button")).toHaveAttribute("aria-label", "Chat, 1 neu");
+  await ben.getByTestId("chat-button").click();
+  await expect(ben.getByTestId("chat-list")).toContainText("Hallo Ben!");
+  await ben.getByRole("button", { name: "Reaktion 👍" }).click();
+  await ben.keyboard.press("Escape");
+  await expect(ben.getByTestId("chat-button")).toHaveAttribute("aria-label", "Chat");
+  // Anna sieht die Reaktion als Sprechblase an Bens Platz in der Lobby
+  await anna.keyboard.press("Escape");
+  await expect(anna.getByTestId("players").getByText("👍")).toBeVisible();
+  await shot(anna, "83-chat-bubble");
+  // Nach Neuladen ist der Verlauf noch da
+  await ben.reload();
+  await ben.getByTestId("chat-button").click();
+  await expect(ben.getByTestId("chat-list")).toContainText("Hallo Ben!");
+});
+
+test("Treffpunkt: nur reden, sehen, schreiben – dann ein Spiel", async ({ browser }) => {
+  const [anna, ben] = await Promise.all([phone(browser), phone(browser)]);
+  await anna.goto("/");
+  await anna.getByTestId("meet-card").click();
+  await anna.getByLabel("Dein Name").fill("Anna");
+  await anna.getByLabel(/PIN/).fill("3434");
+  await anna.getByRole("button", { name: "Raum erstellen" }).click();
+  await expect(anna.getByTestId("meet")).toBeVisible();
+  const code = (await anna.evaluate(() => location.pathname.split("/").pop()))!;
+  await ben.goto(`/r/${code}`);
+  await ben.getByLabel("Dein Name").fill("Ben");
+  await ben.getByLabel("PIN").fill("3434");
+  await ben.getByRole("button", { name: "Beitreten" }).click();
+  await expect(ben.getByTestId("meet")).toBeVisible();
+  await ben.getByRole("button", { name: "Video an" }).click();
+  await ben.getByLabel("Nachricht").fill("Bin da");
+  await ben.getByRole("button", { name: "Senden" }).click();
+  await expect(anna.getByTestId("meet").getByTestId("chat-list")).toContainText("Bin da");
+  await shot(ben, "84-meet");
+  await anna.getByRole("button", { name: "Ein Spiel starten" }).click();
+  await expect(anna.getByTestId("game-card")).toBeVisible();
+  await expect(ben.getByTestId("meet")).toHaveCount(0);
 });

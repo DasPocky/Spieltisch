@@ -9,6 +9,7 @@ import { Confirm } from "@/components/Confirm";
 import { cn } from "@/lib/utils";
 import { useActiveGroup } from "@/lib/group";
 import { Avatar, AvatarContext, AvatarPicker } from "./Avatar";
+import { Bubble } from "./chat/Chat";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Spieler aus der aktiven Gruppe – damit das Ergebnis der Partie in der Bestenliste landet */
@@ -54,7 +55,8 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
         {room.players.map((p, i) => {
           const mine = me === null || p.id === me || editable;
           return (
-            <li key={p.id} className={cn("glass flex min-w-0 items-center rounded-xl", two ? "h-12 gap-1.5 pr-0.5 pl-1.5" : "h-13 gap-2.5 pr-1.5 pl-2")}>
+            <li key={p.id} className={cn("glass relative flex min-w-0 items-center rounded-xl", two ? "h-12 gap-1.5 pr-0.5 pl-1.5" : "h-13 gap-2.5 pr-1.5 pl-2")}>
+              <Bubble playerId={p.id} />
               <button type="button" disabled={!mine} onClick={() => setEdit(p.id)} aria-label={`Avatar von ${p.name} ändern`}
                 className="relative shrink-0 rounded-full outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
                 <Avatar avatar={avatars[p.id]} name={p.name} className={two ? "size-8" : "size-9 text-[1.2em]"} />

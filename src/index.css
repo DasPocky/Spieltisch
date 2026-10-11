@@ -222,3 +222,15 @@
   [data-slot="button"][data-size="lg"] { height: 2.35rem; font-size: 0.95rem; }
   .dice-tray.h-28, .dice-tray.h-24 { height: 4.25rem; }
 }
+
+/* Sprechblase über einem Spielerplatz (Chat-Reaktion) */
+@keyframes bubble-in {
+  0% { opacity: 0; transform: translate(-50%, -70%) scale(0.6); }
+  60% { opacity: 1; transform: translate(-50%, -105%) scale(1.08); }
+  100% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+.bubble-in { animation: bubble-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .bubble-in { animation: none; } }
+
+/* Spricht gerade (Sprachchat): ruhiger, deutlicher Ring um das Gesicht */
+.speaking { box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ok), 0 0 10px 2px color-mix(in srgb, var(--ok) 60%, transparent); }

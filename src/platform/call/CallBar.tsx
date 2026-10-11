@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useEffect, useRef, useState } from "react";
 import { Loader2, Mic, MicOff, Moon, Phone, PhoneOff, Video, VideoOff, X } from "lucide-react";
 import type { CallPeer } from "@shared/platform/protocol";
 import type { Player } from "@shared/platform/types";
@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import type { useCall } from "./useCall";
 
 export type CallControls = ReturnType<typeof useCall> & { peers: Record<string, CallPeer>; silent: boolean };
+
+/** Für die Spielerleiste: Video und „spricht gerade“ am Platz jedes Spielers */
+export const CallContext = createContext<{ call: CallControls; me: string | null } | null>(null);
 
 /** Knopf in der Kopfzeile: Chat beitreten (Sprache oder Video) – zeigt, wie viele schon drin sind */
 export function CallButton({ call }: { call: CallControls }) {
@@ -52,7 +55,7 @@ export function CallInvite({ call }: { call: CallControls }) {
 }
 
 /** Leiste unter der Kopfzeile, solange man im Chat ist: kleine Kacheln (Video oder Initialen) und Schalter */
-export function CallStrip({ call, players, me }: { call: CallControls; players: Player[]; me: string | null }) {
+export function CallStrip({ call, players, me, compact }: { call: CallControls; players: Player[]; me: string | null; /** im Spiel: Gesichter zeigt die Spielerleiste */ compact?: boolean }) {
   const [big, setBig] = useState(false);
   if (call.phase === "off") return null;
   const ids = Object.keys(call.peers).filter((id) => players.some((p) => p.id === id));
@@ -64,11 +67,24 @@ export function CallStrip({ call, players, me }: { call: CallControls; players: 
       <div className="flex shrink-0 items-center gap-2 pb-1.5" data-testid="call-strip">
         <div className="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-0.5 py-1" role="group" aria-label="Im Sprachchat">
           {call.phase === "joining" && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
-          {ids.map((id) => (
+          {compact && call.phase === "on" && (
+            <button type="button" onClick={() => setBig(true)} className="flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border">
+              <Video className="size-4" />{ids.length} im Chat
+            </button>
+          )}
+          {!compact && ids.map((id) => (
             <Tile key={id} name={nameOf(id)} stream={id === me ? call.local : call.streams[id]} self={id === me}
               mic={id === me ? call.micOn : call.peers[id]?.mic ?? true} cam={id === me ? call.cam : call.peers[id]?.cam ?? false} onClick={() => setBig(true)} />
           ))}
         </div>
+        {!call.silent && call.ptt && call.mic ? (
+          <button type="button" aria-label="Gedrückt halten zum Sprechen" data-testid="ptt"
+            onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); call.setTalking(true); }}
+            onPointerUp={() => call.setTalking(false)} onPointerCancel={() => call.setTalking(false)} onContextMenu={(e) => e.preventDefault()}
+            className={cn("flex h-10 touch-none items-center gap-1.5 rounded-full px-3 text-sm font-bold whitespace-nowrap transition select-none", call.talking ? "bg-ok text-navy-950 scale-105" : "bg-secondary ring-1 ring-inset ring-border")}>
+            <Mic className="size-4" />{call.talking ? "Spricht …" : "Halten"}
+          </button>
+        ) : null}
         {call.silent ? (
           <span className="rounded-full bg-navy-950/60 px-2.5 py-1.5 text-xs whitespace-nowrap font-semibold text-muted-foreground" title="Nachts sind die Mikros aus"><Moon className="mr-1 inline size-3.5 align-[-2px]" />still</span>
         ) : (
@@ -81,6 +97,8 @@ export function CallStrip({ call, players, me }: { call: CallControls; players: 
             {call.cam ? <Video /> : <VideoOff />}
           </Button>
         ) : null}
+        <Button variant="ghost" size="icon" aria-label={call.ptt ? "Mikro immer an" : "Push-to-talk"} title={call.ptt ? "Push-to-talk ist an" : "Push-to-talk"}
+          className={cn("text-xs font-bold", call.ptt && "text-primary")} onClick={() => call.setPtt(!call.ptt)}>PTT</Button>
         <Button variant="destructive" size="icon" aria-label="Chat verlassen" onClick={call.leave}><PhoneOff /></Button>
       </div>
       {/* Ton der anderen – unsichtbar, spielt automatisch */}

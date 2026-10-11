@@ -1,7 +1,9 @@
-import { useContext, type ReactNode } from "react";
+import { useContext, useEffect, useRef, type ReactNode } from "react";
 import { AVATAR_COLORS, AVATAR_EMOJIS } from "@shared/platform/group";
 import { cn } from "@/lib/utils";
 import { AvatarContext } from "./Avatar";
+import { Bubble } from "./chat/Chat";
+import { CallContext } from "./call/CallBar";
 
 export interface Seat {
   id: string;
@@ -59,10 +61,10 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
         const can = onSelect && (!pickable || pickable(p.id));
         const Tag = onSelect ? "button" : "div";
         const face = p.icon ?? (
-          <span className={cn("grid shrink-0 place-items-center rounded-full leading-none", wide ? "size-7 text-[1.05rem]" : roomy ? "size-9 text-[1.3rem]" : "size-8 text-[1.15rem]", off && "opacity-40 grayscale")}
-            style={av ? { backgroundColor: AVATAR_COLORS[av.color] } : undefined} aria-hidden="true">
+          <SeatFace id={p.id} className={cn(wide ? "size-7 text-[1.05rem]" : roomy ? "size-9 text-[1.3rem]" : "size-8 text-[1.15rem]", off && "opacity-40 grayscale")}
+            bg={av ? AVATAR_COLORS[av.color] : undefined}>
             {av ? AVATAR_EMOJIS[av.emoji] : name.trim()[0]?.toUpperCase()}
-          </span>
+          </SeatFace>
         );
         return (
           <Tag key={p.id} type={onSelect ? "button" : undefined} data-cur={!!p.cur} data-testid={p.testId}
@@ -81,6 +83,7 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
               p.out && "opacity-45",
             )}>
             {p.lead && <span className={cn("absolute z-10 text-[0.8rem] leading-none", wide ? "top-0.5 left-0.5" : "-top-1.5 left-1/2 -translate-x-1/2")} role="img" aria-label="führt">👑</span>}
+            <Bubble playerId={p.id} />
             {face}
             <span className={cn("min-w-0 leading-tight", wide ? "flex-1" : "w-full")}>
               <span className={cn("block truncate font-semibold", wide || roomy ? "text-xs" : "text-[0.66rem]", !p.cur && "opacity-80", p.out && "line-through")}>{name}{off && <span className="sr-only"> (offline)</span>}</span>
@@ -99,5 +102,28 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Gesicht am Platz: Avatar – oder, wenn die Person im Video-Chat die Kamera an hat, ihr Live-Bild.
+ * Wer gerade spricht, bekommt einen leuchtenden Ring. So braucht das Spiel keine extra Video-Leiste.
+ */
+function SeatFace({ id, bg, className, children }: { id: string; bg?: string; className: string; children: ReactNode }) {
+  const c = useContext(CallContext);
+  const call = c?.call;
+  const self = id === c?.me;
+  const stream = call ? (self ? call.local : call.streams[id]) : null;
+  const camOn = !!call && call.phase === "on" && (self ? call.cam : !!call.peers[id]?.cam) && !!stream?.getVideoTracks().length;
+  const talking = !!call?.speaking?.has(id);
+  const muted = !!call && call.phase === "on" && (self ? !call.micOn : call.peers[id] ? !call.peers[id].mic : false);
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => { if (ref.current && stream) ref.current.srcObject = stream; }, [stream, camOn]);
+  return (
+    <span className={cn("relative grid shrink-0 place-items-center overflow-visible rounded-full leading-none transition-shadow", talking && "speaking", className)}
+      style={bg && !camOn ? { backgroundColor: bg } : undefined} aria-hidden="true">
+      {camOn ? <video ref={ref} autoPlay playsInline muted className={cn("size-full rounded-full object-cover", self && "-scale-x-100")} /> : children}
+      {muted && <span className="absolute -right-0.5 -bottom-0.5 grid size-3 place-items-center rounded-full bg-destructive text-[0.45rem] text-white">✕</span>}
+    </span>
   );
 }

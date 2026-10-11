@@ -15,8 +15,8 @@ import {
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
-  ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
-  type CallPeer, type ClientMessage, type RoomInfo, type ServerMessage,
+  ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
+  type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
 
 interface Env {
@@ -56,6 +56,8 @@ interface RoomData {
   /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
   call?: Record<string, CallPeer>;
   callSessions?: Record<string, string>;
+  /** Text-Chat: die letzten Nachrichten */
+  chat?: ChatMsg[];
   /** Eigener Raumcode (für die Admin-Übersicht) und letzte Änderung */
   code?: string;
   updatedAt?: number;
@@ -99,6 +101,8 @@ export class GameRoom extends DurableObject<Env> {
 
   /** Wer beim letzten Senden online war – um stille Abbrüche nur bei Änderung zu melden */
   private lastOnline = "";
+  /** Zeitpunkte der letzten Chat-Nachrichten je Spieler (Spam-Bremse, nur im Speicher) */
+  private chatTimes: Record<string, number[]> = {};
 
   /** Letzte Meldung an die Admin-Übersicht (gedrosselt) */
   private lastReport = 0;
@@ -234,6 +238,30 @@ export class GameRoom extends DurableObject<Env> {
       }
       await this.persist();
       this.broadcast();
+      return;
+    }
+
+    if (msg.type === "chat") {
+      const now = Date.now();
+      // Bremse gegen Spam: höchstens 6 Nachrichten in 8 Sekunden je Spieler
+      const times = (this.chatTimes[playerId] ??= []).filter((t) => now - t < 8000);
+      if (times.length >= 6) { this.send(ws, { type: "error", message: "Nicht so schnell – kurz warten." }); return; }
+      const id = typeof msg.id === "string" && ACTION_ID_RE.test(msg.id) ? msg.id : null;
+      const chat = (this.room.chat ??= []);
+      if (!id || chat.some((m) => m.id === id)) return;
+      const text = typeof msg.text === "string" ? msg.text.replace(/\s+/g, " ").trim().slice(0, CHAT_MAX) : "";
+      const emoji = typeof msg.emoji === "string" && (CHAT_EMOJIS as readonly string[]).includes(msg.emoji) ? msg.emoji : undefined;
+      if (!text && !emoji) return;
+      times.push(now);
+      this.chatTimes[playerId] = times;
+      const m: ChatMsg = { id, from: playerId, at: now, ...(text ? { text } : { emoji }) };
+      chat.push(m);
+      if (chat.length > CHAT_KEEP) chat.splice(0, chat.length - CHAT_KEEP);
+      await this.persist();
+      for (const s of this.ctx.getWebSockets()) {
+        const att = s.deserializeAttachment() as Attachment | null;
+        if (att?.playerId) this.send(s, { type: "chat", messages: [m], append: true });
+      }
       return;
     }
 
@@ -420,6 +448,7 @@ export class GameRoom extends DurableObject<Env> {
       if (await this.applyExtras(msg.playerId, msg)) changed = true;
       if (changed) await this.persist();
       this.send(ws, { type: "joined", playerId: msg.playerId, token: msg.token });
+      this.send(ws, { type: "chat", messages: room.chat ?? [] });
       this.broadcast();
       return;
     }
@@ -431,6 +460,7 @@ export class GameRoom extends DurableObject<Env> {
       ws.serializeAttachment({ playerId: again } satisfies Attachment);
       this.dropOldSockets(again, ws);
       this.send(ws, { type: "joined", playerId: again, token: room.tokens[again] });
+      this.send(ws, { type: "chat", messages: room.chat ?? [] });
       this.broadcast();
       return;
     }
@@ -475,6 +505,7 @@ export class GameRoom extends DurableObject<Env> {
     ws.serializeAttachment({ playerId } satisfies Attachment);
     await this.persist(true);
     this.send(ws, { type: "joined", playerId, token });
+    this.send(ws, { type: "chat", messages: room.chat ?? [] });
     this.broadcast();
   }
 

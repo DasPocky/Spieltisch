@@ -34,6 +34,8 @@ export interface RoomState {
   /** zählt Rücknahmen – damit alle kurz „Zug zurückgenommen“ sehen */
   undone?: number;
   /** Avatar je Spieler (online setzt ihn der Server beim Beitritt, lokal das Gerät) */
+  /** Treffpunkt-Ansicht in der Lobby (nur online) */
+  meet?: boolean;
   avatars?: Record<string, Avatar>;
   /** Spieler → Mitglieds-ID in seiner Gruppe (öffentlich innerhalb der Gruppe, keine Profil-ID) */
   members?: Record<string, string>;
@@ -102,6 +104,8 @@ export type RoomAction =
   | { type: "setEntry"; mode: EntryMode }
   | { type: "setHostTools"; on: boolean }
   | { type: "setHints"; on: boolean }
+  /** Host: Treffpunkt (reden, sehen, schreiben) statt Spiel-Lobby anzeigen */
+  | { type: "setMeet"; on: boolean }
   | { type: "removePlayer"; id: string }
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
   /** Host: neue Reihenfolge (z. B. gemischt) – muss genau die Spieler enthalten */
@@ -256,6 +260,10 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     case "setHints": {
       hostOnly();
       return { ...structuredClone(prev), noHints: a.on !== true };
+    }
+    case "setMeet": {
+      hostOnly();
+      return { ...structuredClone(prev), meet: a.on === true };
     }
     case "setHostTools": {
       hostOnly();

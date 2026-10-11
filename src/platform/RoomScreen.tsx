@@ -25,7 +25,9 @@ import { Collapsible } from "./PlayersHistory";
 import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
-import { CallButton, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
+import { CallButton, CallContext, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
+import { ChatButton, ChatContext, type ChatControls } from "./chat/Chat";
+import { Meet, meetKey } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
@@ -43,6 +45,8 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   dispatch: (a: RoomAction) => void;
   /** Sprach-/Videochat (nur online und wenn eingerichtet) */
   call?: CallControls;
+  /** Text-Chat (nur online) */
+  chat?: ChatControls;
 }
 
 /** Gemeinsamer Rahmen für lokales und Online-Spiel: Kopfzeile, Lobby oder das Spielbrett des Moduls. */
@@ -72,6 +76,8 @@ export function RoomScreen(props: Props) {
   const avatars = useMemo(() => roomAvatars(room), [room.players, room.bench, room.avatars]);
   return (
     <AvatarContext.Provider value={avatars}>
+    <ChatContext.Provider value={props.chat ?? null}>
+    <CallContext.Provider value={props.call ? { call: props.call, me } : null}>
     <EveningContext.Provider value={{ room, isHost, dispatch }}>
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="room-head flex h-14 shrink-0 items-center justify-between">
@@ -97,18 +103,21 @@ export function RoomScreen(props: Props) {
         )}
         <div className="flex items-center gap-2.5">
           {board && HeaderExtra && <HeaderExtra {...board} />}
+          {props.chat && code && <ChatButton code={code} chat={props.chat} players={room.players} me={me} />}
           {props.call && <CallButton call={props.call} />}
           <MenuSheet {...props} isHost={isHost} board={board} manage={manage} />
         </div>
       </header>
 
-      {props.call && <CallStrip call={props.call} players={room.players} me={me} />}
+      {props.call && <CallStrip call={props.call} players={room.players} me={me} compact={!!board} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
       <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
     </EveningContext.Provider>
+    </CallContext.Provider>
+    </ChatContext.Provider>
     </AvatarContext.Provider>
   );
 }
@@ -172,7 +181,22 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
   );
 }
 
-function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: Props & { isHost: boolean }) {
+function Lobby(props: Props & { isHost: boolean }) {
+  const { room, me, online, code, dispatch, isHost } = props;
+  // Treffpunkt aus der Startseite: Host schaltet ihn einmal ein; „Ein Spiel starten“ führt in die normale Lobby
+  useEffect(() => {
+    if (!code || !isHost) return;
+    try { if (sessionStorage.getItem(meetKey(code)) === "1") { sessionStorage.removeItem(meetKey(code)); dispatch({ type: "setMeet", on: true }); } } catch { /* egal */ }
+  }, [code, isHost, dispatch]);
+  const [local, setLocal] = useState(false);
+  if (code && room.meet && !local) {
+    return <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
+      onPlay={() => (isHost ? dispatch({ type: "setMeet", on: false }) : setLocal(true))} />;
+  }
+  return <GameLobby {...props} />;
+}
+
+function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: Props & { isHost: boolean }) {
   // Frisch erstellter Raum oder „Spiel wechseln“: der Host wählt zuerst das Spiel
   const [pick, setPick] = useState(() => {
     if (takeGamePick() && isHost) return true;
@@ -208,6 +232,11 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: P
       {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
       {call && <CallInvite call={call} />}
+      {code && isHost && (
+        <button type="button" onClick={() => dispatch({ type: "setMeet", on: true })} className="mt-2 w-full rounded-xl py-1.5 text-sm font-semibold text-primary">
+          Erst mal nur quatschen? Zum Treffpunkt
+        </button>
+      )}
       <EveningLine className="mt-2" />
 
       <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>

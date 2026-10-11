@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { RoomAction, RoomState } from "@shared/platform/room";
-import { PING, PONG, type CallPeer, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
+import { PING, PONG, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
 import { credsKey, readJSON, remove, writeJSON, type RoomCreds } from "@/lib/storage";
 import { myAvatar, myProfile } from "@/lib/profile";
 import { activeGroupCode } from "@/lib/group";
@@ -41,6 +41,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const [gameId, setGameId] = useState<string | null>(null);
   const [call, setCall] = useState<Record<string, CallPeer>>({});
   const [pending, setPending] = useState(0);
+  const [chat, setChat] = useState<ChatMsg[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const outbox = useRef<Pending[]>([]);
   const flushRef = useRef<() => void>(() => {});
@@ -129,6 +130,12 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           setStatus("ready");
           setError(null);
           if (!joined) { joined = true; flush(); }
+        } else if (msg.type === "chat") {
+          setChat((prev) => {
+            if (!msg.append) return msg.messages;
+            const ids = new Set(prev.map((m) => m.id));
+            return [...prev, ...msg.messages.filter((m) => !ids.has(m.id))].slice(-100);
+          });
         } else if (msg.type === "ack") {
           outbox.current = outbox.current.filter((p) => p.id !== msg.id);
           syncPending();
@@ -245,5 +252,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }, []);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost, call, announceCall, pending };
+  /** Chat-Nachricht oder Reaktion schicken */
+  const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
+
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost, call, announceCall, pending, chat, say };
 }

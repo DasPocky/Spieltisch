@@ -59,7 +59,11 @@ export function useCall(code: string, me: string | null, peers: Record<string, C
     };
   }, [code]);
 
-  const micOn = mic && !silent;
+  // Push-to-talk: Mikro nur, solange der Sprechknopf gedrückt ist
+  const [ptt, setPtt] = useState(() => { try { return localStorage.getItem("spieltisch:ptt") === "1"; } catch { return false; } });
+  const [talking, setTalking] = useState(false);
+  const togglePtt = useCallback((on: boolean) => { setPtt(on); try { localStorage.setItem("spieltisch:ptt", on ? "1" : "0"); } catch { /* egal */ } }, []);
+  const micOn = mic && !silent && (!ptt || talking);
   const say = useCallback((m: boolean, c: boolean) => {
     if (!session.current) return;
     announce({ type: "call", session: session.current, audio: tracks.current.audio, video: tracks.current.video, mic: m, cam: c });
@@ -183,5 +187,47 @@ export function useCall(code: string, me: string | null, peers: Record<string, C
   // Raum verlassen: auch den Chat sauber beenden
   useEffect(() => () => { pc.current?.close(); }, []);
 
-  return { phase, mic, cam, micOn, error, streams, local, join, leave, setMic, setCam };
+  const speaking = useSpeaking(phase === "on" ? streams : {}, phase === "on" && local && micOn ? local : null, me);
+
+  return { phase, mic, cam, micOn, error, streams, local, join, leave, setMic, setCam, ptt, setPtt: togglePtt, talking, setTalking, speaking };
+}
+
+/**
+ * Wer spricht gerade? Misst die Lautstärke jeder Tonspur (eigene und die der anderen) ein paarmal pro Sekunde.
+ * Liefert die IDs derer, die gerade reden – für den leuchtenden Ring in der Spielerleiste.
+ */
+function useSpeaking(streams: Record<string, MediaStream>, local: MediaStream | null, me: string | null): Set<string> {
+  const [speaking, setSpeaking] = useState<Set<string>>(new Set());
+  const ctxRef = useRef<AudioContext | null>(null);
+  const all = { ...streams, ...(local && me ? { [me]: local } : {}) };
+  const key = Object.entries(all).map(([id, s]) => `${id}:${s.getAudioTracks().map((t) => t.id).join(",")}`).join("|");
+  useEffect(() => {
+    const entries = Object.entries(all).filter(([, s]) => s.getAudioTracks().length);
+    if (!entries.length || typeof AudioContext === "undefined") { setSpeaking(new Set()); return; }
+    const ctx = (ctxRef.current ??= new AudioContext());
+    void ctx.resume().catch(() => {});
+    const meters = entries.map(([id, s]) => {
+      const src = ctx.createMediaStreamSource(new MediaStream(s.getAudioTracks()));
+      const an = ctx.createAnalyser();
+      an.fftSize = 512;
+      src.connect(an);
+      return { id, an, src, buf: new Uint8Array(an.fftSize), hot: 0 };
+    });
+    const t = setInterval(() => {
+      const now = new Set<string>();
+      for (const m of meters) {
+        m.an.getByteTimeDomainData(m.buf);
+        let sum = 0;
+        for (const v of m.buf) sum += (v - 128) ** 2;
+        const rms = Math.sqrt(sum / m.buf.length) / 128;
+        // kurz nachleuchten, damit der Ring nicht flackert
+        m.hot = rms > 0.04 ? 4 : Math.max(0, m.hot - 1);
+        if (m.hot > 0) now.add(m.id);
+      }
+      setSpeaking((prev) => (prev.size === now.size && [...now].every((x) => prev.has(x)) ? prev : now));
+    }, 120);
+    return () => { clearInterval(t); for (const m of meters) { try { m.src.disconnect(); } catch { /* egal */ } } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return speaking;
 }

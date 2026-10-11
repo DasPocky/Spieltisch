@@ -19,7 +19,23 @@ export type ClientMessage =
   /** Host-Rolle übernehmen – nur, wenn der Host gerade nicht verbunden ist */
   | { type: "claimHost" }
   /** Sprach-/Videochat: eigene Sitzung und Spuren bekanntgeben (session null = verlassen) */
-  | { type: "call"; session: string | null; audio?: string; video?: string; mic?: boolean; cam?: boolean };
+  | { type: "call"; session: string | null; audio?: string; video?: string; mic?: boolean; cam?: boolean }
+  /** Text-Chat: Nachricht oder schnelle Reaktion (Emoji). `id` macht doppeltes Senden harmlos. */
+  | { type: "chat"; id: string; text?: string; emoji?: string };
+
+/** Eine Chat-Nachricht im Raum */
+export interface ChatMsg {
+  id: string;
+  from: string;
+  at: number;
+  text?: string;
+  /** schnelle Reaktion statt Text */
+  emoji?: string;
+}
+export const CHAT_MAX = 300;
+export const CHAT_KEEP = 100;
+/** Schnelle Reaktionen – bewusst wenige, gut für den Spieltisch */
+export const CHAT_EMOJIS = ["👍", "😂", "😮", "😡", "🎉", "🍀", "🙈", "❤️"] as const;
 
 /** Wer im Sprach-/Videochat ist und welche Spuren er beim SFU veröffentlicht hat */
 export interface CallPeer {
@@ -40,6 +56,8 @@ export type ServerMessage =
   | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer> }
   /** Aktion angekommen (oder schon früher ausgeführt) */
   | { type: "ack"; id: string }
+  /** Chat: beim Beitreten die letzten Nachrichten, danach jeweils die neue */
+  | { type: "chat"; messages: ChatMsg[]; append?: boolean }
   | { type: "error"; message: string; code?: ErrorCode; fatal?: boolean; /** gehört zu dieser Aktion */ id?: string };
 
 /** Herzschlag als reiner Text – der Server antwortet, ohne aufzuwachen */
