@@ -8,7 +8,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-[0_2px_8px_rgb(42_92_191/0.22)] hover:brightness-110",
+        default: "bg-primary text-primary-foreground hover:brightness-110",
         secondary: "bg-secondary text-secondary-foreground ring-1 ring-inset ring-border hover:bg-accent",
         outline: "ring-1 ring-inset ring-border bg-transparent hover:bg-accent",
         ghost: "hover:bg-accent",
@@ -30,7 +30,7 @@ function Button({
   className, variant, size, asChild = false, ...props
 }: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
   const Comp = asChild ? Slot : "button";
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+  return <Comp data-slot="button" data-variant={variant ?? "default"} className={cn(buttonVariants({ variant, size, className }))} {...props} />;
 }
 
 export { Button, buttonVariants };

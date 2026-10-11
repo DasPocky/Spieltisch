@@ -2,7 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./lib/theme";
+import { siteConfigNow } from "./hooks/useSiteConfig";
 import App from "./App";
+
+// Admin-Einstellungen (u. a. der Look) gleich beim Start holen
+siteConfigNow();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

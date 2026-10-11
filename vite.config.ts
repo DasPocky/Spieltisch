@@ -14,7 +14,9 @@ function precacheList(): Plugin {
     apply: "build",
     generateBundle(_, bundle) {
       if (this.environment?.name !== "client") return;
-      const files = Object.values(bundle).map((f) => `/${f.fileName}`).filter((f) => !f.endsWith(".map") && f.startsWith("/assets/"));
+      const files = Object.values(bundle).map((f) => `/${f.fileName}`).filter((f) => !f.endsWith(".map") && f.startsWith("/assets/"))
+        // Schriften nicht vorab: es gibt viele (je Look eigene) – die benutzten landen beim ersten Laden im Cache
+        .filter((f) => !/\.woff2?$/.test(f));
       this.emitFile({ type: "asset", fileName: "precache.json", source: JSON.stringify(files) });
     },
   };

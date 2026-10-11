@@ -12,6 +12,12 @@ describe("Admin", () => {
       .toMatchObject({ site: "on", games: { tutto: "off" }, message: "" });
   });
 
+  it("Look: Standard Notizblock, nur bekannte Looks", () => {
+    expect(sanitizeConfig({}, Object.keys(GAMES)).look).toBe("notizblock");
+    expect(sanitizeConfig({ look: "kreide" }, Object.keys(GAMES)).look).toBe("kreide");
+    expect(sanitizeConfig({ look: "pink" }, Object.keys(GAMES)).look).toBe("notizblock");
+  });
+
   it("Optionen: Grenzen begrenzt, unbekannte Spiele raus, Funktionen standardmäßig an", () => {
     const c = sanitizeConfig({
       limits: { roomHours: 9999, maxPlayers: 1, maxRooms: -5 }, featured: ["dame", "nope", "dame"], order: ["ludo", 3, "tutto"],

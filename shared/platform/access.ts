@@ -2,6 +2,7 @@
  * Admin-Freigaben: Der ganze Spieltisch und jedes Spiel einzeln kann an sein, hinter einem Zugangscode liegen oder aus sein.
  * Die Konfiguration liegt im Worker; die Clients bekommen sie ohne Geheimnisse über /api/config.
  */
+import { DEFAULT_LOOK, isLook, type LookId } from "./looks";
 import { sanitizeOption } from "./room";
 import type { Options, SettingDef } from "./types";
 
@@ -26,6 +27,8 @@ export interface SiteConfig {
   features: SiteFeatures;
   /** Wie lange vergangene Räume im Verlauf bleiben (Tage) */
   archiveDays: number;
+  /** Aussehen der Seite */
+  look: LookId;
 }
 
 export interface SiteLimits {
@@ -53,11 +56,11 @@ export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
 
 /** Was der Admin unter „Einstellungen“ speichert */
-export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays">;
+export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays" | "look">;
 
 export const DEFAULT_CONFIG: SiteConfig = {
   site: "on", games: {}, message: "", hasCode: false, defaults: {},
-  banner: "", featured: [], order: [], limits: DEFAULT_LIMITS, features: DEFAULT_FEATURES, archiveDays: DEFAULT_ARCHIVE_DAYS,
+  banner: "", featured: [], order: [], limits: DEFAULT_LIMITS, features: DEFAULT_FEATURES, archiveDays: DEFAULT_ARCHIVE_DAYS, look: DEFAULT_LOOK,
 };
 export const ACCESS_LEVELS: readonly Access[] = ["on", "code", "off"];
 export const MAX_MESSAGE = 200;
@@ -92,6 +95,7 @@ export function sanitizeConfig(x: unknown, gameIds: readonly string[]): AccessCo
     },
     features: Object.fromEntries((Object.keys(DEFAULT_FEATURES) as (keyof SiteFeatures)[]).map((k) => [k, f[k] !== false])) as unknown as SiteFeatures,
     archiveDays: num(o.archiveDays, 1, 365, DEFAULT_ARCHIVE_DAYS),
+    look: isLook(o.look) ? o.look : DEFAULT_LOOK,
   };
 }
 

@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { GAME_IDS } from "@shared/games";
+import { LOOKS } from "@shared/platform/looks";
 import { MAX_BANNER, orderGames, type SiteConfig, type SiteFeatures, type SiteLimits } from "@shared/platform/access";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { setSiteConfig } from "@/hooks/useSiteConfig";
+import { setSiteConfig, siteConfigNow } from "@/hooks/useSiteConfig";
+import { applyLook } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { gameName, Status, toAccess, useSave, type Api } from "./shared";
 
@@ -31,17 +33,40 @@ export function OptionsTab({ config, api, onSaved }: { config: SiteConfig; api: 
   const [limits, setLimits] = useState(config.limits);
   const [features, setFeatures] = useState(config.features);
   const [archiveDays, setArchiveDays] = useState(config.archiveDays);
+  const [look, setLook] = useState(config.look);
   const { busy, msg, run } = useSave();
+  // Auswahl gleich als Vorschau zeigen; ohne Speichern beim Verlassen zurück zum gespeicherten Look
+  useEffect(() => { applyLook(look); }, [look]);
+  useEffect(() => () => { applyLook(siteConfigNow()?.look ?? config.look); }, [config.look]);
 
   const move = (i: number, d: -1 | 1) => setOrder((o) => { const n = [...o]; [n[i], n[i + d]] = [n[i + d], n[i]]; return n; });
   const save = () => run(async () => {
     // Freigaben vom letzten Stand übernehmen, nur die eigenen Felder ändern
-    const r = await api<{ config: SiteConfig }>("/api/admin", { config: { ...toAccess(config), banner, featured, order, limits, features, archiveDays } });
+    const r = await api<{ config: SiteConfig }>("/api/admin", { config: { ...toAccess(config), banner, featured, order, limits, features, archiveDays, look } });
     onSaved(r.config); setSiteConfig(r.config);
   });
 
   return (
     <div className="grid gap-5" data-testid="options">
+      <Card className="grid gap-3">
+        <h2 className="font-bold">Aussehen</h2>
+        <p className="-mt-2 text-sm text-muted-foreground">Gilt für alle. Hell oder dunkel stellt jeder selbst ein. Vorschau sofort, für alle erst mit „Speichern“.</p>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Aussehen">
+          {LOOKS.map((l) => (
+            <button key={l.id} type="button" role="radio" aria-checked={look === l.id} onClick={() => setLook(l.id)} data-testid={`look-${l.id}`}
+              className={cn("flex min-w-0 items-center gap-2 rounded-xl p-2 text-left outline-none ring-1 ring-inset ring-border focus-visible:ring-2 focus-visible:ring-ring", look === l.id && "bg-primary/10 ring-2 ring-primary")}>
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg" style={{ background: l.page, boxShadow: `inset 0 0 0 1px ${l.ink}33` }} aria-hidden>
+                <span className="flex h-5 w-7 items-end justify-end rounded-[4px] p-0.5" style={{ background: l.card }}><span className="size-2.5 rounded-full" style={{ background: l.primary }} /></span>
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold" style={{ fontFamily: `"${l.font}"` }}>{l.name}</span>
+                <span className="block truncate text-[0.7rem] leading-tight text-muted-foreground">{l.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Card>
+
       <Card className="grid gap-3">
         <h2 className="font-bold">Startseite</h2>
         <div className="grid gap-2">

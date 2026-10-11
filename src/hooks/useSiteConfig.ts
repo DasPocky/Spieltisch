@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_CONFIG, type SiteConfig } from "@shared/platform/access";
 import { readJSON, remove, writeJSON } from "@/lib/storage";
+import { applyLook } from "@/lib/theme";
 
 /**
  * Admin-Freigaben vom Server – einmal pro Seitenaufruf geladen und für alle Komponenten geteilt.
@@ -19,7 +20,7 @@ function load(): Promise<SiteConfig> {
     .then((r) => (r.ok ? (r.json() as Promise<SiteConfig>) : readJSON<SiteConfig>(CONFIG_KEY) ?? DEFAULT_CONFIG))
     .catch(() => readJSON<SiteConfig>(CONFIG_KEY) ?? DEFAULT_CONFIG)
     .finally(() => clearTimeout(t))
-    .then((c) => { cache = { ...DEFAULT_CONFIG, ...c }; writeJSON(CONFIG_KEY, cache); listeners.forEach((l) => l(cache!)); return cache; });
+    .then((c) => { cache = { ...DEFAULT_CONFIG, ...c }; writeJSON(CONFIG_KEY, cache); applyLook(cache.look); listeners.forEach((l) => l(cache!)); return cache; });
   return loading;
 }
 
@@ -32,6 +33,8 @@ export function siteConfigNow(): SiteConfig | null {
 /** Nach dem Speichern im Admin-Bereich: neue Werte sofort übernehmen */
 export function setSiteConfig(c: SiteConfig) {
   cache = c;
+  writeJSON(CONFIG_KEY, c);
+  applyLook(c.look);
   listeners.forEach((l) => l(c));
 }
 

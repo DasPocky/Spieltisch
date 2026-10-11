@@ -1,0 +1,452 @@
+/*
+ * Looks: Der Admin wählt eins für die ganze Seite (`data-look` auf <html>), Hell/Dunkel stellt jeder selbst ein
+ * (`data-theme`). Jeder Look setzt nur wenige Grundfarben – Fläche (--surf), Schrift (--ink), Farbton (--tint),
+ * Hervorhebung (--hi), Hauptfarbe (--primary), Kartenrücken (--back) –, die Abstufungen werden daraus gemischt.
+ * Karten (`.glass`) dürfen eine eigene Fläche haben (--csurf/--cink), z. B. Creme auf grünem Filz.
+ * Schriften liegen lokal (auch offline); geladen wird nur, was der aktive Look wirklich benutzt.
+ */
+@import "@fontsource/plus-jakarta-sans/latin-400.css";
+@import "@fontsource/plus-jakarta-sans/latin-500.css";
+@import "@fontsource/plus-jakarta-sans/latin-600.css";
+@import "@fontsource/plus-jakarta-sans/latin-700.css";
+@import "@fontsource/plus-jakarta-sans/latin-800.css";
+@import "@fontsource/baloo-2/latin-400.css";
+@import "@fontsource/baloo-2/latin-500.css";
+@import "@fontsource/baloo-2/latin-600.css";
+@import "@fontsource/baloo-2/latin-700.css";
+@import "@fontsource/baloo-2/latin-800.css";
+@import "@fontsource/fraunces/latin-600.css";
+@import "@fontsource/fraunces/latin-700.css";
+@import "@fontsource/fraunces/latin-800.css";
+@import "@fontsource/nunito/latin-400.css";
+@import "@fontsource/nunito/latin-500.css";
+@import "@fontsource/nunito/latin-600.css";
+@import "@fontsource/nunito/latin-700.css";
+@import "@fontsource/nunito/latin-800.css";
+@import "@fontsource/space-grotesk/latin-400.css";
+@import "@fontsource/space-grotesk/latin-500.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/inter/latin-800.css";
+@import "@fontsource/archivo-black/latin-400.css";
+@import "@fontsource/caveat/latin-500.css";
+@import "@fontsource/caveat/latin-600.css";
+@import "@fontsource/caveat/latin-700.css";
+@import "@fontsource/fredoka/latin-400.css";
+@import "@fontsource/fredoka/latin-500.css";
+@import "@fontsource/fredoka/latin-600.css";
+@import "@fontsource/fredoka/latin-700.css";
+@import "@fontsource/press-start-2p/latin-400.css";
+@import "@fontsource/vt323/latin-400.css";
+@import "@fontsource/righteous/latin-400.css";
+
+/* ---------- Gemeinsame Ableitungen (alle Looks außer Marine, die hat feste Werte) ---------- */
+:root {
+  --S: var(--surf);
+  --I: var(--ink);
+  --T: var(--tint);
+  --H: var(--hi);
+  --font-body: "Plus Jakarta Sans";
+  --font-display: var(--font-body);
+  --radius: 0.8rem;
+}
+.glass {
+  --S: var(--csurf, var(--surf));
+  --I: var(--cink, var(--ink));
+  --H: var(--chi, var(--hi));
+}
+:root:not([data-look="marine"]),
+:root:not([data-look="marine"]) .glass {
+  --navy-950: var(--S);
+  --navy-900: color-mix(in oklab, var(--T) 6%, var(--S));
+  --navy-800: color-mix(in oklab, var(--T) 12%, var(--S));
+  --navy-700: color-mix(in oklab, var(--T) 20%, var(--S));
+  --navy-600: color-mix(in oklab, var(--T) 32%, var(--S));
+  --navy-500: color-mix(in oklab, var(--T) 62%, var(--S));
+  --navy-400: color-mix(in oklab, var(--I) 25%, var(--T));
+  --navy-300: color-mix(in oklab, var(--I) 50%, var(--T));
+  --navy-200: color-mix(in oklab, var(--I) 72%, var(--T));
+  --navy-100: color-mix(in oklab, var(--I) 88%, var(--T));
+  --foreground: var(--I);
+  --card-foreground: var(--I);
+  --popover-foreground: var(--I);
+  --secondary-foreground: var(--I);
+  --accent-foreground: var(--I);
+  --muted-foreground: color-mix(in oklab, var(--I) 64%, var(--S));
+  --secondary: color-mix(in srgb, var(--I) 7%, transparent);
+  --muted: color-mix(in srgb, var(--I) 5%, transparent);
+  --accent: color-mix(in srgb, var(--I) 11%, transparent);
+  --border: color-mix(in srgb, var(--I) var(--border-pct, 14%), transparent);
+  --input: color-mix(in srgb, var(--I) var(--input-pct, 26%), transparent);
+  --ice: var(--H);
+}
+:root:not([data-look="marine"]) .glass { color: var(--I); }
+:root:not([data-look="marine"]) {
+  --background: var(--page-mid);
+  --card: var(--csurf, var(--surf));
+  --popover: var(--csurf, var(--surf));
+  --ring: var(--primary);
+  --paper: #ffffff;
+  --paper-ink: #1b1d22;
+  --deep-500: var(--back);
+  --deep-400: color-mix(in oklab, white 24%, var(--back));
+  --deep-600: color-mix(in oklab, black 16%, var(--back));
+  --deep-700: color-mix(in oklab, black 34%, var(--back));
+  --deep-950: color-mix(in oklab, black 74%, var(--back));
+  --card-back: var(--deep-600);
+  --page-top: var(--surf);
+  --page-mid: var(--surf);
+  --page-bottom: var(--surf);
+  --page-glow: transparent;
+  --glass-a: var(--csurf, var(--surf));
+  --glass-b: var(--csurf, var(--surf));
+}
+:root[data-theme="light"]:not([data-look="marine"]) { --destructive: #c2414f; --ok: #23966a; }
+:root[data-theme="dark"]:not([data-look="marine"]) { --destructive: #f0959b; --ok: #6fd6a8; }
+
+/* ---------- Notizblock (Standard): Papier, Filzstift, dicke Konturen ---------- */
+:root[data-look="notizblock"] {
+  --font-body: "Baloo 2";
+  --display-weight: 800;
+  --radius: 1rem;
+  --border-pct: 30%;
+  --outline: var(--I);
+  --glass-shadow: inset 0 0 0 2.5px var(--line), 4px 4px 0 var(--line);
+  --btn-shadow: inset 0 0 0 2.5px var(--line), 3px 3px 0 var(--line);
+  --page-pattern: linear-gradient(90deg, transparent 30px, var(--margin) 30px 32px, transparent 32px), repeating-linear-gradient(0deg, transparent 0 31px, var(--rule) 31px 32px);
+}
+:root[data-look="notizblock"][data-theme="light"] {
+  --surf: #fffdf6; --ink: #22252b; --tint: #8a8f99; --hi: #2b6fd6; --back: #4f9cf0;
+  --csurf: #ffffff;
+  --primary: #ff6b5b; --primary-foreground: #ffffff;
+  --line: #22252b; --rule: #d6e4f5; --margin: #f3b3b3;
+}
+:root[data-look="notizblock"][data-theme="dark"] {
+  --surf: #1c1f26; --ink: #f3efe4; --tint: #8a93a8; --hi: #8cc8ff; --back: #3f7fd0;
+  --csurf: #272b34;
+  --primary: #ff7a6b; --primary-foreground: #1c1f26;
+  --line: #0a0b0e; --rule: rgb(255 255 255 / 0.05); --margin: rgb(255 120 120 / 0.22);
+  --glass-shadow: inset 0 0 0 2px rgb(243 239 228 / 0.8), 4px 4px 0 #000;
+  --btn-shadow: inset 0 0 0 2px rgb(243 239 228 / 0.8), 3px 3px 0 #000;
+}
+
+/* ---------- Holz & Filz: grüner Filz, Creme-Karten, Messing ---------- */
+:root[data-look="holz"] {
+  --font-body: "Nunito";
+  --font-display: "Fraunces";
+  --display-weight: 800;
+  --radius: 1rem;
+}
+:root[data-look="holz"][data-theme="light"] {
+  --surf: #f1e8d6; --ink: #2b2016; --tint: #3c7a5a; --hi: #2f6b4f; --back: #2f6b4f;
+  --csurf: #fffaf0;
+  --primary: #2f6b4f; --primary-foreground: #fffaf0;
+  --page-top: #f6efe1; --page-bottom: #e6d8bb;
+  --glass-shadow: 0 4px 0 #d8c8a6, 0 8px 16px rgb(60 40 10 / 0.12);
+  --btn-shadow: 0 4px 0 #1d4a36;
+}
+:root[data-look="holz"][data-theme="dark"] {
+  --surf: #1d4a36; --ink: #f6efe2; --tint: #8cc4a5; --hi: #e8cf9a; --back: #8d3829;
+  --csurf: #f6efe2; --cink: #2b2016; --chi: #8a5f1f;
+  --primary: #d9a957; --primary-foreground: #2b1a08;
+  --btn-image: linear-gradient(180deg, #e3b766, #c08a35);
+  --page-top: #2f6b4f; --page-mid: #1d4a36; --page-bottom: #143426;
+  --glass-shadow: 0 5px 0 #c9b997, 0 10px 18px rgb(0 0 0 / 0.3);
+  --btn-shadow: 0 4px 0 #8a5f1f, 0 8px 16px rgb(0 0 0 / 0.3);
+}
+
+/* ---------- Neon-Nacht: Lila/Cyan, leuchtend ---------- */
+:root[data-look="nacht"] {
+  --font-body: "Space Grotesk";
+  --radius: 1.1rem;
+  --btn-image: linear-gradient(90deg, #8b5cf6, #22b8d6);
+}
+:root[data-look="nacht"][data-theme="dark"] {
+  --surf: #0a0b16; --ink: #eef0ff; --tint: #7c6cf0; --hi: #7ee8ff; --back: #3b2a8a;
+  --csurf: #14162a;
+  --primary: #8b5cf6; --primary-foreground: #ffffff;
+  --page-top: #1a1240; --page-mid: #0c0d1c; --page-bottom: #071a26;
+  --page-glow: rgb(139 92 246 / 0.35);
+  --glass-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 8px 24px rgb(0 0 0 / 0.35);
+  --btn-shadow: 0 0 22px rgb(139 92 246 / 0.45);
+}
+:root[data-look="nacht"][data-theme="light"] {
+  --surf: #f3f1ff; --ink: #1a1638; --tint: #7c5cf0; --hi: #0e7490; --back: #4b32b8;
+  --csurf: #ffffff;
+  --primary: #7c3aed; --primary-foreground: #ffffff;
+  --page-top: #ece6ff; --page-mid: #f4f2ff; --page-bottom: #e2f6fb;
+  --page-glow: rgb(139 92 246 / 0.16);
+  --glass-shadow: 0 0 0 1px rgb(124 92 240 / 0.14), 0 6px 18px rgb(80 50 180 / 0.08);
+  --btn-shadow: 0 6px 18px rgb(124 58 237 / 0.3);
+}
+
+/* ---------- Klar & ruhig: minimal, viel Luft, Koralle ---------- */
+:root[data-look="klar"] {
+  --font-body: "Inter";
+  --display-weight: 800;
+  --radius: 1.25rem;
+  --btn-radius: 9999px;
+}
+:root[data-look="klar"][data-theme="light"] {
+  --surf: #f5f5f7; --ink: #111114; --tint: #9a9aa6; --hi: #111114; --back: #26262c;
+  --csurf: #ffffff;
+  --primary: #ff5a3c; --primary-foreground: #ffffff;
+  --glass-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+:root[data-look="klar"][data-theme="dark"] {
+  --surf: #0e0e11; --ink: #f4f4f6; --tint: #70707c; --hi: #ffffff; --back: #3a3a44;
+  --csurf: #1b1b20;
+  --primary: #ff6a4d; --primary-foreground: #ffffff;
+  --glass-shadow: 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* ---------- Retro-Spielbox: Knallgelb, kantig ---------- */
+:root[data-look="spielbox"] {
+  --font-body: "Nunito";
+  --font-display: "Archivo Black";
+  --display-weight: 400;
+  --display-transform: uppercase;
+  --radius: 0.3rem;
+  --border-pct: 40%;
+}
+:root[data-look="spielbox"][data-theme="light"] {
+  --surf: #ffd23f; --ink: #111111; --tint: #a3830f; --hi: #d92f27; --back: #2a7fff;
+  --csurf: #ffffff;
+  --primary: #12a862; --primary-foreground: #ffffff;
+  --glass-shadow: inset 0 0 0 3px #111, 5px 5px 0 #111;
+  --btn-shadow: inset 0 0 0 3px #111, 4px 4px 0 #111;
+}
+:root[data-look="spielbox"][data-theme="dark"] {
+  --surf: #1b1b1b; --ink: #fff6d6; --tint: #b39a40; --hi: #ffd23f; --back: #ef3e36;
+  --csurf: #2a2a2a;
+  --primary: #18b26b; --primary-foreground: #ffffff;
+  --glass-shadow: inset 0 0 0 2.5px #000, 5px 5px 0 #ffd23f;
+  --btn-shadow: inset 0 0 0 2.5px #000, 4px 4px 0 #ffd23f;
+}
+
+/* ---------- Kreidetafel: Tafel und Kreide (hell: Whiteboard mit Markern) ---------- */
+:root[data-look="kreide"] {
+  --font-body: "Caveat";
+  --fsa: ex-height 0.5;
+  --display-weight: 700;
+  font-variant-ligatures: none;
+  --radius: 0.9rem;
+}
+:root[data-look="kreide"][data-theme="dark"] {
+  --surf: #283029; --ink: #f2f0e6; --tint: #7d9284; --hi: #ffd58a; --back: #8b5e3c;
+  --csurf: #2d3630;
+  --primary: #ffd58a; --primary-foreground: #263027;
+  --page-top: #3a463f; --page-mid: #2a332e; --page-bottom: #212925;
+  --glass-shadow: inset 0 0 0 2px rgb(242 240 230 / 0.75);
+  --frame: #8b5e3c;
+}
+:root[data-look="kreide"][data-theme="light"] {
+  --surf: #f6f7f5; --ink: #1d2a35; --tint: #7a8a95; --hi: #c7352b; --back: #1d5fae;
+  --csurf: #ffffff;
+  --primary: #1f6fd1; --primary-foreground: #ffffff;
+  --glass-shadow: inset 0 0 0 2px rgb(29 42 53 / 0.7);
+  --frame: #b9c0c6;
+}
+
+/* ---------- Bonbon: Pastell, rund ---------- */
+:root[data-look="bonbon"] {
+  --font-body: "Fredoka";
+  --display-weight: 700;
+  --radius: 1.5rem;
+  --btn-radius: 9999px;
+  --btn-image: linear-gradient(90deg, #ff8fbf, #b38cff);
+}
+:root[data-look="bonbon"][data-theme="light"] {
+  --surf: #f6eefe; --ink: #3d2c5a; --tint: #b38cff; --hi: #7b4dd8; --back: #a77cf5;
+  --csurf: #ffffff;
+  --primary: #b07cf7; --primary-foreground: #ffffff;
+  --page-top: #ffe3ef; --page-mid: #efe4ff; --page-bottom: #dff4ff;
+  --glass-a: rgb(255 255 255 / 0.88); --glass-b: rgb(255 255 255 / 0.88);
+  --glass-shadow: 0 10px 24px -8px rgb(123 77 216 / 0.3);
+  --btn-shadow: 0 10px 22px -6px rgb(255 143 191 / 0.6);
+}
+:root[data-look="bonbon"][data-theme="dark"] {
+  --surf: #1f1733; --ink: #f6eefe; --tint: #b38cff; --hi: #ffa6cf; --back: #7b4dd8;
+  --csurf: #2b2145;
+  --primary: #c7a8ff; --primary-foreground: #24183a;
+  --page-top: #2d1838; --page-mid: #1f1733; --page-bottom: #14203a;
+  --glass-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.5);
+  --btn-shadow: 0 10px 22px -6px rgb(255 143 191 / 0.35);
+}
+
+/* ---------- Arcade: Pixel und Spielhalle (hell: Taschenkonsole) ---------- */
+:root[data-look="arcade"] {
+  --font-body: "VT323";
+  --font-display: "Press Start 2P";
+  --fsa: ex-height 0.52;
+  --display-fsa: ex-height 0.54;
+  --display-weight: 400;
+  --radius: 0px;
+  --page-pattern: repeating-linear-gradient(0deg, var(--scan) 0 1px, transparent 1px 4px);
+}
+:root[data-look="arcade"][data-theme="dark"] {
+  --surf: #0b0b1e; --ink: #e8e8ff; --tint: #5a5ad0; --hi: #ffe14d; --back: #ff3d7f;
+  --csurf: #16163a;
+  --primary: #ff3d7f; --primary-foreground: #ffffff;
+  --scan: rgb(255 255 255 / 0.035);
+  --glass-shadow: inset 0 0 0 3px #3a3a8a, 6px 6px 0 #000;
+  --btn-shadow: inset 0 -4px 0 rgb(0 0 0 / 0.3), inset 0 4px 0 rgb(255 255 255 / 0.25);
+}
+:root[data-look="arcade"][data-theme="light"] {
+  --surf: #c5cfa0; --ink: #0f380f; --tint: #5c7a22; --hi: #0f380f; --back: #306230;
+  --csurf: #d6dfb4;
+  --primary: #306230; --primary-foreground: #e0f0c0;
+  --scan: rgb(15 56 15 / 0.05);
+  --glass-shadow: inset 0 0 0 3px #0f380f, 5px 5px 0 rgb(15 56 15 / 0.35);
+  --btn-shadow: inset 0 -4px 0 rgb(0 0 0 / 0.25);
+}
+
+/* ---------- 70er: Orange, Senf, Oliv ---------- */
+:root[data-look="siebziger"] {
+  --font-body: "Nunito";
+  --font-display: "Righteous";
+  --display-weight: 400;
+  --radius: 1.4rem;
+  --page-pattern: radial-gradient(circle at 112% -6%, var(--arc1) 0 100px, var(--arc2) 100px 135px, var(--arc3) 135px 170px, transparent 170px);
+}
+:root[data-look="siebziger"][data-theme="light"] {
+  --surf: #f4e4c1; --ink: #3b2314; --tint: #b9844a; --hi: #b5481f; --back: #3d6e8c;
+  --csurf: #fbf3e0;
+  --primary: #c4472a; --primary-foreground: #fbf3e0;
+  --arc1: #f0b48a; --arc2: #f3cb8d; --arc3: #c3cfa6;
+  --glass-shadow: inset 0 0 0 2px #3b2314;
+  --btn-shadow: inset 0 0 0 2px #3b2314, 0 4px 0 #3b2314;
+}
+:root[data-look="siebziger"][data-theme="dark"] {
+  --surf: #2b1a10; --ink: #f4e4c1; --tint: #b0743f; --hi: #f2a541; --back: #c4472a;
+  --csurf: #3a2416;
+  --primary: #e8743b; --primary-foreground: #2b1a10;
+  --arc1: #5a2c17; --arc2: #573a17; --arc3: #383d23;
+  --glass-shadow: inset 0 0 0 2px rgb(242 165 65 / 0.35);
+  --btn-shadow: inset 0 0 0 2px #120a05, 0 4px 0 #120a05;
+}
+
+/* ---------- Marine (bisher): feste Werte wie vorher ---------- */
+:root[data-look="marine"] {
+  --radius: 0.8rem;
+  --navy-950: #050d1c;
+  --navy-900: #0a1730;
+  --navy-800: #0f2144;
+  --navy-700: #16305e;
+  --navy-600: #1f437f;
+  --navy-500: #2c5aa6;
+  --navy-400: #4a7fd0;
+  --navy-300: #86aee8;
+  --navy-200: #bcd3f5;
+  --navy-100: #e4eefc;
+  --background: var(--navy-900);
+  --foreground: #eef4ff;
+  --card: rgb(134 174 232 / 0.08);
+  --card-foreground: #eef4ff;
+  --popover: var(--navy-800);
+  --popover-foreground: #eef4ff;
+  --primary: #3f7ae0;
+  --primary-foreground: #ffffff;
+  --secondary: rgb(134 174 232 / 0.12);
+  --secondary-foreground: #eef4ff;
+  --muted: rgb(134 174 232 / 0.08);
+  --muted-foreground: #93acd1;
+  --accent: rgb(134 174 232 / 0.16);
+  --accent-foreground: #eef4ff;
+  --destructive: #d9959b;
+  --border: rgb(134 174 232 / 0.16);
+  --input: rgb(134 174 232 / 0.24);
+  --ring: #86aee8;
+  --ice: #cfe0fa;
+  --ok: #8fc7c0;
+  --paper: #fdfdfb;
+  --paper-ink: #0f1a2e;
+  --card-back: var(--navy-600);
+  --deep-950: #050d1c;
+  --deep-700: #16305e;
+  --deep-600: #1f437f;
+  --deep-500: #2c5aa6;
+  --deep-400: #4a7fd0;
+  --page-top: var(--navy-800);
+  --page-mid: var(--navy-900);
+  --page-bottom: var(--navy-950);
+  --page-glow: rgb(63 122 224 / 0.28);
+  --glass-a: rgb(134 174 232 / 0.12);
+  --glass-b: rgb(134 174 232 / 0.05);
+  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.25);
+  --btn-shadow: 0 2px 8px rgb(42 92 191 / 0.22);
+}
+:root[data-look="marine"][data-theme="light"] {
+  --navy-950: #ffffff;
+  --navy-900: #f5f7fa;
+  --navy-800: #eaeef4;
+  --navy-700: #dde4ee;
+  --navy-600: #c5d1e1;
+  --navy-500: #8fa4c2;
+  --navy-400: #5878a6;
+  --navy-300: #3b5d8f;
+  --navy-200: #284673;
+  --navy-100: #182f54;
+  --background: #f2f5f9;
+  --foreground: #13213a;
+  --card: #ffffff;
+  --card-foreground: #13213a;
+  --popover: #ffffff;
+  --popover-foreground: #13213a;
+  --primary: #2a5cbf;
+  --primary-foreground: #ffffff;
+  --secondary: rgb(19 33 58 / 0.06);
+  --secondary-foreground: #13213a;
+  --muted: rgb(19 33 58 / 0.05);
+  --muted-foreground: #5a6a81;
+  --accent: rgb(19 33 58 / 0.08);
+  --accent-foreground: #13213a;
+  --destructive: #c24a57;
+  --border: rgb(19 33 58 / 0.11);
+  --input: rgb(19 33 58 / 0.16);
+  --ring: #5878a6;
+  --ice: #1f437f;
+  --ok: #2f9486;
+  --paper: #ffffff;
+  --card-back: var(--deep-600);
+  --page-top: #f7f9fc;
+  --page-mid: #f1f4f8;
+  --page-bottom: #e9edf3;
+  --page-glow: rgb(63 122 224 / 0.10);
+  --glass-a: #ffffff;
+  --glass-b: #ffffff;
+  --glass-shadow: 0 0 0 1px rgb(19 33 58 / 0.07), 0 2px 10px rgb(19 33 58 / 0.06);
+}
+
+/* ---------- Schrift, Knöpfe, Besonderheiten ---------- */
+@layer base {
+  html { font-size-adjust: var(--fsa, none); }
+  h1, h2, .font-display {
+    font-family: var(--font-display), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    font-weight: var(--display-weight, 700);
+    text-transform: var(--display-transform, none);
+    font-size-adjust: var(--display-fsa, var(--fsa, none));
+  }
+  /* Schatten über --tw-shadow, damit Tailwinds Ringe (z. B. bei „secondary“) erhalten bleiben */
+  [data-slot="button"]:is([data-variant="default"], [data-variant="ice"], [data-variant="secondary"]) {
+    --tw-shadow: var(--btn-shadow, 0 0 #0000);
+    box-shadow: var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+  [data-slot="button"][data-variant="default"] { background-image: var(--btn-image, none); }
+}
+:root[data-look="klar"] [data-slot="button"],
+:root[data-look="bonbon"] [data-slot="button"] { border-radius: var(--btn-radius); }
+:root[data-look="spielbox"] [data-slot="button"][data-variant="default"] { font-family: "Archivo Black", sans-serif; font-weight: 400; text-transform: uppercase; }
+:root[data-look="arcade"] [data-slot="button"][data-variant="default"] { font-family: "Press Start 2P", monospace; font-size-adjust: ex-height 0.5; }
+:root[data-look="kreide"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  border: 5px solid var(--frame);
+  pointer-events: none;
+  z-index: 60;
+}

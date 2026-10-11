@@ -13,7 +13,20 @@ export function themeChoice(): ThemeChoice {
 export function applyTheme(choice = themeChoice()) {
   const dark = choice === "dark" || (choice === "system" && typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0a1730" : "#f5f7fa");
+  syncStatusBar();
+}
+
+/** Look der Seite (vom Admin) setzen */
+export function applyLook(look: string) {
+  if (document.documentElement.dataset.look === look) return;
+  document.documentElement.dataset.look = look;
+  syncStatusBar();
+}
+
+/** Statusleiste in der Farbe der Seite */
+function syncStatusBar() {
+  const c = getComputedStyle(document.documentElement).getPropertyValue("--page-top").trim();
+  if (c) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", c);
 }
 
 export function setTheme(choice: ThemeChoice) {
