@@ -236,3 +236,6 @@
 
 /* Spricht gerade (Sprachchat): ruhiger, deutlicher Ring um das Gesicht */
 .speaking { box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ok), 0 0 10px 2px color-mix(in srgb, var(--ok) 60%, transparent); }
+
+/* Kopfzeile: Knöpfe (Chat, Anruf, Menü) etwas kleiner, damit Titel und Rundenanzeige Platz haben */
+.room-tools [data-slot="button"][data-size="icon"] { width: 2.5rem; height: 2.5rem; }

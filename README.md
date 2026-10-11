@@ -1,41 +1,49 @@
 # Spieltisch
 
-Eine Spielesammlung als mobile Web-App für Spieleabende – **online** (jeder am eigenen Handy, Räume mit Code + PIN) oder **lokal** (ein Gerät für alle). Gebaut mit React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui, läuft kostenlos auf Cloudflare Workers mit Durable Objects.
+Eine Spielesammlung als mobile Web-App für Spieleabende – **online im Raum** (jeder am eigenen Handy, Raumcode + PIN), mit **Chat, Sprache und Video** direkt am Tisch. Gebaut mit React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui, läuft kostenlos auf Cloudflare Workers mit Durable Objects.
 
 **Live:** https://spieltisch.bjoern-ef9.workers.dev/
 
-**Spiele:**
+<p align="center">
+  <img src="docs/images/start.png" width="200" alt="Startseite">
+  <img src="docs/images/lobby.png" width="200" alt="Lobby mit acht Spielern">
+  <img src="docs/images/kniffel.png" width="200" alt="Kniffel mit 3D-Würfeln">
+  <img src="docs/images/uno.png" width="200" alt="Uno">
+</p>
+<p align="center">
+  <img src="docs/images/chat.png" width="200" alt="Chat mit Reaktionen">
+  <img src="docs/images/treffpunkt.png" width="200" alt="Treffpunkt">
+  <img src="docs/images/sieger.png" width="200" alt="Siegerehrung">
+  <img src="docs/images/start-dunkel.png" width="200" alt="Dunkle Darstellung">
+</p>
 
-- **Tutto** – Würfel & Karten: Karte ziehen, würfeln, zocken. Echte Würfel mit Punkte-Tasten oder App-Würfel.
-- **Werwolf** – Party-Spiel für 5–20: entweder erzählt die App (online handelt jede Rolle geheim am eigenen Handy, lokal liest ein Handy in der Mitte vor) oder ein Spielleiter führt mit Skript und Rollenübersicht. Rollen aus Grundspiel und Erweiterungen, einzeln zuschaltbar: Werwolf, Dorfbewohner, Seherin, Hexe, Jäger, Amor · Neumond: Heiler, der Alte, Dorfdepp, Sündenbock · Charaktere: Wildes Kind, Wolfshund, Fuchs, Bärenführer, Ritter mit rostigem Schwert, zwei Schwestern, Urwolf, großer böser Wolf · Die Gemeinde: Rabe · Grundspiel: Dieb · Solo-Rollen: weißer Werwolf, Flötenspieler, Engel · Hausregel: Dorfschlampe. Hausregeln als Schalter (Hauptmann, Stichwahl, Seherin nur gut/böse, Hexe heilt sich selbst, erste Nacht ohne Opfer, Tote reden, Tote aufdecken) und „Eigene Karten“ zum Spielen mit dem echten Kartenspiel.
-- **Eine Nacht** – Werwolf in zehn Minuten für 3–10: eine Nacht mit heimlich getauschten Karten (Werwölfe, Günstling, Freimaurer, Seherin, Räuber, Unruhestifter, Betrunkener, Schlaflose, Jäger, Gerber), dann Diskussion mit Timer und eine gleichzeitige Abstimmung. Online handelt jeder am eigenen Handy, lokal führt ein Handy mit Vorlesen durch die Nacht.
-- **Skyjo** – 2–8 Spieler, 150 Karten von −2 bis 12: tauschen, aufdecken, Spalten mit drei Gleichen abräumen, wer beendet und nicht allein am wenigsten hat, zahlt doppelt. **In der App** (ein Handy für alle oder online jeder am eigenen – offene Karten sehen alle, verdeckte niemand) oder mit **echten Karten**: Die App ist dann der Punkteblock, online trägt jeder seine Punkte selbst ein.
-- **Codenames** – Team-Wortspiel für 4–20 (als Brettspiel-Hilfe ab 2): Zwei Chefs geben Hinweise aus einem Wort und einer Zahl, die Agenten suchen ihre Karten unter 25 Wörtern und meiden den Attentäter. Entweder komplett in der App (Chefs sehen online die Farben am eigenen Handy, lokal per „Chef-Ansicht“ zum Gedrückthalten) oder als **Hilfe zum Brettspiel**: Ihr legt eure Wortkarten aus, die App erzeugt nur die Schlüsselkarte und zählt mit. Eigene Wortliste mit über 450 Begriffen.
-- **Mau-Mau** – französisches (32/52) oder deutsches Blatt, 2–8 Spieler je nach Blatt. Hausregeln als Einstellungen (Siebenen stapeln, Acht aussetzen, Unter wünscht, Unter auf Unter, Neun Richtungswechsel, Ass nochmal, „Mau“ sagen). Online hat jeder seine Hand am Handy, lokal wird das Handy mit Sichtschutz weitergegeben.
-- **Uno** – 2–10 Spieler, 108 Karten: Farbe oder Zahl bedienen, Aussetzen, Richtungswechsel, +2, Farbwahl, +4 (nur ohne passende Farbe), „Uno!“ mit Strafkarten. Hausregeln Ziehkarten stapeln und +4 immer; eine Runde oder bis 500. In der App oder mit **echten Karten** als Punkteblock.
-- **Skip-Bo** – 2–6 Spieler, 162 Karten: Vorrat, vier eigene Ablagen, vier gemeinsame Aufbaustapel von 1 bis 12, Skip-Bo-Joker. Bedienung: Karte antippen, dann Ziel. In der App oder mit **echten Karten** als Punkteblock (25 + 5 je Restkarte).
-- **Phase 10** – 2–6 Spieler, 108 Karten: zehn Phasen aus Gleichen, Folgen und Farben, Joker, Aussetzen mit Zielwahl, Anlegen bei allen. „Finden“ schlägt eine passende Auslage vor; kurze Partie mit fünf Phasen. In der App oder mit **echten Karten**: Die App führt Phasen und Strafpunkte.
-- **Fischen** – Quartett-Spiel, Standard französisch mit 52 Karten (13 Quartette), 2–8 Spieler: Mitspieler antippen, Stapel aus der eigenen Hand antippen, fragen – nur nach Werten, die man selbst hat, sonst „Geh fischen!“. Alle Fragen sind öffentlich sichtbar. Mit **echten Karten** spielt ihr am Tisch und die App zählt nur Zug und Quartette. Variante: nach „Geh fischen!“ macht der Gefragte weiter.
-- **Flip 7** – Drück-dein-Glück mit Zahlenkarten für 3–18: noch eine Karte oder aufhören, doppelte Zahl heißt raus, sieben verschiedene bringen +15. Klassisch (Einfrieren, Flip 3, zweite Chance, Plus/×2) oder „Voll fies“ angelehnt an die fiese Ausgabe (bis 13, Glücks-13, Unglücks-7, Nur noch eine, Flip 4, Tauschen, Klauen, Abwerfen, Minus und ÷2 zum Verschenken).
-- **Kniffel** – 5 Würfel, 3 Würfe, 13 Felder. App-Würfel mit Punktevorschau oder digitaler Block für echte Würfel; optional Extra-Kniffel mit Joker.
+## Was kann der Spieltisch?
 
-Weitere folgen – jedes Spiel ist ein eigenes Modul mit einheitlicher Schnittstelle.
+- **Online zuerst:** Online-Raum erstellen, Link teilen, PIN sagen – alle sehen live denselben Stand. Der Server führt, so bleibt alles synchron, auch nach Funklöchern. Der Schnellstart auf der Startseite legt gleich einen Raum mit dem gewählten Spiel an.
+- **Chat, Sprache, Video:** Text-Chat in jedem Raum mit Schnell-Reaktionen, die als Sprechblase über dem Platz des Spielers aufploppen. Sprach- und Videochat über Cloudflare Realtime – im Spiel sitzen die Gesichter direkt in der Spielerleiste, wer spricht, leuchtet. Push-to-talk zuschaltbar, in der Werwolf-Nacht sind die Mikros automatisch aus.
+- **Treffpunkt:** einfach reden, sehen und schreiben – ohne Spiel. Ein Spiel lässt sich jederzeit dazu starten.
+- **Echte 3D-Würfel:** Kniffel, Tutto und Ludo werfen mit echter Physik (Schwerkraft, Abprallen, Ausrollen). Kurz tippen wirft sanft, gedrückt halten oder nach oben wischen wirft kräftig – dann fliegen sie auch mal aus dem Kasten. Das Ergebnis kommt immer aus fairem Zufall; gegenüberliegende Seiten ergeben 7 wie bei echten Würfeln. Gehaltene Würfel bleiben liegen und leuchten.
+- **Viele Spieler, kein Scrollen:** Alle Spieler passen in eine Zeile, lange Namen werden gekürzt, jeder hat Tier und Farbe. Viele Handkarten liegen in zwei Reihen; auf niedrigen Bildschirmen (Browser-Leiste, kleines Handy) wird alles dichter.
+- **14 Looks:** Papierschnitt (Standard), Notizblock, Holz & Filz, Neon-Nacht, Klar & ruhig, Retro-Spielbox, Kreidetafel, Bonbon, Arcade, 70er, Casino, Comic, Aurora-Glas, Marine – der Admin wählt einen für alle, hell oder dunkel stellt jeder selbst ein. Würfel und Würfeltisch passen sich dem Look an.
+- **Fair:** Krypto-Zufall ohne Verzerrung, online würfelt und mischt nur der Server. Wer anfängt bzw. gibt, wandert jede Partie weiter. Statistik-Tests prüfen Würfel und Mischen.
+- **Siegerehrung** mit Podium und Konfetti, **Spielabend-Wertung** über mehrere Partien, **Gruppen** mit Bestenliste, **Profile** mit Statistik.
+- **Admin** (`/admin`): Übersicht, Verlauf „wer war da“, Freigaben je Spiel, Standard-Einstellungen, Look, Funktionen, Grenzen, Export und Löschen.
+- **Als App:** zum Home-Bildschirm hinzufügen, eigenes Icon, Vorschaubild beim Teilen.
 
-**Halb offline:** Jedes Spiel geht auch mit echtem Material am Tisch – die App hilft nur: Tutto (echte Würfel und/oder echte Karten antippen), Kniffel (digitaler Block), Flip 7, Skyjo, Uno, Skip-Bo, Phase 10 (Punkteblock), Mau-Mau (Rundensiege), Fischen (Zug und Quartette), Codenames (Schlüsselkarte zum Brettspiel), Werwolf und Eine Nacht (eigene Karten, die App erzählt). Der gemeinsame Punkteblock steckt in `shared/platform/pad.ts` und `src/platform/ScorePad.tsx`.
+**Standardmäßig aus, im Admin einschaltbar** (Optionen → Funktionen):
+- **„Ein Handy für alle“** – lokal spielen ohne Raum, das Handy wird herumgereicht.
+- **Offline-App** – Seite und Spiele auf dem Handy speichern, lokal ohne Netz spielen.
 
-**Gestaltung:** schlicht in Marineblau mit Abstufungen, Eisblau als Akzent. Farben nur dort, wo ein Spiel sie als Regel braucht (Kartenfarben, Teams), und dann gedämpft (`src/lib/palette.ts`). Symbole kommen aus lucide-react statt bunter Emojis.
+## Spiele
 
-- **Ablauf – lokal wie online gleich:** Startseite → Spielweise wählen → **Lobby** (Spieler, Spiel wählen, Einstellungen) → Spiel → Ergebnis („Nochmal spielen“ oder „Anderes Spiel“). Verlassen führt immer zurück zur Startseite.
-- **Online-Räume:** Auf der Startseite erstellt der Host mit Name und PIN einen Raum und wählt in der Lobby das Spiel. Mitspieler geben auf der Startseite den Raumcode ein (oder öffnen den Link), dann Name und PIN. Alle sehen denselben Stand live.
-- **Lokal („Ein Handy für alle“):** Alle spielen an einem Gerät, ohne Server – gleiche Lobby wie online, nur ohne Raumcode. Der Spielstand bleibt im Browser, getrennt pro Spiel; eine laufende Partie geht beim Wiederkommen weiter.
-- **Ein Raum, mehrere Spiele:** Nach einer Partie geht der Host zurück in die Lobby und wählt ein anderes Spiel – alle bleiben im Raum.
-- **Host-Einstellungen:** jedes Spiel bringt eigene Einstellungen mit (bei Tutto: Würfel, Spielziel, automatisch aufdecken, Promokarte Torte). Sie stehen in der Lobby als eine Zeile („App-Karten · Spielziel 6.000 · 2 Hausregeln“), die das komplette Einstellungs-Sheet öffnet. Bei zugbasierten Spielen legt der Host fest, wer für den Spieler am Zug handeln darf: wer dran ist (Standard), alle oder nur der Host. Der Host spielt normal mit; mit **„Host darf für alle spielen“** (Menü) darf er für andere spielen, zurücknehmen und mischen.
-- **Ein Menü (☰) mit festen Abschnitten:** Partie (Host: Nochmal spielen, Anderes Spiel, Letzten Zug zurücknehmen, Überspringen nur wenn etwas hängt, „Während des Spiels“ für die wenigen Einstellungen, die sich in der Partie ändern lassen) · Spieler & Verlauf (für alle Spiele, dasselbe wie die Leiste über dem Spiel) · Regeln · Einladen (online) · Mein Gerät (Ansicht, hell/dunkel, Töne, Vibration, „Spielhilfen für mich“) · Verlassen (online mit Rückfrage; Host zusätzlich „Raum schließen“).
-- **Profil und Statistik:** ohne Registrierung. Jedes Gerät bekommt eine zufällige Profil-ID; unter `/profil` stehen Partien, Siege, Quote, Bestwert und Durchschnitt je Spiel. Online zählt jede Partie im Raum, lokal der Spieler, der so heißt wie das Profil. Mit dem Profil-Code lässt sich das Profil auf ein anderes Handy übernehmen.
-- **Sprach- und Videochat (online):** über Cloudflare Realtime. Im Raum oben auf das Telefon-Symbol tippen, „Nur Sprache“ oder „Mit Video“. In der Werwolf- und Eine-Nacht-Nacht sind die Mikros automatisch aus (nur ein menschlicher Spielleiter darf sprechen).
-- **Admin:** Unter `/admin` (Passwort, keine Registrierung) lässt sich der ganze Spieltisch und jedes Spiel einzeln auf „An“, „Mit Code“ oder „Aus“ stellen, mit optionalem Hinweis für Besucher.
-- **Fairer Zufall:** `crypto.getRandomValues` mit Verwerfungsmethode (keine Modulo-Verzerrung). Online würfelt und mischt ausschließlich der Server.
-- **Ansicht „Einfach“ oder „Voll“** (im Menü unter „Mein Gerät“, pro Gerät). Jede Partie passt ohne Scrollen auf einen Handy-Bildschirm; die App lässt sich zum Home-Bildschirm hinzufügen.
+| Kategorie | Spiele |
+| --- | --- |
+| Würfel | **Tutto** (Feuerwerk wahlweise „bis zur Niete“ oder „als Chance“), **Kniffel**, **Mäxchen** |
+| Karten | **Uno**, **Mau-Mau**, **Skip-Bo**, **Phase 10**, **Skyjo**, **Flip 7**, **Fischen**, **Hellseher** (Stiche ansagen) |
+| Party & Rollen | **Werwolf** (App erzählt und liest alles vor, viele Erweiterungsrollen), **Eine Nacht**, **Codenames**, **Spion** |
+| Brett | **Ludo** (Mensch ärgere dich nicht), **Vier in einer Reihe**, **Mühle**, **Dame** |
+
+Jedes Spiel geht in der App **oder mit echtem Material am Tisch** – die App ist dann Punkteblock, Schlüsselkarte oder Erzähler.
 
 ## Loslegen
 
@@ -51,7 +59,7 @@ npm run dev -- --host  # zum Testen mit dem Handy im selben WLAN
 | --- | --- |
 | `npm run build` | Typprüfung (App, Worker, Tests) und Produktions-Build |
 | `npm test` | Unit-Tests der gemeinsamen Logik (Vitest) |
-| `npm run test:e2e` | Ende-zu-Ende-Tests im Handy-Format mit Playwright, inkl. Online-Raum mit zwei Browsern. Screenshots landen in `screenshots/`. |
+| `npm run test:e2e` | Ende-zu-Ende-Tests im Handy-Format mit Playwright, inkl. Online-Raum mit mehreren Browsern, Chat und Videochat (Fake-SFU). Ein Einrichtungsschritt schaltet „Ein Handy für alle“ für die Tests ein. Screenshots landen in `screenshots/`. |
 | `npm run check` | Build + Unit-Tests |
 | `npm run deploy` | Build und Deploy per Wrangler |
 
@@ -92,8 +100,9 @@ shared/                       Logik für Browser UND Server
     types.ts                  Schnittstelle GameLogic, Einstellungen, Rechte
     room.ts                   Raum: Spieler, Host, Lobby/Partie, Rechteprüfung, Sicht pro Spieler
     random.ts                 fairer Krypto-Zufall (randomInt, rollDice, shuffle)
-    turns.ts                  Hilfen für Zugreihenfolge
-    protocol.ts               Nachrichten zwischen Browser und Server
+    turns.ts                  Zugreihenfolge; Startspieler/Geber wandert je Partie
+    looks.ts                  die Looks (Admin-Auswahl)
+    protocol.ts               Nachrichten zwischen Browser und Server (Aktionen, Chat, Sprachchat)
   games/
     index.ts                  Verzeichnis aller Spiele (Logik)
     tutto/                    Tutto: Karten-Daten und Spiellogik
@@ -108,7 +117,11 @@ shared/                       Logik für Browser UND Server
 worker/index.ts               API + Durable Object GameRoom
 src/
   platform/                   Plattform-Oberfläche: RoomScreen (Kopfzeile, Lobby), Menü,
-                              Einstellungen, Spielerliste, Punkteleiste, Regel-Bogen, Siegerehrung
+                              Einstellungen, Spielerliste, Seats (Spielerleiste), Regel-Bogen, Siegerehrung
+    dice3d/                   3D-Würfel: Physik (cannon-es, lazy geladen), Würfeltisch, Wurf-Geste
+    chat/                     Text-Chat, Sprechblasen, Treffpunkt
+    call/                     Sprach-/Videochat (Cloudflare Realtime)
+  styles/looks.css            die Looks als CSS-Variablen (hell + dunkel), Schriften lokal per @fontsource
   games/
     types.ts                  Schnittstelle GameUI (Oberfläche eines Spiels)
     index.ts                  Verzeichnis aller Spiel-Oberflächen
@@ -129,7 +142,7 @@ tests/
   e2e/                        Playwright: lokal, online mit zwei Browsern, kleines Handy
 ```
 
-**Routen:** `/` Startseite · `/lokal` lokale Lobby bzw. Partie · `/r/<CODE>` Online-Raum · `/profil` Mein Profil · `/gruppe`, `/g/<CODE>` Gruppen · `/admin`. Alte Links `/spiel/<id>` und `/spiel/<id>/lokal` führen in die lokale Lobby mit diesem Spiel (ein dort gespeicherter Spielstand lädt weiter).
+**Routen:** `/` Startseite · `/lokal` lokale Lobby bzw. Partie (nur wenn „Ein Handy für alle“ an ist) · `/r/<CODE>` Online-Raum · `/profil` Mein Profil · `/gruppe`, `/g/<CODE>` Gruppen · `/admin`. Alte Links `/spiel/<id>` und `/spiel/<id>/lokal` führen in die lokale Lobby mit diesem Spiel (ein dort gespeicherter Spielstand lädt weiter).
 
 ### Grundprinzip
 
@@ -161,9 +174,9 @@ tests/
 
 | Ort | Inhalt | Wann gelöscht |
 | --- | --- | --- |
-| Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, Wiederverbindungs-Tokens, Fehlversuche, Profil-ID je Spieler (nur serverseitig, für die Statistik) | 48 h nach der letzten Aktion oder sofort über „Raum schließen“ |
+| Durable Object `GameRoom` (Cloudflare, eines pro Raumcode, SQLite-Speicher) | PIN-Hash + Salt, Spielernamen, Avatare, gewähltes Spiel, Einstellungen, Spielstand inkl. Verlauf, die letzten 100 Chat-Nachrichten, Wiederverbindungs-Tokens, Fehlversuche, Profil-ID je Spieler (nur serverseitig, für die Statistik) | 48 h nach der letzten Aktion oder sofort über „Raum schließen“ |
 | Durable Object `ProfileStore` (eines pro Profil-ID) | Profilname, Zähler je Spiel (Partien, Siege, Bestwert, Punktesumme), die letzten 30 Partien (Spiel, Datum, Sieg, Punkte, Spielerzahl) | ein Jahr nach der letzten Partie oder sofort über „Profil löschen“ |
-| Durable Object `SiteSettings` (genau eines) | Admin-Freigaben, Hinweistext, Hash + Salt des Zugangscodes, Fehlversuche | bis der Admin es ändert |
+| Durable Object `SiteSettings` (genau eines) | Admin-Freigaben, Look, Funktionen, Grenzen, Standard-Einstellungen, Hinweistext, Hash + Salt des Zugangscodes, Fehlversuche, Statistik, Verlauf vergangener Räume, Verzeichnis von Gruppen und Profilen | bis der Admin es ändert bzw. löscht (Verlauf nach eingestellter Frist) |
 | `localStorage` im Browser | Profil-ID (`spieltisch:profile`), Zugangscode nach richtiger Eingabe (`spieltisch:access`), eigener Name (`spieltisch:name`), Token pro Raum (`spieltisch:room:<CODE>`), lokaler Spielstand pro Spiel (`spieltisch:local:<id>`) und zuletzt lokal gewähltes Spiel (`spieltisch:localGame`), Ansicht (`spieltisch:view`) | beim Verlassen des Raums bzw. vom Nutzer |
 | `sessionStorage` im Browser | Name + PIN für genau einen Beitritt | direkt nach dem Beitritt |
 

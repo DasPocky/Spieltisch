@@ -1,5 +1,16 @@
 # Spieltisch – Struktur-Audit & Umbauvorschlag
 
+## Umgesetzt (11.10.2026)
+
+- **Online zuerst:** Startseite mit „Online-Raum erstellen“ (Hauptweg), „Treffpunkt“, Raumcode-Zeile und Schnellstart (legt einen Online-Raum mit dem Spiel an). „Ein Handy für alle“ und die Offline-App sind standardmäßig aus und im Admin unter Optionen → Funktionen einschaltbar (`SiteFeatures.local` / `.offline`). `/lokal` zeigt sonst einen Hinweis.
+- **Spielerleiste (`Seats`)** für alle Spiele: bis 2 Spieler breit, ab 3 Spalten mit Avatar, ab 9 zwei Reihen – kein Wischen. Krone für Führende, gekürzte Namen. Online: Live-Video statt Avatar und leuchtender Ring für „spricht gerade“.
+- **Lobby:** Spieler als Kacheln (ab 5 zweispaltig), Avatar (Tier + Farbe) per Antippen änderbar, „Mischen“. Namen max. 16 Zeichen.
+- **Chat & Treffpunkt:** Text-Chat-Knopf in der Kopfzeile (Ungelesen-Zähler), Reaktionen als Sprechblasen am Platz, Treffpunkt-Ansicht (`RoomState.meet`) mit Video-Raster und Chat; im Spiel ist die Anruf-Leiste nur ein kleiner Knopf.
+- **Siegerehrung** als Podium mit Konfetti; **Würfel** als 3D mit Physik und Wurf-Geste; **Looks** über `data-look` (Admin), Hell/Dunkel pro Gerät.
+- **Niedrige Bildschirme:** kompaktere Kopfzeile, Knöpfe, Spielerleiste und Würfeltisch per `@media (max-height)`.
+
+Bilder: `docs/images/`.
+
 ## Umgesetzt (03.10.2026)
 
 Entschieden und gebaut: **A1** (ein Menü, feste Abschnitte), **B2** (immer erst Lobby, dann Spiel – auch lokal), **C2** (Einstellungen in der Lobby als Zusammenfassung + Sheet).

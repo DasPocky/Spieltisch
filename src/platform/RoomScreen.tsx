@@ -82,7 +82,7 @@ export function RoomScreen(props: Props) {
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="room-head flex h-14 shrink-0 items-center justify-between">
         {playing ? (
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <IconTile><Icon className="size-6" /></IconTile>
             <div className="min-w-0 leading-tight">
               <div className="truncate text-lg font-bold tracking-tight">{info.name}</div>
@@ -101,7 +101,7 @@ export function RoomScreen(props: Props) {
             </div>
           </div>
         )}
-        <div className="flex items-center gap-2.5">
+        <div className="room-tools flex shrink-0 items-center gap-1.5">
           {board && HeaderExtra && <HeaderExtra {...board} />}
           {props.chat && code && <ChatButton code={code} chat={props.chat} players={room.players} me={me} />}
           {props.call && <CallButton call={props.call} />}
@@ -109,7 +109,7 @@ export function RoomScreen(props: Props) {
         </div>
       </header>
 
-      {props.call && <CallStrip call={props.call} players={room.players} me={me} compact={!!board} />}
+      {props.call && <CallStrip call={props.call} players={room.players} me={me} compact={!!board || (!!code && !!room.meet)} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
