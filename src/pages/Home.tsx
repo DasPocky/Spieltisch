@@ -238,11 +238,12 @@ function QuickGames({ games, featured, order, onPick }: { games: string[]; featu
     <section className="mt-4 shrink-0" aria-label="Schnellstart">
       <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground">Schnellstart <span className="text-xs font-normal">ein Handy</span></h2>
       <div className="grid grid-cols-4 gap-2">
-        {shown.map((id) => {
+        {shown.map((id, i) => {
           const g = GAME_LIST.find((x) => x.id === id)!;
           return (
+            // Kleine Handys: nur eine Reihe (drei Spiele und „Alle“), damit nichts scrollt
             <button key={id} type="button" onClick={() => onPick(id)} data-testid={`quick-${id}`}
-              className="glass relative flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
+              className={cn(i >= 3 && "quick-extra", "glass relative flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring")}>
               {featured.includes(id) && <span className="absolute top-1 right-1 rounded-full bg-primary px-1 text-[0.55rem] font-bold leading-tight text-primary-foreground">NEU</span>}
               <IconTile className="size-10 rounded-xl"><g.Icon className="size-6.5" /></IconTile>
               <span className="w-full truncate text-center text-[0.7rem] font-semibold">{g.info.name}</span>
@@ -251,7 +252,7 @@ function QuickGames({ games, featured, order, onPick }: { games: string[]; featu
         })}
         <button type="button" onClick={() => { wantGamePick(); onPick(); }}
           className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 text-muted-foreground ring-1 ring-inset ring-border ring-dashed outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
-          <span className="grid size-10 place-items-center text-lg font-bold">+{Math.max(0, games.length - shown.length)}</span>
+          <span className="grid size-10 place-items-center text-lg font-bold">{games.length}</span>
           <span className="w-full truncate text-center text-[0.7rem] font-semibold">Alle Spiele</span>
         </button>
       </div>

@@ -134,6 +134,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, cla
               aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
               onClick={() => { vibrate(6); onToggle?.(i); }}
               className={cn("die3d", held?.[i] && "held", !held?.[i] && hint?.[i] && "hint")}>
+              <span role="img" aria-label={`Würfel ${v}`} className="sr-only" />
               <span className="die3d-core" style={{ transform: "rotateX(90deg)" }} />
               <span className="die3d-core" style={{ transform: "rotateY(90deg)" }} />
               <span className="die3d-core" />

@@ -200,3 +200,6 @@
   100% { opacity: 0; transform: translate(var(--x), 70vh) rotate(var(--r)); }
 }
 @media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+
+/* Startseite: auf niedrigen Bildschirmen nur eine Reihe Schnellstart */
+@media (max-height: 700px) { .quick-extra { display: none; } }

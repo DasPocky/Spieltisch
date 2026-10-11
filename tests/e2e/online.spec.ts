@@ -67,7 +67,7 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
   }
   const roller = await actor();
   await roller.getByRole("button", { name: /Würfeln/ }).click();
-  const dice = (p: Page) => p.getByRole("img", { name: /^Würfel \d$/ }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  const dice = (p: Page) => p.getByTestId("dice-tray").getByRole("button", { name: /^Würfel \d/ }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   await expect(roller.getByRole("img", { name: /^Würfel \d$/ }).first()).toBeVisible();
   const rolled = await dice(roller);
   expect(rolled.length).toBe(6);
@@ -132,7 +132,7 @@ test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(guest.getByText("Warte auf Anna")).toBeVisible();
   await host.getByRole("button", { name: /Würfeln/ }).click();
-  const dice = (p: Page) => p.getByRole("img", { name: /^Würfel \d$/ }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
+  const dice = (p: Page) => p.getByTestId("dice-tray").getByRole("button", { name: /^Würfel \d/ }).evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")));
   await expect.poll(() => dice(host)).toHaveLength(5);
   await expect.poll(() => dice(guest)).toEqual(await dice(host));
   await expectNoScroll(guest);
