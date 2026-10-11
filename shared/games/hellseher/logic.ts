@@ -9,7 +9,7 @@
  *  - „table“: echte Karten, die App ist der Block (Ansagen und Stiche eintippen, sie rechnet).
  */
 import { randomInt, shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { dealerBefore, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 export type Suit = "r" | "b" | "g" | "y";
@@ -238,7 +238,7 @@ function setup(ctx: GameContext): HsState {
   const s: HsState = {
     v: 1, mode: r.mode, secret: r.secret, round: 1, totalRounds: roundsFor(ids.length, ctx.options), phase: "bid",
     // Standard: Der Letzte gibt zuerst – so sagt der Erste zuerst an und spielt aus. Oder ausgelost.
-    dealerId: (ctx.options.firstDealer === "random" ? ids[randomInt(ids.length)] : ids[ids.length - 1]) ?? null,
+    dealerId: (ctx.options.firstDealer === "random" ? ids[randomInt(ids.length)] : dealerBefore(ctx)) ?? null,
     scores: Object.fromEntries(ids.map((id) => [id, 0])),
     hands: {}, counts: {}, deck: [], deckCount: 0, trumpCard: null, trump: null,
     bids: {}, bidIn: {}, tricks: {}, trick: [], lastTrick: null, curId: null, taken: {}, history: [], log: [], n: 0,

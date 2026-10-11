@@ -4,6 +4,7 @@
  * Der Nächste glaubt (und würfelt selbst) oder deckt auf. Wer falschliegt, verliert ein Leben.
  * Zwei Arten zu spielen: App-Würfel (der Wurf ist nur für den Würfelnden sichtbar) oder echte Würfel am Tisch.
  */
+import { firstPlayerId } from "../../platform/turns";
 import { rollDice } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
@@ -163,7 +164,7 @@ function setup(ctx: GameContext): MaexState {
   return {
     v: 1, table: ctx.options.mode === "table",
     lives: Object.fromEntries(ctx.players.map((p) => [p.id, lives])), out: [],
-    curId: ctx.players[0]?.id ?? null, dice: null, seenBy: null, rolled: false, round: [], reveal: null, events: [],
+    curId: firstPlayerId(ctx), dice: null, seenBy: null, rolled: false, round: [], reveal: null, events: [],
     n: 0, over: false, winnerId: null,
   };
 }

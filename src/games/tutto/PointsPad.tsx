@@ -1,4 +1,4 @@
-import { canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, pmDone, stopAfterTutto, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { latestCard, canStop, CARD_BY_ID, MIN_TUTTO, NO_DICE_POINTS, pmDone, stopAfterTutto, type CardId, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Confirm } from "@/components/Confirm";
 import type { ViewMode } from "@/hooks/useViewMode";
 import { cn, fmt, vibrate } from "@/lib/utils";
@@ -31,7 +31,7 @@ const NO_PAD: Partial<Record<CardId, string>> = {
  * vorher lässt sich nichts gutschreiben.
  */
 export function PointsPad({ state, onAction, disabled, mode }: { state: TuttoState; onAction: (a: TuttoAction) => void; disabled: boolean; mode: ViewMode }) {
-  const card = state.turnCards[state.turnCards.length - 1];
+  const card = latestCard(state);
   const safe = state.cardStart ?? 0;
   const open = !!card && !NO_DICE_POINTS.has(card) && !state.afterTutto;
   const add = (delta: number) => { vibrate(8); onAction({ type: "addPts", delta }); };
@@ -74,7 +74,7 @@ export function PointsPad({ state, onAction, disabled, mode }: { state: TuttoSta
 
 /** Aktionsknöpfe für echte Würfel – je nach Karte nur das, was gerade erlaubt ist. */
 export function RealActions({ state, onAction }: { state: TuttoState; onAction: (a: TuttoAction) => void }) {
-  const card = state.turnCards[state.turnCards.length - 1];
+  const card = latestCard(state);
   const pts = fmt(state.turnPts);
   const book = (zero = false) => onAction({ type: "book", zero });
   /** Knopf mit kleiner Überschrift und großem Wert – passt auch auf schmale Handys */

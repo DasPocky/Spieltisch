@@ -4,7 +4,7 @@
  * Eine doppelte Zahl heißt: raus ohne Punkte. Sieben verschiedene Zahlen: +15 und die Runde endet sofort.
  */
 import { shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { dealerBefore, nextPlayerId } from "../../platform/turns";
 import { applyPad, isPadAction, newPad, padLeaders, padRemove, type Pad, type PadAction } from "../../platform/pad";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
@@ -176,7 +176,8 @@ function startRound(s: F7State, players: Player[]) {
   // Karten vom Tisch auf den Ablagestapel
   for (const l of Object.values(s.lines)) s.discard.push(...l.nums, ...l.mods, ...(l.second ? ["a:second"] : []));
   s.round++;
-  s.dealerId = s.round === 1 ? players[players.length - 1]?.id ?? null : nextPlayerId(players, s.dealerId);
+  // Erste Runde: Geber wechselt von Partie zu Partie (siehe setup), danach reihum
+  s.dealerId = s.round === 1 ? (players.some((p) => p.id === s.dealerId) ? s.dealerId : players[players.length - 1]?.id ?? null) : nextPlayerId(players, s.dealerId);
   s.lines = Object.fromEntries(players.map((p) => [p.id, freshLine()]));
   const order: string[] = [];
   let id = s.dealerId;
@@ -343,7 +344,7 @@ function setup(ctx: GameContext): F7State {
   const mode = ctx.options.mode === "table" ? "table" : "app";
   const s: F7State = {
     v: 1, mode, pad: mode === "table" ? newPad(ctx.players.map((p) => p.id)) : null, variant, target: Number(ctx.options.target) || 200, deck: shuffle(buildDeck(variant)), deckCount: 0, discard: [],
-    scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), round: 0, dealerId: null, lines: {}, dealQueue: [],
+    scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), round: 0, dealerId: dealerBefore(ctx), lines: {}, dealQueue: [],
     curId: null, pending: null, queued: [], lastRound: null, winners: [], log: [], n: 0,
   };
   if (mode === "table") return s;

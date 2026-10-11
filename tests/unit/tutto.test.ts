@@ -388,6 +388,34 @@ describe("App-Würfel", () => {
     expect(g(r).cloverWin).toBe(true);
   });
 
+  it("Feuerwerk als Chance: Karte bleibt offen liegen, nächste kommt sofort, Niete-Rettung einmal", () => {
+    let r = start(["Anna", "Ben"], { diceMode: "app", fire: "chance" });
+    r = { ...r, game: { ...g(r), pile: [...g(r).pile, "b300", "fire"] } };
+    r = game(r, { type: "draw" });
+    expect(g(r).turnCards).toEqual(["fire", "b300"]);
+    expect(g(r).chances).toBe(1);
+    fixDice([2, 3, 4, 6, 2, 3, /* Rettungswurf */ 1, 2, 3, 4, 6, 2]);
+    r = game(r, { type: "roll" });
+    expect(g(r).dice!.bust).toBe(true);
+    r = game(r, { type: "useChance" });
+    expect(g(r).dice!.bust).toBe(false);
+    expect(g(r).chances).toBe(0);
+  });
+
+  it("Feuerwerk als Chance mit echten Karten: erst die nächste Karte, dann würfeln", () => {
+    let r = start(["Anna", "Ben"], { diceMode: "app", cards: "real", fire: "chance" });
+    r = game(r, { type: "draw", card: "fire" });
+    expect(g(r).chances).toBe(1);
+    expect(() => game(r, { type: "roll" })).toThrow(/nächste Karte/);
+    r = game(r, { type: "draw", card: "b400" });
+    expect(g(r).turnCards).toEqual(["fire", "b400"]);
+  });
+
+  it("Feuerwerk-Einstellung ändert nicht, wie viele Feuerwerk-Karten im Stapel sind", () => {
+    const n = (o: Record<string, string>) => g(start(["Anna", "Ben"], o)).pile.filter((c) => c === "fire").length;
+    expect(n({ fire: "chance" })).toBe(n({}));
+  });
+
   it("Stopp-Karte: nicht würfeln", () => {
     const r = draw(app(), "stop");
     expect(() => game(r, { type: "roll" })).toThrow(/Stopp/);

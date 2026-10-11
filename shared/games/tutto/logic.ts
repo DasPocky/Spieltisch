@@ -3,7 +3,7 @@
  * Spieler, Host und Zugreihenfolge verwaltet die Plattform; hier stehen nur Punkte, Karten und Würfel.
  */
 import { rollDice, shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic } from "../../platform/types";
 import { CARD_BY_ID, CARDS, POINT_STEPS, type CardId } from "./cards";
 
@@ -51,6 +51,8 @@ export interface TuttoState {
   /** Punkte je Spieler-ID (fehlt = 0, z. B. bei später Beigetretenen) */
   scores: Record<string, number>;
   curId: string | null;
+  /** Wer die Partie begonnen hat (für „Runde zu Ende spielen“) */
+  startId?: string | null;
   pile: CardId[];
   turnCards: CardId[];
   turnPts: number;
@@ -68,6 +70,8 @@ export interface TuttoState {
   finalRound?: boolean;
   log: LogEntry[];
   winnerId: string | null;
+  /** Feuerwerk zählt als Chance-Karte (Einstellung „Feuerwerk“) */
+  fireChance?: boolean;
   cloverWin: boolean;
   dice: DiceState | null;
 }
@@ -181,7 +185,14 @@ export const NO_DICE_POINTS = new Set<CardId>(["street", "pm", "clover", "torte"
 /** Karten, mit denen man nach einem Tutto ohne neue Karte weiterwürfelt */
 export const KEEP_CARD = new Set<CardId>(["fire", "clover"]);
 
-const latestCard = (s: TuttoState): CardId | undefined => s.turnCards[s.turnCards.length - 1];
+/**
+ * Die Karte, die gerade gilt. Feuerwerk hat zwei Bedeutungen (Einstellung, nie beide zugleich):
+ * Original „würfeln bis zur Niete“ oder als Chance-Karte – dann liegt die Feuerwerk-Karte offen daneben und wirkt wie „Chance“.
+ */
+export const latestCard = (s: TuttoState): CardId | undefined => {
+  const c = s.turnCards[s.turnCards.length - 1];
+  return c === "fire" && s.fireChance ? "chance" : c;
+};
 const PM_DONE = "Plus/Minus geschafft – trag die 1.000 ein, weiterzocken geht nicht.";
 
 /** Stopp-Karte nach einem Tutto: wer weitergezockt hat, verliert alle Punkte dieses Zugs */
@@ -228,7 +239,7 @@ function drawCard(s: TuttoState, ctx: GameContext, pick?: CardId) {
   s.afterTutto = false;
   s.dice = diceModeOf(ctx) === "app" ? freshDice() : null;
   // Chance: bleibt liegen, gibt einen Versuch mehr – mit App-Karten kommt die nächste Karte sofort
-  if (s.turnCards[s.turnCards.length - 1] === "chance") {
+  if (latestCard(s) === "chance") {
     s.chances = (s.chances ?? 0) + 1;
     if (!realCardsOf(ctx)) drawCard(s, ctx);
   }
@@ -251,7 +262,7 @@ function startTurn(s: TuttoState, ctx: GameContext) {
 function endTurn(s: TuttoState, ctx: GameContext) {
   s.curId = nextPlayerId(ctx.players, s.curId);
   // Hausregel „Runde zu Ende“: wieder beim ersten Spieler – wer jetzt vorn liegt, gewinnt
-  if (s.finalRound && s.curId === ctx.players[0]?.id) return finishRound(s, ctx);
+  if (s.finalRound && s.curId === (ctx.players.some((p) => p.id === s.startId) ? s.startId : ctx.players[0]?.id)) return finishRound(s, ctx);
   startTurn(s, ctx);
 }
 
@@ -271,9 +282,9 @@ function pushLog(s: TuttoState, e: LogEntry) {
 
 function setup(ctx: GameContext): TuttoState {
   const s: TuttoState = {
-    v: 1, scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), curId: ctx.players[0]?.id ?? null,
+    v: 1, scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), curId: firstPlayerId(ctx), startId: firstPlayerId(ctx),
     pile: freshPile(ctx.options), turnCards: [], turnPts: 0, cardStart: 0, cardTuttos: 0, afterTutto: false, pmOn: false, log: [],
-    winnerId: null, cloverWin: false, dice: null,
+    winnerId: null, cloverWin: false, dice: null, fireChance: ctx.options.fire === "chance",
   };
   startTurn(s, ctx);
   return s;
@@ -541,6 +552,13 @@ export const tutto: GameLogic<TuttoState, TuttoAction> = {
         { value: "choose", label: "Wählen", hint: "fies: du bestimmst" },
         { value: "all", label: "Alle", hint: "fies: alle je −1.000" },
         { value: "split", label: "Geteilt", hint: "alle teilen −1.000" },
+      ],
+    },
+    {
+      key: "fire", label: "Feuerwerk", type: "choice", default: "fire", group: "Karten & Hausregeln",
+      choices: [
+        { value: "fire", label: "Bis zur Niete", hint: "Original: alle Punkte zählen" },
+        { value: "chance", label: "Als Chance", hint: "Karte bleibt liegen: ein Rettungswurf bei Niete" },
       ],
     },
     { key: "endRound", group: "Karten & Hausregeln", label: "Runde zu Ende spielen", hint: "Hausregel: alle kommen gleich oft dran, dann gewinnt der Höchste (Original: sofort)", type: "toggle", default: false },

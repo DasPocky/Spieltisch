@@ -7,6 +7,7 @@
  *   0 … T-1     = auf der Laufbahn (0 = eigenes Startfeld, T = Länge der Laufbahn)
  *   T … T+3     = in den Zielfeldern (T = erstes, T+3 = hinterstes Zielfeld)
  */
+import { firstPlayerId } from "../../platform/turns";
 import { rollDice } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
@@ -231,7 +232,7 @@ function setup(ctx: GameContext): LudoState {
   const r = rulesOf(ctx.options);
   const colors = colorsFor(ctx.players.length, r.board);
   const s: LudoState = {
-    v: 1, board: r.board, color: {}, pos: {}, curId: ctx.players[0]?.id ?? null, die: null, shown: null, rolls: 0, tries: 0,
+    v: 1, board: r.board, color: {}, pos: {}, curId: firstPlayerId(ctx), die: null, shown: null, rolls: 0, tries: 0,
     places: [], finished: false, last: null, moves: 0, log: [],
   };
   ctx.players.forEach((p, i) => {

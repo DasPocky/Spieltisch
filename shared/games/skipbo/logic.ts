@@ -6,7 +6,7 @@
  * Sichtbar für alle: oberste Vorratskarte, eigene Ablagen, Aufbaustapel. Geheim: Hände, Vorrat darunter, Nachziehstapel.
  */
 import { shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 /** 1–12, 0 = Skip-Bo (Joker) */
@@ -130,7 +130,7 @@ function setup(ctx: GameContext): SbState {
     curId: null, roundWinner: null, lastRound: null, n: 0, log: [], entries: {}, tableWinner: null,
   };
   if (r.mode === "table") { s.phase = "enter"; s.entries = Object.fromEntries(ctx.players.map((p) => [p.id, null])); }
-  else deal(s, ctx, null);
+  else deal(s, ctx, firstPlayerId(ctx));
   sync(s);
   return s;
 }

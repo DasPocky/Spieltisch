@@ -5,7 +5,7 @@
  * Vier Gleiche werden sofort als Quartett abgelegt. Wer am Ende die meisten Quartette hat, gewinnt.
  */
 import { deckOf, deckSetting, DECKS, drawCards, rankOf, shuffledDeck, sortByRank, type Card, type DeckId, type Rank } from "../../cards/deck";
-import { nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Player } from "../../platform/types";
 
 export interface FischenEvent {
@@ -113,14 +113,14 @@ function setup(ctx: GameContext): FischenState {
   const deck = deckOf(ctx.options, "fr52");
   if (ctx.options.cards === "table") {
     return {
-      v: 1, deck: deck.id, hands: {}, counts: {}, pile: [], pileCount: 0, curId: ctx.players[0]?.id ?? null,
+      v: 1, deck: deck.id, hands: {}, counts: {}, pile: [], pileCount: 0, curId: firstPlayerId(ctx),
       quartets: Object.fromEntries(ctx.players.map((p) => [p.id, []])), events: [], fished: null, finished: false, n: 0, table: true, laid: [],
     };
   }
   const pile = shuffledDeck(deck);
   const n = handSize(ctx.players.length);
   const s: FischenState = {
-    v: 1, deck: deck.id, hands: {}, counts: {}, pile, pileCount: 0, quartets: {}, curId: ctx.players[0]?.id ?? null,
+    v: 1, deck: deck.id, hands: {}, counts: {}, pile, pileCount: 0, quartets: {}, curId: firstPlayerId(ctx),
     events: [], fished: null, finished: false, n: 0,
   };
   for (const p of ctx.players) {

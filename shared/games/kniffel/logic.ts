@@ -3,7 +3,7 @@
  * Zwei Arten zu spielen: App-Würfel (Server würfelt) oder echte Würfel mit digitalem Block.
  */
 import { rollDice } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic } from "../../platform/types";
 
 export const UPPER = ["ones", "twos", "threes", "fours", "fives", "sixes"] as const;
@@ -163,7 +163,7 @@ function freshTurn(s: KniffelState) {
 function setup(ctx: GameContext): KniffelState {
   const s: KniffelState = {
     v: 1, sheets: Object.fromEntries(ctx.players.map((p) => [p.id, {}])), extras: {},
-    curId: ctx.players[0]?.id ?? null, dice: [], held: [], rollsLeft: 3, n: 0, log: [], finished: false,
+    curId: firstPlayerId(ctx), dice: [], held: [], rollsLeft: 3, n: 0, log: [], finished: false,
   };
   freshTurn(s);
   return s;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, pmDone, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { latestCard, CARD_BY_ID, diceModeOf, realCardsOf, KEEP_CARD, pmDone, stopAfterTutto, score, targetOf, type CardId, type CardType, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import type { Options } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
@@ -47,7 +47,7 @@ export function Board({ room, game: state, me, online, isHost, hostTools, canAct
     );
   }
 
-  const latest = state.turnCards[state.turnCards.length - 1];
+  const latest = latestCard(state);
   const d = state.dice;
   // Mit App-Würfel nur ziehen, wenn es gerade erlaubt ist – sonst würde ein versehentliches Antippen stören
   // Nach Plus/Minus ist der Zug vorbei – keine neue Karte
@@ -114,7 +114,7 @@ const PM_RULE: Record<string, string> = {
 export const ruleOf = (card: CardType, options: Options) => (card.id === "pm" && typeof options.pmMode === "string" && PM_RULE[options.pmMode]) || card.rule;
 
 function TurnHint({ state, canAct, full, gameId, typeOf, options }: { state: TuttoState; canAct: boolean; full: boolean; gameId: string; typeOf: (id: CardId, i?: number) => CardType; options: Options }) {
-  const latest = state.turnCards[state.turnCards.length - 1];
+  const latest = latestCard(state);
   const card = latest ? typeOf(latest) : null;
   const idle = canAct ? "Karte antippen, dann würfeln." : "Gleich wird eine Karte gezogen.";
   // Gerade ein Tutto geschafft und die nächste Karte liegt schon offen

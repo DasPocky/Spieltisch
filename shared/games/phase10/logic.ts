@@ -6,7 +6,7 @@
  * Geheim: fremde Hände und der Nachziehstapel. Ausgelegte Gruppen sehen alle.
  */
 import { shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { dealerBefore, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Player } from "../../platform/types";
 
 export type P10Color = "r" | "b" | "g" | "y";
@@ -196,7 +196,7 @@ function deal(s: P10State, ctx: GameContext) {
   let first = s.pile.pop()!;
   while (isSkip(first)) { s.pile.unshift(first); first = s.pile.pop()!; }
   s.discard = [first];
-  s.dealer = s.dealer ? nextPlayerId(ctx.players, s.dealer) : ctx.players[ctx.players.length - 1]?.id ?? null;
+  s.dealer = s.dealer ? nextPlayerId(ctx.players, s.dealer) : dealerBefore(ctx);
   s.curId = nextPlayerId(ctx.players, s.dealer);
   s.step = "draw";
 }

@@ -1,5 +1,5 @@
 import { Dices } from "lucide-react";
-import { MUST_PLAY, pmDone, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
+import { latestCard, MUST_PLAY, pmDone, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
 import { DiceTray } from "@/platform/dice3d/DiceTray";
 import { useHints } from "@/lib/prefs";
@@ -8,7 +8,7 @@ import { cn, fmt, vibrate } from "@/lib/utils";
 /** App-Würfel: aktueller Wurf zum Antippen, beiseitegelegte Würfel und Status. */
 export function DicePanel({ state, onAction, disabled }: { state: TuttoState; onAction: (a: TuttoAction) => void; disabled: boolean }) {
   const d = state.dice;
-  const card = state.turnCards[state.turnCards.length - 1];
+  const card = latestCard(state);
   const sel = d && d.roll.length && !d.bust ? selectionValue(d, card) : null;
   const scoresHere = !!card && !NO_DICE_POINTS.has(card);
   // Spielhilfe: wertbare Würfel bekommen einen leisen Ring, dazu die beste mögliche Auswahl
@@ -55,7 +55,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
 /** Aktionsknöpfe für den App-Würfel, je nach Stand des Zugs. */
 export function DiceActions({ state, onAction }: { state: TuttoState; onAction: (a: TuttoAction) => void }) {
   const d = state.dice;
-  const card = state.turnCards[state.turnCards.length - 1];
+  const card = latestCard(state);
   const pts = fmt(state.turnPts);
   const roll = () => { vibrate(15); onAction({ type: "roll" }); };
   const book = (zero = false) => onAction({ type: "book", zero });

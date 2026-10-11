@@ -6,7 +6,7 @@
  * Die Hände der anderen und der Stapel bleiben geheim (view).
  */
 import { shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 export type UnoColor = "r" | "g" | "b" | "y";
@@ -188,7 +188,7 @@ function setup(ctx: GameContext): UnoState {
     roundWinner: null, lastRound: null, n: 0, log: [], entries: {}, tableWinner: null,
   };
   if (r.mode === "table") { s.phase = "enter"; s.entries = Object.fromEntries(ctx.players.map((p) => [p.id, null])); }
-  else deal(s, ctx, null);
+  else deal(s, ctx, firstPlayerId(ctx));
   sync(s);
   return s;
 }

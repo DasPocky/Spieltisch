@@ -4,7 +4,7 @@
  */
 import { cardName, deckOf, deckSetting, DECKS, drawCards, isCardOf, isJack, rankOf, SUIT_NAME, shuffledDeck, sortHand, suitOf, type Card, type DeckId, type Suit } from "../../cards/deck";
 import { shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
 import { applyPad, isPadAction, newPad, padRemove, type Pad, type PadAction } from "../../platform/pad";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
@@ -104,7 +104,7 @@ function setup(ctx: GameContext): MauMauState {
   const hands: Record<string, Card[]> = {};
   for (const p of ctx.players) hands[p.id] = sortHand(pile.splice(pile.length - r.hand, r.hand), deck);
   const s: MauMauState = {
-    v: 1, deck: r.deck, hands, counts: {}, pile, pileCount: 0, discard: [pile.pop()!], curId: ctx.players[0]?.id ?? null, dir: 1,
+    v: 1, deck: r.deck, hands, counts: {}, pile, pileCount: 0, discard: [pile.pop()!], curId: firstPlayerId(ctx), dir: 1,
     wish: null, pendingDraw: 0, drawn: null, winnerId: null, n: 0, log: [],
   };
   // Die aufgedeckte Startkarte wirkt auf den ersten Spieler
