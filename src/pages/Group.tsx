@@ -208,7 +208,7 @@ function GroupHome({ group, active }: { group: GroupView; active: boolean }) {
   };
   const share = async () => {
     try {
-      if (navigator.share) { await navigator.share({ title: "Spieltisch", text: `Komm in unsere Gruppe „${group.name}“ – Code ${group.code}`, url: link }); return; }
+      if (navigator.share) { await navigator.share({ title: `Spieltisch – Gruppe ${group.name}`, text: `🏆 Komm in unsere Spieltisch-Gruppe „${group.name}“ – mit Bestenliste und Spielabend-Wertung. Code ${group.code}`, url: link }); return; }
       await navigator.clipboard.writeText(link);
       toast("Link kopiert");
     } catch { /* abgebrochen */ }

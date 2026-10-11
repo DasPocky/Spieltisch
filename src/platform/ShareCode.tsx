@@ -7,10 +7,11 @@ export function ShareCode({ code, gameName }: { code: string; gameName?: string 
   const url = `${location.origin}/r/${code}`;
   const share = async () => {
     try {
-      const text = gameName ? `Spiel ${gameName} mit! Raumcode ${code}` : `Spiel mit! Raumcode ${code}`;
-      if (navigator.share) { await navigator.share({ title: "Spieltisch", text, url }); return; }
-      await navigator.clipboard.writeText(url);
-      toast("Link kopiert");
+      // Kurz und klar: wer einlädt, was gespielt wird, wie man reinkommt – die PIN sagt der Host selbst
+      const text = `🎲 Spielst du mit${gameName ? ` ${gameName}` : ""}? Tipp auf den Link oder gib im Spieltisch den Raumcode ${code} ein. Die PIN bekommst du vom Host.`;
+      if (navigator.share) { await navigator.share({ title: `Spieltisch – Raum ${code}`, text, url }); return; }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      toast("Einladung kopiert");
     } catch { /* abgebrochen */ }
   };
   return (

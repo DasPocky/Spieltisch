@@ -74,7 +74,7 @@ export function RoomScreen(props: Props) {
     <AvatarContext.Provider value={avatars}>
     <EveningContext.Provider value={{ room, isHost, dispatch }}>
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
-      <header className="flex h-14 shrink-0 items-center justify-between">
+      <header className="room-head flex h-14 shrink-0 items-center justify-between">
         {playing ? (
           <div className="flex min-w-0 items-center gap-2.5">
             <IconTile><Icon className="size-6" /></IconTile>
@@ -148,7 +148,7 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
   const share = async () => {
     const url = `${location.origin}/r/${code}`;
     try {
-      const text = `Spiel ${gameName} mit – Raum ${code}`;
+      const text = `🎲 ${gameName} im Spieltisch – kommt rein! Raumcode ${code}, die PIN gibt's vom Host.`;
       if (navigator.share) { await navigator.share({ title: group.name, text, url }); return; }
       await navigator.clipboard.writeText(`${text}: ${url}`);
       toast("Einladung kopiert – jetzt in eure Gruppe einfügen");

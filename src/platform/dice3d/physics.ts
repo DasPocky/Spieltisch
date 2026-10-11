@@ -41,11 +41,15 @@ export function flatness(p: Pose): number {
  * Wurf berechnen. `rest[i]` = Würfel bleibt liegen (gehalten) an dieser Stelle; die anderen fliegen.
  * Tisch: halbe Breite `w` und halbe Tiefe `d` in Würfelkanten. Geworfen wird von vorn (z = +d).
  */
-export function simulate(n: number, rest: (Pose | null)[], seed: number, w: number, d: number): Pose[][] {
+/** Wie geworfen wird: Kraft 0..1 (kurz tippen sanft, lange halten / schnell wischen kräftig), Richtung −1 (links) … 1 (rechts) */
+export interface Throw { power: number; aim: number }
+export const SOFT_THROW: Throw = { power: 0.35, aim: 0 };
+
+export function simulate(n: number, rest: (Pose | null)[], seed: number, w: number, d: number, how: Throw = SOFT_THROW): Pose[][] {
   // Bleibt ein Würfel schräg liegen (angelehnt), gilt der Wurf wie am echten Tisch nicht – neu werfen
   let best: Pose[][] = [];
   for (let attempt = 0; attempt < 8; attempt++) {
-    const frames = run(n, rest, seed + attempt * 7919, w, d);
+    const frames = run(n, rest, seed + attempt * 7919, w, d, how);
     best = frames;
     // Gültig: alle flach und auf dem Tisch (nicht auf einem anderen Würfel gestapelt)
     if (frames.at(-1)!.every((p, i) => rest[i] || (flatness(p) > 0.995 && p[1] < 0.6))) break;
@@ -53,8 +57,9 @@ export function simulate(n: number, rest: (Pose | null)[], seed: number, w: numb
   return best;
 }
 
-function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: number): Pose[][] {
+function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: number, how: Throw): Pose[][] {
   const rnd = rng(seed);
+  const p = Math.min(1, Math.max(0, how.power)), aim = Math.min(1, Math.max(-1, how.aim));
   const world = new World({ gravity: new Vec3(0, -9.82 * 7, 0), allowSleep: true });
   const mDie = new Material(), mFloor = new Material(), mWall = new Material();
   world.addContactMaterial(new ContactMaterial(mDie, mFloor, { friction: 0.45, restitution: 0.3 }));
@@ -84,12 +89,15 @@ function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: numbe
       b.position.set(r[0], r[1], r[2]);
       b.quaternion.set(r[3], r[4], r[5], r[6]);
     } else {
-      // Aus der Hand: vorn, etwas über dem Tisch, schräg nach hinten mit Drall
+      // Aus der Hand: vorn, über dem Tisch (kräftige Würfe höher – sie fliegen sichtbar aus dem Kasten heraus),
+      // Richtung und Kraft aus der Geste, dazu etwas Streuung wie bei einer echten Hand
       const k = thrown++;
-      b.position.set(-w * 0.6 + (k % 3) * 1.15 + rnd() * 0.3, 1.2 + Math.floor(k / 3) * 1.1 + rnd() * 0.4, d - 0.65 - rnd() * 0.15);
+      b.position.set(-w * 0.6 + aim * w * 0.25 + (k % 3) * 1.15 + rnd() * 0.3, 1.2 + p * 2.2 + Math.floor(k / 3) * 1.1 + rnd() * 0.4, d - 0.65 - rnd() * 0.15);
       b.quaternion.setFromEuler(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28);
-      b.velocity.set((rnd() - 0.2) * (2 + w * 0.8), 0.5 + rnd() * 1.5, -(2.5 + rnd() * 2 + d * 2.2));
-      b.angularVelocity.set((rnd() - 0.5) * 30, (rnd() - 0.5) * 30, (rnd() - 0.5) * 30);
+      const speed = 0.7 + p * 0.9;
+      b.velocity.set(((rnd() - 0.2) * (2 + w * 0.8) + aim * (3 + 6 * p)) * 0.8, 0.5 + rnd() * 1.5 + p * 7, -(2.5 + rnd() * 2 + d * 2.2) * speed);
+      const spin = 18 + p * 26;
+      b.angularVelocity.set((rnd() - 0.5) * spin, (rnd() - 0.5) * spin, (rnd() - 0.5) * spin);
     }
     world.addBody(b);
     bodies.push(b);

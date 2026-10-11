@@ -2,6 +2,7 @@ import { Dices } from "lucide-react";
 import { latestCard, MUST_PLAY, pmDone, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
 import { DiceTray } from "@/platform/dice3d/DiceTray";
+import { RollButton } from "@/platform/dice3d/RollButton";
 import { useHints } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
@@ -57,7 +58,6 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   const d = state.dice;
   const card = latestCard(state);
   const pts = fmt(state.turnPts);
-  const roll = () => { vibrate(15); onAction({ type: "roll" }); };
   const book = (zero = false) => onAction({ type: "book", zero });
   const Btn = ({ children, onClick, primary, disabled }: { children: React.ReactNode; onClick: () => void; primary?: boolean; disabled?: boolean }) => (
     <button type="button" onClick={onClick} disabled={disabled}
@@ -72,7 +72,7 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   if (!card) return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Karte ziehen</Btn></div>;
   if (card === "chance") return <div className="grid"><Btn primary onClick={() => onAction({ type: "draw" })}>Chance! Nächste Karte ziehen</Btn></div>;
   if (card === "stop") return <div className="grid"><Btn primary onClick={() => book(true)}>Stopp – nächster Spieler</Btn></div>;
-  if (!d || (!d.roll.length && !d.tutto)) return <div className="grid"><Btn primary onClick={roll}><Dices className="mr-1.5 inline size-5 align-[-4px]" />Würfeln</Btn></div>;
+  if (!d || (!d.roll.length && !d.tutto)) return <div className="grid"><TuttoRoll onAction={onAction}><Dices className="size-5" />Würfeln</TuttoRoll></div>;
   const chances = state.chances ?? 0;
   if (d.bust && chances > 0) {
     // Chance: dieselben Würfel nochmal – oder freiwillig aufgeben
@@ -89,7 +89,7 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
       : <Btn primary onClick={() => book(true)}>Niete – nächster Spieler</Btn>}</div>;
   }
   if (d.tutto) {
-    if (card === "fire" || card === "clover") return <div className="grid"><Btn primary onClick={roll}><Dices className="mr-1.5 inline size-5 align-[-4px]" />Weiter würfeln</Btn></div>;
+    if (card === "fire" || card === "clover") return <div className="grid"><TuttoRoll onAction={onAction}><Dices className="size-5" />Weiter würfeln</TuttoRoll></div>;
     // Plus/Minus: nur eintragen, weiterzocken geht nicht
     if (pmDone(state)) return <div className="grid"><Btn primary onClick={() => book()}>+{pts} eintragen – Zug vorbei</Btn></div>;
     return (
@@ -104,9 +104,14 @@ export function DiceActions({ state, onAction }: { state: TuttoState; onAction: 
   const canStop = !MUST_PLAY.has(card) && v !== null;
   return (
     <div className={cn("grid gap-2.5", canStop && !completes ? "grid-cols-[1.2fr_1fr]" : "grid-cols-1")}>
-      <Btn primary disabled={v === null} onClick={roll}>{completes ? "Tutto!" : "Weiter würfeln"}</Btn>
+      <TuttoRoll onAction={onAction} disabled={v === null}>{completes ? "Tutto!" : "Weiter würfeln"}</TuttoRoll>
       {canStop && !completes && <Btn onClick={() => book()}>{fmt(state.turnPts + (v ?? 0))} eintragen</Btn>}
     </div>
   );
 }
 
+
+/** Würfeln mit Gefühl: halten lädt auf, kurz tippen wirft sanft (außerhalb definiert, damit Halten ein Neuzeichnen übersteht) */
+function TuttoRoll({ onAction, disabled, children }: { onAction: (a: TuttoAction) => void; disabled?: boolean; children: React.ReactNode }) {
+  return <RollButton className="h-14 w-full rounded-xl text-base font-bold" disabled={disabled} onRoll={() => onAction({ type: "roll" })}>{children}</RollButton>;
+}

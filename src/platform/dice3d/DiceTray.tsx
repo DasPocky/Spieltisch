@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn, vibrate } from "@/lib/utils";
 import { Die } from "../Die";
 import type { Pose } from "./physics";
+import { setThrow, takeThrow } from "./throw";
 import "./dice3d.css";
 
 type Physics = typeof import("./physics");
@@ -23,7 +24,9 @@ const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b
  * Gehaltene Würfel bleiben liegen (die anderen stoßen sich an ihnen) und leuchten.
  * `rollKey` ändert sich bei jedem neuen Wurf – nur dann wird geworfen; neu geladen liegt alles still wie zuletzt.
  */
-export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
+export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onThrow, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
+  /** Würfeln per Wischen nach oben über den Tisch (nur wer gerade würfeln darf) */
+  onThrow?: () => void;
   values: number[];
   held?: boolean[];
   /** Spielhilfe: leiser Ring */
@@ -41,6 +44,8 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, cla
   const [lib, setLib] = useState<Physics | null>(null);
   const sim = useRef<{ key: string; frames: Pose[][]; faces: Face[][]; poses: Pose[]; px: number } | null>(null);
   const [, redraw] = useState(0);
+  const [flying, setFlying] = useState(false);
+  const swipe = useRef<{ x: number; y: number; t: number } | null>(null);
   const dieEls = useRef<(HTMLElement | null)[]>([]);
   // Beim Öffnen schon vorhandener Wurf (z. B. neu geladen): still hinlegen. Jeder spätere Wurf fliegt.
   const firstKey = useRef(values.length ? rollKey : null);
@@ -68,12 +73,15 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, cla
     // Hinten etwas Luft lassen: von schräg vorn gesehen ragen Würfel an der hinteren Bande sonst aus dem Bild
     const w = size.w / (2 * px) - 0.25, d = size.h / (2 * px) - 0.45;
     const rest = values.map((_, i) => (held?.[i] && prev && prev.poses[i] && prev.faces[i] ? prev.poses[i] : null));
-    const frames = lib.simulate(n, rest, lib.seedOf(rollKey), w, d);
+    const how = takeThrow() ?? undefined;
+    const frames = lib.simulate(n, rest, lib.seedOf(rollKey), w, d, how);
     const last = frames.at(-1)!;
     const faces = values.map((v, i) => (rest[i] && prev ? prev.faces[i] : lib.labelFaces(last[i], v)));
     const animate = rollKey !== firstKey.current && !reduced();
     sim.current = { key: rollKey, frames: animate ? frames : [last], faces, poses: last, px };
     redraw((x) => x + 1);
+    // Während des Flugs dürfen die Würfel über den Rand des Tischs hinaus
+    if (animate) { setFlying(true); setTimeout(() => setFlying(false), (frames.length / 60) * 1000 + 100); }
     if (animate) vibrate(12);
   }, [lib, size, rollKey, n, values, held, px]);
 
@@ -111,7 +119,19 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, cla
   const ready = !!(lib && s && s.faces.length === n);
   return (
     <div ref={box} role="group" aria-label={label} data-testid="dice-tray"
-      className={cn("dice-tray relative overflow-hidden rounded-2xl", className)}>
+      className={cn("dice-tray relative rounded-2xl", flying ? "z-30 overflow-visible" : "overflow-hidden", onThrow && "touch-none", className)}
+      // Wischen nach oben wirft: je schneller, desto kräftiger; schräg gewischt fliegen sie schräg
+      onPointerDown={onThrow ? (e) => { swipe.current = { x: e.clientX, y: e.clientY, t: performance.now() }; } : undefined}
+      onPointerUp={onThrow ? (e) => {
+        const s0 = swipe.current;
+        swipe.current = null;
+        if (!s0) return;
+        const dy = s0.y - e.clientY, dx = e.clientX - s0.x, dt = Math.max(16, performance.now() - s0.t);
+        if (dy < 40 || dy < Math.abs(dx)) return;
+        setThrow({ power: Math.min(1, Math.max(0.25, dy / dt / 2.2)), aim: Math.max(-1, Math.min(1, dx / dy)) });
+        vibrate(15);
+        onThrow();
+      } : undefined}>
       {!n && <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-white/75">{empty}</span>}
       {/* Bis die Physik geladen ist: flache Würfel in einer Reihe */}
       {n > 0 && !ready && (

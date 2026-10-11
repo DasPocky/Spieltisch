@@ -50,7 +50,7 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
   const cols = n <= 8 ? n : Math.ceil(n / 2);
 
   return (
-    <div role="group" aria-label={label} className={cn("grid shrink-0 gap-1.5 pt-1 pb-1.5", className)}
+    <div role="group" aria-label={label} className={cn("seats grid shrink-0 gap-1.5 pt-1 pb-1.5", className)}
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
       {seats.map((p) => {
         const av = avatars?.[p.id];

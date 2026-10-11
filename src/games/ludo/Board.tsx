@@ -4,10 +4,10 @@ import {
   COLOR_NAMES, HOME, inGoal, legalMoves, PIECES, rulesOf, threeTries, trackLen,
   type LastMove, type LudoAction, type LudoState, type Move,
 } from "@shared/games/ludo/logic";
-import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { Die } from "@/platform/Die";
 import { DiceTray } from "@/platform/dice3d/DiceTray";
+import { RollButton } from "@/platform/dice3d/RollButton";
 import { HintChip } from "@/platform/HintChip";
 import { Seats } from "@/platform/Seats";
 import { ResultScreen } from "@/platform/ResultScreen";
@@ -173,9 +173,9 @@ export function Board({ room, game: s, me, isHost, canAct, act, dispatch }: Boar
           {canHit && hints && <div className="mt-1.5"><HintChip>Du kannst schlagen – rot umrandetes Feld</HintChip></div>}
           {mine && s.die === null && (
             r.dice === "app" ? (
-              <Button size="lg" className="mt-2 w-full" disabled={!!anim} onClick={() => { vibrate(15); act({ type: "roll" }); }}>
+              <RollButton className="mt-2 w-full" disabled={!!anim} onRoll={() => act({ type: "roll" })}>
                 <Dices />Würfeln
-              </Button>
+              </RollButton>
             ) : (
               <div className="mt-2 grid grid-cols-6 gap-1.5" role="group" aria-label="Gewürfelte Zahl">
                 {[1, 2, 3, 4, 5, 6].map((v) => (

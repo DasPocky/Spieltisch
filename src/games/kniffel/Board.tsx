@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { BoardProps } from "@/games/types";
 import { DiceTray } from "@/platform/dice3d/DiceTray";
+import { RollButton } from "@/platform/dice3d/RollButton";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -140,15 +141,16 @@ function AppControls({ s, sel, joker, own, act, onPickSelf }: { s: KniffelState;
   if (!own) return <Button size="lg" className="w-full" onClick={onPickSelf}>Zurück zum eigenen Zug</Button>;
   return (
     <section className="glass rounded-2xl p-2.5">
-      <DiceTray values={rolled ? s.dice : []} held={s.held} rollKey={rollKey(s)} canToggle={rolled && s.rollsLeft > 0} onToggle={(i) => act({ type: "hold", i })} className="h-28" />
+      <DiceTray values={rolled ? s.dice : []} held={s.held} rollKey={rollKey(s)} canToggle={rolled && s.rollsLeft > 0} onToggle={(i) => act({ type: "hold", i })} className="h-28"
+        onThrow={s.rollsLeft > 0 && !(rolled && s.held.every(Boolean)) ? () => act({ type: "roll" }) : undefined} />
       <p className={cn("mt-2 min-h-5 text-center text-sm", joker ? "font-semibold text-ice" : "text-muted-foreground")}>
         <SmoothText>{joker && !sel ? "Weiterer Kniffel! +50 – jedes freie Feld zählt voll" : status}</SmoothText>
       </p>
       <div className={cn("mt-2 grid gap-2.5", rolled && s.rollsLeft > 0 ? "grid-cols-2" : "grid-cols-1")}>
         {s.rollsLeft > 0 && (
-          <Button size="lg" variant={sel ? "secondary" : "default"} onClick={() => { vibrate(15); act({ type: "roll" }); }} disabled={rolled && s.held.every(Boolean)}>
+          <RollButton variant={sel ? "secondary" : "default"} onRoll={() => act({ type: "roll" })} disabled={rolled && s.held.every(Boolean)}>
             <Dices />Würfeln <span className="text-sm font-semibold opacity-75">({s.rollsLeft})</span>
-          </Button>
+          </RollButton>
         )}
         {rolled && (
           <Button size="lg" variant={sel ? "default" : "secondary"} disabled={!sel} onClick={() => sel && act({ type: "score", cat: sel })}>

@@ -203,3 +203,22 @@
 
 /* Startseite: auf niedrigen Bildschirmen nur eine Reihe Schnellstart */
 @media (max-height: 700px) { .quick-extra { display: none; } }
+
+/*
+ * Niedrige Bildschirme (kleines Handy, Browser mit Adress- und Werkzeugleiste, Querformat):
+ * alles etwas dichter – Kopfzeile, große Knöpfe, Spielerleiste, Würfeltisch –, damit das Spiel ohne Scrollen passt.
+ */
+@media (max-height: 640px) {
+  .room-head { height: 2.75rem; }
+  [data-slot="button"][data-size="lg"] { height: 2.6rem; }
+  .seats { padding-top: 0.125rem; padding-bottom: 0.25rem; gap: 0.25rem; }
+  .seats > * { padding-top: 0.2rem; padding-bottom: 0.2rem; }
+  .seats > * > span:first-of-type:not(:only-child) { transform: scale(0.88); }
+  .dice-tray.h-28 { height: 5.5rem; }
+  .dice-tray.h-24 { height: 5rem; }
+}
+@media (max-height: 520px) {
+  .room-head { height: 2.4rem; }
+  [data-slot="button"][data-size="lg"] { height: 2.35rem; font-size: 0.95rem; }
+  .dice-tray.h-28, .dice-tray.h-24 { height: 4.25rem; }
+}
