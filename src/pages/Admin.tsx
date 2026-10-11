@@ -1,10 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Loader2, Lock, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
-import { GAMES, getGame, isGameId } from "@shared/games";
-import {
-  isoWeek, MAX_MESSAGE, sumStats, withDefaults,
-  type Access, type AccessConfig, type AdminRoom, type GameDefaults, type SiteConfig, type SiteStats, type StatCounts,
-} from "@shared/platform/access";
+import { GAMES, getGame } from "@shared/games";
+import { MAX_MESSAGE, withDefaults, type Access, type AdminRoom, type GameDefaults, type SiteConfig } from "@shared/platform/access";
 import { createRoom, type RoomAction } from "@shared/platform/room";
 import type { Options } from "@shared/platform/types";
 import { Confirm } from "@/components/Confirm";
@@ -15,9 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { navigate } from "@/hooks/useRoute";
 import { setSiteConfig } from "@/hooks/useSiteConfig";
-import { cn, fmt } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Segmented } from "@/platform/Segmented";
 import { SettingsPanel } from "@/platform/SettingsPanel";
+import { ago, AuthError, gameName, Status, toAccess, useSave, type Api, type Msg } from "./admin/shared";
+import { OverviewTab } from "./admin/Overview";
+import { HistoryTab } from "./admin/History";
+import { DirectoryTab } from "./admin/Directory";
+import { OptionsTab } from "./admin/Options";
+import { DataTab } from "./admin/Data";
 
 const LEVELS = [
   { value: "on", label: "An", hint: "für alle" },
@@ -33,24 +36,10 @@ const TOKEN_KEY = "spieltisch:admin";
 const readToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
 const writeToken = (t: string | null) => { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch { /* egal */ } };
 
-const gameName = (id: string) => (isGameId(id) ? GAMES[id].info.name : id);
-
-type Msg = { ok: boolean; text: string } | null;
-/** Anfrage mit Sitzungs-Token; wirft mit lesbarer Meldung */
-type Api = <T>(path: string, body?: unknown) => Promise<T>;
-
-class AuthError extends Error {}
-
-/** „vor 5 Min.“ usw. */
-function ago(ms: number, now = Date.now()): string {
-  const min = Math.floor((now - ms) / 60_000);
-  if (min < 1) return "gerade eben";
-  if (min < 60) return `vor ${min} Min.`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `vor ${h} Std.`;
-  const d = Math.floor(h / 24);
-  return d === 1 ? "vor 1 Tag" : `vor ${d} Tagen`;
-}
+const TABS = [
+  ["overview", "Übersicht"], ["rooms", "Räume"], ["history", "Verlauf"], ["groups", "Gruppen"],
+  ["access", "Freigaben"], ["defaults", "Standards"], ["options", "Optionen"], ["data", "Daten"],
+] as const;
 
 /** Admin-Bereich: nur mit Passwort. Freigaben, offene Räume, Standard-Einstellungen und Statistik. */
 export function Admin() {
@@ -60,7 +49,7 @@ export function Admin() {
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(() => !!readToken());
   const [msg, setMsg] = useState<Msg>(null);
-  const [tab, setTab] = useState("access");
+  const [tab, setTab] = useState("overview");
 
   const signOut = useCallback((text?: string) => {
     writeToken(null); setToken(null); setConfig(null);
@@ -129,16 +118,17 @@ export function Admin() {
       ) : (
         <Tabs value={tab} onValueChange={setTab} className="mt-5 gap-5">
           {/* Freigaben und Standards bleiben beim Wechseln erhalten (ungespeicherte Änderungen) */}
-          <TabsList className="grid-cols-4">
-            <TabsTrigger value="access" className="px-0.5 text-xs min-[360px]:text-[13px] min-[400px]:text-sm">Freigaben</TabsTrigger>
-            <TabsTrigger value="rooms" className="px-0.5 text-xs min-[360px]:text-[13px] min-[400px]:text-sm">Räume</TabsTrigger>
-            <TabsTrigger value="defaults" className="px-0.5 text-xs min-[360px]:text-[13px] min-[400px]:text-sm">Standards</TabsTrigger>
-            <TabsTrigger value="stats" className="px-0.5 text-xs min-[360px]:text-[13px] min-[400px]:text-sm">Statistik</TabsTrigger>
+          <TabsList className="h-auto grid-cols-4 gap-y-1">
+            {TABS.map(([v, label]) => <TabsTrigger key={v} value={v} className="px-0.5 text-xs min-[360px]:text-[13px] min-[400px]:text-sm">{label}</TabsTrigger>)}
           </TabsList>
-          <TabsContent value="access" forceMount className="data-[state=inactive]:hidden"><AccessTab config={config} api={api} onSaved={setConfig} /></TabsContent>
+          <TabsContent value="overview"><OverviewTab api={api} /></TabsContent>
           <TabsContent value="rooms"><RoomsTab api={api} /></TabsContent>
+          <TabsContent value="history"><HistoryTab api={api} archiveDays={config.archiveDays} /></TabsContent>
+          <TabsContent value="groups"><DirectoryTab api={api} /></TabsContent>
+          <TabsContent value="access" forceMount className="data-[state=inactive]:hidden"><AccessTab config={config} api={api} onSaved={setConfig} /></TabsContent>
           <TabsContent value="defaults" forceMount className="data-[state=inactive]:hidden"><DefaultsTab config={config} api={api} onSaved={setConfig} /></TabsContent>
-          <TabsContent value="stats"><StatsTab api={api} /></TabsContent>
+          <TabsContent value="options" forceMount className="data-[state=inactive]:hidden"><OptionsTab config={config} api={api} onSaved={setConfig} /></TabsContent>
+          <TabsContent value="data"><DataTab api={api} /></TabsContent>
         </Tabs>
       )}
       {!config && !checking && msg && <p role="alert" className="mt-3 font-semibold text-destructive">{msg.text}</p>}
@@ -146,33 +136,16 @@ export function Admin() {
   );
 }
 
-function Status({ msg }: { msg: Msg }) {
-  if (!msg) return null;
-  return <p role="status" className={msg.ok ? "font-semibold text-ok" : "font-semibold text-destructive"}>{msg.text}</p>;
-}
-
-/** Hilfe zum Speichern mit Meldung */
-function useSave() {
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<Msg>(null);
-  const run = async (fn: () => Promise<void>, ok = "Gespeichert.") => {
-    setBusy(true); setMsg(null);
-    try { await fn(); setMsg({ ok: true, text: ok }); } catch (e) {
-      if (!(e instanceof AuthError)) setMsg({ ok: false, text: (e as Error).message });
-    } finally { setBusy(false); }
-  };
-  return { busy, msg, run };
-}
-
 // ---------- Freigaben ----------
 
 function AccessTab({ config, api, onSaved }: { config: SiteConfig; api: Api; onSaved: (c: SiteConfig) => void }) {
-  const [draft, setDraft] = useState<AccessConfig>(() => ({ site: config.site, games: config.games, message: config.message }));
+  const [draft, setDraft] = useState(() => ({ site: config.site, games: config.games, message: config.message }));
   const [code, setCode] = useState("");
   const { busy, msg, run } = useSave();
 
   const save = (removeCode = false) => run(async () => {
-    const r = await api<{ config: SiteConfig }>("/api/admin", { config: draft, code: removeCode ? null : code.trim() || undefined });
+    // Optionen (Startseite, Grenzen …) vom letzten Stand übernehmen – hier nur Freigaben ändern
+    const r = await api<{ config: SiteConfig }>("/api/admin", { config: { ...toAccess(config), ...draft }, code: removeCode ? null : code.trim() || undefined });
     onSaved(r.config); setSiteConfig(r.config); setCode("");
   });
 
@@ -344,103 +317,5 @@ function DefaultsTab({ config, api, onSaved }: { config: SiteConfig; api: Api; o
         <Button size="lg" disabled={busy} onClick={save}>{busy && <Loader2 className="animate-spin" />}Speichern</Button>
       </div>
     </div>
-  );
-}
-
-// ---------- Statistik ----------
-
-/** Die letzten 12 Kalenderwochen, neueste zuerst */
-function lastWeeks(n: number, now = Date.now()): string[] {
-  return Array.from({ length: n }, (_, i) => isoWeek(now - i * 7 * 86_400_000));
-}
-
-function StatsTab({ api }: { api: Api }) {
-  const [stats, setStats] = useState<SiteStats | null>(null);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    api<SiteStats>("/api/admin/stats").then(setStats).catch((e) => { if (!(e instanceof AuthError)) setError((e as Error).message); });
-  }, [api]);
-
-  if (!stats) return error ? <p className="font-semibold text-destructive">{error}</p> : <p className="flex items-center gap-2 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Lädt …</p>;
-
-  const total = sumStats(stats.totals);
-  const games = Object.entries(stats.totals)
-    .map(([id, c]) => ({ id, c, played: (c.started ?? 0) + (c.local ?? 0) }))
-    .sort((a, b) => b.played - a.played || (b.c.rooms ?? 0) - (a.c.rooms ?? 0));
-  const byWeek = new Map(stats.weeks.map((w) => [w.week, sumStats(w.games)]));
-  const weeks = lastWeeks(12).map((week) => ({ week, s: byWeek.get(week) ?? { rooms: 0, started: 0, finished: 0, local: 0 } }));
-  const max = Math.max(1, ...weeks.map((w) => w.s.started + w.s.local));
-  const n = (c: StatCounts, k: keyof StatCounts) => fmt(c[k] ?? 0);
-
-  return (
-    <div className="grid gap-5" data-testid="stats">
-      <div className="grid grid-cols-3 gap-2">
-        <Tile label="Räume" value={total.rooms} testId="stat-rooms" />
-        <Tile label="Partien" value={total.started + total.local} hint={<>{fmt(total.started)} online<br />{fmt(total.local)} lokal</>} testId="stat-started" />
-        <Tile label="Beendet" value={total.finished} hint="online" testId="stat-finished" />
-      </div>
-
-      <Card className="grid gap-2 p-4">
-        <h2 className="font-bold">Pro Spiel</h2>
-        {games.length === 0 ? <p className="text-sm text-muted-foreground">Noch nichts gezählt.</p> : (
-          <table className="w-full text-sm tabular-nums">
-            <thead>
-              <tr className="text-[11px] text-muted-foreground">
-                <th className="py-1 text-left font-semibold">Spiel</th>
-                <th className="w-10 py-1 pl-1 text-right font-semibold">Räume</th>
-                <th className="w-10 py-1 pl-1 text-right font-semibold">Online</th>
-                <th className="w-10 py-1 pl-1 text-right font-semibold">Lokal</th>
-                <th className="w-10 py-1 pl-1 text-right font-semibold">Fertig</th>
-              </tr>
-            </thead>
-            <tbody>
-              {games.map(({ id, c }) => (
-                <tr key={id} className="border-t border-border" data-testid={`stat-game-${id}`}>
-                  <td className="max-w-0 truncate py-1.5 pr-1 font-semibold">{gameName(id)}</td>
-                  <td className="py-1.5 text-right">{n(c, "rooms")}</td>
-                  <td className="py-1.5 text-right">{n(c, "started")}</td>
-                  <td className="py-1.5 text-right">{n(c, "local")}</td>
-                  <td className="py-1.5 text-right">{n(c, "finished")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <p className="text-xs text-muted-foreground">Online und Lokal: gestartete Partien. Fertig zählt nur online beendete.</p>
-      </Card>
-
-      <Card className="grid gap-3 p-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-bold">Pro Woche</h2>
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-primary" />online</span>
-            <span className="flex items-center gap-1"><span className="size-2 rounded-sm bg-primary/35" />lokal</span>
-          </span>
-        </div>
-        <ul className="grid gap-1.5">
-          {weeks.map(({ week, s }) => (
-            <li key={week} className="flex items-center gap-2 text-xs">
-              <span className="w-11 shrink-0 text-muted-foreground">KW {Number(week.slice(-2))}</span>
-              <span className="flex h-3 flex-1 overflow-hidden rounded-sm bg-navy-800/60">
-                <span className="h-full bg-primary" style={{ width: `${(s.started / max) * 100}%` }} />
-                <span className="h-full bg-primary/35" style={{ width: `${(s.local / max) * 100}%` }} />
-              </span>
-              <span className="w-7 shrink-0 text-right font-semibold tabular-nums">{fmt(s.started + s.local)}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-muted-foreground">Gezählt seit {new Date(stats.since).toLocaleDateString("de-DE")}.</p>
-      </Card>
-    </div>
-  );
-}
-
-function Tile({ label, value, hint, testId }: { label: string; value: number; hint?: ReactNode; testId?: string }) {
-  return (
-    <Card className="grid content-start gap-0.5 p-3 text-center">
-      <span className="text-xs font-semibold text-muted-foreground">{label}</span>
-      <b className="text-2xl tabular-nums" data-testid={testId}>{fmt(value)}</b>
-      {hint && <span className="text-[11px] leading-tight text-muted-foreground">{hint}</span>}
-    </Card>
   );
 }

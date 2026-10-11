@@ -16,12 +16,49 @@ export interface SiteConfig {
   hasCode: boolean;
   /** Standard-Einstellungen pro Spiel (vom Admin, ersetzen die eingebauten Standards) */
   defaults: GameDefaults;
+  /** Hinweis-Banner auf der Startseite (leer: keins) */
+  banner: string;
+  /** Spiele mit „Neu“-Markierung */
+  featured: string[];
+  /** eigene Reihenfolge in der Spielauswahl (fehlende hinten in der eingebauten Reihenfolge) */
+  order: string[];
+  limits: SiteLimits;
+  features: SiteFeatures;
+  /** Wie lange vergangene Räume im Verlauf bleiben (Tage) */
+  archiveDays: number;
 }
 
-/** Was der Admin unter „Freigaben“ speichert */
-export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message">;
+export interface SiteLimits {
+  /** Räume ohne Aktivität verschwinden nach so vielen Stunden */
+  roomHours: number;
+  /** höchstens so viele Leute pro Raum */
+  maxPlayers: number;
+  /** höchstens so viele offene Räume gleichzeitig (0: egal) */
+  maxRooms: number;
+}
 
-export const DEFAULT_CONFIG: SiteConfig = { site: "on", games: {}, message: "", hasCode: false, defaults: {} };
+export interface SiteFeatures {
+  /** Online-Räume (aus: nur „Ein Handy für alle“) */
+  online: boolean;
+  /** Audio & Video in Online-Räumen */
+  call: boolean;
+  groups: boolean;
+  /** Profile mit Statistik */
+  profiles: boolean;
+}
+
+export const DEFAULT_LIMITS: SiteLimits = { roomHours: 48, maxPlayers: 20, maxRooms: 0 };
+export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true };
+export const DEFAULT_ARCHIVE_DAYS = 30;
+export const MAX_BANNER = 200;
+
+/** Was der Admin unter „Einstellungen“ speichert */
+export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays">;
+
+export const DEFAULT_CONFIG: SiteConfig = {
+  site: "on", games: {}, message: "", hasCode: false, defaults: {},
+  banner: "", featured: [], order: [], limits: DEFAULT_LIMITS, features: DEFAULT_FEATURES, archiveDays: DEFAULT_ARCHIVE_DAYS,
+};
 export const ACCESS_LEVELS: readonly Access[] = ["on", "code", "off"];
 export const MAX_MESSAGE = 200;
 export const ACCESS_CODE_RE = /^.{4,32}$/;
@@ -34,11 +71,34 @@ export function sanitizeConfig(x: unknown, gameIds: readonly string[]): AccessCo
   const games: Record<string, Access> = {};
   const g = (o.games && typeof o.games === "object" ? o.games : {}) as Record<string, unknown>;
   for (const id of gameIds) if (isAccess(g[id]) && g[id] !== "on") games[id] = g[id] as Access;
+  const num = (v: unknown, min: number, max: number, def: number) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
+  };
+  const l = (o.limits && typeof o.limits === "object" ? o.limits : {}) as Record<string, unknown>;
+  const f = (o.features && typeof o.features === "object" ? o.features : {}) as Record<string, unknown>;
+  const ids = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((id): id is string => typeof id === "string" && gameIds.includes(id)))] : []);
   return {
     site: isAccess(o.site) ? o.site : "on",
     games,
     message: typeof o.message === "string" ? o.message.slice(0, MAX_MESSAGE) : "",
+    banner: typeof o.banner === "string" ? o.banner.slice(0, MAX_BANNER) : "",
+    featured: ids(o.featured),
+    order: ids(o.order),
+    limits: {
+      roomHours: num(l.roomHours, 1, 24 * 14, DEFAULT_LIMITS.roomHours),
+      maxPlayers: num(l.maxPlayers, 2, 20, DEFAULT_LIMITS.maxPlayers),
+      maxRooms: num(l.maxRooms, 0, 500, DEFAULT_LIMITS.maxRooms),
+    },
+    features: Object.fromEntries((Object.keys(DEFAULT_FEATURES) as (keyof SiteFeatures)[]).map((k) => [k, f[k] !== false])) as unknown as SiteFeatures,
+    archiveDays: num(o.archiveDays, 1, 365, DEFAULT_ARCHIVE_DAYS),
   };
+}
+
+/** Spiele in der vom Admin gewählten Reihenfolge */
+export function orderGames<T extends string>(ids: readonly T[], order: readonly string[]): T[] {
+  const first = order.filter((id): id is T => ids.includes(id as T));
+  return [...first, ...ids.filter((id) => !first.includes(id))];
 }
 
 /** Was gilt für ein Spiel? Der strengere Wert von Spieltisch und Spiel gewinnt. */
@@ -97,12 +157,17 @@ export interface AdminRoom {
 
 // ---------- Admin: Statistik ----------
 
-export type StatKind = "rooms" | "started" | "finished" | "local";
+export type StatKind = "rooms" | "started" | "finished" | "local" | "players";
 export type StatCounts = Partial<Record<StatKind, number>>;
-export const STAT_KINDS: readonly StatKind[] = ["rooms", "started", "finished", "local"];
+export const STAT_KINDS: readonly StatKind[] = ["rooms", "started", "finished", "local", "players"];
 export const STAT_WEEKS = 12;
 
+/** So viele Tage Tagesstatistik */
+export const STAT_DAYS = 60;
+
 export interface SiteStats {
+  /** Neuester Tag zuerst (YYYY-MM-DD, UTC), höchstens STAT_DAYS */
+  days?: { day: string; games: Record<string, StatCounts> }[];
   /** Neueste Woche zuerst, höchstens STAT_WEEKS */
   weeks: { week: string; games: Record<string, StatCounts> }[];
   totals: Record<string, StatCounts>;
@@ -126,8 +191,11 @@ export function isoWeek(ms: number): string {
 /** Zählt ein Ereignis in der Woche von `now` und insgesamt; alte Wochen fallen raus */
 export function countStat(prev: SiteStats, gameId: string, kind: StatKind, now: number): SiteStats {
   const week = isoWeek(now);
+  const day = new Date(now).toISOString().slice(0, 10);
   const bump = (c: StatCounts | undefined): StatCounts => ({ ...c, [kind]: (c?.[kind] ?? 0) + 1 });
   const weeks = prev.weeks.some((w) => w.week === week) ? prev.weeks : [{ week, games: {} }, ...prev.weeks];
+  const prevDays = prev.days ?? [];
+  const days = prevDays.some((d) => d.day === day) ? prevDays : [{ day, games: {} }, ...prevDays];
   return {
     since: prev.since,
     totals: { ...prev.totals, [gameId]: bump(prev.totals[gameId]) },
@@ -135,12 +203,40 @@ export function countStat(prev: SiteStats, gameId: string, kind: StatKind, now: 
       .map((w) => (w.week === week ? { week, games: { ...w.games, [gameId]: bump(w.games[gameId]) } } : w))
       .sort((a, b) => (a.week < b.week ? 1 : -1))
       .slice(0, STAT_WEEKS),
+    days: days
+      .map((d) => (d.day === day ? { day, games: { ...d.games, [gameId]: bump(d.games[gameId]) } } : d))
+      .sort((a, b) => (a.day < b.day ? 1 : -1))
+      .slice(0, STAT_DAYS),
   };
 }
 
 /** Summe über alle Spiele */
 export function sumStats(games: Record<string, StatCounts>): Required<StatCounts> {
-  const s = { rooms: 0, started: 0, finished: 0, local: 0 };
+  const s = { rooms: 0, started: 0, finished: 0, local: 0, players: 0 };
   for (const c of Object.values(games)) for (const k of STAT_KINDS) s[k] += c[k] ?? 0;
   return s;
 }
+
+// ---------- Admin: Verlauf und Verzeichnis ----------
+
+/** Ein Online-Raum im Verlauf („wer war da“) – bleibt `archiveDays` nach der letzten Aktivität */
+export interface ArchivedRoom {
+  code: string;
+  createdAt: number;
+  lastAt: number;
+  /** gespielte Spiele (Reihenfolge des ersten Starts) */
+  games: string[];
+  /** alle Namen, die im Raum waren */
+  players: string[];
+  /** gestartete Partien */
+  partien: number;
+  /** geschlossen oder abgelaufen */
+  endedAt?: number;
+}
+
+export interface DirGroup { code: string; name: string; members: number; createdAt: number; lastAt: number }
+export interface DirProfile { id: string; name: string; games: number; createdAt: number; lastAt: number }
+
+/** Was der Admin auf einmal löschen kann */
+export type WipeKind = "rooms" | "archive" | "stats" | "groups" | "profiles";
+export const WIPE_KINDS: readonly WipeKind[] = ["rooms", "archive", "stats", "groups", "profiles"];

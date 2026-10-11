@@ -73,6 +73,8 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
 };
 
 const loaded = new Map<string, GameUI>();
+/** schon geladen? (für Vorab-Prüfungen ohne Warten) */
+export const isGameUILoaded = (id: string) => loaded.has(idOf(id));
 const loading = new Map<string, Promise<GameUI>>();
 const idOf = (id: string): GameId => (isGameId(id) ? id : "tutto");
 
@@ -81,7 +83,12 @@ export function loadGameUI(id: string): Promise<GameUI> {
   const key = idOf(id);
   let p = loading.get(key);
   if (!p) {
-    p = LOADERS[key]().then((ui) => { loaded.set(key, ui); return ui; });
+    p = LOADERS[key]().then((ui) => {
+      loaded.set(key, ui);
+      // React liest ein fertiges Versprechen so direkt aus, ohne erneut zu warten
+      Object.assign(p!, { status: "fulfilled", value: ui });
+      return ui;
+    });
     // Fehlgeschlagen (z. B. kein Netz beim ersten Mal): beim nächsten Versuch neu laden
     p.catch(() => loading.delete(key));
     loading.set(key, p);
@@ -94,7 +101,8 @@ export function loadGameUI(id: string): Promise<GameUI> {
  * wartet die nächste <Suspense>-Grenze (Ladeanzeige), bis es da ist.
  */
 export function getGameUI(id: string): GameUI {
-  return loaded.get(idOf(id)) ?? use(loadGameUI(id));
+  // Immer use() – React verlangt, dass es bei jedem Rendern gleich aufgerufen wird
+  return use(loadGameUI(id));
 }
 
 /** Symbol eines Spiels – sofort verfügbar */

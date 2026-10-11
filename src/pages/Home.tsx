@@ -18,6 +18,7 @@ import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup, useActiveGroup } from "@/lib/group";
 import { leaderboard } from "@shared/platform/group";
 import { Avatar } from "@/platform/Avatar";
+import { cn } from "@/lib/utils";
 import { useOnline } from "@/hooks/useOnline";
 
 type Way = "local" | "online";
@@ -53,7 +54,11 @@ export function Home() {
   const [avatar] = useState(myAvatar);
   const [running] = useState(runningLocal);
   // Ohne Netz: Online-Wege sichtbar, aber gesperrt – „Ein Handy für alle“ geht immer
-  const online = useOnline();
+  const netOnline = useOnline();
+  // Admin kann Online-Räume, Gruppen und Profile abschalten
+  const features = config?.features;
+  const onlineOff = features?.online === false;
+  const online = netOnline && !onlineOff;
   // Ein Handy: gleich in die lokale Lobby – mit dem zuletzt lokal gewählten Spiel, falls es noch freigegeben ist
   const playLocal = () => {
     remember("local");
@@ -72,18 +77,19 @@ export function Home() {
           <h1 className="text-2xl font-bold leading-none tracking-tight">Spieltisch</h1>
           <p className="mt-1 truncate text-sm text-muted-foreground">Für euren Spieleabend</p>
         </div>
-        <button type="button" aria-label="Mein Profil" onClick={() => { remove(RETURN_KEY, true); navigate("/profil"); }} data-testid="profile-button"
+        {features?.profiles !== false && <button type="button" aria-label="Mein Profil" onClick={() => { remove(RETURN_KEY, true); navigate("/profil"); }} data-testid="profile-button"
           className="shrink-0 rounded-full outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring">
           <Avatar avatar={avatar} className="size-11 text-2xl ring-1 ring-border" />
-        </button>
+        </button>}
       </div>
 
       {way === null && (
         <>
-          <h2 className="mt-7 mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground">Wie spielt ihr?</h2>
+          {config?.banner && <p className="text-in mt-5 shrink-0 rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
+          <h2 className={cn("mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground", config?.banner ? "mt-4" : "mt-7")}>Wie spielt ihr?</h2>
           <div className="glass grid shrink-0 grid-cols-[minmax(0,1fr)] divide-y divide-border overflow-hidden rounded-2xl">
             <WayRow icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiterspielen` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} onClick={playLocal} />
-            <WayRow icon={Users} title="Online-Raum erstellen" text={online ? "Jeder spielt am eigenen Handy" : "Braucht Netz – gerade offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
+            <WayRow icon={Users} title="Online-Raum erstellen" text={onlineOff ? "Gerade abgeschaltet" : online ? "Jeder spielt am eigenen Handy" : "Braucht Netz – gerade offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
           </div>
           <form className="glass mt-3 shrink-0 rounded-2xl p-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
             <label htmlFor="code" className="flex items-center gap-2 px-1 font-semibold"><LogIn className="size-4.5 text-primary" />Raum beitreten</label>
@@ -93,7 +99,7 @@ export function Home() {
               <Button type="submit" disabled={!codeOk || !online} className="shrink-0">Los</Button>
             </div>
           </form>
-          <GroupCard />
+          {features?.groups !== false && <GroupCard />}
           <InstallHint />
           <div className="min-h-0 flex-1" />
         </>

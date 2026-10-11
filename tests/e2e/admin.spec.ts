@@ -26,6 +26,8 @@ async function login(page: Page) {
   await page.goto("/admin");
   await page.getByLabel("Admin-Passwort").fill(PW);
   await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByTestId("stats")).toBeVisible();
+  await page.getByRole("tab", { name: "Freigaben" }).click();
   await expect(page.getByRole("radiogroup", { name: "Spieltisch" })).toBeVisible();
 }
 
@@ -181,7 +183,7 @@ test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({
   await local.context().close();
 });
 
-test("Admin: Statistik zählt Räume und Partien", async ({ page, request, browser }) => {
+test("Admin: Übersicht zählt Räume und Partien", async ({ page, request, browser }) => {
   const before = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
   const rooms = (before.totals.kniffel?.rooms ?? 0) as number;
 
@@ -193,7 +195,7 @@ test("Admin: Statistik zählt Räume und Partien", async ({ page, request, brows
   await host.context().close();
 
   await login(page);
-  await page.getByRole("tab", { name: "Statistik" }).click();
+  await page.getByRole("tab", { name: "Übersicht" }).click();
   const row = page.getByTestId("stat-game-kniffel");
   await expect(row).toBeVisible();
   const cells = row.getByRole("cell");
@@ -217,10 +219,96 @@ test("Admin: Screenshot schmales Handy", async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 320, height: 640 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "de-DE" });
   const page = await ctx.newPage();
   await login(page);
-  await page.getByRole("tab", { name: "Statistik" }).click();
+  await page.getByRole("tab", { name: "Übersicht" }).click();
   await expect(page.getByRole("heading", { name: "Pro Woche" })).toBeVisible();
   await adminShot(page, "5-statistik-320");
   const w = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(w).toBeLessThanOrEqual(320);
   await ctx.close();
+});
+
+test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen", async ({ page, request, browser }) => {
+  // Ein Raum mit zwei Leuten und einer Partie
+  const host = await newPhone(browser);
+  const code = await createRoom(host, "vier", "Henrike", "2580");
+  const guest = await newPhone(browser);
+  await guest.goto(`/r/${code}`);
+  await guest.getByLabel("Dein Name").fill("Gustav");
+  await guest.getByLabel("PIN").fill("2580");
+  await guest.getByRole("button", { name: "Beitreten" }).click();
+  await expect(host.getByText("Gustav")).toBeVisible();
+  await host.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(host.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
+
+  await login(page);
+  // Übersicht: gerade offen
+  await page.getByRole("tab", { name: "Übersicht" }).click();
+  await expect(page.getByTestId("live-rooms")).not.toHaveText("0");
+  await adminShot(page, "6-uebersicht");
+  // Verlauf: Raum mit beiden Namen, Leute-Liste, Suche
+  await page.getByRole("tab", { name: "Verlauf" }).click();
+  const card = page.getByTestId(`arch-${code}`);
+  await expect(card).toContainText("Henrike");
+  await expect(card).toContainText("Gustav");
+  await expect(card).toContainText("Vier in einer Reihe");
+  await expect(card).toContainText("1 Partie");
+  await page.getByRole("radio", { name: /Leute/ }).click();
+  await expect(page.getByTestId("people")).toContainText("Gustav");
+  await page.getByLabel("Verlauf durchsuchen").fill("henri");
+  await expect(page.getByTestId("people")).not.toContainText("Gustav");
+  await adminShot(page, "7-verlauf");
+
+  // Optionen: Banner und „Neu“ erscheinen für Besucher
+  await page.getByRole("tab", { name: "Optionen" }).click();
+  await page.getByLabel("Hinweis-Banner (optional)").fill("Neu: Mühle und Dame!");
+  await page.getByRole("button", { name: "Dame als neu markieren" }).click();
+  await page.getByTestId("options").getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByTestId("options").getByRole("status")).toHaveText("Gespeichert.");
+  await adminShot(page, "8-optionen");
+  const visitor = await newPhone(browser);
+  await visitor.goto("/");
+  await expect(visitor.getByTestId("banner")).toHaveText("Neu: Mühle und Dame!");
+  await visitor.getByRole("button", { name: /Ein Handy für alle/ }).click();
+  await visitor.getByTestId("game-card").click();
+  await expect(visitor.getByTestId("pick-dame")).toContainText("NEU");
+  await visitor.context().close();
+
+  // Daten: alles löschen braucht „LÖSCHEN“, danach leer und der Raum ist zu
+  await page.getByRole("tab", { name: "Daten" }).click();
+  await page.getByRole("button", { name: "Alles auswählen" }).click();
+  const wipe = page.getByRole("button", { name: /endgültig löschen/ });
+  await expect(wipe).toBeDisabled();
+  await page.getByLabel(/LÖSCHEN/).fill("löschen");
+  await adminShot(page, "9-daten");
+  await wipe.click();
+  await expect(page.getByTestId("data").getByRole("status")).toHaveText("Gelöscht.");
+  await expect(host.getByText(/geschlossen|beendet/i).first()).toBeVisible();
+  await page.getByRole("tab", { name: "Verlauf" }).click();
+  await expect(page.getByTestId("history")).toContainText("Noch keine Räume im Verlauf");
+  const stats = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
+  expect(Object.keys(stats.totals)).toHaveLength(0);
+  await host.context().close();
+  await guest.context().close();
+});
+
+test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich löschen", async ({ page, request }) => {
+  const AB = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const profile = Array.from({ length: 16 }, () => AB[Math.floor(Math.random() * AB.length)]).join("");
+  // Profil spielt eine Partie, Gruppe wird angelegt
+  expect((await request.post(`/api/profile/${profile}/result`, { data: { gameId: "kniffel", won: true, score: 210, players: 2 } })).ok()).toBe(true);
+  const g = await (await request.post("/api/groups", { data: { profile, member: "Ida", name: "Testrunde" } })).json();
+  const code = g.group.code as string;
+
+  await login(page);
+  await page.getByRole("tab", { name: "Gruppen" }).click();
+  await expect(page.getByTestId(`group-${code}`)).toContainText("Testrunde");
+  await expect(page.getByTestId(`profile-${profile}`)).toContainText("1 Partie");
+  await adminShot(page, "10-gruppen");
+  await page.getByTestId(`group-${code}`).getByRole("button", { name: "Gruppe Testrunde löschen" }).click();
+  await page.getByRole("button", { name: "Löschen", exact: true }).click();
+  await expect(page.getByTestId(`group-${code}`)).toHaveCount(0);
+  expect((await request.get(`/api/groups/${code}`)).status()).toBe(404);
+  await page.getByTestId(`profile-${profile}`).getByRole("button").click();
+  await page.getByRole("button", { name: "Löschen", exact: true }).click();
+  await expect(page.getByTestId(`profile-${profile}`)).toHaveCount(0);
 });

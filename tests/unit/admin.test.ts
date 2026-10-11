@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GAMES, isGameId } from "@shared/games";
-import { countStat, emptySiteStats, isoWeek, sanitizeConfig, sanitizeDefaults, STAT_WEEKS, sumStats, withDefaults } from "@shared/platform/access";
+import { countStat, emptySiteStats, isoWeek, sanitizeConfig, orderGames, sanitizeDefaults, STAT_WEEKS, sumStats, withDefaults } from "@shared/platform/access";
 import { createRoom } from "@shared/platform/room";
 
 const defs = (id: string) => (isGameId(id) ? GAMES[id].settings : undefined);
@@ -9,7 +9,21 @@ const DAY = 86_400_000;
 describe("Admin", () => {
   it("Freigaben: Unbekanntes fällt raus", () => {
     expect(sanitizeConfig({ site: "x", games: { tutto: "off", nope: "off", kniffel: "on" }, message: 3 }, Object.keys(GAMES)))
-      .toEqual({ site: "on", games: { tutto: "off" }, message: "" });
+      .toMatchObject({ site: "on", games: { tutto: "off" }, message: "" });
+  });
+
+  it("Optionen: Grenzen begrenzt, unbekannte Spiele raus, Funktionen standardmäßig an", () => {
+    const c = sanitizeConfig({
+      limits: { roomHours: 9999, maxPlayers: 1, maxRooms: -5 }, featured: ["dame", "nope", "dame"], order: ["ludo", 3, "tutto"],
+      features: { online: false, call: "x" }, banner: "Hallo", archiveDays: 0,
+    }, Object.keys(GAMES));
+    expect(c.limits).toEqual({ roomHours: 336, maxPlayers: 2, maxRooms: 0 });
+    expect(c.featured).toEqual(["dame"]);
+    expect(c.order).toEqual(["ludo", "tutto"]);
+    expect(c.features).toEqual({ online: false, call: true, groups: true, profiles: true });
+    expect(c.banner).toBe("Hallo");
+    expect(c.archiveDays).toBe(1);
+    expect(orderGames(["tutto", "kniffel", "ludo"], ["ludo", "gibtsnicht"])).toEqual(["ludo", "tutto", "kniffel"]);
   });
 
   it("Standards: nur bekannte Spiele/Einstellungen, geprüft, ohne eingebaute Werte", () => {
@@ -47,7 +61,9 @@ describe("Admin", () => {
     s = countStat(s, "kniffel", "local", t0);
     expect(s.weeks).toHaveLength(1);
     expect(s.totals.tutto).toEqual({ rooms: 1, started: 2 });
-    expect(sumStats(s.totals)).toEqual({ rooms: 1, started: 2, finished: 0, local: 1 });
+    expect(sumStats(s.totals)).toEqual({ rooms: 1, started: 2, finished: 0, local: 1, players: 0 });
+    // Tage: neuester zuerst
+    expect(s.days?.[0].day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     for (let i = 1; i <= 20; i++) s = countStat(s, "tutto", "finished", t0 + i * 7 * DAY);
     expect(s.weeks).toHaveLength(STAT_WEEKS);
     expect(s.weeks[0].week).toBe(isoWeek(t0 + 20 * 7 * DAY));

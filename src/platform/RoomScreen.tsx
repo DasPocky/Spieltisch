@@ -13,7 +13,7 @@ import { pickGameKey } from "@/lib/createRoom";
 import { takeGamePick } from "@/lib/pickGame";
 import { LAST_GAME_KEY } from "@/lib/storage";
 import { savedAccess, siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
-import { accessFor } from "@shared/platform/access";
+import { accessFor, orderGames } from "@shared/platform/access";
 import { GAME_CATEGORIES } from "@shared/platform/types";
 import { IconTile } from "./Logo";
 import { Leave, MenuSheet, type MenuProps } from "./MenuSheet";
@@ -180,7 +180,7 @@ function Lobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: P
   });
   const [settings, setSettings] = useState(false);
   const config = useSiteConfig();
-  const gameIds = GAME_IDS.filter((id) => !config || accessFor(config, id) !== "off");
+  const gameIds = orderGames(GAME_IDS, config?.order ?? []).filter((id) => !config || accessFor(config, id) !== "off");
   useEffect(() => { if (code && isHost) try { localStorage.setItem(LAST_GAME_KEY, room.gameId); } catch { /* egal */ } }, [code, isHost, room.gameId]);
   // Aktive Gruppe frisch holen (neue Mitglieder, Avatare)
   useEffect(() => { const g = activeGroupCode(); if (g) void loadGroup(g); }, []);
@@ -288,7 +288,7 @@ function GamePicker({ open, onOpenChange, gameIds, current, online, onPick }: {
                       className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === current ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
                       <IconTile className="size-9"><GIcon className="size-6" /></IconTile>
                       <span className="min-w-0 flex-1">
-                        <span className="block leading-tight font-semibold">{g.name}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
+                        <span className="block leading-tight font-semibold">{g.name}{siteConfigNow()?.featured.includes(id) && <span className="ml-1.5 rounded-full bg-primary/14 px-1.5 py-px align-[1px] text-[0.65rem] font-bold text-primary">NEU</span>}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
                         <span className="block text-xs text-muted-foreground">{g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}–${g.maxPlayers}`} Spieler · {g.duration}</span>
                       </span>
                     </button>

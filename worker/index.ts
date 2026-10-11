@@ -9,7 +9,8 @@ import {
 } from "../shared/platform/group";
 import {
   ACCESS_CODE_RE, accessFor, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
-  type AccessConfig, type AdminRoom, type GameDefaults, type SiteConfig, type SiteStats, type StatKind,
+  WIPE_KINDS, type AccessConfig, type AdminRoom, type ArchivedRoom, type DirGroup, type DirProfile, type GameDefaults, type SiteConfig, type SiteStats,
+  type StatKind, type WipeKind,
 } from "../shared/platform/access";
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
@@ -312,7 +313,7 @@ export class GameRoom extends DurableObject<Env> {
       const pid = room.profiles?.[r.id];
       if (!pid) return;
       const entry: RecentGame = { gameId: now.gameId, at: Date.now(), won: r.won, score: r.score, players, online: true };
-      try { await this.env.PROFILES.get(this.env.PROFILES.idFromName(pid)).record(entry); } catch { /* Statistik ist nur ein Extra */ }
+      try { await this.env.PROFILES.get(this.env.PROFILES.idFromName(pid)).record(entry, pid); } catch { /* Statistik ist nur ein Extra */ }
     }));
     // Gruppen der Mitspieler: jede bekommt das Ergebnis aller, die dort Mitglied sind
     const entries = results.flatMap((r) => (room.profiles?.[r.id] ? [{ profile: room.profiles[r.id], won: r.won }] : []));
@@ -385,12 +386,14 @@ export class GameRoom extends DurableObject<Env> {
 
   /** Läuft, wenn 48 h lang nichts passiert ist: Raum löschen. */
   async alarm(): Promise<void> {
-    await this.destroy("Der Raum ist nach 48 Stunden ohne Aktivität abgelaufen.");
+    await this.destroy(`Der Raum ist nach ${Math.round((await this.roomTtl()) / 3_600_000)} Stunden ohne Aktivität abgelaufen.`);
   }
 
   /** Alle rauswerfen und sämtliche gespeicherten Daten des Raums löschen. */
   private async destroy(message: string): Promise<void> {
     const code = this.room?.code;
+    // Verlauf: Raum ist zu (Namen bleiben dort bis zur eingestellten Frist)
+    if (code && this.room) { try { await settingsOf(this.env).roomEnded(code, this.room.createdAt); } catch { /* nur ein Extra */ } }
     for (const ws of this.ctx.getWebSockets()) {
       this.send(ws, { type: "error", code: "closed", fatal: true, message });
       try { ws.close(4410, "closed"); } catch { /* egal */ }
@@ -448,6 +451,14 @@ export class GameRoom extends DurableObject<Env> {
     }
     room.fails = 0;
 
+    // Grenze aus den Admin-Einstellungen
+    try {
+      const max = (await settingsOf(this.env).config()).limits.maxPlayers;
+      if (room.state.players.length + (room.state.bench?.length ?? 0) >= max) {
+        this.send(ws, { type: "error", code: "rejected", fatal: true, message: `Der Raum ist voll (höchstens ${max} Leute).` });
+        return;
+      }
+    } catch { /* ohne Einstellungen gilt die eingebaute Grenze */ }
     const playerId = crypto.randomUUID();
     const token = crypto.randomUUID();
     try {
@@ -457,6 +468,7 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
     room.tokens[playerId] = token;
+    await this.count("players");
     if (nonce) room.joins = Object.fromEntries([...Object.entries(room.joins ?? {}), [nonce, playerId]].slice(-40));
     if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile)) (room.profiles ??= {})[playerId] = msg.profile;
     await this.applyExtras(playerId, msg);
@@ -532,7 +544,7 @@ export class GameRoom extends DurableObject<Env> {
     if (!this.room) return;
     this.room.updatedAt = Date.now();
     await this.ctx.storage.put("room", this.room);
-    await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL_MS);
+    await this.ctx.storage.setAlarm(Date.now() + await this.roomTtl());
     await this.report(important);
   }
 
@@ -548,7 +560,18 @@ export class GameRoom extends DurableObject<Env> {
   /** Statistik: Raum angelegt, Partie gestartet oder beendet */
   private async count(kind: StatKind): Promise<void> {
     if (!this.room) return;
-    try { await settingsOf(this.env).count(this.room.state.gameId, kind); } catch { /* nur ein Extra */ }
+    try { await settingsOf(this.env).count(this.room.state.gameId, kind, this.room.code); } catch { /* nur ein Extra */ }
+  }
+
+  /** Ablauffrist aus den Admin-Einstellungen (alle paar Minuten neu gelesen) */
+  private ttl = ROOM_TTL_MS;
+  private ttlAt = 0;
+  private async roomTtl(): Promise<number> {
+    if (Date.now() - this.ttlAt > 5 * 60 * 1000) {
+      try { this.ttl = (await settingsOf(this.env).config()).limits.roomHours * 60 * 60 * 1000; } catch { /* alter Wert */ }
+      this.ttlAt = Date.now();
+    }
+    return this.ttl;
   }
 }
 
@@ -605,8 +628,8 @@ export class SiteSettings extends DurableObject<Env> {
   }
 
   async config(): Promise<SiteConfig> {
-    const { site, games, message } = this.data.config;
-    return { site, games, message, hasCode: !!this.data.codeHash, defaults: this.data.defaults ?? {} };
+    // Ältere gespeicherte Einstellungen kennen neue Felder noch nicht – die Prüfung füllt sie mit Standards
+    return { ...sanitizeConfig(this.data.config, GAME_IDS), hasCode: !!this.data.codeHash, defaults: this.data.defaults ?? {} };
   }
 
   async checkCode(code: string): Promise<boolean> {
@@ -675,10 +698,77 @@ export class SiteSettings extends DurableObject<Env> {
 
   // ----- Raum-Übersicht -----
 
-  /** Ein Raum meldet sich an oder aktualisiert seine Kurzinfo */
+  /** Ein Raum meldet sich an oder aktualisiert seine Kurzinfo – und landet im Verlauf („wer war da“) */
   async roomReport(room: AdminRoom): Promise<void> {
     if (!ROOM_CODE_RE.test(room.code)) return;
     await this.ctx.storage.put(`room:${room.code}`, room);
+    const key = archKey(room.code, room.createdAt);
+    const a = (await this.ctx.storage.get<ArchivedRoom>(key)) ?? { code: room.code, createdAt: room.createdAt, lastAt: room.activeAt, games: [], players: [], partien: 0 };
+    a.lastAt = Math.max(a.lastAt, room.activeAt);
+    for (const p of room.players) if (!a.players.includes(p.name)) a.players.push(p.name);
+    if (room.phase === "playing" && !a.games.includes(room.gameId)) a.games.push(room.gameId);
+    a.players = a.players.slice(0, 60);
+    await this.ctx.storage.put(key, a);
+  }
+
+  /** Raum geschlossen oder abgelaufen */
+  async roomEnded(code: string, createdAt: number): Promise<void> {
+    await this.ctx.storage.delete(`room:${code}`);
+    const key = archKey(code, createdAt);
+    const a = await this.ctx.storage.get<ArchivedRoom>(key);
+    if (a) await this.ctx.storage.put(key, { ...a, endedAt: Date.now() });
+  }
+
+  /** Verlauf, neueste zuerst; was älter ist als die eingestellte Frist, wird dabei gelöscht */
+  async archiveList(): Promise<ArchivedRoom[]> {
+    const all = await this.ctx.storage.list<ArchivedRoom>({ prefix: "arch:" });
+    const days = (await this.config()).archiveDays;
+    const cut = Date.now() - days * 86_400_000;
+    const old = [...all].filter(([, a]) => a.lastAt < cut).map(([k]) => k);
+    if (old.length) await this.ctx.storage.delete(old);
+    return [...all].filter(([k]) => !old.includes(k)).map(([, a]) => a).sort((a, b) => b.lastAt - a.lastAt);
+  }
+
+  async archiveDelete(code: string, createdAt: number): Promise<void> {
+    await this.ctx.storage.delete(archKey(code, createdAt));
+  }
+
+  // ----- Verzeichnis: Gruppen und Profile (ab jetzt erfasst, damit der Admin sie sieht und löschen kann) -----
+
+  async groupSeen(g: DirGroup): Promise<void> {
+    if (!GROUP_CODE_RE.test(g.code)) return;
+    await this.ctx.storage.put(`grp:${g.code}`, g);
+  }
+
+  async profileSeen(p: DirProfile): Promise<void> {
+    if (!PROFILE_ID_RE.test(p.id)) return;
+    await this.ctx.storage.put(`prf:${p.id}`, p);
+  }
+
+  async directory(): Promise<{ groups: DirGroup[]; profiles: DirProfile[] }> {
+    const groups = [...(await this.ctx.storage.list<DirGroup>({ prefix: "grp:" })).values()].sort((a, b) => b.lastAt - a.lastAt);
+    const profiles = [...(await this.ctx.storage.list<DirProfile>({ prefix: "prf:" })).values()].sort((a, b) => b.lastAt - a.lastAt);
+    return { groups, profiles };
+  }
+
+  async directoryRemove(kind: "grp" | "prf", id: string): Promise<void> {
+    await this.ctx.storage.delete(`${kind}:${id}`);
+  }
+
+  /** Löschen nach Art; liefert Räume, Gruppen und Profile, die der Aufrufer selbst noch leeren muss */
+  async wipe(kinds: WipeKind[]): Promise<{ rooms: string[]; groups: string[]; profiles: string[] }> {
+    const out = { rooms: [] as string[], groups: [] as string[], profiles: [] as string[] };
+    const drop = async (prefix: string) => {
+      const keys = [...(await this.ctx.storage.list({ prefix })).keys()];
+      for (let i = 0; i < keys.length; i += 128) await this.ctx.storage.delete(keys.slice(i, i + 128));
+      return keys.map((k) => k.slice(prefix.length));
+    };
+    if (kinds.includes("rooms")) out.rooms = await drop("room:");
+    if (kinds.includes("archive")) await drop("arch:");
+    if (kinds.includes("stats")) { this.stats = emptySiteStats(Date.now()); await this.ctx.storage.put("stats", this.stats); }
+    if (kinds.includes("groups")) out.groups = await drop("grp:");
+    if (kinds.includes("profiles")) out.profiles = await drop("prf:");
+    return out;
   }
 
   async roomGone(code: string): Promise<void> {
@@ -696,10 +786,19 @@ export class SiteSettings extends DurableObject<Env> {
 
   // ----- Statistik -----
 
-  async count(gameId: string, kind: StatKind): Promise<void> {
+  async count(gameId: string, kind: StatKind, code?: string): Promise<void> {
     if (!isGameId(gameId) || !STAT_KINDS.includes(kind)) return;
     this.stats = countStat(this.stats, gameId, kind, Date.now());
     await this.ctx.storage.put("stats", this.stats);
+    // Verlauf: gestartete Partien je Raum
+    if (kind === "started" && code && ROOM_CODE_RE.test(code)) {
+      const room = await this.ctx.storage.get<AdminRoom>(`room:${code}`);
+      if (room) {
+        const key = archKey(code, room.createdAt);
+        const a = await this.ctx.storage.get<ArchivedRoom>(key);
+        if (a) await this.ctx.storage.put(key, { ...a, partien: a.partien + 1, games: a.games.includes(gameId) ? a.games : [...a.games, gameId] });
+      }
+    }
   }
 
   async statsGet(): Promise<SiteStats> {
@@ -712,6 +811,7 @@ export class SiteSettings extends DurableObject<Env> {
 }
 
 const settingsOf = (env: Env) => env.SETTINGS.get(env.SETTINGS.idFromName("site"));
+const archKey = (code: string, createdAt: number) => `arch:${String(createdAt).padStart(15, "0")}:${code}`;
 
 /** Ein Durable Object pro Profil: Name und Statistik. Ohne Aktivität nach einem Jahr gelöscht. */
 const PROFILE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
@@ -727,7 +827,8 @@ export class ProfileStore extends DurableObject<Env> {
     return this.stats ?? emptyStats(Date.now());
   }
 
-  async record(entry: RecentGame): Promise<ProfileStats> {
+  async record(entry: RecentGame, id?: string): Promise<ProfileStats> {
+    if (id && PROFILE_ID_RE.test(id)) this.pid = id;
     this.stats = addResult(this.stats ?? emptyStats(Date.now()), entry);
     await this.save();
     return this.stats;
@@ -782,6 +883,23 @@ export class ProfileStore extends DurableObject<Env> {
   private async save() {
     await this.ctx.storage.put("stats", this.stats);
     await this.ctx.storage.setAlarm(Date.now() + PROFILE_TTL_MS);
+    if (this.pid) await this.ctx.storage.put("pid", this.pid);
+    // Admin-Verzeichnis (nur Name, Anzahl Partien, Zeiten)
+    const id = this.pid ?? (await this.ctx.storage.get<string>("pid"));
+    if (id && this.stats) {
+      const games = Object.values(this.stats.games).reduce((n, g) => n + g.played, 0);
+      try { await settingsOf(this.env).profileSeen({ id, name: this.stats.name, games, createdAt: this.stats.createdAt, lastAt: Date.now() }); } catch { /* nur ein Extra */ }
+    }
+  }
+
+  private pid: string | undefined;
+
+  /** Admin: Profil komplett löschen */
+  async wipe(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.stats = null;
+    this.pid = undefined;
   }
 }
 
@@ -901,6 +1019,15 @@ export class GroupStore extends DurableObject<Env> {
   private async save() {
     await this.ctx.storage.put("group", this.group);
     await this.ctx.storage.setAlarm(Date.now() + GROUP_TTL_MS);
+    const g = this.group;
+    if (g) { try { await settingsOf(this.env).groupSeen({ code: g.code, name: g.name, members: g.members.length, createdAt: g.createdAt, lastAt: Date.now() }); } catch { /* nur ein Extra */ } }
+  }
+
+  /** Admin: Gruppe komplett löschen */
+  async wipe(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.group = null;
   }
 }
 
@@ -937,6 +1064,7 @@ const answer = (r: GroupAnswer | { ok: true; gone: true }) =>
  */
 async function handleGroups(request: Request, env: Env, path: string): Promise<Response> {
   const ip = request.headers.get("cf-connecting-ip") ?? "local";
+  if (request.method === "POST" && !(await settingsOf(env).config()).features.groups) return json({ error: "Gruppen sind gerade abgeschaltet." }, 403);
   if (path === "/api/groups" && request.method === "POST") {
     const body = await readBody(request);
     const profile = String(body?.profile ?? "");
@@ -1046,6 +1174,54 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
       } catch { return r; }
     }));
     return json({ rooms: rooms.filter((r) => r !== null).sort((a, b) => b.activeAt - a.activeAt), now: Date.now() });
+  }
+
+  if (path === "/api/admin/archive" && request.method === "GET") return json({ rooms: await settings.archiveList(), now: Date.now() });
+  if (path === "/api/admin/archive/delete" && request.method === "POST") {
+    const code = String(body.code ?? "");
+    const createdAt = Number(body.createdAt);
+    if (!ROOM_CODE_RE.test(code) || !Number.isFinite(createdAt)) return json({ error: "Ungültige Anfrage." }, 400);
+    await settings.archiveDelete(code, createdAt);
+    return json({ ok: true });
+  }
+  if (path === "/api/admin/directory" && request.method === "GET") return json(await settings.directory());
+
+  const del = path.match(/^\/api\/admin\/(groups|profiles)\/([A-Za-z0-9_-]+)\/delete$/);
+  if (del && request.method === "POST") {
+    const [, kind, id] = del;
+    if (kind === "groups") {
+      if (!GROUP_CODE_RE.test(id)) return json({ error: "Ungültiger Gruppencode." }, 400);
+      await groupOf(env, id).wipe();
+      await settings.directoryRemove("grp", id);
+    } else {
+      if (!PROFILE_ID_RE.test(id)) return json({ error: "Ungültiges Profil." }, 400);
+      await profileOf(env, id).wipe();
+      await settings.directoryRemove("prf", id);
+    }
+    return json({ ok: true });
+  }
+
+  // Daten löschen – zur Sicherheit muss „LÖSCHEN“ mitkommen
+  if (path === "/api/admin/wipe" && request.method === "POST") {
+    if (body.confirm !== "LÖSCHEN") return json({ error: "Bitte zur Bestätigung LÖSCHEN eintippen." }, 400);
+    const kinds = Array.isArray(body.what) ? body.what.filter((k): k is WipeKind => WIPE_KINDS.includes(k as WipeKind)) : [];
+    if (!kinds.length) return json({ error: "Nichts ausgewählt." }, 400);
+    // Offene Räume vorher merken – sie werden geschlossen (alle fliegen raus)
+    const open = kinds.includes("rooms") ? (await settings.roomList()).map((r) => r.code) : [];
+    const { groups, profiles } = await settings.wipe(kinds);
+    await Promise.all([
+      ...open.map((c) => env.ROOMS.get(env.ROOMS.idFromName(c)).adminClose().catch(() => false)),
+      ...groups.map((c) => groupOf(env, c).wipe().catch(() => undefined)),
+      ...profiles.map((id) => profileOf(env, id).wipe().catch(() => undefined)),
+    ]);
+    // Schließen meldet Räume im Verlauf als beendet – wurde der Verlauf mit gelöscht, dort auch weg
+    if (kinds.includes("archive") && open.length) await settings.wipe(["archive"]);
+    return json({ ok: true, rooms: open.length, groups: groups.length, profiles: profiles.length });
+  }
+
+  // Alles zum Herunterladen
+  if (path === "/api/admin/export" && request.method === "GET") {
+    return json({ exportedAt: new Date().toISOString(), config: await settings.config(), stats: await settings.statsGet(), archive: await settings.archiveList(), ...(await settings.directory()) });
   }
 
   const m = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/(close|unlock)$/);
@@ -1186,7 +1362,7 @@ export default {
         try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
         const entry = sanitizeResult(body, GAME_IDS, Date.now());
         if (!entry) return json({ error: "Ungültiges Ergebnis." }, 400);
-        return json(await store.record(entry));
+        return json(await store.record(entry, id));
       }
       if (!prof[2] && request.method === "GET") return json(await store.get());
       if (!prof[2] && request.method === "PUT") {
@@ -1224,6 +1400,8 @@ export default {
       const config = await settings.config();
       const access = accessFor(config, gameId);
       if (access === "off") return json({ error: "Dieses Spiel ist gerade abgeschaltet." }, 403);
+      if (!config.features.online) return json({ error: "Online-Räume sind gerade abgeschaltet – „Ein Handy für alle“ geht weiter." }, 403);
+      if (config.limits.maxRooms > 0 && (await settings.roomList()).length >= config.limits.maxRooms) return json({ error: "Gerade sind alle Tische belegt. Versuch es später nochmal." }, 503);
       const unlocked = typeof body.access === "string" && await settings.checkCode(body.access);
       if (access === "code" && !unlocked) return json({ error: "Dafür braucht ihr den Zugangscode.", code: "access" }, 403);
 
@@ -1236,7 +1414,10 @@ export default {
     }
 
     // Sprach-/Videochat eingerichtet?
-    if (url.pathname === "/api/call" && request.method === "GET") return json({ enabled: !!(env.REALTIME_APP_ID && env.REALTIME_APP_TOKEN) });
+    if (url.pathname === "/api/call" && request.method === "GET") {
+      const on = (await settingsOf(env).config()).features.call;
+      return json({ enabled: on && !!(env.REALTIME_APP_ID && env.REALTIME_APP_TOKEN) });
+    }
 
     // Sprach-/Videochat: Anfragen an Cloudflare Realtime weiterreichen – nur für Mitspieler des Raums
     const callMatch = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)\/call$/);
