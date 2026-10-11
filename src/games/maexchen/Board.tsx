@@ -10,7 +10,7 @@ import type { BoardProps } from "@/games/types";
 import { Die } from "@/platform/Die";
 import { useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { Seats } from "@/platform/Seats";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { SmoothText } from "@/platform/SmoothText";
@@ -220,22 +220,13 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   return (
     <>
       <style>{CSS}</style>
-      <PlayerRow className="gap-1.5">
-        {players.map((p) => {
-          const isCur = p.id === s.curId;
-          const dead = !isAlive(s, p.id);
-          return (
-            <div key={p.id} data-cur={isCur} data-testid={`player-${p.name}`}
-              className={cn("flex min-w-[5.5rem] shrink-0 flex-col gap-1 rounded-xl px-2.5 py-1.5 text-sm", isCur ? "turn" : "glass", dead && "opacity-40")}>
-              <span className="flex items-center gap-1.5 font-semibold">
-                {online && <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
-                <span className={cn("max-w-[6.5rem] truncate", dead && "line-through")}>{p.id === me ? "Du" : p.name}</span>
-              </span>
-              {dead ? <span className="text-xs">raus</span> : <Lids n={s.lives[p.id] ?? 0} max={maxLives} light={isCur} />}
-            </div>
-          );
-        })}
-      </PlayerRow>
+      <Seats me={me} online={online} seats={players.map((p) => {
+        const dead = !isAlive(s, p.id);
+        return {
+          id: p.id, name: p.name, cur: p.id === s.curId, out: dead, testId: `player-${p.name}`,
+          sub: dead ? "raus" : <Lids n={s.lives[p.id] ?? 0} max={maxLives} light={p.id === s.curId} />,
+        };
+      })} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 pt-1.5 pb-1">
         <div className="flex shrink-0 items-center justify-between gap-2 px-1">

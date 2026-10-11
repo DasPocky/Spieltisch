@@ -4,11 +4,11 @@
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
-import type { Avatar } from "./group";
+import { sanitizeAvatar, type Avatar } from "./group";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
 
 export const MAX_PLAYERS = 20;
-export const MAX_NAME = 20;
+export const MAX_NAME = 16;
 
 export interface RoomState {
   v: 1;
@@ -104,6 +104,10 @@ export type RoomAction =
   | { type: "setHints"; on: boolean }
   | { type: "removePlayer"; id: string }
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
+  /** Host: neue Reihenfolge (z. B. gemischt) – muss genau die Spieler enthalten */
+  | { type: "orderPlayers"; ids: string[] }
+  /** Avatar (Tier + Farbe) eines Spielers – jeder für sich, der Host für alle */
+  | { type: "setAvatar"; id: string; avatar: Avatar }
   /** Host: das auflösen, worauf die Partie gerade wartet */
   | { type: "skip" }
   /** Host (lokal: jeder): den letzten Zug zurücknehmen */
@@ -283,6 +287,20 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       // Ältere Spielstände kennen den Spieler noch – nicht mehr zurücknehmen
       s.undo = [];
       return s;
+    }
+    case "orderPlayers": {
+      hostOnly();
+      if (prev.phase !== "lobby") throw new GameError("Die Reihenfolge lässt sich nur in der Lobby ändern.");
+      const ids = Array.isArray(a.ids) ? a.ids : [];
+      const byId = new Map(prev.players.map((p) => [p.id, p]));
+      if (ids.length !== prev.players.length || new Set(ids).size !== ids.length || !ids.every((id) => byId.has(id))) throw new GameError("Das geht so nicht.");
+      return { ...structuredClone(prev), players: ids.map((id) => structuredClone(byId.get(id)!)) };
+    }
+    case "setAvatar": {
+      if (actorId !== a.id) hostOnly();
+      const av = sanitizeAvatar(a.avatar);
+      if (!av || ![...prev.players, ...(prev.bench ?? [])].some((p) => p.id === a.id)) throw new GameError("Das geht so nicht.");
+      return { ...structuredClone(prev), avatars: { ...prev.avatars, [a.id]: av } };
     }
     case "movePlayer": {
       hostOnly();

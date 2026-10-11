@@ -111,7 +111,7 @@ export function RoleCard({ role, hidden: startHidden = true, compact }: { role: 
 export function AliveStrip({ s, players, me, showAll }: { s: WerwolfState; players: Player[]; me: string | null; showAll?: boolean }) {
   const known = knownRoles(s);
   return (
-    <PlayerRow>
+    <PlayerRow className="flex-wrap overflow-visible">
       {participants(s).map((id) => {
         const dead = !s.alive[id];
         // Lebende Rollen nie in der Leiste zeigen – ein Blick aufs Nachbarhandy würde sie verraten

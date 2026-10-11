@@ -1,11 +1,12 @@
-import { Trophy } from "lucide-react";
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { AVATAR_COLORS, AVATAR_EMOJIS } from "@shared/platform/group";
 import type { RoomAction } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { cn, fmt } from "@/lib/utils";
 import { wantGamePick } from "@/lib/pickGame";
 import { EveningLine } from "./Evening";
 import type { ScoreEntry } from "./Scoreboard";
+import { AvatarContext } from "./Avatar";
 
 /** Siegerehrung mit Rangliste. Der Host startet von hier eine neue Runde oder geht zurück in die Lobby. */
 export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, children, scoreLabel }: {
@@ -22,34 +23,84 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
   // Gleichstand teilt sich den Platz
   const places = ranking.map((p, i) => (i > 0 && ranking[i - 1].score === p.score ? -1 : i + 1));
   for (let i = 1; i < places.length; i++) if (places[i] === -1) places[i] = places[i - 1];
+  const avatars = useContext(AvatarContext);
+  // Podium: Platz 2 links, 1 in der Mitte, 3 rechts – bei weniger Spielern nur, wer da ist
+  const podium = [1, 0, 2].filter((i) => i < Math.min(3, ranking.length));
+  const rest = ranking.slice(3);
+  const face = (id: string, name: string, big: boolean) => {
+    const av = avatars?.[id];
+    return (
+      <span className={cn("grid shrink-0 place-items-center rounded-full leading-none shadow-sm", big ? "size-16 text-[2.1rem]" : "size-12 text-[1.6rem]")}
+        style={av ? { backgroundColor: AVATAR_COLORS[av.color] } : undefined} aria-hidden="true">
+        {av ? AVATAR_EMOJIS[av.emoji] : name.trim()[0]?.toUpperCase()}
+      </span>
+    );
+  };
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[4vh] pb-3 text-center">
-        <div className="pop mx-auto grid size-16 place-items-center rounded-full bg-primary/12 text-primary">
-          <Trophy className="size-9" strokeWidth={1.75} aria-hidden="true" />
-        </div>
-        <div className="mt-3 text-sm text-muted-foreground">Gewonnen hat</div>
-        <div className="text-in my-0.5 text-4xl font-bold leading-tight tracking-tight" data-testid="winner">{winner}</div>
+    <section className="relative flex min-h-0 flex-1 flex-col">
+      <Confetti />
+      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[3vh] pb-3 text-center">
+        <div className="text-sm text-muted-foreground">Gewonnen hat</div>
+        <div className="text-in font-display my-0.5 text-4xl leading-tight tracking-tight break-words" data-testid="winner">{winner}</div>
         <div className="text-muted-foreground">{subtitle}</div>
-        <ol className="mt-6 grid gap-1.5 text-left" data-testid="ranking">
-          {ranking.map((p, i) => {
-            const place = places[i];
-            return (
-              <li key={p.id} style={{ animationDelay: `${120 + i * 60}ms` }}
-                className={cn("text-in flex items-center gap-3 rounded-xl px-3 py-2.5", place === 1 ? "bg-primary/10 ring-1 ring-inset ring-primary/30" : "glass")}>
-                <span className={cn("grid size-7 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums",
-                  place === 1 ? "bg-primary text-primary-foreground" : place === 2 ? "bg-navy-300/40" : place === 3 ? "bg-navy-400/30" : "text-muted-foreground")}>{place}</span>
-                <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
-                <span className="shrink-0 font-semibold tabular-nums">{fmt(p.score)}{scoreLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{scoreLabel}</span>}</span>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="mt-5" data-testid="ranking">
+          <ol className="flex items-end justify-center gap-2" aria-label="Siegertreppchen">
+            {podium.map((i) => {
+              const p = ranking[i];
+              const place = places[i];
+              return (
+                <li key={p.id} className="text-in flex min-w-0 flex-1 basis-0 flex-col items-center gap-1" style={{ animationDelay: `${150 + (place - 1) * 140}ms`, maxWidth: "8.5rem" }}>
+                  {place === 1 && <span className="pop text-2xl leading-none" aria-hidden="true">👑</span>}
+                  {face(p.id, p.name, place === 1)}
+                  <span className="w-full truncate text-sm font-semibold" title={p.name}>{p.name}</span>
+                  <span className={cn("grid w-full place-items-center rounded-t-xl pt-1 font-bold tabular-nums",
+                    place === 1 ? "h-24 bg-primary text-2xl text-primary-foreground" : place === 2 ? "glass h-[4.5rem] text-xl" : "glass h-14 text-lg")}>
+                    <span>{place}.</span>
+                    <span className="text-xs font-semibold opacity-80">{fmt(p.score)}{scoreLabel && ` ${scoreLabel}`}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          {rest.length > 0 && (
+            <ol className={cn("mt-3 grid gap-1.5 text-left", rest.length > 3 && "grid-cols-2")} aria-label="Weitere Plätze">
+              {rest.map((p, j) => {
+                const i = j + 3;
+                return (
+                  <li key={p.id} style={{ animationDelay: `${500 + j * 60}ms` }} className="text-in glass flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1.5">
+                    <span className="w-5 shrink-0 text-sm font-bold text-muted-foreground tabular-nums">{places[i]}.</span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={p.name}>{p.name}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">{fmt(p.score)}{scoreLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{scoreLabel}</span>}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
       </div>
       <div className="shrink-0 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <EndActions isHost={isHost} dispatch={dispatch}>{children}</EndActions>
       </div>
     </section>
+  );
+}
+
+/** Konfetti zur Siegerehrung – reines CSS, fällt einmal und ist dann weg (bei „weniger Bewegung“ gar nicht) */
+function Confetti() {
+  const colors = ["var(--primary)", "var(--ice)", "#ffd23f", "#5ccf7a", "#5aa9ff", "#ff7aa8"];
+  return (
+    <div className="confetti pointer-events-none absolute inset-x-0 top-0 h-full overflow-hidden" aria-hidden="true">
+      {Array.from({ length: 36 }, (_, i) => (
+        <i key={i} style={{
+          left: `${(i * 37) % 100}%`,
+          background: colors[i % colors.length],
+          animationDelay: `${(i % 9) * 0.12}s`,
+          animationDuration: `${2.2 + ((i * 7) % 10) / 10}s`,
+          ["--x" as string]: `${((i * 53) % 60) - 30}px`,
+          ["--r" as string]: `${(i * 97) % 720}deg`,
+        }} />
+      ))}
+    </div>
   );
 }
 

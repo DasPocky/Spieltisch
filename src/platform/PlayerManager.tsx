@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowUp, Plus, X } from "lucide-react";
+import { useContext, useState } from "react";
+import { ArrowDown, ArrowUp, Plus, Shuffle, X } from "lucide-react";
 import { getGame } from "@shared/games";
 import type { Avatar as AvatarData } from "@shared/platform/group";
 import { MAX_NAME, MAX_PLAYERS, type RoomAction, type RoomState } from "@shared/platform/room";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Confirm } from "@/components/Confirm";
 import { cn } from "@/lib/utils";
 import { useActiveGroup } from "@/lib/group";
-import { Avatar } from "./Avatar";
+import { Avatar, AvatarContext, AvatarPicker } from "./Avatar";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Spieler aus der aktiven Gruppe – damit das Ergebnis der Partie in der Bestenliste landet */
 export interface GroupPick { code: string; member: string; avatar: AvatarData }
@@ -23,6 +24,16 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
   onAddLocal?: (name: string, from?: GroupPick) => void;
 }) {
   const [name, setName] = useState("");
+  const [edit, setEdit] = useState<string | null>(null);
+  const avatars = useContext(AvatarContext) ?? {};
+  const editing = room.players.find((p) => p.id === edit) ?? null;
+  // Ab 5 Spielern zwei Spalten – so passen auch 8 ohne Scrollen auf den Schirm
+  const two = room.players.length > 4;
+  const shuffle = () => {
+    const ids = room.players.map((p) => p.id);
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    dispatch({ type: "orderPlayers", ids });
+  };
   const add = () => { if (!name.trim() || !onAddLocal) return; onAddLocal(name); setName(""); };
   const max = Math.min(MAX_PLAYERS, getGame(room.gameId).info.maxPlayers);
   // Mitglieder der aktiven Gruppe, die noch nicht mitspielen – ein Tipp genügt
@@ -34,41 +45,69 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
 
   return (
     <div>
-      <ol className="grid gap-1.5">
-        {room.players.map((p, i) => (
-          <li key={p.id} className="flex h-13 items-center gap-2.5 glass rounded-xl pr-1.5 pl-4">
-            <span className="w-4 shrink-0 text-muted-foreground tabular-nums">{i + 1}</span>
-            <span className="relative shrink-0">
-              <Avatar avatar={room.avatars?.[p.id]} name={p.name} className="size-8" />
-              {online && <span className={cn("absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background", online.has(p.id) ? "bg-ok" : "bg-foreground/30")}
-                aria-label={online.has(p.id) ? "online" : "offline"} />}
-            </span>
-            <span className="flex-1 truncate font-semibold">
-              {p.name}
-              {p.id === me && <span className="font-normal text-muted-foreground"> (du)</span>}
-              {online && p.id === room.hostId && <span className="font-normal text-muted-foreground"> · Host</span>}
-            </span>
-            {editable && (
-              <>
-                {i > 0 && (
-                  <Button variant="ghost" size="icon" aria-label={`${p.name} nach oben`} onClick={() => dispatch({ type: "movePlayer", id: p.id, dir: -1 })}>
-                    <ArrowUp />
-                  </Button>
-                )}
-                {/* Online kann sich der Host nicht selbst entfernen – dafür gibt es „Raum verlassen“ */}
-                {p.id !== me && <Confirm
-                  title={`${p.name} entfernen?`}
-                  description={online ? "Die Person fliegt aus dem Raum und müsste mit PIN neu beitreten." : undefined}
-                  confirmLabel="Entfernen"
-                  onConfirm={() => dispatch({ type: "removePlayer", id: p.id })}
-                >
-                  <Button variant="ghost" size="icon" aria-label={`${p.name} entfernen`} className="text-muted-foreground"><X /></Button>
-                </Confirm>}
-              </>
-            )}
-          </li>
-        ))}
+      {editable && room.players.length > 2 && room.phase === "lobby" && (
+        <div className="mb-1.5 flex justify-end">
+          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={shuffle}><Shuffle className="size-3.5" />Mischen</Button>
+        </div>
+      )}
+      <ol className={cn("grid gap-1.5", two && "grid-cols-2")} data-testid="players">
+        {room.players.map((p, i) => {
+          const mine = me === null || p.id === me || editable;
+          return (
+            <li key={p.id} className={cn("glass flex min-w-0 items-center rounded-xl", two ? "h-12 gap-1.5 pr-0.5 pl-1.5" : "h-13 gap-2.5 pr-1.5 pl-2")}>
+              <button type="button" disabled={!mine} onClick={() => setEdit(p.id)} aria-label={`Avatar von ${p.name} ändern`}
+                className="relative shrink-0 rounded-full outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
+                <Avatar avatar={avatars[p.id]} name={p.name} className={two ? "size-8" : "size-9 text-[1.2em]"} />
+                <span className="absolute -top-1 -left-1 grid size-4 place-items-center rounded-full bg-background text-[0.6rem] font-bold tabular-nums ring-1 ring-border">{i + 1}</span>
+                {online && <span className={cn("absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background", online.has(p.id) ? "bg-ok" : "bg-foreground/30")}
+                  aria-label={online.has(p.id) ? "online" : "offline"} />}
+              </button>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block truncate font-semibold" title={p.name}>
+                  {p.name}
+                  {p.id === me && <span className="font-normal text-muted-foreground"> (du)</span>}
+                  {!two && online && p.id === room.hostId && <span className="font-normal text-muted-foreground"> · Host</span>}
+                </span>
+                {two && online && p.id === room.hostId && <span className="block text-[0.7rem] text-muted-foreground">Host</span>}
+              </span>
+              {editable && !two && i > 0 && (
+                <Button variant="ghost" size="icon" aria-label={`${p.name} nach oben`} onClick={() => dispatch({ type: "movePlayer", id: p.id, dir: -1 })}>
+                  <ArrowUp />
+                </Button>
+              )}
+              {/* Online kann sich der Host nicht selbst entfernen – dafür gibt es „Raum verlassen“ */}
+              {editable && p.id !== me && <Confirm
+                title={`${p.name} entfernen?`}
+                description={online ? "Die Person fliegt aus dem Raum und müsste mit PIN neu beitreten." : undefined}
+                confirmLabel="Entfernen"
+                onConfirm={() => dispatch({ type: "removePlayer", id: p.id })}
+              >
+                <Button variant="ghost" size="icon" aria-label={`${p.name} entfernen`} className={cn("text-muted-foreground", two && "size-9")}><X /></Button>
+              </Confirm>}
+            </li>
+          );
+        })}
       </ol>
+      <Sheet open={!!editing} onOpenChange={(o) => { if (!o) setEdit(null); }}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editing?.name}</SheetTitle>
+            <SheetDescription>Tier und Farbe – so erkennt ihr euch im Spiel.</SheetDescription>
+          </SheetHeader>
+          {editing && (
+            <div className="grid gap-4 px-4 pb-6">
+              <AvatarPicker value={avatars[editing.id]} onChange={(avatar) => dispatch({ type: "setAvatar", id: editing.id, avatar })} />
+              {editable && room.phase === "lobby" && room.players.length > 1 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="secondary" disabled={room.players[0]?.id === editing.id} onClick={() => dispatch({ type: "movePlayer", id: editing.id, dir: -1 })}><ArrowUp />Weiter vor</Button>
+                  <Button variant="secondary" disabled={room.players.at(-1)?.id === editing.id} onClick={() => dispatch({ type: "movePlayer", id: editing.id, dir: 1 })}><ArrowDown />Weiter hinten</Button>
+                </div>
+              )}
+              <SheetClose asChild><Button>Fertig</Button></SheetClose>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Mitten in der Partie dazugekommen: spielt ab der nächsten Partie mit */}
       {bench.length > 0 && (

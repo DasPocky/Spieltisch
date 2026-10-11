@@ -70,7 +70,7 @@ function HandEntry({ player, editable, value, variant, onSet }: { player: Player
 }
 
 /** Kleine Karte im Stil der Originalkarten: cremefarben mit farbiger Zahl, Plus-Karten orange, Aktionen mit Symbol */
-export function Tile({ card, selectable, selected, onClick, quiet }: { card: F7Card; selectable?: boolean; selected?: boolean; onClick?: () => void; /** ohne Leuchten (Auswahlliste) */ quiet?: boolean }) {
+export function Tile({ card, selectable, selected, onClick, quiet, small }: { card: F7Card; selectable?: boolean; selected?: boolean; onClick?: () => void; /** ohne Leuchten (Auswahlliste) */ quiet?: boolean; /** kleiner (viele Spieler) */ small?: boolean }) {
   const num = card.startsWith("n:");
   const v = num ? numValue(card) : 0;
   const act = ACTION[card];
@@ -82,8 +82,8 @@ export function Tile({ card, selectable, selected, onClick, quiet }: { card: F7C
   const Special = card === "n:13L" ? Clover : card === "n:7U" ? Skull : null;
   return (
     <button type="button" disabled={!selectable} onClick={onClick} aria-label={cardLabel(card)} aria-pressed={selected}
-      className={cn("card-in relative flex h-11 min-w-9 shrink-0 flex-col items-center justify-center rounded-lg px-1.5 font-bold leading-none shadow-[0_1px_3px_rgba(2,8,23,.35)] ring-1 ring-black/10 outline-none transition disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
-        num ? "text-xl" : act ? "px-1 text-[0.5rem] leading-[1.1]" : "text-[0.95rem]", selectable && !quiet && "target-glow", selected && (quiet ? "ring-[3px] ring-primary" : "-translate-y-1 ring-[3px] ring-ice"), quiet && !selected && "opacity-60")}
+      className={cn("card-in relative flex shrink-0 flex-col items-center justify-center rounded-lg font-bold leading-none", small ? "h-8 min-w-6 px-1" : "h-11 min-w-9 px-1.5", " shadow-[0_1px_3px_rgba(2,8,23,.35)] ring-1 ring-black/10 outline-none transition disabled:cursor-default focus-visible:ring-[3px] focus-visible:ring-ring",
+        num ? (small ? "text-base" : "text-xl") : act ? "px-1 text-[0.45rem] leading-[1.1]" : small ? "text-xs" : "text-[0.95rem]", selectable && !quiet && "target-glow", selected && (quiet ? "ring-[3px] ring-primary" : "-translate-y-1 ring-[3px] ring-ice"), quiet && !selected && "opacity-60")}
       style={{ background: bg, color: ink }}>
       {/* Feiner Innenrahmen wie auf den echten Karten */}
       <span className="pointer-events-none absolute inset-[2.5px] rounded-[5px] border-[1.5px]" style={{ borderColor: color }} aria-hidden="true" />
@@ -166,26 +166,26 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
       )}
 
       {/* Der Tisch */}
-      <div ref={tableRef} className="no-scrollbar mt-2 grid min-h-0 flex-1 content-start gap-1.5 overflow-y-auto" data-testid="table">
+      <div ref={tableRef} className={cn("no-scrollbar mt-2 grid min-h-0 flex-1 content-start gap-1.5 overflow-y-auto", compact && "grid-cols-2")} data-testid="table">
         {players.map((x) => {
           const l = s.lines[x.id];
           if (!l) return null;
           const cards = [...l.nums, ...l.mods];
           return (
             <div key={x.id} data-current={x.id === decider || undefined}
-              className={cn("rounded-xl px-2.5 py-2", compact && "flex items-center gap-2 py-1.5", x.id === decider ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass", l.status === "bust" && "opacity-50")}>
-              <div className={cn("flex items-center justify-between gap-2 text-sm", compact ? "w-[5.5rem] shrink-0 flex-col items-start gap-0" : "mb-1")}>
-                <span className="max-w-full truncate font-bold">{nameOf(x.id)}{x.id === s.dealerId && <span className="ml-1 text-xs font-normal text-muted-foreground">{compact ? "(G)" : "(Geber)"}</span>}</span>
+              className={cn("min-w-0 rounded-xl px-2.5 py-2", compact && "px-2 py-1.5", x.id === decider ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass", l.status === "bust" && "opacity-50")}>
+              <div className={cn("mb-1 flex items-center justify-between gap-1.5 text-sm", compact && "text-xs")}>
+                <span className="min-w-0 truncate font-bold">{nameOf(x.id)}{x.id === s.dealerId && <span className="ml-1 text-xs font-normal text-muted-foreground">{compact ? "(G)" : "(Geber)"}</span>}</span>
                 <span className="flex shrink-0 items-center gap-2 text-xs">
                   {l.second && <LifeBuoy className="size-4 text-ice" aria-label="Zweite Chance" />}
                   {STATUS[l.status] && <span className={cn("rounded-full bg-navy-950/60 font-semibold text-muted-foreground", compact ? "px-1.5" : "px-2 py-0.5")}>{STATUS[l.status]}</span>}
                   <b className="tabular-nums">{linePoints(l)}</b>
                 </span>
               </div>
-              <div className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
+              <div className={cn("no-scrollbar flex min-w-0 flex-1 gap-1 pb-0.5", compact ? "flex-wrap" : "overflow-x-auto")}>
                 {cards.length ? cards.map((c, i) => (
-                  <Tile key={`${c}-${i}`} card={c} selectable={canPick(x.id, i)} selected={sel.some((y) => y.owner === x.id && y.index === i)} onClick={() => toggle(x.id, i)} />
-                )) : <span className="py-2 text-xs text-muted-foreground">noch keine Karten</span>}
+                  <Tile key={`${c}-${i}`} card={c} small={compact} selectable={canPick(x.id, i)} selected={sel.some((y) => y.owner === x.id && y.index === i)} onClick={() => toggle(x.id, i)} />
+                )) : <span className={cn("text-xs text-muted-foreground", compact ? "py-1.5" : "py-2")}>noch keine Karten</span>}
               </div>
             </div>
           );

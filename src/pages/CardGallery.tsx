@@ -10,6 +10,8 @@ import { P10CardView } from "@/games/phase10/Board";
 import { Tile } from "@/games/flip7/Board";
 import { CardFace } from "@/games/tutto/CardFace";
 import { PlayingCard } from "@/platform/cards/PlayingCard";
+import { AvatarContext, roomAvatars } from "@/platform/Avatar";
+import { ResultScreen } from "@/platform/ResultScreen";
 
 /** Nur für die Entwicklung: alle Karten aller Spiele auf einen Blick – groß, klein und im Fächer */
 const uniq = <T,>(a: T[]) => [...new Set(a)];
@@ -27,7 +29,22 @@ function Fan({ children }: { children: ReactNode[] }) {
   return <div className="fan flex items-end [--fan-ml:-45%]">{children.map((c, i) => <div key={i} className="w-12 shrink-0" style={{ marginLeft: i ? "-1.4rem" : 0 }}>{c}</div>)}</div>;
 }
 
+/** Siegerehrung mit 8 Spielern ansehen: /dev/karten?sieger */
+function WinnerPreview() {
+  const names = ["Maximilian", "Ben", "Anna-Lena", "Dora", "Großvater Heinz", "Finn", "Greta", "Hannes"];
+  const ranking = names.map((name, i) => ({ id: `p${i}`, name, score: 300 - i * 31 }));
+  const avatars = roomAvatars({ players: ranking.map(({ id, name }) => ({ id, name })), bench: [], avatars: {} });
+  return (
+    <AvatarContext.Provider value={avatars}>
+      <div className="mx-auto flex h-dvh max-w-xl flex-col px-4">
+        <ResultScreen winner="Maximilian" subtitle="mit 300 Punkten" ranking={ranking} scoreLabel="Pkt." isHost dispatch={() => {}} />
+      </div>
+    </AvatarContext.Provider>
+  );
+}
+
 export function CardGallery() {
+  if (location.search.includes("sieger")) return <WinnerPreview />;
   const uno = uniq(unoDeck());
   const p10 = [...["r", "b", "g", "y"].flatMap((c) => [1, 5, 9, 10, 11, 12].map((n) => `${c}-${n}`)), "W", "S"];
   const sb = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];

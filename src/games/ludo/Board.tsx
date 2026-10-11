@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { Die } from "@/platform/Die";
 import { HintChip } from "@/platform/HintChip";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { Seats } from "@/platform/Seats";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { SmoothText } from "@/platform/SmoothText";
@@ -98,22 +98,14 @@ export function Board({ room, game: s, me, isHost, canAct, act, dispatch }: Boar
 
   return (
     <>
-      <PlayerRow>
-        {players.map((p) => {
-          const c = s.color[p.id];
-          const isCur = p.id === s.curId;
-          const done = s.places.indexOf(p.id);
-          return (
-            <div key={p.id} data-cur={isCur} className={cn("flex shrink-0 grow basis-0 items-center gap-1 rounded-xl py-1.5 pr-1.5 pl-1", players.length > 4 ? "min-w-[5.5rem]" : "min-w-0", isCur ? "turn" : "glass")}>
-              <svg viewBox="-0.45 -0.5 0.9 0.95" className="h-6 w-5 shrink-0" aria-hidden="true"><Pawn color={c} /></svg>
-              <span className="min-w-0 leading-tight">
-                <span className={cn("block truncate text-xs font-semibold", !isCur && "text-muted-foreground")}>{p.name}{p.id === me ? " (du)" : ""}</span>
-                <span className="block truncate text-[0.7rem] tabular-nums opacity-80">{done >= 0 ? `Platz ${done + 1}` : `Ziel ${inGoal(s, p.id)}/${PIECES}`}</span>
-              </span>
-            </div>
-          );
-        })}
-      </PlayerRow>
+      <Seats me={me} online={null} seats={players.map((p) => {
+        const done = s.places.indexOf(p.id);
+        return {
+          id: p.id, name: p.name, cur: p.id === s.curId,
+          icon: <svg viewBox="-0.45 -0.5 0.9 0.95" className="h-7 w-6 shrink-0" aria-hidden="true"><Pawn color={s.color[p.id]} /></svg>,
+          sub: done >= 0 ? `Platz ${done + 1}` : `Ziel ${inGoal(s, p.id)}/${PIECES}`,
+        };
+      })} />
 
       <div className="relative flex min-h-0 flex-1 items-center justify-center py-1">
         <svg viewBox={`${-L.half} ${-L.half} ${2 * L.half} ${2 * L.half}`} className="block aspect-square max-h-full w-full max-w-full touch-manipulation select-none" data-testid="board" role="img"

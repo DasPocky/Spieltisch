@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { Seats } from "@/platform/Seats";
 import { Check, ChevronLeft, SkipForward } from "lucide-react";
 import {
   cardLabel, colorOf, extend, findPhase, isSkip, skipTargets, isWild, leaders, needLabel, PHASES, phaseLabel, valueOf,
@@ -148,20 +148,15 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Mitspieler: Phase, Karten, Punkte */}
-      <PlayerRow>
-        {players.map((p) => (
-          <div key={p.id} data-cur={p.id === s.curId}
-            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm font-semibold",
-              p.id === s.curId && s.step !== "roundEnd" ? "turn" : "glass")}>
-            {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
-            <span className="max-w-[6rem] truncate">{p.id === me ? "Du" : p.name}</span>
-            <span className="rounded bg-current/10 px-1 text-xs tabular-nums" aria-label={`Phase ${s.phase[p.id]}`}>P{Math.min(s.goal, s.phase[p.id] ?? 1)}</span>
-            {s.laid[p.id] && <Check className="size-3.5" aria-label="Phase liegt" />}
-            {(s.skips[p.id] ?? 0) > 0 && <SkipForward className="size-3.5 opacity-80" aria-label="setzt aus" />}
-            <span className="text-xs font-normal tabular-nums opacity-75">{s.counts[p.id] ?? 0} · {s.scores[p.id] ?? 0}</span>
-          </div>
-        ))}
-      </PlayerRow>
+      <Seats me={me} online={online} seats={players.map((p) => ({
+        id: p.id, name: p.name, cur: p.id === s.curId && s.step !== "roundEnd",
+        value: <span className="inline-flex items-center gap-0.5" aria-label={`Phase ${s.phase[p.id]}`}>
+          P{Math.min(s.goal, s.phase[p.id] ?? 1)}
+          {s.laid[p.id] && <Check className="size-3" aria-label="Phase liegt" />}
+          {(s.skips[p.id] ?? 0) > 0 && <SkipForward className="size-3 opacity-80" aria-label="setzt aus" />}
+        </span>,
+        sub: `${s.counts[p.id] ?? 0} Karten · ${s.scores[p.id] ?? 0}`,
+      }))} />
 
       {s.step === "roundEnd" ? <RoundEnd room={room} s={s} act={act} /> : (
         <>

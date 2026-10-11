@@ -11,9 +11,10 @@ import { createRoom } from "@/lib/createRoom";
 import { LAST_GAME_KEY, LOCAL_GAME_KEY, localKey, NAME_KEY, readJSON, remove, RETURN_KEY } from "@/lib/storage";
 import { getGame, isGameId } from "@shared/games";
 import { myAvatar } from "@/lib/profile";
-import { Logo } from "@/platform/Logo";
+import { IconTile, Logo } from "@/platform/Logo";
+import { wantGamePick } from "@/lib/pickGame";
 import { InstallHint } from "@/platform/InstallHint";
-import { accessFor } from "@shared/platform/access";
+import { accessFor, orderGames } from "@shared/platform/access";
 import { savedAccess, useSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup, useActiveGroup } from "@/lib/group";
 import { leaderboard } from "@shared/platform/group";
@@ -60,11 +61,11 @@ export function Home() {
   const onlineOff = features?.online === false;
   const online = netOnline && !onlineOff;
   // Ein Handy: gleich in die lokale Lobby – mit dem zuletzt lokal gewählten Spiel, falls es noch freigegeben ist
-  const playLocal = () => {
+  const playLocal = (pick?: string) => {
     remember("local");
     const ids = games.map((g) => g.id);
     const prev = read(LOCAL_GAME_KEY);
-    const id = prev && ids.includes(prev as never) ? prev : defaultGame(ids, locked);
+    const id = pick && ids.includes(pick as never) ? pick : prev && ids.includes(prev as never) ? prev : defaultGame(ids, locked);
     try { localStorage.setItem(LOCAL_GAME_KEY, id); } catch { /* egal */ }
     navigate("/lokal");
   };
@@ -86,19 +87,18 @@ export function Home() {
       {way === null && (
         <>
           {config?.banner && <p className="text-in mt-5 shrink-0 rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
-          <h2 className={cn("mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground", config?.banner ? "mt-4" : "mt-7")}>Wie spielt ihr?</h2>
-          <div className="glass grid shrink-0 grid-cols-[minmax(0,1fr)] divide-y divide-border overflow-hidden rounded-2xl">
-            <WayRow icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiterspielen` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} onClick={playLocal} />
-            <WayRow icon={Users} title="Online-Raum erstellen" text={onlineOff ? "Gerade abgeschaltet" : online ? "Jeder spielt am eigenen Handy" : "Braucht Netz – gerade offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
+          <h2 className={cn("mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground", config?.banner ? "mt-3" : "mt-5")}>Wie spielt ihr?</h2>
+          <div className="grid shrink-0 grid-cols-2 gap-2.5">
+            <WayCard icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft – weiter` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} primary onClick={playLocal} />
+            <WayCard icon={Users} title="Online-Raum erstellen" text={onlineOff ? "Gerade abgeschaltet" : online ? "Jeder am eigenen Handy" : "Braucht Netz – offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
           </div>
-          <form className="glass mt-3 shrink-0 rounded-2xl p-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
-            <label htmlFor="code" className="flex items-center gap-2 px-1 font-semibold"><LogIn className="size-4.5 text-primary" />Raum beitreten</label>
-            <div className="mt-2 flex gap-2">
-              <Input id="code" aria-label="Raum beitreten" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))}
-                autoComplete="off" autoCapitalize="characters" placeholder="Raumcode vom Host" className="text-center text-lg font-semibold tracking-[0.3em] placeholder:text-base placeholder:font-normal placeholder:tracking-normal" />
-              <Button type="submit" disabled={!codeOk || !online} className="shrink-0">Los</Button>
-            </div>
+          <form className="glass mt-2.5 flex shrink-0 items-center gap-2 rounded-2xl p-2 pl-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
+            <LogIn className="size-4.5 shrink-0 text-primary" aria-hidden="true" />
+            <Input id="code" aria-label="Raum beitreten" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5))}
+              autoComplete="off" autoCapitalize="characters" placeholder="Raumcode – beitreten" className="h-10 text-center text-lg font-semibold tracking-[0.3em] placeholder:text-base placeholder:font-normal placeholder:tracking-normal" />
+            <Button type="submit" disabled={!codeOk || !online} className="h-10 shrink-0">Los</Button>
           </form>
+          <QuickGames games={games.map((g) => g.id)} featured={config?.featured ?? []} order={config?.order ?? []} onPick={(id) => playLocal(id)} />
           {features?.groups !== false && <GroupCard />}
           <InstallHint />
           <div className="min-h-0 flex-1" />
@@ -211,17 +211,50 @@ function GroupCard() {
   );
 }
 
-/** Eine Zeile im Assistenten */
-function WayRow({ icon: Icon, title, text, marked, disabled, onClick }: { icon: LucideIcon; title: string; text: string; marked: boolean; disabled?: boolean; onClick: () => void }) {
+/** Eine der zwei großen Kacheln „Wie spielt ihr?“ */
+function WayCard({ icon: Icon, title, text, marked, disabled, primary, onClick }: { icon: LucideIcon; title: string; text: string; marked: boolean; disabled?: boolean; primary?: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled}
-      className="flex w-full items-center gap-3 p-3.5 text-left outline-none transition hover:bg-accent/60 active:bg-accent focus-visible:bg-accent disabled:opacity-50 disabled:hover:bg-transparent">
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary"><Icon className="size-5" /></span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2 font-semibold leading-tight">{title}{marked && <span className="rounded-full bg-primary/12 px-1.5 py-px text-[0.7rem] font-semibold text-primary">zuletzt</span>}</span>
-        <span className="block truncate text-sm text-muted-foreground">{text}</span>
+    <button type="button" onClick={() => onClick()} disabled={disabled}
+      className={cn("relative flex min-w-0 flex-col items-start gap-2 rounded-2xl p-3 text-left outline-none transition active:scale-[0.98] focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-50",
+        primary ? "bg-primary text-primary-foreground shadow-[var(--btn-shadow,none)]" : "glass")}>
+      {marked && <span className={cn("absolute top-2 right-2 rounded-full px-1.5 py-px text-[0.65rem] font-semibold", primary ? "bg-white/25" : "bg-primary/12 text-primary")}>zuletzt</span>}
+      <span className={cn("grid size-10 place-items-center rounded-xl", primary ? "bg-white/20" : "bg-primary/12 text-primary")}><Icon className="size-5.5" /></span>
+      <span className="min-w-0">
+        <span className="font-display block text-[1.05rem] leading-tight">{title}</span>
+        <span className={cn("mt-0.5 block text-xs leading-snug", primary ? "opacity-85" : "text-muted-foreground")}>{text}</span>
       </span>
-      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
     </button>
+  );
+}
+
+/** Schnellstart: die wichtigsten Spiele als Kacheln – ein Tipp, und die Lobby (ein Handy) steht mit diesem Spiel bereit */
+function QuickGames({ games, featured, order, onPick }: { games: string[]; featured: string[]; order: string[]; onPick: (id?: string) => void }) {
+  const last = read(LOCAL_GAME_KEY);
+  const ids = orderGames(games, order);
+  const first = [...featured.filter((id) => ids.includes(id)), ...(last && ids.includes(last) ? [last] : []), ...ids];
+  const shown = [...new Set(first)].slice(0, 7);
+  if (!shown.length) return null;
+  return (
+    <section className="mt-4 shrink-0" aria-label="Schnellstart">
+      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground">Schnellstart <span className="text-xs font-normal">ein Handy</span></h2>
+      <div className="grid grid-cols-4 gap-2">
+        {shown.map((id) => {
+          const g = GAME_LIST.find((x) => x.id === id)!;
+          return (
+            <button key={id} type="button" onClick={() => onPick(id)} data-testid={`quick-${id}`}
+              className="glass relative flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
+              {featured.includes(id) && <span className="absolute top-1 right-1 rounded-full bg-primary px-1 text-[0.55rem] font-bold leading-tight text-primary-foreground">NEU</span>}
+              <IconTile className="size-10 rounded-xl"><g.Icon className="size-6.5" /></IconTile>
+              <span className="w-full truncate text-center text-[0.7rem] font-semibold">{g.info.name}</span>
+            </button>
+          );
+        })}
+        <button type="button" onClick={() => { wantGamePick(); onPick(); }}
+          className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 text-muted-foreground ring-1 ring-inset ring-border ring-dashed outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
+          <span className="grid size-10 place-items-center text-lg font-bold">+{Math.max(0, games.length - shown.length)}</span>
+          <span className="w-full truncate text-center text-[0.7rem] font-semibold">Alle Spiele</span>
+        </button>
+      </div>
+    </section>
   );
 }

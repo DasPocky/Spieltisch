@@ -10,7 +10,7 @@ import type { BoardProps } from "@/games/types";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { Seats } from "@/platform/Seats";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -98,25 +98,19 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
 
   return (
     <>
-      <PlayerRow>
-        {order.map((id) => {
-          const p = players.find((x) => x.id === id);
-          if (!p) return null;
-          const isCur = (s.phase === "bid" || s.phase === "play" || s.phase === "trump") && s.curId === id;
-          const bid = s.bids[id];
-          return (
-            <div key={id} data-cur={isCur} className={cn("flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1 text-sm font-semibold", isCur ? "turn" : "glass")}>
-              {online && <span className={cn("size-1.5 rounded-full", online.has(id) ? "bg-ok" : "bg-current opacity-30")} />}
-              <span className="max-w-[6.5rem] truncate">{id === me ? "Du" : p.name}</span>
-              {id === s.dealerId && <span className="rounded bg-current/15 px-1 text-[0.62rem] leading-4" title="Geber" aria-label="Geber">G</span>}
-              <span className="tabular-nums" title="Stiche / Ansage" aria-label="Stiche / Ansage" data-testid={`bid-${id}`}>
-                {s.tricks[id] ?? 0}/{bid !== null && bid !== undefined && !secretBid ? bid : s.bidIn[id] ? "✓" : "–"}
-              </span>
-              <span className="text-xs font-normal tabular-nums opacity-75">{s.scores[id] ?? 0}</span>
-            </div>
-          );
-        })}
-      </PlayerRow>
+      <Seats me={me} online={online} seats={order.flatMap((id) => {
+        const p = players.find((x) => x.id === id);
+        if (!p) return [];
+        const bid = s.bids[id];
+        return [{
+          id, name: p.name,
+          cur: (s.phase === "bid" || s.phase === "play" || s.phase === "trump") && s.curId === id,
+          value: <span title="Stiche / Ansage" aria-label="Stiche / Ansage" data-testid={`bid-${id}`}>
+            {s.tricks[id] ?? 0}/{bid !== null && bid !== undefined && !secretBid ? bid : s.bidIn[id] ? "✓" : "–"}
+          </span>,
+          sub: <>{id === s.dealerId && <span className="mr-1 rounded bg-current/15 px-1" title="Geber" aria-label="Geber">G</span>}{s.scores[id] ?? 0} Pkt.</>,
+        }];
+      })} />
 
       {/* Runde steht oben in der Kopfzeile */}
       <div className="flex shrink-0 items-center gap-2 px-1 pt-1 text-sm whitespace-nowrap text-muted-foreground">

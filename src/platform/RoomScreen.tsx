@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
@@ -18,7 +18,7 @@ import { GAME_CATEGORIES } from "@shared/platform/types";
 import { IconTile } from "./Logo";
 import { Leave, MenuSheet, type MenuProps } from "./MenuSheet";
 import { PlayerManager, type GroupPick } from "./PlayerManager";
-import { Avatar, AvatarContext } from "./Avatar";
+import { Avatar, AvatarContext, roomAvatars } from "./Avatar";
 import { loadGroup, activeGroupCode, useActiveGroup } from "@/lib/group";
 import { SettingsPanel, settingsSummary } from "./SettingsPanel";
 import { Collapsible } from "./PlayersHistory";
@@ -69,8 +69,9 @@ export function RoomScreen(props: Props) {
     </Collapsible>
   ) : undefined;
 
+  const avatars = useMemo(() => roomAvatars(room), [room.players, room.bench, room.avatars]);
   return (
-    <AvatarContext.Provider value={room.avatars}>
+    <AvatarContext.Provider value={avatars}>
     <EveningContext.Provider value={{ room, isHost, dispatch }}>
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="flex h-14 shrink-0 items-center justify-between">

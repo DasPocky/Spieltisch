@@ -183,3 +183,20 @@
 .hint-glow {
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 55%, transparent), 0 0 12px 3px color-mix(in srgb, var(--primary) 32%, transparent);
 }
+
+/* Konfetti zur Siegerehrung */
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 7px;
+  height: 11px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall 2.6s cubic-bezier(0.3, 0.6, 0.5, 1) forwards;
+}
+@keyframes confetti-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), 70vh) rotate(var(--r)); }
+}
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }

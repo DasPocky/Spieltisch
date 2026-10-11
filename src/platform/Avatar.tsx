@@ -1,6 +1,27 @@
 import { createContext, useContext } from "react";
-import { AVATAR_COLORS, AVATAR_EMOJIS, type Avatar as AvatarData } from "@shared/platform/group";
+import { AVATAR_COLORS, AVATAR_EMOJIS, defaultAvatar, type Avatar as AvatarData } from "@shared/platform/group";
+import type { RoomState } from "@shared/platform/room";
 import { cn } from "@/lib/utils";
+
+/**
+ * Jeder Spieler bekommt einen Avatar: den eigenen (Profil, Gruppe, selbst gewählt) oder einen festen aus dem Namen –
+ * „Anna“ ist so immer dasselbe Tier. Doppelte Tiere im Raum werden weitergeschoben, damit man alle auseinanderhält.
+ */
+export function roomAvatars(room: Pick<RoomState, "players" | "bench" | "avatars">): Record<string, AvatarData> {
+  const out: Record<string, AvatarData> = {};
+  const all = [...room.players, ...(room.bench ?? [])];
+  const used = new Set<number>();
+  for (const p of all) { const a = room.avatars?.[p.id]; if (a) { out[p.id] = a; used.add(a.emoji); } }
+  for (const p of all) {
+    if (out[p.id]) continue;
+    const a = defaultAvatar(p.name.trim().toLowerCase() || p.id);
+    let { emoji } = a;
+    for (let i = 0; i < AVATAR_EMOJIS.length && used.has(emoji); i++) emoji = (emoji + 7) % AVATAR_EMOJIS.length;
+    used.add(emoji);
+    out[p.id] = { color: (a.color + (emoji - a.emoji + AVATAR_EMOJIS.length)) % AVATAR_COLORS.length, emoji };
+  }
+  return out;
+}
 
 /** Avatare der Spieler im Raum – die Punkteleiste der Spiele liest sie hier, ohne dass jedes Spiel sie durchreicht */
 export const AvatarContext = createContext<Record<string, AvatarData> | undefined>(undefined);

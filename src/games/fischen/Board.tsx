@@ -1,5 +1,5 @@
 import { Fish, Layers } from "lucide-react";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { Seats } from "@/platform/Seats";
 import { useState } from "react";
 import { DECKS, rankOf, RANK_DATIVE, RANK_PLURAL, type Card, type Rank } from "@shared/cards/deck";
 import { leaders, type FischenAction, type FischenEvent, type FischenState } from "@shared/games/fischen/logic";
@@ -106,23 +106,13 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
     <>
       {/* Schritt 1: Mitspieler */}
       {myTurn && <div className="shrink-0 px-1 pb-1 text-sm font-bold text-ice">1 · Wen fragst du?</div>}
-      <PlayerRow group className="gap-2">
-        {players.filter((p) => p.id !== viewer || !myTurn).map((p) => {
-          const pickable = myTurn && targets.some((t) => t.id === p.id);
-          const chosen = myTurn && selTarget === p.id;
-          return (
-            <button key={p.id} type="button" data-cur={p.id === s.curId} disabled={!pickable} onClick={() => setTarget(p.id)} aria-pressed={chosen}
-              className={cn("flex min-w-[6.5rem] shrink-0 flex-col items-start rounded-xl px-3 py-2 text-left text-sm outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-                chosen ? "bg-ice text-navy-950" : p.id === s.curId ? "turn" : pickable ? "bg-navy-700/80 ring-2 ring-navy-300/60" : "glass")}>
-              <span className="flex items-center gap-1.5 font-bold">
-                {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
-                <span className="max-w-[6rem] truncate">{p.id === me ? "Du" : p.name}</span>
-              </span>
-              <span className={cn("text-xs tabular-nums", !chosen && p.id !== s.curId && "text-muted-foreground")}><Layers className="inline size-3 align-[-1px]" aria-label="Karten" /> {s.counts[p.id] ?? 0} · ★ {s.quartets[p.id]?.length ?? 0}</span>
-            </button>
-          );
-        })}
-      </PlayerRow>
+      <Seats me={me} online={online} label="Wen fragst du?" selectedId={myTurn ? selTarget : null}
+        onSelect={myTurn ? setTarget : undefined} pickable={(id) => targets.some((t) => t.id === id)}
+        seats={players.filter((p) => p.id !== viewer || !myTurn).map((p) => ({
+          id: p.id, name: p.name, cur: p.id === s.curId,
+          value: <span className="inline-flex items-center gap-0.5"><Layers className="size-3" aria-label="Karten" />{s.counts[p.id] ?? 0}</span>,
+          sub: `★ ${s.quartets[p.id]?.length ?? 0}`,
+        }))} />
 
       {/* Mitte: letzte Fragen */}
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden py-2" aria-live="polite">

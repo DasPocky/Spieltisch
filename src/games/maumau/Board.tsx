@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { Seats } from "@/platform/Seats";
 import { DECKS, isJack, SUIT_NAME, type Card, type Suit } from "@shared/cards/deck";
 import { canPlay, top, type MauMauAction, type MauMauState } from "@shared/games/maumau/logic";
 import { Button } from "@/components/ui/button";
@@ -65,19 +65,10 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   return (
     <>
       {/* Mitspieler mit Kartenzahl */}
-      <PlayerRow>
-        {players.map((p) => (
-          <div key={p.id} data-cur={p.id === s.curId}
-            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold",
-              p.id === s.curId ? "turn" : "glass")}>
-            {online && <span className={cn("size-1.5 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}
-            <span className="max-w-[7rem] truncate">{p.id === me ? "Du" : p.name}</span>
-            <span className="flex items-center gap-1 tabular-nums" aria-label={`${s.counts[p.id] ?? 0} Karten`}>
-              <span className="inline-block h-3.5 w-2.5 rounded-[2px] bg-navy-300/80 ring-1 ring-white/40" />{s.counts[p.id] ?? 0}
-            </span>
-          </div>
-        ))}
-      </PlayerRow>
+      <Seats me={me} online={online} seats={players.map((p) => ({
+        id: p.id, name: p.name, cur: p.id === s.curId,
+        value: <span className="inline-flex items-center gap-0.5" aria-label={`${s.counts[p.id] ?? 0} Karten`}><span className="inline-block h-3 w-2 rounded-[2px] bg-current opacity-60" />{s.counts[p.id] ?? 0}</span>,
+      }))} />
 
       {/* Mitte: Stapel und Ablage */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 py-2">
