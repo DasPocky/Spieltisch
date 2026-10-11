@@ -450,3 +450,5 @@
   pointer-events: none;
   z-index: 60;
 }
+/* Handschrift ragt über die Zeichenbreite hinaus – sonst schneidet „truncate“ den letzten Buchstaben ab */
+:root[data-look="kreide"] :is(h1, h2, .truncate, .overflow-hidden) { padding-inline-end: 0.18em; }
