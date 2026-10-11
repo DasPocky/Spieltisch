@@ -44,7 +44,9 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
 }) {
   const avatars = useContext(AvatarContext);
   const n = seats.length;
-  const wide = n <= 4;
+  // Breite Plätze nur bis 2 Spieler – ab 3 wird der Name daneben sonst zu schmal; Spalten mit Avatar oben passen besser
+  const wide = n <= 2;
+  const roomy = !wide && n <= 4;
   const cols = n <= 8 ? n : Math.ceil(n / 2);
 
   return (
@@ -57,7 +59,7 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
         const can = onSelect && (!pickable || pickable(p.id));
         const Tag = onSelect ? "button" : "div";
         const face = p.icon ?? (
-          <span className={cn("grid shrink-0 place-items-center rounded-full leading-none", wide ? "size-7 text-[1.05rem]" : "size-8 text-[1.15rem]", off && "opacity-40 grayscale")}
+          <span className={cn("grid shrink-0 place-items-center rounded-full leading-none", wide ? "size-7 text-[1.05rem]" : roomy ? "size-9 text-[1.3rem]" : "size-8 text-[1.15rem]", off && "opacity-40 grayscale")}
             style={av ? { backgroundColor: AVATAR_COLORS[av.color] } : undefined} aria-hidden="true">
             {av ? AVATAR_EMOJIS[av.emoji] : name.trim()[0]?.toUpperCase()}
           </span>
@@ -81,13 +83,13 @@ export function Seats({ seats, me, online, selectedId, onSelect, pickable, class
             {p.lead && <span className={cn("absolute z-10 text-[0.8rem] leading-none", wide ? "top-0.5 left-0.5" : "-top-1.5 left-1/2 -translate-x-1/2")} role="img" aria-label="führt">👑</span>}
             {face}
             <span className={cn("min-w-0 leading-tight", wide ? "flex-1" : "w-full")}>
-              <span className={cn("block truncate font-semibold", wide ? "text-xs" : "text-[0.66rem]", !p.cur && "opacity-80", p.out && "line-through")}>{name}{off && <span className="sr-only"> (offline)</span>}</span>
+              <span className={cn("block truncate font-semibold", wide || roomy ? "text-xs" : "text-[0.66rem]", !p.cur && "opacity-80", p.out && "line-through")}>{name}{off && <span className="sr-only"> (offline)</span>}</span>
               {wide && p.sub !== undefined && <span className="block truncate text-[0.7rem] tabular-nums opacity-75">{p.sub}</span>}
             </span>
             {p.value !== undefined && (
-              <span className={cn("shrink-0 font-bold leading-none tabular-nums", wide ? "text-lg" : "text-sm")}>{p.value}</span>
+              <span className={cn("shrink-0 font-bold leading-none tabular-nums", wide ? "text-lg" : roomy ? "text-base" : "text-sm")}>{p.value}</span>
             )}
-            {!wide && p.sub !== undefined && <span className="block w-full truncate text-[0.6rem] leading-tight tabular-nums opacity-75">{p.sub}</span>}
+            {!wide && p.sub !== undefined && <span className={cn("block w-full truncate leading-tight tabular-nums opacity-75", roomy ? "text-[0.68rem]" : "text-[0.6rem]")}>{p.sub}</span>}
             {p.progress !== undefined && (
               <span className={cn("block h-1 overflow-hidden rounded-full", wide ? "absolute right-2 bottom-1 left-2" : "mt-0.5 w-4/5", p.cur ? "bg-white/25" : "bg-navy-950/60")} aria-hidden="true">
                 <i className={cn("block h-full rounded-full", p.cur ? "bg-white" : "bg-navy-300")} style={{ width: `${Math.min(100, Math.max(0, p.progress) * 100)}%` }} />

@@ -1,5 +1,5 @@
-import { useId, useState } from "react";
-import { PlayerRow } from "@/platform/PlayerRow";
+import { useContext, useId, useState } from "react";
+import { Avatar, AvatarContext } from "@/platform/Avatar";
 import { fits, JOKER, leaders, needs, topOf, type SbAction, type SbCard, type SbState, type Source } from "@shared/games/skipbo/logic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +74,7 @@ const Label = ({ children }: { children: React.ReactNode }) => <span className="
 const same = (a: Pick, b: Pick) => !!a && !!b && a.from === b.from && (a.from !== "hand" || a.card === (b as typeof a).card) && (a.from !== "discard" || a.i === (b as typeof a).i);
 
 function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState, SbAction>) {
+  const avatars = useContext(AvatarContext);
   const players = room.players;
   const local = me === null;
   const [pick, setPick] = useState<Pick>(null);
@@ -114,24 +115,26 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
   return (
     <div className="flex min-h-0 flex-1 flex-col [--c:clamp(2.6rem,9.5vh,4.6rem)]">
       {/* Mitspieler: oberste Vorratskarte, Vorrat, Ablagen */}
-      <PlayerRow>
+      {/* Alle Mitspieler auf einen Blick (kein Wischen): ab zwei Gegnern als Raster */}
+      <div className={cn("grid shrink-0 gap-1.5 pt-1 pb-1.5", others.length >= 5 ? "grid-cols-3" : others.length >= 2 ? "grid-cols-2" : "grid-cols-1")} role="group" aria-label="Mitspieler">
         {others.map((p) => (
           <div key={p.id} data-cur={p.id === s.curId} aria-label={`${p.name}: Vorrat ${s.stockCounts[p.id] ?? 0}`}
-            className={cn("flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 text-sm", p.id === s.curId && s.phase === "play" ? "turn" : "glass")}>
-            <div className="grid gap-0.5">
-              <span className="flex max-w-[6rem] items-center gap-1.5 truncate font-semibold">
-                {online && <span className={cn("size-1.5 shrink-0 rounded-full", online.has(p.id) ? "bg-ok" : "bg-current opacity-30")} />}{p.name}
+            className={cn("grid min-w-0 gap-1 rounded-xl px-2 py-1.5 text-sm", p.id === s.curId && s.phase === "play" ? "turn" : "glass")}>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Avatar avatar={avatars?.[p.id]} name={p.name} className={cn("size-5 text-[0.7rem]", online && !online.has(p.id) && "opacity-40 grayscale")} />
+              <span className="min-w-0 flex-1 truncate font-semibold" title={p.name}>{p.name}</span>
+              <span className="shrink-0 text-xs tabular-nums opacity-75">Vorrat {s.stockCounts[p.id] ?? 0}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <SbCardView key={s.stockCounts[p.id]} card={topOf(s.stocks[p.id] ?? [])} className="card-in w-7 shrink-0 ring-2 ring-ice/50" small />
+              <span className="mx-0.5 w-px self-stretch bg-current opacity-20" aria-hidden="true" />
+              <span className="flex min-w-0 gap-0.5" aria-label="Ablagen">
+                {(s.discards[p.id] ?? []).map((d, i) => <SbCardView key={i} card={topOf(d)} className="w-5 shrink-0 rounded-[18%]" small />)}
               </span>
-              <span className="text-xs tabular-nums opacity-75">Vorrat {s.stockCounts[p.id] ?? 0}</span>
-            </div>
-            <SbCardView key={s.stockCounts[p.id]} card={topOf(s.stocks[p.id] ?? [])} className="card-in w-8 ring-2 ring-ice/50" small />
-            <span className="w-px self-stretch bg-current opacity-20" aria-hidden="true" />
-            <div className="flex gap-0.5" aria-label="Ablagen">
-              {(s.discards[p.id] ?? []).map((d, i) => <SbCardView key={i} card={topOf(d)} className="w-5 rounded-[18%]" small />)}
-            </div>
+            </span>
           </div>
         ))}
-      </PlayerRow>
+      </div>
 
       {/* Aufbau: vier gemeinsame Stapel von 1 bis 12 */}
       <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5" aria-label="Aufbaustapel">

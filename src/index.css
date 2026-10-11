@@ -147,7 +147,7 @@
 
 /* Nicht spielbare Karten: dunkel abgedunkelt, im hellen Design blass statt schlammig */
 .card-dim { filter: brightness(0.5) saturate(0.5); }
-:root[data-theme="light"] .card-dim { filter: grayscale(0.7) contrast(0.5) brightness(1.3); }
+:root[data-theme="light"] .card-dim { filter: saturate(0.35) brightness(0.88); }
 
 /* Wer dran ist: kräftige Farbe, feiner Ring und ein kleiner Puls – in allen Spielen gleich */
 .turn {

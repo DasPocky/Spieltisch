@@ -123,7 +123,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 py-1">
         {s.phase === "roundEnd" ? <RoundSummary s={s} players={players} me={me} /> : (
           <div className="flex min-h-0 w-full flex-1 items-center justify-center gap-3">
-            <div className="flex w-[min(12vw,3.2rem)] shrink-0 flex-col items-center gap-1 self-center">
+            <div className="flex w-[min(17vw,4.4rem)] shrink-0 flex-col items-center gap-1 self-center">
               {s.trumpCard ? <HsCardView card={s.trumpCard} className="w-full" /> : <HsBack className="w-full opacity-40" />}
               <span className="text-[0.62rem] font-bold tracking-wider text-muted-foreground uppercase">Trumpf</span>
             </div>
@@ -156,7 +156,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
                 const ok = playable(c);
                 return (
                   <button key={c} type="button" disabled={!ok} data-card={c} style={dealDelay(i)} onClick={() => { vibrate(10); act({ type: "play", card: c }); }}
-                    className={cn("card-in w-[min(17vw,4.8rem)] shrink-0 rounded-[11%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
+                    className={cn("card-in shrink-0 rounded-[11%]", hand.length <= 4 ? "w-[min(22vw,6rem)]" : "w-[min(17vw,4.8rem)]", " outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                       ok && "-translate-y-2", ok && hints && "hint-glow")}>
                     <HsCardView card={c} dim={playing && !ok} />
                   </button>
