@@ -43,6 +43,16 @@
 @import "@fontsource/press-start-2p/latin-400.css";
 @import "@fontsource/vt323/latin-400.css";
 @import "@fontsource/righteous/latin-400.css";
+@import "@fontsource/playfair-display/latin-700.css";
+@import "@fontsource/playfair-display/latin-900.css";
+@import "@fontsource/bangers/latin-400.css";
+@import "@fontsource/sora/latin-400.css";
+@import "@fontsource/sora/latin-600.css";
+@import "@fontsource/sora/latin-700.css";
+@import "@fontsource/sora/latin-800.css";
+@import "@fontsource/quicksand/latin-500.css";
+@import "@fontsource/quicksand/latin-600.css";
+@import "@fontsource/quicksand/latin-700.css";
 
 /* ---------- Gemeinsame Ableitungen (alle Looks außer Marine, die hat feste Werte) ---------- */
 :root {
@@ -330,6 +340,109 @@
   --btn-shadow: inset 0 0 0 2px #120a05, 0 4px 0 #120a05;
 }
 
+/* ---------- Papierschnitt (Standard): Papierlagen, Petrol und Koralle ---------- */
+:root[data-look="papier"] {
+  --font-body: "Quicksand";
+  --display-weight: 700;
+  --radius: 1.15rem;
+  --page-pattern: radial-gradient(150% 120px at 50% -40px, var(--wave1) 0 70%, transparent 71%), radial-gradient(150% 140px at 50% -36px, var(--wave2) 0 70%, transparent 71%), radial-gradient(150% 160px at 50% -32px, var(--wave3) 0 70%, transparent 71%);
+}
+:root[data-look="papier"][data-theme="light"] {
+  --surf: #f3efe7; --ink: #23343a; --tint: #5aa79f; --hi: #24716c; --back: #2f7f7a;
+  --csurf: #fffdf8;
+  --primary: #ff7a59; --primary-foreground: #ffffff;
+  --wave1: #bfe0d9; --wave2: #d5ebe6; --wave3: #e7f2ee;
+  --glass-shadow: 0 3px 0 #e2d9c8, 0 10px 18px -6px rgb(60 40 10 / 0.18);
+  --btn-shadow: 0 4px 0 rgb(35 52 58 / 0.2);
+}
+:root[data-look="papier"][data-theme="dark"] {
+  --surf: #172426; --ink: #eef3ef; --tint: #5aa79f; --hi: #82d4c7; --back: #2f7f7a;
+  --csurf: #203134;
+  --primary: #ff8a6b; --primary-foreground: #1b1210;
+  --wave1: #20403f; --wave2: #1c3536; --wave3: #192c2e;
+  --glass-shadow: 0 3px 0 #0d1617, 0 10px 18px -6px rgb(0 0 0 / 0.45);
+  --btn-shadow: 0 4px 0 rgb(0 0 0 / 0.35);
+}
+
+/* ---------- Casino: Weinrot, Gold, Serifen ---------- */
+:root[data-look="casino"] {
+  --font-body: "Sora";
+  --font-display: "Playfair Display";
+  --display-weight: 900;
+  --radius: 0.9rem;
+}
+:root[data-look="casino"][data-theme="dark"] {
+  --surf: #26070d; --ink: #f7ead0; --tint: #c9962e; --hi: #f2c96b; --back: #6a1424;
+  --csurf: #350b14;
+  --primary: #e0b04a; --primary-foreground: #2a080e;
+  --btn-image: linear-gradient(180deg, #ffe08a, #c9962e);
+  --page-top: #5a1220; --page-mid: #2a080e; --page-bottom: #16050a;
+  --page-glow: rgb(201 150 46 / 0.12);
+  --glass-shadow: inset 0 0 0 1px rgb(242 201 107 / 0.35), 0 8px 20px rgb(0 0 0 / 0.35);
+  --btn-shadow: 0 6px 18px rgb(201 150 46 / 0.3);
+}
+:root[data-look="casino"][data-theme="light"] {
+  --surf: #f8f1e2; --ink: #3a0a12; --tint: #b08a3a; --hi: #8a1c2b; --back: #7a1626;
+  --csurf: #fffaf0;
+  --primary: #8a1c2b; --primary-foreground: #fbefd0;
+  --page-top: #fbf5e8; --page-bottom: #efe2c6;
+  --glass-shadow: inset 0 0 0 1px rgb(176 138 58 / 0.5), 0 4px 14px rgb(58 10 18 / 0.08);
+  --btn-shadow: 0 4px 12px rgb(138 28 43 / 0.25);
+}
+
+/* ---------- Comic: Rasterpunkte, dicke Linien ---------- */
+:root[data-look="comic"] {
+  --font-body: "Quicksand";
+  --font-display: "Bangers";
+  --display-weight: 400;
+  --display-spacing: 0.04em;
+  --radius: 0.9rem;
+  --border-pct: 40%;
+  --page-pattern: radial-gradient(var(--dot) 1.4px, transparent 1.6px) 0 0 / 10px 10px;
+}
+:root[data-look="comic"][data-theme="light"] {
+  --surf: #fff7e0; --ink: #111111; --tint: #b08a2a; --hi: #e8322b; --back: #1f8fff;
+  --csurf: #ffffff;
+  --primary: #e8322b; --primary-foreground: #ffffff;
+  --dot: #f5c4c4;
+  --glass-shadow: inset 0 0 0 3px #111, 5px 5px 0 #111;
+  --btn-shadow: inset 0 0 0 3px #111, 4px 4px 0 #111;
+}
+:root[data-look="comic"][data-theme="dark"] {
+  --surf: #1b1a2e; --ink: #fff7e0; --tint: #8a84c8; --hi: #ffdd00; --back: #e8322b;
+  --csurf: #26244a;
+  --primary: #ffdd00; --primary-foreground: #111111;
+  --dot: rgb(255 255 255 / 0.07);
+  --glass-shadow: inset 0 0 0 2.5px #fff7e0, 5px 5px 0 #000;
+  --btn-shadow: inset 0 0 0 2.5px #111, 4px 4px 0 #000;
+}
+
+/* ---------- Aurora-Glas: Farbverlauf, Milchglas ---------- */
+:root[data-look="aurora"] {
+  --font-body: "Sora";
+  --display-weight: 800;
+  --radius: 1.3rem;
+  --page-pattern: radial-gradient(60% 40% at 0% 8%, var(--au1) 0%, transparent 70%), radial-gradient(60% 40% at 100% 30%, var(--au2) 0%, transparent 70%), radial-gradient(70% 45% at 30% 92%, var(--au3) 0%, transparent 70%), radial-gradient(60% 40% at 100% 100%, var(--au4) 0%, transparent 70%);
+}
+:root[data-look="aurora"][data-theme="light"] {
+  --surf: #6a5cff; --ink: #ffffff; --tint: #d4ceff; --hi: #ffffff; --back: #4b3cff;
+  --csurf: rgb(255 255 255 / 0.2);
+  --primary: #ffffff; --primary-foreground: #4b3cff;
+  --au1: #ff6fb5; --au2: #5b8cff; --au3: #33e0c0; --au4: #ffb347;
+  --glass-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), 0 8px 24px rgb(40 20 120 / 0.18);
+  --btn-shadow: 0 10px 26px rgb(40 20 120 / 0.28);
+}
+:root[data-look="aurora"][data-theme="dark"] {
+  --surf: #0e1028; --ink: #f0f2ff; --tint: #7c8cff; --hi: #6ff2d0; --back: #4b3cff;
+  --csurf: rgb(255 255 255 / 0.07);
+  --primary: #8a7cff; --primary-foreground: #ffffff;
+  --btn-image: linear-gradient(90deg, #ff6fb5, #6a8cff);
+  --au1: rgb(255 111 181 / 0.35); --au2: rgb(91 140 255 / 0.35); --au3: rgb(51 224 192 / 0.3); --au4: rgb(255 179 71 / 0.25);
+  --glass-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14), 0 8px 24px rgb(0 0 0 / 0.3);
+  --btn-shadow: 0 8px 24px rgb(255 111 181 / 0.3);
+}
+:root[data-look="aurora"] .glass { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+
 /* ---------- Marine (bisher): feste Werte wie vorher ---------- */
 :root[data-look="marine"] {
   --radius: 0.8rem;
@@ -441,6 +554,8 @@
 :root[data-look="klar"] [data-slot="button"],
 :root[data-look="bonbon"] [data-slot="button"] { border-radius: var(--btn-radius); }
 :root[data-look="spielbox"] [data-slot="button"][data-variant="default"] { font-family: "Archivo Black", sans-serif; font-weight: 400; text-transform: uppercase; }
+:root[data-look="comic"] [data-slot="button"][data-variant="default"] { font-family: "Bangers", sans-serif; font-weight: 400; letter-spacing: 0.06em; font-size-adjust: none; }
+:root[data-look="casino"] [data-slot="button"][data-variant="default"] { text-transform: uppercase; letter-spacing: 0.08em; }
 :root[data-look="arcade"] [data-slot="button"][data-variant="default"] { font-family: "Press Start 2P", monospace; font-size-adjust: ex-height 0.5; }
 :root[data-look="kreide"] body::after {
   content: "";

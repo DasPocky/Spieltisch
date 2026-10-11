@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#f5f7fa" />
     <script>
       // Farbschema und Look vor dem ersten Zeichnen setzen (kein Aufblitzen)
-      try { document.documentElement.dataset.look = JSON.parse(localStorage.getItem("spieltisch:config")).look || "notizblock"; }
-      catch (e) { document.documentElement.dataset.look = "notizblock"; }
+      try { document.documentElement.dataset.look = JSON.parse(localStorage.getItem("spieltisch:config")).look || "papier"; }
+      catch (e) { document.documentElement.dataset.look = "papier"; }
       try {
         var c = localStorage.getItem("spieltisch:theme");
         var d = c === "dark" || (c === "system" && matchMedia("(prefers-color-scheme: dark)").matches);

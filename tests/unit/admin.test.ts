@@ -12,10 +12,10 @@ describe("Admin", () => {
       .toMatchObject({ site: "on", games: { tutto: "off" }, message: "" });
   });
 
-  it("Look: Standard Notizblock, nur bekannte Looks", () => {
-    expect(sanitizeConfig({}, Object.keys(GAMES)).look).toBe("notizblock");
+  it("Look: Standard Papierschnitt, nur bekannte Looks", () => {
+    expect(sanitizeConfig({}, Object.keys(GAMES)).look).toBe("papier");
     expect(sanitizeConfig({ look: "kreide" }, Object.keys(GAMES)).look).toBe("kreide");
-    expect(sanitizeConfig({ look: "pink" }, Object.keys(GAMES)).look).toBe("notizblock");
+    expect(sanitizeConfig({ look: "pink" }, Object.keys(GAMES)).look).toBe("papier");
   });
 
   it("Optionen: Grenzen begrenzt, unbekannte Spiele raus, Funktionen standardmäßig an", () => {

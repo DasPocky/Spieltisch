@@ -1,5 +1,9 @@
 /** Aussehen der ganzen Seite – der Admin wählt eins für alle, Hell/Dunkel stellt jeder selbst ein */
 export const LOOKS = [
+  { id: "papier", name: "Papierschnitt", desc: "Papierlagen, Petrol und Koralle", page: "#f3efe7", card: "#fffdf8", primary: "#ff7a59", ink: "#23343a", font: "Quicksand" },
+  { id: "casino", name: "Casino", desc: "Weinrot, Gold, edle Schrift", page: "#2a080e", card: "#350b14", primary: "#e0b04a", ink: "#f2c96b", font: "Playfair Display" },
+  { id: "comic", name: "Comic", desc: "Rasterpunkte, dicke Linien", page: "#fff7e0", card: "#ffffff", primary: "#e8322b", ink: "#111111", font: "Bangers" },
+  { id: "aurora", name: "Aurora-Glas", desc: "Bunter Verlauf, Milchglas", page: "#6a5cff", card: "#9d94ff", primary: "#ffffff", ink: "#ffffff", font: "Sora" },
   { id: "notizblock", name: "Notizblock", desc: "Papier, Filzstift, dicke Konturen", page: "#fffdf6", card: "#ffffff", primary: "#ff6b5b", ink: "#22252b", font: "Baloo 2" },
   { id: "holz", name: "Holz & Filz", desc: "Spieltisch-Filz, Creme, Messing", page: "#1d4a36", card: "#f6efe2", primary: "#d9a957", ink: "#2b2016", font: "Fraunces" },
   { id: "nacht", name: "Neon-Nacht", desc: "Lila und Cyan, leuchtend", page: "#0c0d1c", card: "#14162a", primary: "#8b5cf6", ink: "#7ee8ff", font: "Space Grotesk" },
@@ -14,5 +18,5 @@ export const LOOKS = [
 
 /** page/card/primary/ink/font: nur für die Vorschau im Admin */
 export type LookId = (typeof LOOKS)[number]["id"];
-export const DEFAULT_LOOK: LookId = "notizblock";
+export const DEFAULT_LOOK: LookId = "papier";
 export const isLook = (x: unknown): x is LookId => LOOKS.some((l) => l.id === x);
