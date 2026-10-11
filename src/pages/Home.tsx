@@ -89,7 +89,7 @@ export function Home() {
           {config?.banner && <p className="text-in mt-5 shrink-0 rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
           <h2 className={cn("mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground", config?.banner ? "mt-3" : "mt-5")}>Wie spielt ihr?</h2>
           <div className="grid shrink-0 grid-cols-2 gap-2.5">
-            <WayCard icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft – weiter` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} primary onClick={playLocal} />
+            <WayCard icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} primary onClick={playLocal} />
             <WayCard icon={Users} title="Online-Raum erstellen" text={onlineOff ? "Gerade abgeschaltet" : online ? "Jeder am eigenen Handy" : "Braucht Netz – offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
           </div>
           <form className="glass mt-2.5 flex shrink-0 items-center gap-2 rounded-2xl p-2 pl-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>

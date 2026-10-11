@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { BoardProps } from "@/games/types";
-import { Die } from "@/platform/Die";
+import { DiceTray } from "@/platform/dice3d/DiceTray";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
@@ -113,7 +113,7 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
         {!canAct ? (
           <div className="glass rounded-xl py-4 text-center text-muted-foreground">
             {room.entry === "host" ? <>Der Host spielt für <b className="text-foreground">{cur?.name}</b></> : <>Warte auf <b className="text-foreground">{cur?.name}</b></>}
-            {app && rolled && <DiceRow s={s} disabled onHold={() => {}} />}
+            {app && rolled && <DiceTray values={s.dice} held={s.held} rollKey={rollKey(s)} className="mt-2.5 h-24" />}
           </div>
         ) : app ? (
           <AppControls s={s} sel={sel} joker={joker} act={act} onPickSelf={() => setPicked(null)} own={own} />
@@ -126,25 +126,8 @@ export function Board({ room, game: s, me, online, isHost, hostTools, canAct, mo
   );
 }
 
-function DiceRow({ s, disabled, onHold }: { s: KniffelState; disabled: boolean; onHold: (i: number) => void }) {
-  const rolled = s.dice.length === 5;
-  return (
-    <div className={cn("flex items-center justify-center gap-2", disabled && "mt-2.5")} key={s.n}>
-      {rolled
-        ? s.dice.map((v, i) => (
-          <button key={i} type="button" disabled={disabled || s.rollsLeft === 0} aria-pressed={s.held[i]} aria-label={`Würfel ${v}${s.held[i] ? ", gehalten" : ""}`}
-            onClick={() => { vibrate(6); onHold(i); }}
-            className={cn("relative rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
-              disabled ? "size-9" : "size-[min(15vw,3.4rem)]",
-              )}>
-            {/* Wurf-Animation am inneren Würfel, Gehalten-Ring am Knopf – getrennt, sonst zeigt Safari den Würfel nicht */}
-            <span className={cn("block size-full", !s.held[i] && !disabled && "dice-in")} style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" mark={s.held[i] ? "selected" : undefined} /></span>
-          </button>
-        ))
-        : Array.from({ length: 5 }, (_, i) => <span key={i} className="size-[min(15vw,3.4rem)] rounded-[22%] border-2 border-dashed border-border" />)}
-    </div>
-  );
-}
+/** Jeder Wurf hat seinen Schlüssel – nur bei einem neuen fliegen die Würfel */
+const rollKey = (s: KniffelState) => `${s.n}-${s.curId}-${s.rollsLeft}`;
 
 function AppControls({ s, sel, joker, own, act, onPickSelf }: { s: KniffelState; sel: Cat | null; joker: boolean; own: boolean; act: (a: KniffelAction) => void; onPickSelf: () => void }) {
   const rolled = s.dice.length === 5;
@@ -157,7 +140,7 @@ function AppControls({ s, sel, joker, own, act, onPickSelf }: { s: KniffelState;
   if (!own) return <Button size="lg" className="w-full" onClick={onPickSelf}>Zurück zum eigenen Zug</Button>;
   return (
     <section className="glass rounded-2xl p-2.5">
-      <DiceRow s={s} disabled={false} onHold={(i) => act({ type: "hold", i })} />
+      <DiceTray values={rolled ? s.dice : []} held={s.held} rollKey={rollKey(s)} canToggle={rolled && s.rollsLeft > 0} onToggle={(i) => act({ type: "hold", i })} className="h-28" />
       <p className={cn("mt-2 min-h-5 text-center text-sm", joker ? "font-semibold text-ice" : "text-muted-foreground")}>
         <SmoothText>{joker && !sel ? "Weiterer Kniffel! +50 – jedes freie Feld zählt voll" : status}</SmoothText>
       </p>

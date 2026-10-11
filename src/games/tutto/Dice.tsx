@@ -1,6 +1,7 @@
 import { Dices } from "lucide-react";
 import { MUST_PLAY, pmDone, stopAfterTutto, NO_DICE_POINTS, scoringDice, selectionValue, type TuttoAction, type TuttoState } from "@shared/games/tutto/logic";
 import { Die } from "@/platform/Die";
+import { DiceTray } from "@/platform/dice3d/DiceTray";
 import { useHints } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
@@ -35,25 +36,9 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
         </b>
       </div>
 
-      <div className="mt-2 flex min-h-[3.25rem] items-center justify-center gap-2" key={d?.n}>
-        {d?.roll.map((v, i) => (
-          <button
-            key={i}
-            type="button"
-            disabled={disabled || d.bust}
-            aria-pressed={d.sel[i]}
-            onClick={() => { vibrate(6); onAction({ type: "toggleDie", i }); }}
-            className={cn(
-              // Auswahl zeichnet der Würfel selbst (blaue Kante) – keine Verschiebung: Animation und Verschieben am selben Element zeigt Safari falsch an
-              "relative size-[min(13vw,3.25rem)] rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring",
-              d.bust && "opacity-50 grayscale",
-            )}
-          >
-            <span className="dice-in block size-full" style={{ animationDelay: `${i * 40}ms` }}><Die value={v} className="size-full" mark={d.sel[i] ? "selected" : help?.dice[i] ? "hint" : undefined} /></span>
-          </button>
-        ))}
-        {(!d || !d.roll.length) && <span className="text-sm text-muted-foreground">{d?.tutto ? "Tutto!" : "–"}</span>}
-      </div>
+      <DiceTray className={cn("mt-2 h-24", d?.bust && "grayscale-[0.6]")} values={d?.roll ?? []} held={d?.sel} hint={help?.dice}
+        rollKey={`${state.curId}-${d?.n ?? 0}`} canToggle={!disabled && !!d && !d.bust} onToggle={(i) => onAction({ type: "toggleDie", i })}
+        empty={d?.tutto ? "Tutto!" : "Tippe auf „Würfeln“"} />
 
       <div className="mt-2 flex min-h-6 items-center justify-between gap-3 px-1.5">
         <span className={cn("text-sm", d?.bust ? "font-semibold text-destructive" : d?.tutto ? "font-semibold text-ice" : "text-muted-foreground")}>{status}</span>

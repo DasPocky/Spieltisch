@@ -47,7 +47,8 @@ export function simulate(n: number, rest: (Pose | null)[], seed: number, w: numb
   for (let attempt = 0; attempt < 8; attempt++) {
     const frames = run(n, rest, seed + attempt * 7919, w, d);
     best = frames;
-    if (frames.at(-1)!.every((p, i) => rest[i] || flatness(p) > 0.995)) break;
+    // Gültig: alle flach und auf dem Tisch (nicht auf einem anderen Würfel gestapelt)
+    if (frames.at(-1)!.every((p, i) => rest[i] || (flatness(p) > 0.995 && p[1] < 0.6))) break;
   }
   return best;
 }
@@ -56,7 +57,7 @@ function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: numbe
   const rnd = rng(seed);
   const world = new World({ gravity: new Vec3(0, -9.82 * 7, 0), allowSleep: true });
   const mDie = new Material(), mFloor = new Material(), mWall = new Material();
-  world.addContactMaterial(new ContactMaterial(mDie, mFloor, { friction: 0.32, restitution: 0.38 }));
+  world.addContactMaterial(new ContactMaterial(mDie, mFloor, { friction: 0.45, restitution: 0.3 }));
   world.addContactMaterial(new ContactMaterial(mDie, mWall, { friction: 0.1, restitution: 0.55 }));
   world.addContactMaterial(new ContactMaterial(mDie, mDie, { friction: 0.12, restitution: 0.45 }));
   const plane = (x: number, y: number, z: number, axis: [number, number, number], ang: number, mat: Material) => {
@@ -77,7 +78,7 @@ function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: numbe
     const r = rest[i];
     const b = new Body({
       mass: r ? 0 : 1, material: mDie, shape: new Box(new Vec3(HALF, HALF, HALF)),
-      linearDamping: 0.08, angularDamping: 0.12, sleepSpeedLimit: 0.25, sleepTimeLimit: 0.35,
+      linearDamping: 0.3, angularDamping: 0.45, sleepSpeedLimit: 0.5, sleepTimeLimit: 0.2,
     });
     if (r) {
       b.position.set(r[0], r[1], r[2]);
@@ -85,21 +86,50 @@ function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: numbe
     } else {
       // Aus der Hand: vorn, etwas über dem Tisch, schräg nach hinten mit Drall
       const k = thrown++;
-      b.position.set(-w * 0.55 + (k % 3) * 1.1 + rnd() * 0.3, 1.6 + Math.floor(k / 3) * 1.15 + rnd() * 0.6, d - 0.7 - rnd() * 0.2);
+      b.position.set(-w * 0.6 + (k % 3) * 1.15 + rnd() * 0.3, 1.2 + Math.floor(k / 3) * 1.1 + rnd() * 0.4, d - 0.65 - rnd() * 0.15);
       b.quaternion.setFromEuler(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28);
-      b.velocity.set((rnd() - 0.3) * 5, 1 + rnd() * 2, -(6 + rnd() * 3 + d * 1.2));
+      b.velocity.set((rnd() - 0.2) * (2 + w * 0.8), 0.5 + rnd() * 1.5, -(2.5 + rnd() * 2 + d * 2.2));
       b.angularVelocity.set((rnd() - 0.5) * 30, (rnd() - 0.5) * 30, (rnd() - 0.5) * 30);
     }
     world.addBody(b);
     bodies.push(b);
   }
   const frames: Pose[][] = [];
-  for (let k = 0; k < 60 * 5; k++) {
+  // Höchstens 2,5 s – was dann noch kippelt, fällt per settle() flach (siehe unten)
+  for (let k = 0; k < 150; k++) {
     world.step(1 / 60);
     frames.push(bodies.map((b) => [b.position.x, b.position.y, b.position.z, b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w]));
     if (k > 20 && bodies.every((b) => b.mass === 0 || b.sleepState === Body.SLEEPING)) break;
   }
-  // Letzte Lage sauber flach: Rest-Kippeln bis 0,5 % wegnehmen, damit die Oberseite klar ist
+  return settle(frames, rest);
+}
+
+/**
+ * Lehnt ein Würfel am Ende schräg (an der Bande oder einem anderen Würfel), kippt er wie am echten Tisch
+ * auf die nächstliegende Seite: ein paar Bilder Drehung um die waagrechte Achse, bis er flach aufliegt.
+ */
+function settle(frames: Pose[][], rest: (Pose | null)[]): Pose[][] {
+  const last = frames.at(-1)!;
+  const fix = last.map((p, i) => {
+    if (rest[i] || flatness(p) > 0.995) return null;
+    const q = quat(p);
+    let up = new Vec3(0, 1, 0), best = -2;
+    for (const [a] of FACES) { const v = q.vmult(new Vec3(...a)); if (v.y > best) { best = v.y; up = v; } }
+    const turn = new Quaternion().setFromVectors(up, new Vec3(0, 1, 0));
+    return { from: p, to: turn.mult(q) };
+  });
+  if (fix.every((f) => !f)) return frames;
+  const steps = 10;
+  for (let k = 1; k <= steps; k++) {
+    const t = k / steps, e = t * t;
+    frames.push(last.map((p, i) => {
+      const f = fix[i];
+      if (!f) return p;
+      const q = new Quaternion();
+      quat(f.from).slerp(f.to, e, q);
+      return [p[0], p[1] + (0.5 - p[1]) * e, p[2], q.x, q.y, q.z, q.w];
+    }));
+  }
   return frames;
 }
 

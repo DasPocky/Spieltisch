@@ -18,7 +18,7 @@
   left: 50%;
   top: 50%;
   transform-style: preserve-3d;
-  transform: rotateX(16deg) rotateX(90deg);
+  transform: translateY(6%) rotateX(16deg) rotateX(90deg);
 }
 .dice-shadow {
   position: absolute;
@@ -30,10 +30,12 @@
   filter: blur(5px);
 }
 .dice-shadow.held { background: color-mix(in srgb, var(--primary) 70%, transparent); filter: blur(7px); }
+/* Knopf so groß wie der Würfel (antippbar), Mittelpunkt = Lage aus der Physik */
 .die3d {
   position: absolute;
-  width: 0;
-  height: 0;
+  width: var(--px);
+  height: var(--px);
+  margin: calc(var(--px) * -0.5) 0 0 calc(var(--px) * -0.5);
   padding: 0;
   border: 0;
   background: none;
@@ -44,6 +46,8 @@
 .die3d:disabled { cursor: default; }
 .die3d-core {
   position: absolute;
+  left: 50%;
+  top: 50%;
   width: calc(var(--px) * 0.92);
   height: calc(var(--px) * 0.92);
   margin: calc(var(--px) * -0.46) 0 0 calc(var(--px) * -0.46);
@@ -51,6 +55,8 @@
 }
 .die3d-face {
   position: absolute;
+  left: 50%;
+  top: 50%;
   width: var(--px);
   height: var(--px);
   margin: calc(var(--px) * -0.5) 0 0 calc(var(--px) * -0.5);
@@ -77,6 +83,7 @@
   background: var(--die-one, radial-gradient(circle at 62% 68%, #e06a78, #8e2b39 75%));
 }
 .die3d.held .die3d-face { box-shadow: inset 0 0 0 calc(var(--px) * 0.07) var(--primary), inset -2px -3px 5px rgb(0 0 0 / 0.1); }
+.die3d.hint .die3d-face { box-shadow: inset 0 0 0 calc(var(--px) * 0.045) color-mix(in srgb, var(--primary) 55%, transparent); }
 .die3d:focus-visible .die3d-face { box-shadow: inset 0 0 0 3px var(--ring); }
 
 /* Würfel passend zum Look */

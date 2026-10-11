@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { Die } from "@/platform/Die";
+import { DiceTray } from "@/platform/dice3d/DiceTray";
 import { HintChip } from "@/platform/HintChip";
 import { Seats } from "@/platform/Seats";
 import { ResultScreen } from "@/platform/ResultScreen";
@@ -162,8 +163,9 @@ export function Board({ room, game: s, me, isHost, canAct, act, dispatch }: Boar
               </p>
             </div>
             {(r.dice === "app" || s.die !== null || !mine) && (
-              <span key={s.rolls} className={cn("block size-12 shrink-0", s.rolls > 0 && "dice-in", s.die === null && "opacity-55 transition-opacity delay-700 duration-300")} data-testid="die">
-                {s.shown ? <Die value={s.shown} className="size-full" mark={s.die !== null ? "selected" : undefined} /> : <span className="block size-full rounded-[22%] border-2 border-dashed border-border" />}
+              <span className={cn("relative block h-16 w-24 shrink-0", s.die === null && "opacity-70 transition-opacity delay-1000 duration-300")} data-testid="die">
+                <DiceTray className="size-full" values={s.shown ? [s.shown] : []} rollKey={`${s.rolls}`} empty="" label="Würfel" />
+                {s.shown && <span role="img" className="sr-only" aria-label={`Würfel ${s.shown}`} />}
               </span>
             )}
             <RulesSheet gameId={room.gameId} focus={s.die === 6 ? "six" : tries ? "three" : undefined} />

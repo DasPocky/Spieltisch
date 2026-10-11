@@ -23,9 +23,13 @@ const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b
  * Gehaltene Würfel bleiben liegen (die anderen stoßen sich an ihnen) und leuchten.
  * `rollKey` ändert sich bei jedem neuen Wurf – nur dann wird geworfen; neu geladen liegt alles still wie zuletzt.
  */
-export function DiceTray({ values, held, rollKey, onToggle, canToggle, className, label = "Würfel" }: {
+export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
   values: number[];
   held?: boolean[];
+  /** Spielhilfe: leiser Ring */
+  hint?: boolean[];
+  /** Text, solange keine Würfel liegen */
+  empty?: string;
   rollKey: string;
   onToggle?: (i: number) => void;
   canToggle?: boolean;
@@ -38,6 +42,8 @@ export function DiceTray({ values, held, rollKey, onToggle, canToggle, className
   const sim = useRef<{ key: string; frames: Pose[][]; faces: Face[][]; poses: Pose[]; px: number } | null>(null);
   const [, redraw] = useState(0);
   const dieEls = useRef<(HTMLElement | null)[]>([]);
+  // Beim Öffnen schon vorhandener Wurf (z. B. neu geladen): still hinlegen. Jeder spätere Wurf fliegt.
+  const firstKey = useRef(values.length ? rollKey : null);
   const shadowEls = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => { void loadPhysics().then(setLib); }, []);
@@ -51,18 +57,21 @@ export function DiceTray({ values, held, rollKey, onToggle, canToggle, className
   }, []);
 
   const n = values.length;
-  const px = size ? Math.min(46, Math.max(26, Math.min(size.w / 6.4, size.h / 2.6))) : 40;
+  // Würfelgröße: Der Tisch soll mindestens gut drei Würfel tief und acht breit sein, sonst stapeln sie sich
+  const few = values.length <= 2;
+  const px = size ? Math.min(44, Math.max(20, Math.min(size.w / (few ? 3.4 : 8.5), size.h / (few ? 2.4 : 3.3)))) : 36;
 
   // Neuer Wurf: Physik rechnen, Beschriftung so drehen, dass die gewürfelte Zahl oben landet
   useEffect(() => {
     if (!lib || !size || !n || sim.current?.key === rollKey && sim.current.faces.length === n) return;
     const prev = sim.current;
-    const w = size.w / (2 * px) - 0.2, d = size.h / (2 * px) - 0.2;
+    // Hinten etwas Luft lassen: von schräg vorn gesehen ragen Würfel an der hinteren Bande sonst aus dem Bild
+    const w = size.w / (2 * px) - 0.25, d = size.h / (2 * px) - 0.45;
     const rest = values.map((_, i) => (held?.[i] && prev && prev.poses[i] && prev.faces[i] ? prev.poses[i] : null));
     const frames = lib.simulate(n, rest, lib.seedOf(rollKey), w, d);
     const last = frames.at(-1)!;
     const faces = values.map((v, i) => (rest[i] && prev ? prev.faces[i] : lib.labelFaces(last[i], v)));
-    const animate = !!prev && !reduced();
+    const animate = rollKey !== firstKey.current && !reduced();
     sim.current = { key: rollKey, frames: animate ? frames : [last], faces, poses: last, px };
     redraw((x) => x + 1);
     if (animate) vibrate(12);
@@ -103,28 +112,28 @@ export function DiceTray({ values, held, rollKey, onToggle, canToggle, className
   return (
     <div ref={box} role="group" aria-label={label} data-testid="dice-tray"
       className={cn("dice-tray relative overflow-hidden rounded-2xl", className)}>
-      {!n && <span className="absolute inset-0 grid place-items-center text-sm text-white/70">Tippe auf „Würfeln“</span>}
+      {!n && <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-white/75">{empty}</span>}
       {/* Bis die Physik geladen ist: flache Würfel in einer Reihe */}
       {n > 0 && !ready && (
         <div className="absolute inset-0 flex items-center justify-center gap-2">
           {values.map((v, i) => (
             <button key={i} type="button" disabled={!canToggle} aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
               onClick={() => onToggle?.(i)} className="size-11 rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
-              <Die value={v} className="size-full" mark={held?.[i] ? "selected" : undefined} />
+              <Die value={v} className="size-full" mark={held?.[i] ? "selected" : hint?.[i] ? "hint" : undefined} />
             </button>
           ))}
         </div>
       )}
       {ready && (
         <div className="dice-scene" style={{ ["--px" as string]: `${px}px` }}>
-          {values.map((v, i) => (
+          {values.map((_, i) => (
             <span key={`s${i}`} ref={(el) => { shadowEls.current[i] = el; }} className={cn("dice-shadow", held?.[i] && "held")} />
           ))}
           {values.map((v, i) => (
             <button key={i} type="button" ref={(el) => { dieEls.current[i] = el; }} disabled={!canToggle}
               aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
               onClick={() => { vibrate(6); onToggle?.(i); }}
-              className={cn("die3d", held?.[i] && "held")}>
+              className={cn("die3d", held?.[i] && "held", !held?.[i] && hint?.[i] && "hint")}>
               <span className="die3d-core" style={{ transform: "rotateX(90deg)" }} />
               <span className="die3d-core" style={{ transform: "rotateY(90deg)" }} />
               <span className="die3d-core" />

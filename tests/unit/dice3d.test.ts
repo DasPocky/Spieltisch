@@ -19,18 +19,20 @@ describe("3D-Würfel", () => {
     for (let r = 0; r < 120; r++) {
       const n = 1 + (r % 6);
       const values = Array.from({ length: n }, (_, i) => ((r * 7 + i * 3) % 6) + 1);
-      const frames = simulate(n, Array(n).fill(null), seedOf(`wurf-${seed++}`), 3.4, 1.6);
+      const [w, d] = r % 2 ? [3.4, 1.6] : [3.9, 1.25];
+      const frames = simulate(n, Array(n).fill(null), seedOf(`wurf-${seed++}`), w, d);
       const last = frames.at(-1)!;
       last.forEach((p, i) => {
         expect(flatness(p)).toBeGreaterThan(0.99);
+        expect(p[1]).toBeLessThan(0.62);
         const faces = labelFaces(p, values[i]);
         expect(topValue(p, faces)).toBe(values[i]);
         for (const f of faces) expect(faces.find((g) => dot(g.n, f.n) === -1)!.value + f.value).toBe(7);
         const at = (v: number) => faces.find((f) => f.value === v)!.n;
         expect(dot(cross(at(1), at(2)), at(3))).toBe(1);
         // Würfel bleiben im Tisch
-        expect(Math.abs(p[0])).toBeLessThan(3.4);
-        expect(Math.abs(p[2])).toBeLessThan(1.6);
+        expect(Math.abs(p[0])).toBeLessThan(w);
+        expect(Math.abs(p[2])).toBeLessThan(d);
       });
     }
   });

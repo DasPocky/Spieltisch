@@ -106,7 +106,7 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
     <>
       {/* Schritt 1: Mitspieler */}
       {myTurn && <div className="shrink-0 px-1 pb-1 text-sm font-bold text-ice">1 · Wen fragst du?</div>}
-      <Seats me={me} online={online} label="Wen fragst du?" selectedId={myTurn ? selTarget : null}
+      <Seats me={me} online={online} selectedId={myTurn ? selTarget : null}
         onSelect={myTurn ? setTarget : undefined} pickable={(id) => targets.some((t) => t.id === id)}
         seats={players.filter((p) => p.id !== viewer || !myTurn).map((p) => ({
           id: p.id, name: p.name, cur: p.id === s.curId,
