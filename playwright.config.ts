@@ -26,7 +26,8 @@ export default defineConfig({
   },
   // Der Admin-Test schaltet Spiele ab – deshalb läuft er erst, wenn alle anderen fertig sind
   projects: [
-    { name: "spiele", testIgnore: /admin\.spec\.ts/ },
+    { name: "setup", testMatch: /\.setup\.ts$/ },
+    { name: "spiele", testIgnore: [/admin\.spec\.ts/, /\.setup\.ts$/], dependencies: ["setup"] },
     { name: "admin", testMatch: /admin\.spec\.ts/, dependencies: ["spiele"] },
   ],
   webServer: {

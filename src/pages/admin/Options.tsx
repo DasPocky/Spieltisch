@@ -18,6 +18,8 @@ const FEATURES: [keyof SiteFeatures, string, string][] = [
   ["call", "Audio & Video", "in Online-Räumen"],
   ["groups", "Gruppen", "Bestenliste und Einladen"],
   ["profiles", "Profile", "persönliche Statistik"],
+  ["local", "Ein Handy für alle", "lokal spielen ohne Raum (sonst nur online)"],
+  ["offline", "Offline-App", "Seite und Spiele auf dem Handy speichern – lokal ohne Netz"],
 ];
 const LIMITS: [keyof SiteLimits, string, string, number, number][] = [
   ["roomHours", "Räume verschwinden nach", "Stunden ohne Aktivität", 1, 336],

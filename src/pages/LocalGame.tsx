@@ -5,6 +5,7 @@ import { withDefaults, type GameDefaults } from "@shared/platform/access";
 import { GAME_IDS, getGame, isGameId } from "@shared/games";
 import { GameError } from "@shared/platform/types";
 import { RoomScreen } from "@/platform/RoomScreen";
+import { Button } from "@/components/ui/button";
 import { navigate } from "@/hooks/useRoute";
 import { siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
 import { LOCAL_GAME_KEY, localKey, readJSON, writeJSON } from "@/lib/storage";
@@ -106,6 +107,17 @@ export function LocalGame() {
       }
     });
   }, []);
+
+  // „Ein Handy für alle“ ist standardmäßig aus – nur wenn der Admin es eingeschaltet hat (Online-Räume abgeschaltet: lokal als Rückfall)
+  if (config && config.features?.local !== true && config.features?.online !== false) {
+    return (
+      <main className="mx-auto grid min-h-dvh-safe max-w-md content-center gap-3 px-6 text-center">
+        <h1 className="text-2xl font-bold tracking-tight">Gespielt wird online</h1>
+        <p className="text-muted-foreground">„Ein Handy für alle“ ist gerade abgeschaltet. Erstellt einen Online-Raum – jeder spielt am eigenen Handy.</p>
+        <Button size="lg" onClick={() => navigate("/")}>Zur Startseite</Button>
+      </main>
+    );
+  }
 
   return (
     <AccessGate gameId={room.gameId}>

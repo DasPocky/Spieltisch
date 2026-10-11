@@ -24,6 +24,9 @@ function load(): Promise<SiteConfig> {
   return loading;
 }
 
+/** Konfiguration abwarten (geladen oder zuletzt bekannt) */
+export const whenSiteConfig = (): Promise<SiteConfig> => (cache ? Promise.resolve(cache) : load());
+
 /** Was gerade bekannt ist (null, solange noch nicht geladen) – lädt bei Bedarf nach */
 export function siteConfigNow(): SiteConfig | null {
   if (!cache) void load();

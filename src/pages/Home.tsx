@@ -60,6 +60,10 @@ export function Home() {
   const features = config?.features;
   const onlineOff = features?.online === false;
   const online = netOnline && !onlineOff;
+  // „Ein Handy für alle“ ist standardmäßig aus (Admin kann es einschalten) – dann geht alles online
+  const localOn = features?.local === true || onlineOff;
+  // Schnellstart online: das gewählte Spiel steht im neuen Raum gleich bereit
+  const [roomGame, setRoomGame] = useState<string | null>(null);
   // Ein Handy: gleich in die lokale Lobby – mit dem zuletzt lokal gewählten Spiel, falls es noch freigegeben ist
   const playLocal = (pick?: string) => {
     remember("local");
@@ -89,8 +93,9 @@ export function Home() {
           {config?.banner && <p className="text-in mt-5 shrink-0 rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
           <h2 className={cn("mb-2 shrink-0 px-1 text-sm font-semibold text-muted-foreground", config?.banner ? "mt-3" : "mt-5")}>Wie spielt ihr?</h2>
           <div className="grid shrink-0 grid-cols-2 gap-2.5">
-            <WayCard icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} primary onClick={playLocal} />
-            <WayCard icon={Users} title="Online-Raum erstellen" text={onlineOff ? "Gerade abgeschaltet" : online ? "Jeder am eigenen Handy" : "Braucht Netz – offline"} marked={online && last === "online"} disabled={!online} onClick={() => { remember("online"); setWay("online"); }} />
+            {localOn && <WayCard icon={Smartphone} title="Ein Handy für alle" text={running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"} marked={!running && last === "local"} primary onClick={playLocal} />}
+            <WayCard icon={Users} title="Online-Raum erstellen" text={onlineOff ? "Gerade abgeschaltet" : online ? "Jeder am eigenen Handy" : "Braucht Netz – offline"} marked={localOn && online && last === "online"} primary={!localOn} disabled={!online} onClick={() => { remember("online"); setRoomGame(null); setWay("online"); }} />
+            {!localOn && <WayCard icon={Video} title="Treffpunkt" text={online ? "Reden, sehen, schreiben" : "Braucht Netz – offline"} marked={false} disabled={!online} onClick={() => setWay("meet")} />}
           </div>
           <form className="glass mt-2.5 flex shrink-0 items-center gap-2 rounded-2xl p-2 pl-3" onSubmit={(e) => { e.preventDefault(); if (codeOk) navigate(`/r/${code}`); }}>
             <LogIn className="size-4.5 shrink-0 text-primary" aria-hidden="true" />
@@ -98,7 +103,7 @@ export function Home() {
               autoComplete="off" autoCapitalize="characters" placeholder="Raumcode – beitreten" className="h-10 text-center text-lg font-semibold tracking-[0.3em] placeholder:text-base placeholder:font-normal placeholder:tracking-normal" />
             <Button type="submit" disabled={!codeOk || !online} className="h-10 shrink-0">Los</Button>
           </form>
-          {online && (
+          {localOn && online && (
             <button type="button" onClick={() => setWay("meet")} data-testid="meet-card"
               className="glass mt-2.5 flex w-full shrink-0 items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
               <Video className="size-4.5 shrink-0 text-primary" />
@@ -106,7 +111,8 @@ export function Home() {
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </button>
           )}
-          <QuickGames games={games.map((g) => g.id)} featured={config?.featured ?? []} order={config?.order ?? []} onPick={(id) => playLocal(id)} />
+          {(localOn || online) && <QuickGames games={games.map((g) => g.id)} featured={config?.featured ?? []} order={config?.order ?? []} local={localOn}
+            onPick={(id) => { if (localOn) playLocal(id); else { remember("online"); setRoomGame(id ?? null); setWay("online"); } }} />}
           {features?.groups !== false && <GroupCard />}
           <InstallHint />
           <div className="min-h-0 flex-1" />
@@ -124,7 +130,7 @@ export function Home() {
       {way === "online" && (
         <>
           <StepHead title="Online-Raum erstellen" sub="Das Spiel wählst du gleich in der Lobby" onBack={() => setWay(null)} />
-          <CreateRoom gameId={defaultGame(games.map((g) => g.id), locked)} />
+          <CreateRoom gameId={roomGame ?? defaultGame(games.map((g) => g.id), locked)} pickGame={!roomGame} />
           <div className="min-h-0 flex-1" />
         </>
       )}
@@ -143,7 +149,7 @@ function defaultGame(ids: string[], locked: (id: string) => boolean): string {
   return last && free.includes(last) ? last : free[0] ?? ids[0] ?? "tutto";
 }
 
-function CreateRoom({ gameId, meet }: { gameId: string; meet?: boolean }) {
+function CreateRoom({ gameId, meet, pickGame = true }: { gameId: string; meet?: boolean; pickGame?: boolean }) {
   const [name, setName] = useState(() => read(NAME_KEY) ?? "");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -151,7 +157,7 @@ function CreateRoom({ gameId, meet }: { gameId: string; meet?: boolean }) {
   const ok = cleanName(name).length > 0 && PIN_RE.test(pin);
   const create = async () => {
     setBusy(true); setError(null);
-    try { await createRoom(name, pin, gameId, true, meet); }
+    try { await createRoom(name, pin, gameId, pickGame, meet); }
     catch (e) { setError(e instanceof Error ? e.message : "Keine Verbindung zum Server."); }
     finally { setBusy(false); }
   };
@@ -244,7 +250,7 @@ function WayCard({ icon: Icon, title, text, marked, disabled, primary, onClick }
 }
 
 /** Schnellstart: die wichtigsten Spiele als Kacheln – ein Tipp, und die Lobby (ein Handy) steht mit diesem Spiel bereit */
-function QuickGames({ games, featured, order, onPick }: { games: string[]; featured: string[]; order: string[]; onPick: (id?: string) => void }) {
+function QuickGames({ games, featured, order, onPick, local }: { games: string[]; featured: string[]; order: string[]; onPick: (id?: string) => void; local: boolean }) {
   const last = read(LOCAL_GAME_KEY);
   const ids = orderGames(games, order);
   const first = [...featured.filter((id) => ids.includes(id)), ...(last && ids.includes(last) ? [last] : []), ...ids];
@@ -252,7 +258,7 @@ function QuickGames({ games, featured, order, onPick }: { games: string[]; featu
   if (!shown.length) return null;
   return (
     <section className="mt-4 shrink-0" aria-label="Schnellstart">
-      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground">Schnellstart <span className="text-xs font-normal">ein Handy</span></h2>
+      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground">Schnellstart <span className="text-xs font-normal">{local ? "ein Handy" : "neuer Online-Raum"}</span></h2>
       <div className="grid grid-cols-4 gap-2">
         {shown.map((id, i) => {
           const g = GAME_LIST.find((x) => x.id === id)!;

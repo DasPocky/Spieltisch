@@ -26,7 +26,8 @@ describe("Admin", () => {
     expect(c.limits).toEqual({ roomHours: 336, maxPlayers: 2, maxRooms: 0 });
     expect(c.featured).toEqual(["dame"]);
     expect(c.order).toEqual(["ludo", "tutto"]);
-    expect(c.features).toEqual({ online: false, call: true, groups: true, profiles: true });
+    expect(c.features).toEqual({ online: false, call: true, groups: true, profiles: true, local: false, offline: false });
+    expect(sanitizeConfig({ features: { local: true, offline: true } }, Object.keys(GAMES)).features).toMatchObject({ local: true, offline: true });
     expect(c.banner).toBe("Hallo");
     expect(c.archiveDays).toBe(1);
     expect(orderGames(["tutto", "kniffel", "ludo"], ["ludo", "gibtsnicht"])).toEqual(["ludo", "tutto", "kniffel"]);

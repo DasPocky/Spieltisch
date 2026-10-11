@@ -48,10 +48,14 @@ export interface SiteFeatures {
   groups: boolean;
   /** Profile mit Statistik */
   profiles: boolean;
+  /** „Ein Handy für alle“ (lokal spielen) – standardmäßig aus, der Fokus liegt auf Online */
+  local: boolean;
+  /** Offline-App: Seite und Spiele für unterwegs ohne Netz zwischenspeichern – standardmäßig aus */
+  offline: boolean;
 }
 
 export const DEFAULT_LIMITS: SiteLimits = { roomHours: 48, maxPlayers: 20, maxRooms: 0 };
-export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true };
+export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true, local: false, offline: false };
 export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
 
@@ -93,7 +97,7 @@ export function sanitizeConfig(x: unknown, gameIds: readonly string[]): AccessCo
       maxPlayers: num(l.maxPlayers, 2, 20, DEFAULT_LIMITS.maxPlayers),
       maxRooms: num(l.maxRooms, 0, 500, DEFAULT_LIMITS.maxRooms),
     },
-    features: Object.fromEntries((Object.keys(DEFAULT_FEATURES) as (keyof SiteFeatures)[]).map((k) => [k, f[k] !== false])) as unknown as SiteFeatures,
+    features: Object.fromEntries((Object.keys(DEFAULT_FEATURES) as (keyof SiteFeatures)[]).map((k) => [k, typeof f[k] === "boolean" ? f[k] : DEFAULT_FEATURES[k]])) as unknown as SiteFeatures,
     archiveDays: num(o.archiveDays, 1, 365, DEFAULT_ARCHIVE_DAYS),
     look: isLook(o.look) ? o.look : DEFAULT_LOOK,
   };

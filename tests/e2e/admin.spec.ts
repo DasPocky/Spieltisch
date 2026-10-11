@@ -2,7 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { createRoom, newPhone, openSettings, shot } from "./util";
 
 const PW = "test-admin";
-const allOn = { site: "on", games: {}, message: "" };
+const allOn = { site: "on", games: {}, message: "", features: { online: true, call: true, groups: true, profiles: true, local: true, offline: false } };
 
 async function setConfig(request: APIRequestContext, config: object, code?: string | null) {
   const res = await request.post("/api/admin", { data: { password: PW, config, code } });
