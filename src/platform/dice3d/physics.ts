@@ -141,6 +141,12 @@ function settle(frames: Pose[][], rest: (Pose | null)[]): Pose[][] {
   return frames;
 }
 
+/** Ruhende Lage ohne Wurf (neu geladen, weniger Bewegung): flach, zufällig gedreht */
+export function restingPose(seed: number): Pose {
+  const a = rng(seed)() * Math.PI * 2;
+  return [0, 0.5, 0, 0, Math.sin(a / 2), 0, Math.cos(a / 2)];
+}
+
 /**
  * Drehung der Beschriftung, damit `value` nach der Landung oben steht.
  * Liefert für jede Seite (Index wie FACES) die Normale und die „Oben“-Richtung des Augenbilds in Körperkoordinaten.
