@@ -1,16 +1,7 @@
-/* Würfeltisch und 3D-Würfel. Farben kommen aus dem Look (--die-*, --tray), Standard: Elfenbein auf Filz. */
+/* Würfel-Ablage und 3D-Würfel. Farben kommen aus dem Look (--die-*), Standard: Elfenbein. */
+/* Ablage der Würfel: kein eigener Kasten – sie liegen frei auf der Fläche darunter, nur mit Schatten */
 .dice-tray {
   perspective: 1800px;
-  background: var(--tray, radial-gradient(110% 80% at 45% 35%, color-mix(in oklab, var(--deep-500) 85%, white), var(--deep-600) 65%, var(--deep-700)));
-  box-shadow: inset 0 0 0 5px color-mix(in oklab, var(--deep-700) 80%, black), inset 0 12px 26px rgb(0 0 0 / 0.35);
-}
-.dice-tray::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: repeating-linear-gradient(45deg, rgb(255 255 255 / 0.02) 0 2px, transparent 2px 5px);
-  pointer-events: none;
 }
 /* Physik-Koordinaten (y hoch) → Bildschirm: rotateX(90deg); dazu leicht schräg von vorn geschaut */
 .dice-scene {
@@ -52,8 +43,8 @@
   height: calc(var(--px) * 1.08);
   margin: calc(var(--px) * -0.54) 0 0 calc(var(--px) * -0.54);
   border-radius: 30%;
-  background: rgb(0 8 6 / 0.45);
-  filter: blur(5px);
+  background: rgb(20 30 30 / 0.32);
+  filter: blur(4px);
 }
 .dice-shadow.held { background: color-mix(in srgb, var(--primary) 70%, transparent); filter: blur(7px); }
 /* Knopf so groß wie der Würfel (antippbar), Mittelpunkt = Lage aus der Physik */
@@ -113,15 +104,14 @@
 .die3d:focus-visible .die3d-face { box-shadow: inset 0 0 0 3px var(--ring); }
 
 /* Würfel passend zum Look */
-:root[data-look="casino"] { --die-face: radial-gradient(130% 130% at 30% 25%, #ff6a6a, #c4141f 55%, #8a0b14); --die-core: #9e0f18; --die-pip: radial-gradient(circle at 40% 35%, #fff, #e9e9e9 70%); --die-one: var(--die-pip); --tray: radial-gradient(110% 80% at 45% 35%, #2a7a52, #1b5a3a 65%, #134129); }
+:root[data-look="casino"] { --die-face: radial-gradient(130% 130% at 30% 25%, #ff6a6a, #c4141f 55%, #8a0b14); --die-core: #9e0f18; --die-pip: radial-gradient(circle at 40% 35%, #fff, #e9e9e9 70%); --die-one: var(--die-pip); }
 :root[data-look="nacht"], :root[data-look="aurora"][data-theme="dark"] { --die-face: radial-gradient(130% 130% at 30% 25%, #4b3c8f, #2a1f66 60%, #1a1340); --die-core: #1e1650; --die-pip: radial-gradient(circle at 40% 35%, #c8fbff, #22d3ee 70%); --die-one: radial-gradient(circle at 40% 35%, #ffd1f0, #ff4fb5 70%); }
 :root[data-look="arcade"] { --die-face: linear-gradient(#1d1d4a, #16163a); --die-core: #101030; --die-pip: #ffe14d; --die-one: #ff3d7f; }
 :root[data-look="arcade"] .die3d-face, :root[data-look="spielbox"] .die3d-face, :root[data-look="comic"] .die3d-face { border-radius: 10%; }
-:root[data-look="spielbox"] { --die-face: #ffffff; --die-core: #e8e8e8; --die-pip: #111; --die-one: #ef3e36; --tray: radial-gradient(110% 80% at 45% 35%, #2a7fff, #1d5fcf 65%, #1648a3); }
+:root[data-look="spielbox"] { --die-face: #ffffff; --die-core: #e8e8e8; --die-pip: #111; --die-one: #ef3e36; }
 :root[data-look="comic"] { --die-face: radial-gradient(130% 130% at 30% 25%, #fff36a, #ffdd00 60%, #e6c200); --die-core: #d9b800; --die-pip: #111; --die-one: #e8322b; }
 :root[data-look="bonbon"] { --die-face: radial-gradient(130% 130% at 30% 25%, #ffe1f0, #ffb3d6 60%, #f08fbe); --die-core: #ee9cc5; --die-pip: radial-gradient(circle at 40% 35%, #fff, #f3f0ff 70%); --die-one: radial-gradient(circle at 40% 35%, #c9a8ff, #7b4dd8 70%); }
 :root[data-look="siebziger"] { --die-face: radial-gradient(130% 130% at 30% 25%, #ffb27a, #e8743b 60%, #c4562a); --die-core: #c4562a; --die-pip: radial-gradient(circle at 40% 35%, #fff8e6, #f4e4c1 70%); --die-one: radial-gradient(circle at 40% 35%, #fff8e6, #f4e4c1 70%); }
 :root[data-look="klar"] { --die-face: linear-gradient(160deg, #ffffff, #f0f0f2); --die-core: #e4e4e8; --die-pip: #111114; --die-one: #ff5a3c; }
 :root[data-look="kreide"][data-theme="dark"] { --die-face: radial-gradient(130% 130% at 30% 25%, #ffffff, #f2f0e6 60%, #d8d4c4); }
-:root[data-look="holz"] { --tray: radial-gradient(110% 80% at 45% 35%, #2f8a62, #1d6a48 65%, #154f36); }
 @media (prefers-reduced-motion: reduce) { .dice-shadow { filter: none; } }

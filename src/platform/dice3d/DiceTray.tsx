@@ -188,7 +188,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
   const inAir = new Set(flight?.idx ?? []);
   return (
     <div ref={box} role="group" aria-label={label} data-testid="dice-tray"
-      className={cn("dice-tray relative overflow-hidden rounded-2xl", onThrow && "touch-none", className)}
+      className={cn("dice-tray relative overflow-hidden", onThrow && "touch-none", className)}
       // Wischen nach oben wirft: je schneller, desto kräftiger; schräg gewischt fliegen sie schräg
       onPointerDown={onThrow ? (e) => { swipe.current = { x: e.clientX, y: e.clientY, t: performance.now() }; } : undefined}
       onPointerUp={onThrow ? (e) => {
@@ -202,7 +202,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
         beginRoll();
         onThrow();
       } : undefined}>
-      {!n && <span className="absolute inset-0 grid place-items-center text-sm font-semibold text-white/75">{empty}</span>}
+      {!n && <span className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">{empty}</span>}
       {/* Bis die Physik geladen ist: flache Würfel in einer Reihe */}
       {n > 0 && !ready && (
         <div className="absolute inset-0 flex items-center justify-center gap-2">
