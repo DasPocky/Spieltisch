@@ -164,7 +164,7 @@ export function Board({ room, game: s, me, isHost, canAct, act, dispatch }: Boar
             </div>
             {(r.dice === "app" || s.die !== null || !mine) && (
               <span className={cn("relative block h-16 w-24 shrink-0", s.die === null && "opacity-70 transition-opacity delay-1000 duration-300")} data-testid="die">
-                <DiceTray className="size-full" values={s.shown ? [s.shown] : []} rollKey={`${s.rolls}`} empty="" label="Würfel" />
+                <DiceTray className="size-full" values={s.shown ? [s.shown] : []} rollKey={`${s.rolls}`} still={r.dice === "real"} empty="" label="Würfel" />
               </span>
             )}
             <RulesSheet gameId={room.gameId} focus={s.die === 6 ? "six" : tries ? "three" : undefined} />

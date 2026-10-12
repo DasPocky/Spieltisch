@@ -1,32 +1,53 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { cn, vibrate } from "@/lib/utils";
 import { Die } from "../Die";
 import type { Pose } from "./physics";
+import type { DiceView, DieDraw, Quat } from "./gl";
 import { beginRoll, isRolling, setFlying, setThrow, takeThrow } from "./throw";
 import "./dice3d.css";
 
 type Physics = typeof import("./physics");
-type Face = { n: [number, number, number]; t: [number, number, number]; value: number };
-type Quat = [number, number, number, number];
-/** Ein Würfel in der Anzeige: Lage (flach, nur gedreht), Beschriftung, kleiner Versatz für ein natürliches Bild */
-type Placed = { q: Quat; faces: Face[]; jx: number; jz: number };
+type Gl = typeof import("./gl");
+type Lib = { phys: Physics; gl: Gl | null };
+/** Ein Würfel in der Ablage: Drehung (inkl. Beschriftung, flach liegend) und kleiner Versatz für ein natürliches Bild */
+type Placed = { rq: Quat; jx: number; jz: number };
 
-/** Augenbild je Zahl im 3×3-Raster (wie echte Würfel: 2, 3, 6 diagonal bzw. in Spalten) */
-const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-/** Licht von oben links vorn */
-const LIGHT = (() => { const v = [-0.35, 0.85, 0.4]; const l = Math.hypot(...v); return v.map((x) => x / l); })();
-/** Ausrollen abwarten, dann gleiten die Würfel in die Anzeige */
-const REST_MS = 280, GLIDE_MS = 420;
+/** Ausrollen abwarten, dann gleiten die Würfel in die Ablage */
+const REST_MS = 260, GLIDE_MS = 430;
 
-let physics: Promise<Physics> | null = null;
-const loadPhysics = () => (physics ??= import("./physics"));
+let libs: Promise<Lib> | null = null;
+/** Physik und 3D-Darstellung erst laden, wenn ein Würfelspiel offen ist */
+const loadLibs = () => (libs ??= Promise.all([import("./physics"), import("./gl")]).then(([phys, gl]) => ({ phys, gl: gl.webglAvailable() ? gl : null })));
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+/**
+ * Die Wurf-Ebene über dem ganzen Bildschirm gibt es nur einmal: Sie wird beim ersten Wurf angelegt und danach
+ * wiederverwendet – so ruckelt der Start eines Wurfs nicht, und das Handy hält nicht unnötig viele 3D-Kontexte.
+ */
+let air: { root: HTMLDivElement; view: DiceView } | null = null;
+function airLayer(gl: Gl) {
+  if (air && document.body.contains(air.root)) return air;
+  const root = document.createElement("div");
+  root.className = "dice-air";
+  root.setAttribute("aria-hidden", "true");
+  const canvas = document.createElement("canvas");
+  root.append(canvas);
+  document.body.append(root);
+  air = { root, view: new gl.DiceView(canvas, 12, 30) };
+  return air;
+}
+/** Nach dem Laden in einer ruhigen Sekunde beide Zeichner vorbereiten – der erste Wurf startet dann ohne Hänger */
+let warmed = false;
+function warmUp(gl: Gl) {
+  if (warmed) return;
+  warmed = true;
+  const idle = (cb: () => void) => ("requestIdleCallback" in window ? window.requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 300));
+  idle(() => { gl.warmTray(); idle(() => gl.warm(airLayer(gl).view)); });
+}
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-/** Plätze in der Anzeige: eine Reihe, bei wenig Höhe und vielen Würfeln zwei. Würfel i liegt immer auf Platz i. */
+/** Plätze in der Ablage: eine Reihe, bei wenig Höhe und vielen Würfeln zwei. Würfel i liegt immer auf Platz i. */
 function layout(n: number, w: number, h: number): { px: number; slots: [number, number][] } {
-  const gap = 1.32;
+  const gap = 1.45;
   let rows = 1, px = Math.min(46, h * 0.6, w / (n * gap + 0.9));
   if (n > 3) {
     const per = Math.ceil(n / 2), px2 = Math.min(46, h / 2.75, w / (per * gap + 0.9));
@@ -42,16 +63,18 @@ function layout(n: number, w: number, h: number): { px: number; slots: [number, 
 }
 
 /**
- * Würfel mit echter Physik: Bei jedem Wurf fliegen sie groß über den ganzen Bildschirm, prallen am Rand ab,
- * rollen aus und gleiten dann in die Anzeige – dort liegen sie flach und gut lesbar, gehaltene leuchten.
+ * Würfel mit echter Physik in echtem 3D: Bei jedem Wurf fliegen sie groß über den ganzen Bildschirm, prallen am
+ * Rand ab, rollen aus und gleiten dann in die Ablage – dort liegen sie flach und gut lesbar, gehaltene leuchten.
  * `rollKey` ändert sich bei jedem neuen Wurf – nur dann wird geworfen; neu geladen liegt alles still wie zuletzt.
  */
-export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onThrow, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
-  /** Würfeln per Wischen nach oben über die Anzeige (nur wer gerade würfeln darf) */
+export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onThrow, still, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
+  /** Nur anzeigen, nie werfen – z. B. wenn am Tisch mit echten Würfeln gewürfelt und die Zahl eingetippt wurde */
+  still?: boolean;
+  /** Würfeln per Wischen nach oben über die Ablage (nur wer gerade würfeln darf) */
   onThrow?: () => void;
   values: number[];
   held?: boolean[];
-  /** Spielhilfe: leiser Ring */
+  /** Spielhilfe: leiser Schein */
   hint?: boolean[];
   /** Text, solange keine Würfel liegen */
   empty?: string;
@@ -62,22 +85,22 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
   label?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const trayCanvas = useRef<HTMLCanvasElement>(null);
+  /** Bildschirmstellen der ruhenden Würfel in der Ablage (für die antippbaren Flächen und das Hineingleiten) */
+  const [spots, setSpots] = useState<[number, number][]>([]);
+  const spotsRef = useRef(spots);
+  spotsRef.current = spots;
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
-  const [lib, setLib] = useState<Physics | null>(null);
+  const [lib, setLib] = useState<Lib | null>(null);
   const placed = useRef<{ key: string; dice: Placed[] } | null>(null);
-  /** Wurf in der Luft: welche Würfel fliegen, ihre Bahn und die Größe auf dem Bildschirm */
-  const [flight, setFlight] = useState<{ key: string; idx: number[]; frames: Pose[][]; px: number } | null>(null);
-  const [gliding, setGliding] = useState(false);
+  /** Wurf in der Luft: welche Würfel fliegen, ihre Bahn, Beschriftungsdrehung und Größe auf dem Bildschirm */
+  const [flight, setFlight] = useState<{ key: string; idx: number[]; frames: Pose[][]; rs: Quat[]; px: number } | null>(null);
   const [, redraw] = useState(0);
   const swipe = useRef<{ x: number; y: number; t: number } | null>(null);
-  const trayDice = useRef<(HTMLElement | null)[]>([]);
-  const airDice = useRef<(HTMLElement | null)[]>([]);
-  const airShadows = useRef<(HTMLElement | null)[]>([]);
-  const airLayers = useRef<(HTMLElement | null)[]>([]);
   // Beim Öffnen schon vorhandener Wurf (z. B. neu geladen): still hinlegen. Jeder spätere Wurf fliegt.
   const firstKey = useRef(values.length ? rollKey : null);
 
-  useEffect(() => { void loadPhysics().then(setLib); }, []);
+  useEffect(() => { void loadLibs().then(setLib); }, []);
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -89,35 +112,42 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
 
   const n = values.length;
   const { px, slots } = layout(Math.max(1, n), size?.w ?? 300, size?.h ?? 100);
+  const gl = lib?.gl ?? null;
+  const hasDice = n > 0;
 
-  // Neuer Wurf: Physik auf dem ganzen Bildschirm rechnen, Beschriftung so drehen, dass die gewürfelte Zahl oben landet
+  useEffect(() => { if (gl) warmUp(gl); }, [gl]);
+
+  // Neuer Wurf: Physik auf dem ganzen Bildschirm rechnen, Drehung so wählen, dass die gewürfelte Zahl oben landet
   useEffect(() => {
     if (!lib || !n || (placed.current?.key === rollKey && placed.current.dice.length === n)) return;
+    const { phys } = lib;
     const prev = placed.current;
     const keep = values.map((_, i) => !!(held?.[i] && prev?.dice[i] && prev.dice.length === n));
-    const seed = lib.seedOf(rollKey);
-    const animate = rollKey !== firstKey.current && !reduced() && typeof window !== "undefined";
+    const seed = phys.seedOf(rollKey);
+    const animate = !!lib.gl && !still && rollKey !== firstKey.current && !reduced();
     const idx = values.map((_, i) => i).filter((i) => !keep[i]);
     const jitter = (i: number, k: number) => ((((seed >>> (i * 3 + k)) & 15) / 15) - 0.5) * 0.14;
-    const dice: Placed[] = [];
     let frames: Pose[][] = [];
     let big = 0;
     if (animate && idx.length) {
       const W = window.innerWidth, H = window.innerHeight;
-      big = Math.round(Math.min(76, Math.max(42, Math.min(W / 6.5, H / 11))));
-      frames = lib.simulate(idx.length, idx.map(() => null), seed, W / (2 * big) - 0.2, H / (2 * big) - 0.4, takeThrow() ?? undefined);
+      big = Math.round(Math.min(78, Math.max(44, Math.min(W / 6.3, H / 10.5))));
+      frames = phys.simulate(idx.length, idx.map(() => null), seed, W / (2 * big) - 0.2, H / (2 * big) - 0.4, takeThrow() ?? undefined);
     }
     const last = frames.at(-1);
-    values.forEach((v, i) => {
-      if (keep[i]) { dice.push(prev!.dice[i]); return; }
+    const rs: Quat[] = [];
+    const dice: Placed[] = values.map((v, i) => {
+      if (keep[i]) return prev!.dice[i];
       const k = idx.indexOf(i);
-      const pose: Pose = last ? last[k] : lib.restingPose(seed + i * 101);
-      dice.push({ q: [pose[3], pose[4], pose[5], pose[6]], faces: lib.labelFaces(pose, v), jx: jitter(i, 0), jz: jitter(i, 1) });
+      const pose: Pose = last ? last[k] : phys.restingPose(seed + i * 101);
+      const r = phys.labelQuat(pose, v);
+      rs[k] = r;
+      const q: Quat = [pose[3], pose[4], pose[5], pose[6]];
+      return { rq: lib.gl ? lib.gl.compose(q, r) : q, jx: jitter(i, 0), jz: jitter(i, 1) };
     });
     placed.current = { key: rollKey, dice };
     if (last) {
-      setFlight({ key: rollKey, idx, frames, px: big });
-      setGliding(false);
+      setFlight({ key: rollKey, idx, frames, rs, px: big });
       setFlying(true);
       vibrate(12);
     } else {
@@ -125,70 +155,94 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
       setFlying(false);
       redraw((x) => x + 1);
     }
-  }, [lib, rollKey, n, values, held]);
-
-  // Flug abspielen, kurz liegen lassen, dann in die Anzeige gleiten
-  useEffect(() => {
-    if (!flight || !lib) return;
-    let k = 0, raf = 0;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const draw = () => {
-      const fr = flight.frames[Math.min(k, flight.frames.length - 1)];
-      fr.forEach((p, j) => {
-        const die = airDice.current[j], sh = airShadows.current[j], layer = airLayers.current[j];
-        if (!die) return;
-        die.style.transform = poseMatrix(lib, p, flight.px);
-        shade(lib, die, p);
-        // Wer weiter vorn (unten auf dem Bildschirm) liegt, wird zuletzt gezeichnet
-        if (layer) layer.style.zIndex = String(Math.round(p[2] * 10 + 1000));
-        const h = Math.max(0, p[1] - 0.5);
-        if (sh) {
-          sh.style.transform = `translate3d(${(p[0] - LIGHT[0] * h * 0.9) * flight.px}px,1px,${(p[2] - LIGHT[2] * h * 0.9) * flight.px}px) rotateX(90deg) scale(${1 + h * 0.12})`;
-          sh.style.opacity = String(Math.max(0.1, 0.7 - h * 0.15));
-        }
-      });
-      if (++k < flight.frames.length) { raf = requestAnimationFrame(draw); return; }
-      timers.push(setTimeout(glide, REST_MS));
-    };
-    const glide = () => {
-      flight.idx.forEach((i, j) => {
-        const from = airDice.current[j]?.getBoundingClientRect(), to = trayDice.current[i]?.getBoundingClientRect(), layer = airLayers.current[j];
-        if (!from || !to || !layer || !from.width) return;
-        const cx = from.left + from.width / 2, cy = from.top + from.height / 2;
-        layer.style.transformOrigin = `${cx}px ${cy}px`;
-        layer.style.transform = `translate(${to.left + to.width / 2 - cx}px, ${to.top + to.height / 2 - cy}px) scale(${to.width / from.width})`;
-      });
-      setGliding(true);
-      timers.push(setTimeout(() => { setFlight(null); setGliding(false); setFlying(false); }, GLIDE_MS));
-    };
-    raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); timers.forEach(clearTimeout); };
-  }, [flight, lib]);
-
-  // Wird die Anzeige mitten im Flug abgebaut (Zug vorbei, Seite verlassen): Sperre wieder lösen
-  const flyingNow = !!flight;
-  useEffect(() => (flyingNow ? () => setFlying(false) : undefined), [flyingNow]);
-
-  // Die ruhenden Würfel in der Anzeige: Lage und Licht setzen
-  useLayoutEffect(() => {
-    const pd = placed.current;
-    if (!lib || !pd) return;
-    pd.dice.forEach((d, i) => {
-      const el = trayDice.current[i];
-      const slot = slots[i];
-      if (!el || !slot) return;
-      const p: Pose = [slot[0] / px + d.jx, 0.5, slot[1] / px + d.jz, ...d.q];
-      el.style.transform = poseMatrix(lib, p, px);
-      shade(lib, el, p);
-    });
-  });
+  }, [lib, rollKey, n, values, held, still]);
 
   const pd = placed.current;
   const ready = !!(lib && pd && pd.dice.length === n && pd.key === rollKey);
   const inAir = new Set(flight?.idx ?? []);
+  /** Lage eines ruhenden Würfels in der Ablage */
+  const restAt = (i: number): [number, number, number] | null => {
+    const d = pd?.dice[i], slot = slots[i];
+    return d && slot ? [slot[0] / px + d.jx, 0.5, slot[1] / px + d.jz] : null;
+  };
+
+  // Ablage zeichnen: ruhende Würfel auf ihren Plätzen (fliegende kommen erst nach der Landung dazu)
+  useLayoutEffect(() => {
+    const c = trayCanvas.current;
+    if (!gl || !c || !size || !ready || !pd) return;
+    const list: DieDraw[] = [];
+    pd.dice.forEach((d, i) => {
+      const at = restAt(i);
+      if (inAir.has(i) || !at) return;
+      list.push({ pos: at, quat: d.rq, mark: held?.[i] ? "held" : hint?.[i] ? "hint" : null });
+    });
+    const pts = gl.paintTray(c, size.w, size.h, px, list, values.map((_, i) => restAt(i) ?? [0, 0.5, 0]));
+    if (pts.some((p, i) => !spots[i] || Math.abs(p[0] - spots[i][0]) > 0.5 || Math.abs(p[1] - spots[i][1]) > 0.5) || pts.length !== spots.length) setSpots(pts);
+  });
+
+  // Flug abspielen, kurz liegen lassen, dann in die Ablage gleiten
+  useEffect(() => {
+    if (!flight || !gl) return;
+    const W = window.innerWidth, H = window.innerHeight;
+    const { root, view } = airLayer(gl);
+    view.resize(W, H, flight.px);
+    view.setDice([]);
+    view.render();
+    root.classList.remove("gliding");
+    root.classList.add("on");
+    let k = 0, raf = 0, start = 0;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const poseOf = (p: Pose, j: number): DieDraw => ({ pos: [p[0], p[1], p[2]], quat: gl.compose([p[3], p[4], p[5], p[6]], flight.rs[j]) });
+    const last = flight.frames.at(-1)!;
+    let targets: { pos: [number, number, number]; s: number }[] = [];
+    // Ziel je Würfel: sein Platz in der Ablage, auf den Bildschirm umgerechnet
+    const aim = () => {
+      const rect = box.current?.getBoundingClientRect();
+      const s = px / flight.px;
+      return flight.idx.map((i, j) => {
+        const sp = spotsRef.current[i];
+        if (!rect || !sp) return { pos: [last[j][0], last[j][1], last[j][2]] as [number, number, number], s: 1 };
+        return { pos: view.pointAt(rect.left + sp[0], rect.top + sp[1], 0.5 * s), s };
+      });
+    };
+    let t0 = 0;
+    const fly = (now: number) => {
+      // Nach der Uhr abspielen (Physik rechnet 60 Bilder/s) – langsame Geräte überspringen Bilder, statt nachzuhängen
+      t0 ||= now;
+      k = Math.min(flight.frames.length - 1, Math.floor(((now - t0) / 1000) * 60));
+      view.setDice(flight.frames[k].map(poseOf));
+      view.render();
+      if (k < flight.frames.length - 1) { raf = requestAnimationFrame(fly); return; }
+      timers.push(setTimeout(() => { root.classList.add("gliding"); raf = requestAnimationFrame(glide); }, REST_MS));
+    };
+    const glide = (now: number) => {
+      if (!start) { start = now; targets = aim(); }
+      const t = ease(Math.min(1, (now - start) / GLIDE_MS));
+      view.setDice(last.map((p, j) => {
+        const to = targets[j];
+        return { ...poseOf(p, j), pos: [p[0] + (to.pos[0] - p[0]) * t, p[1] + (to.pos[1] - p[1]) * t, p[2] + (to.pos[2] - p[2]) * t], scale: 1 + (to.s - 1) * t };
+      }));
+      view.render();
+      if (t < 1) { raf = requestAnimationFrame(glide); return; }
+      root.classList.remove("on", "gliding");
+      setFlight(null); setFlying(false);
+    };
+    raf = requestAnimationFrame(fly);
+    return () => { cancelAnimationFrame(raf); timers.forEach(clearTimeout); root.classList.remove("on", "gliding"); };
+    // Plätze und Größe der Ablage bleiben während eines Wurfs gleich – nur ein neuer Wurf startet neu
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flight, gl]);
+
+  // Wird die Ablage mitten im Flug abgebaut (Zug vorbei, Seite verlassen): Sperre wieder lösen
+  const flyingNow = !!flight;
+  useEffect(() => (flyingNow ? () => setFlying(false) : undefined), [flyingNow]);
+
+  /** Antippbare Fläche genau über dem gezeichneten Würfel */
+  const spot = (i: number): [number, number] => spots[i] ?? [(size?.w ?? 0) / 2 + (slots[i]?.[0] ?? 0), (size?.h ?? 0) / 2 + (slots[i]?.[1] ?? 0)];
+
   return (
     <div ref={box} role="group" aria-label={label} data-testid="dice-tray"
-      className={cn("dice-tray relative overflow-hidden", onThrow && "touch-none", className)}
+      className={cn("dice-tray relative", onThrow && "touch-none", className)}
       // Wischen nach oben wirft: je schneller, desto kräftiger; schräg gewischt fliegen sie schräg
       onPointerDown={onThrow ? (e) => { swipe.current = { x: e.clientX, y: e.clientY, t: performance.now() }; } : undefined}
       onPointerUp={onThrow ? (e) => {
@@ -203,87 +257,30 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
         onThrow();
       } : undefined}>
       {!n && <span className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">{empty}</span>}
-      {/* Bis die Physik geladen ist: flache Würfel in einer Reihe */}
-      {n > 0 && !ready && (
+      {hasDice && gl && <canvas ref={trayCanvas} className="pointer-events-none absolute inset-0 size-full" aria-hidden="true" />}
+      {/* Ohne 3D (oder bis es geladen ist): flache Würfel in einer Reihe */}
+      {hasDice && (!ready || !gl) && (
         <div className="absolute inset-0 flex items-center justify-center gap-2">
           {values.map((v, i) => (
             <button key={i} type="button" disabled={!canToggle} aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
               onClick={() => onToggle?.(i)} className="size-11 rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+              <span role="img" aria-label={`Würfel ${v}`} className="sr-only" />
               <Die value={v} className="size-full" mark={held?.[i] ? "selected" : hint?.[i] ? "hint" : undefined} />
             </button>
           ))}
         </div>
       )}
-      {ready && (
-        <div className="dice-scene" style={{ ["--px" as string]: `${px}px` }}>
-          {values.map((_, i) => slots[i] && (
-            <span key={`s${i}`} className={cn("dice-shadow", held?.[i] && "held", inAir.has(i) && "opacity-0")}
-              style={{ transform: `translate3d(${slots[i][0] + pd!.dice[i].jx * px}px,1px,${slots[i][1] + pd!.dice[i].jz * px}px) rotateX(90deg)` }} />
-          ))}
-          {values.map((v, i) => (
-            <button key={i} type="button" ref={(el) => { trayDice.current[i] = el; }} disabled={!canToggle}
-              aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
-              onClick={() => { vibrate(6); onToggle?.(i); }}
-              className={cn("die3d", held?.[i] && "held", !held?.[i] && hint?.[i] && "hint", inAir.has(i) && "opacity-0")}>
-              <span role="img" aria-label={`Würfel ${v}`} className="sr-only" />
-              <DieBody faces={pd!.dice[i].faces} px={px} />
-            </button>
-          ))}
-        </div>
-      )}
-      {flight && ready && createPortal(
-        <div className={cn("dice-air", gliding && "gliding")} aria-hidden="true">
-          {flight.idx.map((i, j) => (
-            <div key={`${flight.key}-${i}`} ref={(el) => { airLayers.current[j] = el; }} className="dice-air-layer">
-              <div className="dice-scene dice-air-scene" style={{ ["--px" as string]: `${flight.px}px` }}>
-                <span ref={(el) => { airShadows.current[j] = el; }} className="dice-shadow" />
-                <span ref={(el) => { airDice.current[j] = el; }} className="die3d">
-                  <DieBody faces={pd!.dice[i].faces} px={flight.px} />
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>,
-        document.body,
-      )}
-    </div>
-  );
-}
-
-/** Würfelkörper: Kern gegen Durchscheinen, dazu die sechs beschrifteten Seiten (viermal so groß gezeichnet und verkleinert – sonst franst der Browser die Kanten in 3D aus) */
-function DieBody({ faces, px }: { faces: Face[]; px: number }) {
-  return (
-    <>
-      <span className="die3d-core" style={{ transform: "rotateX(90deg)" }} />
-      <span className="die3d-core" style={{ transform: "rotateY(90deg)" }} />
-      <span className="die3d-core" />
-      {faces.map((f) => {
-        const X = cross(f.t, f.n), d = px / 2;
+      {ready && gl && values.map((v, i) => {
+        const [x, y] = spot(i);
         return (
-          <span key={f.value} data-n={f.n.join(",")} className={cn("die3d-face", f.value === 1 && "one")}
-            style={{ transform: `matrix3d(${X},0,${f.t},0,${f.n},0,${f.n[0] * d},${f.n[1] * d},${f.n[2] * d},1) scale(0.25)` }}>
-            {Array.from({ length: 9 }, (_, c) => (PIPS[f.value].includes(c) ? <i key={c} /> : <b key={c} />))}
-          </span>
+          <button key={i} type="button" disabled={!canToggle} aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
+            onClick={() => { vibrate(6); onToggle?.(i); }}
+            className="absolute rounded-[24%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+            style={{ left: x, top: y, width: px * 1.15, height: px * 1.15, marginLeft: -px * 0.575, marginTop: -px * 0.575 }}>
+            <span role="img" aria-label={`Würfel ${v}`} className="sr-only" />
+          </button>
         );
       })}
-    </>
+    </div>
   );
-}
-
-function poseMatrix(lib: Physics, p: Pose, px: number) {
-  const a = lib.axes(p);
-  return `matrix3d(${a[0]},${a[1]},${a[2]},0,${a[3]},${a[4]},${a[5]},0,${a[6]},${a[7]},${a[8]},0,${p[0] * px},${p[1] * px},${p[2] * px},1)`;
-}
-
-/** Seiten je nach Lage zum Licht heller oder dunkler */
-function shade(lib: Physics, die: HTMLElement, p: Pose) {
-  die.querySelectorAll<HTMLElement>("[data-n]").forEach((f) => {
-    const nn = f.dataset.n!.split(",").map(Number) as [number, number, number];
-    const w = lib.worldNormal(p, nn);
-    const lit = w[0] * LIGHT[0] + w[1] * LIGHT[1] + w[2] * LIGHT[2];
-    // Helligkeit 0,6 … 1,08: darunter eine dunkle, darüber eine helle Schicht
-    const b = 0.6 + 0.48 * Math.max(0, lit);
-    f.style.setProperty("--lit-rgb", b < 1 ? "20 16 10" : "255 255 255");
-    f.style.setProperty("--lit-a", (b < 1 ? (1 - b) * 0.9 : (b - 1) * 1.6).toFixed(3));
-  });
 }

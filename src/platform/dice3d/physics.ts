@@ -148,6 +148,23 @@ export function restingPose(seed: number): Pose {
 }
 
 /**
+ * Dieselbe Umbeschriftung als Drehung des Würfelkörpers: Ein normal beschrifteter Würfel (Belegung wie FACES),
+ * gedreht um Lage ∘ diese Drehung, zeigt nach der Landung `value` oben. Würfel sind symmetrisch – die Drehung
+ * (90° oder 180° um eine Achse) bildet den Würfel auf sich selbst ab, die Flugbahn bleibt gleich.
+ */
+export function labelQuat(final: Pose, value: number): [number, number, number, number] {
+  const q = quat(final);
+  let up: [number, number, number] = [0, 1, 0], best = -2;
+  for (const [a] of FACES) { const y = q.vmult(new Vec3(...a)).y; if (y > best) { best = y; up = a; } }
+  const want = FACES.find(([, v]) => v === value)?.[0] ?? FACES[0][0];
+  const from = new Vec3(...want), to = new Vec3(...up);
+  const r = new Quaternion();
+  if (from.dot(to) < -0.5) r.setFromAxisAngle(Math.abs(from.x) < 0.5 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0), Math.PI);
+  else r.setFromVectors(from, to);
+  return [r.x, r.y, r.z, r.w];
+}
+
+/**
  * Drehung der Beschriftung, damit `value` nach der Landung oben steht.
  * Liefert für jede Seite (Index wie FACES) die Normale und die „Oben“-Richtung des Augenbilds in Körperkoordinaten.
  */
