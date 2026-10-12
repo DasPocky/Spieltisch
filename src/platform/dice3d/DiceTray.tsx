@@ -250,7 +250,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
   );
 }
 
-/** Würfelkörper: Kern gegen Durchscheinen, dazu die sechs beschrifteten Seiten */
+/** Würfelkörper: Kern gegen Durchscheinen, dazu die sechs beschrifteten Seiten (viermal so groß gezeichnet und verkleinert – sonst franst der Browser die Kanten in 3D aus) */
 function DieBody({ faces, px }: { faces: Face[]; px: number }) {
   return (
     <>
@@ -261,7 +261,7 @@ function DieBody({ faces, px }: { faces: Face[]; px: number }) {
         const X = cross(f.t, f.n), d = px / 2;
         return (
           <span key={f.value} data-n={f.n.join(",")} className={cn("die3d-face", f.value === 1 && "one")}
-            style={{ transform: `matrix3d(${X},0,${f.t},0,${f.n},0,${f.n[0] * d},${f.n[1] * d},${f.n[2] * d},1)` }}>
+            style={{ transform: `matrix3d(${X},0,${f.t},0,${f.n},0,${f.n[0] * d},${f.n[1] * d},${f.n[2] * d},1) scale(0.25)` }}>
             {Array.from({ length: 9 }, (_, c) => (PIPS[f.value].includes(c) ? <i key={c} /> : <b key={c} />))}
           </span>
         );
@@ -281,6 +281,9 @@ function shade(lib: Physics, die: HTMLElement, p: Pose) {
     const nn = f.dataset.n!.split(",").map(Number) as [number, number, number];
     const w = lib.worldNormal(p, nn);
     const lit = w[0] * LIGHT[0] + w[1] * LIGHT[1] + w[2] * LIGHT[2];
-    f.style.filter = `brightness(${(0.6 + 0.48 * Math.max(0, lit)).toFixed(3)})`;
+    // Helligkeit 0,6 … 1,08: darunter eine dunkle, darüber eine helle Schicht
+    const b = 0.6 + 0.48 * Math.max(0, lit);
+    f.style.setProperty("--lit-rgb", b < 1 ? "20 16 10" : "255 255 255");
+    f.style.setProperty("--lit-a", (b < 1 ? (1 - b) * 0.9 : (b - 1) * 1.6).toFixed(3));
   });
 }

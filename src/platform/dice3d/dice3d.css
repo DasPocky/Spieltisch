@@ -59,49 +59,62 @@
   transform-style: preserve-3d;
   outline: none;
   cursor: pointer;
+  /* Seiten werden viermal so groß gezeichnet und verkleinert – gestochen scharf auch groß im Flug */
+  --fs: calc(var(--px) * 4);
 }
 .die3d:disabled { cursor: default; }
 .die3d-core {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: calc(var(--px) * 0.92);
-  height: calc(var(--px) * 0.92);
-  margin: calc(var(--px) * -0.46) 0 0 calc(var(--px) * -0.46);
+  width: calc(var(--px) * 0.8);
+  height: calc(var(--px) * 0.8);
+  margin: calc(var(--px) * -0.4) 0 0 calc(var(--px) * -0.4);
+  border-radius: 14%;
   background: var(--die-core, #e6dcc6);
 }
 .die3d-face {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: var(--px);
-  height: var(--px);
-  margin: calc(var(--px) * -0.5) 0 0 calc(var(--px) * -0.5);
+  width: var(--fs);
+  height: var(--fs);
+  margin: calc(var(--fs) * -0.5) 0 0 calc(var(--fs) * -0.5);
   box-sizing: border-box;
-  padding: calc(var(--px) * 0.15);
+  padding: calc(var(--fs) * 0.15);
   border-radius: 20%;
   display: grid;
   grid-template: repeat(3, 1fr) / repeat(3, 1fr);
   background: var(--die-face, radial-gradient(130% 130% at 30% 25%, #fffdf7, #f3ecdc 60%, #e2d8c3));
-  box-shadow: inset 0 0 0 1px rgb(90 70 40 / 0.12), inset -2px -3px 5px rgb(120 90 50 / 0.12);
+  box-shadow: inset 0 0 0 calc(var(--fs) * 0.012) rgb(90 70 40 / 0.14), inset calc(var(--fs) * -0.03) calc(var(--fs) * -0.045) calc(var(--fs) * 0.08) rgb(120 90 50 / 0.12);
   backface-visibility: hidden;
+  overflow: hidden;
+}
+/* Licht ohne Filter (Filter machen die Kanten in 3D unscharf): dunkle bzw. helle Schicht je nach Lage zum Licht */
+.die3d-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(var(--lit-rgb, 0 0 0) / var(--lit-a, 0));
+  pointer-events: none;
 }
 .die3d-face i {
-  width: calc(var(--px) * 0.2);
-  height: calc(var(--px) * 0.2);
+  width: calc(var(--fs) * 0.2);
+  height: calc(var(--fs) * 0.2);
   border-radius: 50%;
   place-self: center;
   background: var(--die-pip, radial-gradient(circle at 62% 68%, #41557e, #0f1d38 75%));
-  box-shadow: inset 0 1.5px 1.5px rgb(0 0 0 / 0.6), 0 0.5px 0 rgb(255 255 255 / 0.8);
+  box-shadow: inset 0 calc(var(--fs) * 0.018) calc(var(--fs) * 0.02) rgb(0 0 0 / 0.6), 0 calc(var(--fs) * 0.006) 0 rgb(255 255 255 / 0.8);
 }
 .die3d-face.one i {
-  width: calc(var(--px) * 0.28);
-  height: calc(var(--px) * 0.28);
+  width: calc(var(--fs) * 0.28);
+  height: calc(var(--fs) * 0.28);
   background: var(--die-one, radial-gradient(circle at 62% 68%, #e06a78, #8e2b39 75%));
 }
-.die3d.held .die3d-face { box-shadow: inset 0 0 0 calc(var(--px) * 0.07) var(--primary), inset -2px -3px 5px rgb(0 0 0 / 0.1); }
-.die3d.hint .die3d-face { box-shadow: inset 0 0 0 calc(var(--px) * 0.045) color-mix(in srgb, var(--primary) 55%, transparent); }
-.die3d:focus-visible .die3d-face { box-shadow: inset 0 0 0 3px var(--ring); }
+.die3d.held .die3d-face { box-shadow: inset 0 0 0 calc(var(--fs) * 0.07) var(--primary), inset calc(var(--fs) * -0.03) calc(var(--fs) * -0.045) calc(var(--fs) * 0.08) rgb(0 0 0 / 0.1); }
+.die3d.hint .die3d-face { box-shadow: inset 0 0 0 calc(var(--fs) * 0.045) color-mix(in srgb, var(--primary) 55%, transparent); }
+.die3d:focus-visible .die3d-face { box-shadow: inset 0 0 0 calc(var(--fs) * 0.06) var(--ring); }
 
 /* Würfel passend zum Look */
 :root[data-look="casino"] { --die-face: radial-gradient(130% 130% at 30% 25%, #ff6a6a, #c4141f 55%, #8a0b14); --die-core: #9e0f18; --die-pip: radial-gradient(circle at 40% 35%, #fff, #e9e9e9 70%); --die-one: var(--die-pip); }
