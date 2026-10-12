@@ -231,8 +231,15 @@
   60% { opacity: 1; transform: translate(-50%, -105%) scale(1.08); }
   100% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
-.bubble-in { animation: bubble-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-@media (prefers-reduced-motion: reduce) { .bubble-in { animation: none; } }
+/* Lage steckt im transform (nicht in Tailwind-translate), sonst würde die Animation doppelt verschieben */
+.bubble-in { transform: translate(-50%, -100%); animation: bubble-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes bubble-side {
+  0% { opacity: 0; transform: translateY(-50%) scale(0.6); }
+  60% { opacity: 1; transform: translateY(-50%) scale(1.08); }
+  100% { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+.bubble-side { transform: translateY(-50%); animation: bubble-side 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .bubble-in, .bubble-side { animation: none; } }
 
 /* Spricht gerade (Sprachchat): ruhiger, deutlicher Ring um das Gesicht */
 .speaking { box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ok), 0 0 10px 2px color-mix(in srgb, var(--ok) 60%, transparent); }

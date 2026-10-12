@@ -92,10 +92,10 @@ function run(n: number, rest: (Pose | null)[], seed: number, w: number, d: numbe
       // Aus der Hand: vorn, über dem Tisch (kräftige Würfe höher – sie fliegen sichtbar aus dem Kasten heraus),
       // Richtung und Kraft aus der Geste, dazu etwas Streuung wie bei einer echten Hand
       const k = thrown++;
-      b.position.set(-w * 0.6 + aim * w * 0.25 + (k % 3) * 1.15 + rnd() * 0.3, 1.2 + p * 2.2 + Math.floor(k / 3) * 1.1 + rnd() * 0.4, d - 0.65 - rnd() * 0.15);
+      b.position.set(-w * 0.45 + aim * w * 0.2 + (k % 3) * 1.15 + rnd() * w * 0.35, 1.2 + p * 2.2 + Math.floor(k / 3) * 1.1 + rnd() * 0.4, d - 0.65 - rnd() * 0.15);
       b.quaternion.setFromEuler(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28);
       const speed = 0.7 + p * 0.9;
-      b.velocity.set(((rnd() - 0.2) * (2 + w * 0.8) + aim * (3 + 6 * p)) * 0.8, 0.5 + rnd() * 1.5 + p * 7, -(2.5 + rnd() * 2 + d * 2.2) * speed);
+      b.velocity.set(((rnd() - 0.35) * (2 + w * 1.4) + aim * (3 + 6 * p)) * 0.8, 0.5 + rnd() * 1.5 + p * 7, -(2.5 + rnd() * 2 + d * 2.2) * speed);
       const spin = 18 + p * 26;
       b.angularVelocity.set((rnd() - 0.5) * spin, (rnd() - 0.5) * spin, (rnd() - 0.5) * spin);
     }

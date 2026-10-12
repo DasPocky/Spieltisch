@@ -241,7 +241,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call 
 
       <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
       <p className="mb-2 px-1 text-sm text-muted-foreground">
-        {code ? "Link schicken, PIN sagen. Reihenfolge = Zugreihenfolge." : "Die Reihenfolge ist die Zugreihenfolge."}
+        Gespielt wird in dieser Reihenfolge.
       </p>
       <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} />
 

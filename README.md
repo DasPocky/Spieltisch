@@ -4,18 +4,9 @@ Eine Spielesammlung als mobile Web-App für Spieleabende – **online im Raum** 
 
 **Live:** https://spieltisch.bjoern-ef9.workers.dev/
 
-<p align="center">
-  <img src="docs/images/start.png" width="200" alt="Startseite">
-  <img src="docs/images/lobby.png" width="200" alt="Lobby mit acht Spielern">
-  <img src="docs/images/kniffel.png" width="200" alt="Kniffel mit 3D-Würfeln">
-  <img src="docs/images/uno.png" width="200" alt="Uno">
-</p>
-<p align="center">
-  <img src="docs/images/chat.png" width="200" alt="Chat mit Reaktionen">
-  <img src="docs/images/treffpunkt.png" width="200" alt="Treffpunkt">
-  <img src="docs/images/sieger.png" width="200" alt="Siegerehrung">
-  <img src="docs/images/start-dunkel.png" width="200" alt="Dunkle Darstellung">
-</p>
+<p align="center"><img src="docs/images/banner.png" alt="Spieltisch – Startseite, Kniffel mit 3D-Würfeln und Uno"></p>
+
+<p align="center"><img src="docs/images/funktionen.png" alt="Lobby, Chat und Video, 14 Looks, Siegerehrung"></p>
 
 ## Was kann der Spieltisch?
 

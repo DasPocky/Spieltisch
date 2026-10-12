@@ -32,11 +32,12 @@ export function useBubble(playerId: string, ms = 4500): ChatMsg | null {
 }
 
 /** Sprechblase über einem Platz (Emoji groß, Text kurz) */
-export function Bubble({ playerId }: { playerId: string }) {
+export function Bubble({ playerId, side }: { playerId: string; /** in einer Listenzeile: rechts in der Zeile statt darüber */ side?: boolean }) {
   const m = useBubble(playerId);
   if (!m) return null;
   return (
-    <span key={m.id} className="bubble-in pointer-events-none absolute -top-2 left-1/2 z-20 max-w-[9rem] -translate-x-1/2 -translate-y-full truncate rounded-xl bg-popover px-2 py-1 text-sm font-semibold text-popover-foreground shadow-lg ring-1 ring-border"
+    <span key={m.id} className={cn("pointer-events-none absolute z-20 max-w-[9rem] truncate rounded-xl bg-popover px-2 py-1 text-sm font-semibold text-popover-foreground shadow-lg ring-1 ring-border",
+      side ? "bubble-side top-1/2 right-24" : "bubble-in -top-2 left-1/2")}
       aria-live="polite">
       {m.emoji ? <span className="text-xl leading-none">{m.emoji}</span> : m.text}
     </span>

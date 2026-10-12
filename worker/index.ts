@@ -53,6 +53,8 @@ interface RoomData {
   seen?: Record<string, string[]>;
   /** Beitritts-Nonce → Spieler, damit ein wiederholter Beitritt keinen zweiten Spieler anlegt */
   joins?: Record<string, string>;
+  /** Vom Host entfernte Spieler (die letzten) – ihr Handy darf nicht still per Name + PIN wieder hinein */
+  kicked?: string[];
   /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
   call?: Record<string, CallPeer>;
   callSessions?: Record<string, string>;
@@ -435,6 +437,14 @@ export class GameRoom extends DurableObject<Env> {
   private async handleJoin(ws: WebSocket, msg: Extract<ClientMessage, { type: "join" }>): Promise<void> {
     const room = this.room!;
 
+    // Entfernt: Auch ein Wiederverbinden (oder derselbe Beitritt nochmal) bringt niemanden zurück –
+    // sonst kommt ein Handy, das gerade neu verbindet, mit Name + PIN einfach wieder herein
+    const nonceId = typeof msg.nonce === "string" ? room.joins?.[msg.nonce] : undefined;
+    if ((msg.playerId && room.kicked?.includes(msg.playerId)) || (nonceId && room.kicked?.includes(nonceId))) {
+      this.send(ws, { type: "error", code: "kicked", fatal: true, message: "Du wurdest aus dem Raum entfernt." });
+      return;
+    }
+
     // Wiederverbinden mit Token (ohne PIN)
     if (msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token
         && inRoom(room.state, msg.playerId)) {
@@ -521,6 +531,7 @@ export class GameRoom extends DurableObject<Env> {
   private kick(playerId: string): void {
     if (!this.room) return;
     delete this.room.tokens[playerId];
+    this.room.kicked = [...(this.room.kicked ?? []).filter((id) => id !== playerId), playerId].slice(-40);
     if (this.room.profiles) delete this.room.profiles[playerId];
     if (this.room.groups) delete this.room.groups[playerId];
     if (this.room.call) delete this.room.call[playerId];

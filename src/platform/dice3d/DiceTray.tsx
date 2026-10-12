@@ -64,14 +64,14 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
   const n = values.length;
   // Würfelgröße: Der Tisch soll mindestens gut drei Würfel tief und acht breit sein, sonst stapeln sie sich
   const few = values.length <= 2;
-  const px = size ? Math.min(44, Math.max(20, Math.min(size.w / (few ? 3.4 : 8.5), size.h / (few ? 2.4 : 3.3)))) : 36;
+  const px = size ? Math.min(44, Math.max(20, Math.min(size.w / (few ? 3.4 : 9.5), size.h / (few ? 2.4 : 3.9)))) : 36;
 
   // Neuer Wurf: Physik rechnen, Beschriftung so drehen, dass die gewürfelte Zahl oben landet
   useEffect(() => {
     if (!lib || !size || !n || sim.current?.key === rollKey && sim.current.faces.length === n) return;
     const prev = sim.current;
     // Hinten etwas Luft lassen: von schräg vorn gesehen ragen Würfel an der hinteren Bande sonst aus dem Bild
-    const w = size.w / (2 * px) - 0.25, d = size.h / (2 * px) - 0.45;
+    const w = size.w / (2 * px) - 0.25, d = size.h / (2 * px) - 0.75;
     const rest = values.map((_, i) => (held?.[i] && prev && prev.poses[i] && prev.faces[i] ? prev.poses[i] : null));
     const how = takeThrow() ?? undefined;
     const frames = lib.simulate(n, rest, lib.seedOf(rollKey), w, d, how);

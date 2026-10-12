@@ -127,7 +127,7 @@ test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
   await joinRoom(guest, code, "Ben", "2468");
   await host.getByRole("button", { name: /Gespielt wird/ }).click();
   await host.getByRole("button", { name: /^Kniffel/ }).click();
-  await expect(guest.getByText("Gespielt wird")).toBeVisible();
+  await expect(guest.getByText("Gespielt wird", { exact: true })).toBeVisible();
   await expect(guest.getByRole("button", { name: /Gespielt wird Kniffel/ })).toBeVisible();
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(guest.getByText("Warte auf Anna")).toBeVisible();

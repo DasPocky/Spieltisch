@@ -11,12 +11,13 @@ export function roomAvatars(room: Pick<RoomState, "players" | "bench" | "avatars
   const out: Record<string, AvatarData> = {};
   const all = [...room.players, ...(room.bench ?? [])];
   const used = new Set<number>();
-  for (const p of all) { const a = room.avatars?.[p.id]; if (a) { out[p.id] = a; used.add(a.emoji); } }
+  // Selbst gewählte zuerst; wählen zwei dasselbe Tier, bekommt der Spätere zur Unterscheidung das nächste freie
+  const shift = (emoji: number) => { for (let i = 0; i < AVATAR_EMOJIS.length && used.has(emoji); i++) emoji = (emoji + 7) % AVATAR_EMOJIS.length; return emoji; };
+  for (const p of all) { const a = room.avatars?.[p.id]; if (a) { const emoji = shift(a.emoji); out[p.id] = { ...a, emoji }; used.add(emoji); } }
   for (const p of all) {
     if (out[p.id]) continue;
     const a = defaultAvatar(p.name.trim().toLowerCase() || p.id);
-    let { emoji } = a;
-    for (let i = 0; i < AVATAR_EMOJIS.length && used.has(emoji); i++) emoji = (emoji + 7) % AVATAR_EMOJIS.length;
+    const emoji = shift(a.emoji);
     used.add(emoji);
     out[p.id] = { color: (a.color + (emoji - a.emoji + AVATAR_EMOJIS.length)) % AVATAR_COLORS.length, emoji };
   }
