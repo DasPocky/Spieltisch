@@ -21,7 +21,7 @@ Entschieden und gebaut: **A1** (ein Menü, feste Abschnitte), **B2** (immer erst
 - **Startseite**: ein Profil-Knopf (Avatar) oben rechts, Hell/Dunkel-Knopf und Fußzeilen-Profil entfernt; „Admin“ klein in der Fußzeile.
 - **Begriffe**: „Nochmal spielen“, „Anderes Spiel“ (auch Ergebnis, Werwolf, Eine Nacht), „Raum schließen“ (Server-Meldung „Der Host hat den Raum geschlossen.“), „Mein Profil“, Raum-Schalter „Spielhilfen erlauben“ vs. Profil „Spielhilfen für mich“; Einstellungsgruppe „Raum“ heißt jetzt „Hilfen“ (lokal) bzw. „Mitspielen & Hilfen“ (online).
 
-**Noch offen (für später):** Regeln vorab in der Spielauswahl (ⓘ je Spiel); Profil gliedern („Im Spiel“ + „Stimme“ → „Töne & Ansagen“, evtl. Tabs); Menü als Tabs (A2) bzw. eigener Spieler-Knopf (A3), falls Rückmeldungen das nahelegen; Sprachchat-Knopf erklären; spieleigene Ergebnis-Texte als Untertitel; Admin-Link ganz von der Startseite nehmen (bewusst noch drin).
+**Noch offen (für später):** Regeln vorab in der Spielauswahl (ⓘ je Spiel); Profil gliedern („Im Spiel“ + „Stimme“ → „Töne & Ansagen“, evtl. Tabs); Menü als Tabs (A2) bzw. eigener Spieler-Knopf (A3), falls Rückmeldungen das nahelegen; Sprachchat-Knopf erklären; spieleigene Ergebnis-Texte als Untertitel; Admin-Link ganz von der Startseite nehmen (bewusst noch drin). CI beschleunigen: Handy-Tests auf 4 Rechner verteilen (Playwright-Shards), lange Statistik-Simulationen nur nachts – etwa 10 statt 40 Minuten (der Deploy über Cloudflare hängt nicht daran).
 
 ---
 
