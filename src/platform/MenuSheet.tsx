@@ -206,13 +206,15 @@ function useStalled(game: unknown) {
   return stalled;
 }
 
-const QUICK: [keyof Prefs, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"]];
+const QUICK: [keyof Prefs, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"], ["diceMarks", "Würfel markieren"]];
+/** Spiele, in denen wertbare Würfel markiert werden können */
+const DICE_MARK_GAMES = new Set(["tutto"]);
 
 /** Nur für dieses Handy: Ansicht, hell/dunkel, Töne – der Rest steht im Profil */
 function MyDevice({ room }: { room: RoomState }) {
   const mode = useViewMode();
   const p = usePrefs();
-  const quick = QUICK.filter(([k]) => k !== "hints" || HINT_GAMES.has(room.gameId));
+  const quick = QUICK.filter(([k]) => (k !== "hints" || HINT_GAMES.has(room.gameId)) && (k !== "diceMarks" || DICE_MARK_GAMES.has(room.gameId)));
   return (
     <>
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-navy-950/50 p-1 ring-1 ring-inset ring-border" role="radiogroup" aria-label="Ansicht">
@@ -227,7 +229,7 @@ function MyDevice({ room }: { room: RoomState }) {
       <ThemeSwitch />
       <div className="flex flex-wrap gap-1.5">
         {quick.map(([key, label]) => {
-          const blocked = key === "hints" && !!room.noHints;
+          const blocked = (key === "hints" || key === "diceMarks") && !!room.noHints;
           const on = p[key] && !blocked;
           return (
             <button key={key} type="button" role="switch" aria-checked={on} disabled={blocked} onClick={() => setPref(key, !p[key])}

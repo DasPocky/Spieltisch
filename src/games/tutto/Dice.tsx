@@ -3,7 +3,7 @@ import { latestCard, MUST_PLAY, pmDone, stopAfterTutto, NO_DICE_POINTS, scoringD
 import { Die } from "@/platform/Die";
 import { DiceTray } from "@/platform/dice3d/DiceTray";
 import { RollButton } from "@/platform/dice3d/RollButton";
-import { useHints } from "@/lib/prefs";
+import { useHints, usePrefs } from "@/lib/prefs";
 import { cn, fmt, vibrate } from "@/lib/utils";
 
 /** App-Würfel: aktueller Wurf zum Antippen, beiseitegelegte Würfel und Status. */
@@ -14,6 +14,8 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   const scoresHere = !!card && !NO_DICE_POINTS.has(card);
   // Spielhilfe: wertbare Würfel bekommen einen leisen Ring, dazu die beste mögliche Auswahl
   const hints = useHints();
+  // Wertbare Würfel farbig markieren nur auf Wunsch (Einstellung „Wertbare Würfel markieren“)
+  const marks = usePrefs().diceMarks;
   const help = hints && !disabled && d && d.roll.length && !d.bust && !d.tutto ? scoringDice(d.roll, card, d.aside) : null;
 
   let status: string;
@@ -37,7 +39,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
         </b>
       </div>
 
-      <DiceTray className={cn("mt-2 h-24", d?.bust && "grayscale-[0.6]")} values={d?.roll ?? []} held={d?.sel} hint={help?.dice}
+      <DiceTray className={cn("mt-2 h-24", d?.bust && "grayscale-[0.6]")} values={d?.roll ?? []} held={d?.sel} hint={marks ? help?.dice : undefined}
         rollKey={`${state.curId}-${d?.n ?? 0}`} canToggle={!disabled && !!d && !d.bust} onToggle={(i) => onAction({ type: "toggleDie", i })}
         empty={d?.tutto ? "Tutto!" : "Tippe auf „Würfeln“"} />
 

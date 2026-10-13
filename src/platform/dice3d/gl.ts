@@ -16,23 +16,27 @@ export type Vec = [number, number, number];
 export interface DieDraw { pos: Vec; quat: Quat; scale?: number; mark?: "held" | "hint" | null }
 
 /** Farben je Look: Würfelkörper, Augen, die Eins; `sharp` = kantigere Würfel */
-interface DieLook { face: string; edge: string; pip: string; one: string; sharp?: boolean }
+interface DieLook { face: string; pip: string; one: string; sharp?: boolean }
 const LOOKS: Record<string, DieLook> = {
-  base: { face: "#eee9df", edge: "#bdb29c", pip: "#050a1c", one: "#a3001f" },
-  casino: { face: "#d81e2b", edge: "#a3121c", pip: "#ffffff", one: "#ffffff" },
-  nacht: { face: "#3a2d7c", edge: "#241a55", pip: "#33dbf2", one: "#ff58ba" },
-  arcade: { face: "#1d1d4a", edge: "#121234", pip: "#ffe14d", one: "#ff3d7f", sharp: true },
-  spielbox: { face: "#ffffff", edge: "#e2e2e2", pip: "#111111", one: "#ef3e36", sharp: true },
-  comic: { face: "#ffe01a", edge: "#e2c100", pip: "#111111", one: "#e8322b", sharp: true },
-  bonbon: { face: "#ffb6d8", edge: "#f08fbe", pip: "#ffffff", one: "#7b4dd8" },
-  siebziger: { face: "#ea7a40", edge: "#c4562a", pip: "#f7ead0", one: "#f7ead0" },
-  klar: { face: "#f7f7f9", edge: "#e2e2e8", pip: "#111114", one: "#ff5a3c" },
+  // Standard: dunkle Würfel mit hellen Augen – heben sich klar von hellen Flächen ab
+  base: { face: "#1c2640", pip: "#f6f2ea", one: "#ff5d5d" },
+  // Dunkler Modus: helle Würfel, sonst verschwinden sie im Hintergrund
+  dark: { face: "#ece6da", pip: "#0b1020", one: "#c8102e" },
+  casino: { face: "#c8141f", pip: "#ffffff", one: "#ffffff" },
+  nacht: { face: "#3a2d7c", pip: "#33dbf2", one: "#ff58ba" },
+  arcade: { face: "#1d1d4a", pip: "#ffe14d", one: "#ff3d7f", sharp: true },
+  spielbox: { face: "#ffffff", pip: "#111111", one: "#ef3e36", sharp: true },
+  comic: { face: "#ffe01a", pip: "#111111", one: "#e8322b", sharp: true },
+  bonbon: { face: "#ff9fcb", pip: "#ffffff", one: "#6a3cc8" },
+  siebziger: { face: "#e06a2c", pip: "#f7ead0", one: "#f7ead0" },
+  klar: { face: "#16161a", pip: "#ffffff", one: "#ff5a3c" },
 };
 function currentLook(): DieLook {
   const el = document.documentElement;
   const look = el.dataset.look ?? "";
-  if (look === "aurora" && el.dataset.theme === "dark") return LOOKS.nacht;
-  return LOOKS[look] ?? LOOKS.base;
+  const dark = el.dataset.theme === "dark";
+  if (look === "aurora" && dark) return LOOKS.nacht;
+  return LOOKS[look] ?? (dark ? LOOKS.dark : LOOKS.base);
 }
 
 /** Augen je Zahl im 3×3-Raster (Zeile, Spalte) */
@@ -44,31 +48,22 @@ const PIPS: Record<number, [number, number][]> = {
 const BOX_VALUES = [2, 5, 3, 4, 1, 6];
 
 const texCache = new Map<string, Texture>();
-/** Seitenbild in hoher Auflösung: leicht gewölbte Fläche, Augen als echte Mulden */
+const pipAt = (value: number, S: number) => PIPS[value].map(([row, col]) => [S * (0.25 + col * 0.25), S * (0.25 + row * 0.25)] as const);
+const pipR = (value: number, S: number) => S * (value === 1 ? 0.115 : 0.088);
+
+/** Seitenbild in hoher Auflösung: Grundfarbe, Augen in Kontrastfarbe (die Tiefe kommt aus der Relief-Karte) */
 function faceTexture(look: DieLook, value: number, maxAniso: number): Texture {
-  const key = `${look.face}${look.pip}${look.one}${value}`;
+  const key = `c${look.face}${look.pip}${look.one}${value}`;
   const hit = texCache.get(key);
   if (hit) return hit;
   const S = 512, c = document.createElement("canvas");
   c.width = c.height = S;
   const g = c.getContext("2d")!;
-  const bg = g.createRadialGradient(S * 0.35, S * 0.3, S * 0.05, S * 0.5, S * 0.5, S * 0.75);
-  bg.addColorStop(0, look.face);
-  bg.addColorStop(1, look.edge);
-  g.fillStyle = bg;
+  g.fillStyle = look.face;
   g.fillRect(0, 0, S, S);
-  const one = value === 1;
-  const r = S * (one ? 0.12 : 0.092);
-  for (const [row, col] of PIPS[value]) {
-    const x = S * (0.25 + col * 0.25), y = S * (0.25 + row * 0.25);
-    const color = one ? look.one : look.pip;
-    // Mulde: dunkler Rand oben links, Licht unten rechts im Inneren
-    g.beginPath(); g.arc(x, y, r * 1.08, 0, Math.PI * 2); g.fillStyle = "rgba(0,0,0,0.3)"; g.fill();
-    const pg = g.createRadialGradient(x + r * 0.3, y + r * 0.35, r * 0.1, x, y, r);
-    pg.addColorStop(0, shade(color, 0.14));
-    pg.addColorStop(0.6, color);
-    pg.addColorStop(1, shade(color, -0.45));
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = pg; g.fill();
+  const r = pipR(value, S);
+  for (const [x, y] of pipAt(value, S)) {
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = value === 1 ? look.one : look.pip; g.fill();
   }
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
@@ -76,11 +71,30 @@ function faceTexture(look: DieLook, value: number, maxAniso: number): Texture {
   texCache.set(key, t);
   return t;
 }
-/** Farbe heller (+) oder dunkler (−) */
-function shade(hex: string, amt: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const ch = (v: number) => Math.round(Math.min(255, Math.max(0, amt > 0 ? v + (255 - v) * amt : v * (1 + amt))));
-  return `rgb(${ch(n >> 16)},${ch((n >> 8) & 255)},${ch(n & 255)})`;
+
+/** Relief: die Augen sind runde, eingebohrte Mulden – das Licht fällt sichtbar hinein */
+function bumpTexture(value: number, maxAniso: number): Texture {
+  const key = `b${value}`;
+  const hit = texCache.get(key);
+  if (hit) return hit;
+  const S = 512, c = document.createElement("canvas");
+  c.width = c.height = S;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, S, S);
+  const r = pipR(value, S);
+  for (const [x, y] of pipAt(value, S)) {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r * 1.06);
+    gr.addColorStop(0, "#000");
+    gr.addColorStop(0.55, "#262626");
+    gr.addColorStop(0.9, "#cfcfcf");
+    gr.addColorStop(1, "#fff");
+    g.beginPath(); g.arc(x, y, r * 1.06, 0, Math.PI * 2); g.fillStyle = gr; g.fill();
+  }
+  const t = new CanvasTexture(c);
+  t.anisotropy = maxAniso;
+  texCache.set(key, t);
+  return t;
 }
 
 let glowTex: Texture | null = null;
@@ -139,7 +153,7 @@ export class DiceView {
     this.renderer.setPixelRatio(soft ? 1 : Math.min(3, window.devicePixelRatio || 1));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
-    this.renderer.toneMappingExposure = 0.85;
+    this.renderer.toneMappingExposure = 1;
     this.renderer.shadowMap.enabled = !soft;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.setClearColor(0x000000, 0);
@@ -149,19 +163,19 @@ export class DiceView {
       this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
       pm.dispose();
     }
-    this.scene.add(new HemisphereLight(0xffffff, 0x3a3428, 0.14));
-    this.sun = new DirectionalLight(0xfffaf2, 2.8);
+    this.scene.add(new HemisphereLight(0xffffff, 0x50493c, 0.5));
+    this.sun = new DirectionalLight(0xfffaf2, 2.2);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(shadowSize, shadowSize);
     this.sun.shadow.radius = 6;
     this.sun.shadow.bias = -0.0008;
     this.scene.add(this.sun, this.sun.target);
     // Boden nur für den Schatten – sonst durchsichtig
-    const floor = new Mesh(new PlaneGeometry(400, 400), new ShadowMaterial({ opacity: 0.42 }));
+    const floor = new Mesh(new PlaneGeometry(400, 400), new ShadowMaterial({ opacity: 0.3 }));
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     this.scene.add(floor);
-    this.geo = new RoundedBoxGeometry(1, 1, 1, 5, this.look.sharp ? 0.08 : 0.14);
+    this.geo = new RoundedBoxGeometry(1, 1, 1, 5, this.look.sharp ? 0.06 : 0.1);
   }
 
   /** Canvas-Größe in CSS-Pixeln und Maßstab (Pixel je Würfelkante am Boden) */
@@ -182,8 +196,8 @@ export class DiceView {
     const sc = this.sun.shadow.camera;
     sc.left = sc.bottom = -span; sc.right = sc.top = span; sc.near = 0.5; sc.far = dist * 3 + 40;
     sc.updateProjectionMatrix();
-    // Licht schräg von links hinten: Oberseite hell, die zugewandten Seiten im Halbschatten – so wirken die Würfel plastisch
-    this.sun.position.set(-span * 0.5, dist * 0.9 + 6, -span * 0.45);
+    // Licht fast von oben, leicht links hinten: kurze, weiche Schatten direkt unter den Würfeln
+    this.sun.position.set(-span * 0.18, dist * 1.4 + 10, -span * 0.12);
     this.sun.target.position.set(0, 0, 0);
   }
 
@@ -194,7 +208,10 @@ export class DiceView {
     while (this.dice.length > list.length) this.removeLast();
     const aniso = this.renderer.capabilities.getMaxAnisotropy();
     for (let i = this.dice.length; i < list.length; i++) {
-      const mats = BOX_VALUES.map((v) => new MeshStandardMaterial({ map: faceTexture(this.look, v, aniso), roughness: 0.55, metalness: 0, envMapIntensity: 0.1 }));
+      const mats = BOX_VALUES.map((v) => new MeshStandardMaterial({
+        map: faceTexture(this.look, v, aniso), bumpMap: bumpTexture(v, aniso), bumpScale: 2.2,
+        roughness: 0.5, metalness: 0, envMapIntensity: 0.45,
+      }));
       const mesh = new Mesh(this.geo, mats);
       mesh.castShadow = true;
       const glow = new Mesh(new PlaneGeometry(1.9, 1.9), new MeshBasicMaterial({ map: glowTexture(), transparent: true, depthWrite: false, opacity: 0 }));
@@ -215,7 +232,6 @@ export class DiceView {
       gm.color.set(col);
       gm.opacity = d.mark === "held" ? 0.85 : d.mark === "hint" ? 0.35 : 0;
       glow.visible = !!d.mark;
-      for (const m of mesh.material as MeshStandardMaterial[]) { m.emissive.set(col); m.emissiveIntensity = d.mark === "held" ? 0.12 : 0; }
     });
   }
 
@@ -243,7 +259,7 @@ export class DiceView {
     d.glow.geometry.dispose();
     (d.glow.material as MeshBasicMaterial).dispose();
   }
-  private clear() { while (this.dice.length) this.removeLast(); this.geo.dispose(); this.geo = new RoundedBoxGeometry(1, 1, 1, 5, this.look.sharp ? 0.08 : 0.14); }
+  private clear() { while (this.dice.length) this.removeLast(); this.geo.dispose(); this.geo = new RoundedBoxGeometry(1, 1, 1, 5, this.look.sharp ? 0.06 : 0.1); }
 
   dispose() {
     this.clear();

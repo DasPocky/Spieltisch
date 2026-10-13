@@ -256,6 +256,7 @@ const PREFS: [keyof Prefs, string, string][] = [
   ["vibration", "Vibration", "Kurz vibrieren, wenn du dran bist."],
   ["announce", "„Wer ist dran?“ ansagen", "Liest vor, wer am Zug ist."],
   ["hints", "Spielhilfen für mich", "Zeigt dir, welche Karten oder Züge gerade gehen – wenn der Raum Spielhilfen erlaubt."],
+  ["diceMarks", "Wertbare Würfel markieren", "In Würfelspielen leuchten Würfel, die Punkte bringen, leicht auf."],
 ];
 
 /** Rückmeldung während der Partie – gilt nur für dieses Gerät */

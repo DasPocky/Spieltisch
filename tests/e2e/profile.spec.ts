@@ -84,6 +84,8 @@ test("Profil: Einstellungen „Im Spiel“ bleiben nach Neuladen", async ({ brow
   await expect(box(/Vibration/)).toBeChecked();
   await expect(box(/ansagen/)).not.toBeChecked();
   await expect(box(/Spielhilfen/)).toBeChecked();
+  // Würfel sehen standardmäßig aus wie echte – Markieren nur auf Wunsch
+  await expect(box(/Würfel markieren/)).not.toBeChecked();
   await prefs.getByRole("button", { name: "Töne probehören" }).click();
   await box(/Töne/).click();
   await box(/ansagen/).click();

@@ -10,10 +10,12 @@ export interface Prefs {
   announce: boolean;
   /** Spielhilfen: spielbare Karten/Züge hervorheben */
   hints: boolean;
+  /** Würfelspiele: wertbare Würfel farbig markieren (Standard aus – die Würfel sollen wie echte aussehen) */
+  diceMarks: boolean;
 }
 
 const KEY = "spieltisch:prefs";
-export const DEFAULT_PREFS: Prefs = { sound: true, vibration: true, announce: false, hints: true };
+export const DEFAULT_PREFS: Prefs = { sound: true, vibration: true, announce: false, hints: true, diceMarks: false };
 
 function read(): Prefs {
   try {
