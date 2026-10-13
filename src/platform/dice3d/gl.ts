@@ -18,7 +18,7 @@ export interface DieDraw { pos: Vec; quat: Quat; scale?: number; mark?: "held" |
 /** Farben je Look: Würfelkörper, Augen, die Eins; `sharp` = kantigere Würfel */
 interface DieLook { face: string; edge: string; pip: string; one: string; sharp?: boolean }
 const LOOKS: Record<string, DieLook> = {
-  base: { face: "#ebe6dc", edge: "#d2cbbd", pip: "#0b1229", one: "#9c1229" },
+  base: { face: "#eee9df", edge: "#bdb29c", pip: "#050a1c", one: "#a3001f" },
   casino: { face: "#d81e2b", edge: "#a3121c", pip: "#ffffff", one: "#ffffff" },
   nacht: { face: "#3a2d7c", edge: "#241a55", pip: "#33dbf2", one: "#ff58ba" },
   arcade: { face: "#1d1d4a", edge: "#121234", pip: "#ffe14d", one: "#ff3d7f", sharp: true },
@@ -58,12 +58,12 @@ function faceTexture(look: DieLook, value: number, maxAniso: number): Texture {
   g.fillStyle = bg;
   g.fillRect(0, 0, S, S);
   const one = value === 1;
-  const r = S * (one ? 0.115 : 0.085);
+  const r = S * (one ? 0.12 : 0.092);
   for (const [row, col] of PIPS[value]) {
     const x = S * (0.25 + col * 0.25), y = S * (0.25 + row * 0.25);
     const color = one ? look.one : look.pip;
     // Mulde: dunkler Rand oben links, Licht unten rechts im Inneren
-    g.beginPath(); g.arc(x, y, r * 1.06, 0, Math.PI * 2); g.fillStyle = "rgba(0,0,0,0.18)"; g.fill();
+    g.beginPath(); g.arc(x, y, r * 1.08, 0, Math.PI * 2); g.fillStyle = "rgba(0,0,0,0.3)"; g.fill();
     const pg = g.createRadialGradient(x + r * 0.3, y + r * 0.35, r * 0.1, x, y, r);
     pg.addColorStop(0, shade(color, 0.14));
     pg.addColorStop(0.6, color);
@@ -149,15 +149,15 @@ export class DiceView {
       this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
       pm.dispose();
     }
-    this.scene.add(new HemisphereLight(0xffffff, 0x4a4438, 0.22));
-    this.sun = new DirectionalLight(0xfffaf2, 2.5);
+    this.scene.add(new HemisphereLight(0xffffff, 0x3a3428, 0.14));
+    this.sun = new DirectionalLight(0xfffaf2, 2.8);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(shadowSize, shadowSize);
     this.sun.shadow.radius = 6;
     this.sun.shadow.bias = -0.0008;
     this.scene.add(this.sun, this.sun.target);
     // Boden nur für den Schatten – sonst durchsichtig
-    const floor = new Mesh(new PlaneGeometry(400, 400), new ShadowMaterial({ opacity: 0.32 }));
+    const floor = new Mesh(new PlaneGeometry(400, 400), new ShadowMaterial({ opacity: 0.42 }));
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     this.scene.add(floor);
@@ -194,7 +194,7 @@ export class DiceView {
     while (this.dice.length > list.length) this.removeLast();
     const aniso = this.renderer.capabilities.getMaxAnisotropy();
     for (let i = this.dice.length; i < list.length; i++) {
-      const mats = BOX_VALUES.map((v) => new MeshStandardMaterial({ map: faceTexture(this.look, v, aniso), roughness: 0.55, metalness: 0, envMapIntensity: 0.16 }));
+      const mats = BOX_VALUES.map((v) => new MeshStandardMaterial({ map: faceTexture(this.look, v, aniso), roughness: 0.55, metalness: 0, envMapIntensity: 0.1 }));
       const mesh = new Mesh(this.geo, mats);
       mesh.castShadow = true;
       const glow = new Mesh(new PlaneGeometry(1.9, 1.9), new MeshBasicMaterial({ map: glowTexture(), transparent: true, depthWrite: false, opacity: 0 }));

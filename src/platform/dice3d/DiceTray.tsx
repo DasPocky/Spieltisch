@@ -48,9 +48,9 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 /** Plätze in der Ablage: eine Reihe, bei wenig Höhe und vielen Würfeln zwei. Würfel i liegt immer auf Platz i. */
 function layout(n: number, w: number, h: number): { px: number; slots: [number, number][] } {
   const gap = 1.45;
-  let rows = 1, px = Math.min(46, h * 0.6, w / (n * gap + 0.9));
+  let rows = 1, px = Math.min(38, h * 0.5, w / (n * gap + 0.9));
   if (n > 3) {
-    const per = Math.ceil(n / 2), px2 = Math.min(46, h / 2.75, w / (per * gap + 0.9));
+    const per = Math.ceil(n / 2), px2 = Math.min(38, h / 3, w / (per * gap + 0.9));
     if (px2 > px * 1.08) { rows = 2; px = px2; }
   }
   const slots: [number, number][] = [];
@@ -131,7 +131,8 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
     let big = 0;
     if (animate && idx.length) {
       const W = window.innerWidth, H = window.innerHeight;
-      big = Math.round(Math.min(78, Math.max(44, Math.min(W / 6.3, H / 10.5))));
+      // Im Flug gut sichtbar, aber nicht zu groß – auf kleinen Bildschirmen bleibt Platz zum Rollen
+      big = Math.round(Math.min(60, Math.max(34, Math.min(W / 8.2, H / 13.5))));
       frames = phys.simulate(idx.length, idx.map(() => null), seed, W / (2 * big) - 0.2, H / (2 * big) - 0.4, takeThrow() ?? undefined);
     }
     const last = frames.at(-1);
