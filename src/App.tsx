@@ -7,7 +7,8 @@ import { Group, Groups } from "@/pages/Group";
 import { AccessGate } from "@/platform/AccessGate";
 import { LocalGame } from "@/pages/LocalGame";
 import { OnlineRoom } from "@/pages/OnlineRoom";
-import { lazy, Suspense } from "react";
+import { Fragment, lazy, Suspense, useState } from "react";
+import { Intro } from "@/platform/intro/Intro";
 import { Loader2 } from "lucide-react";
 import { OfflineBar } from "@/platform/OfflineBar";
 import { LoadError } from "@/platform/LoadError";
@@ -18,10 +19,13 @@ const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ defa
 
 export default function App() {
   const route = useRoute();
+  // Nach dem Willkommen (Name, Avatar, übernommenes Profil) die Seiten mit den neuen Daten neu aufbauen
+  const [gen, setGen] = useState(0);
   return (
     // Spiele laden erst beim Öffnen – solange zeigt sich kurz ein Ladekreis
     <LoadError>
     <Suspense fallback={<div className="grid h-dvh-safe place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>}>
+      <Fragment key={gen}>
       {route.name === "admin" && <Admin />}
       {route.name === "gallery" && <Suspense><CardGallery /></Suspense>}
       {route.name === "profile" && <AccessGate><AppShell tab="profil"><Profile /></AppShell></AccessGate>}
@@ -32,6 +36,8 @@ export default function App() {
       {route.name === "games" && <AccessGate><AppShell tab="spiele"><Games /></AppShell></AccessGate>}
       {route.name === "local" && <LocalGame />}
       {route.name === "room" && <AccessGate><OnlineRoom key={route.code} code={route.code} /></AccessGate>}
+      </Fragment>
+      <Intro onProfile={() => setGen((g) => g + 1)} />
       <OfflineBar />
       <Toaster />
     </Suspense>

@@ -93,3 +93,5 @@ Lobby, Einstellungen, Rechte, Online-Räume, Menü und Siegerehrung funktioniere
 Für die Handy-Tests einmalig `npx playwright install chromium` – oder ein vorhandenes Chromium per `PW_CHROMIUM_PATH=/pfad/zu/chromium npm run test:e2e`. Ein Einrichtungsschritt schaltet „Ein Handy für alle“ für die Tests ein; Screenshots landen in `screenshots/`.
 
 Ohne Grafikchip (z. B. in Testumgebungen) zeichnen die 3D-Würfel automatisch einfacher. Für Vorschaubilder in voller Qualität: `localStorage.setItem("spieltisch:diceHQ", "1")`.
+
+Willkommen (neues Gerät) und Begrüßung (bekanntes Gerät) sind im automatisierten Browser aus, damit die Tests nicht an der Animation hängen. `tests/e2e/intro.spec.ts` schaltet sie mit `localStorage["spieltisch:test-intro"] = "true"` gezielt ein.
