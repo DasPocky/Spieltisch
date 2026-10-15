@@ -32,7 +32,7 @@ export function DicePanel({ state, onAction, disabled }: { state: TuttoState; on
   return (
     <section className="glass rounded-2xl p-2.5">
       <div className="flex items-center justify-between px-1.5">
-        <span className="text-sm text-muted-foreground">Punkte dieser Runde</span>
+        <span className="text-sm text-muted-foreground">Punkte dieses Zugs</span>
         <b className="text-3xl font-bold tracking-tight tabular-nums">
           <span className={cn(d?.bust && card !== "fire" && "text-muted-foreground line-through decoration-destructive decoration-[3px]")}>{fmt(state.turnPts)}</span>
           {sel !== null && sel > 0 && scoresHere && <span className="ml-1.5 text-lg text-navy-300">+{fmt(sel)}</span>}
