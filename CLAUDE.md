@@ -1,6 +1,6 @@
 # Hinweise für Claude
 
-Spieltisch ist eine mobile Web-Spielesammlung (React + Cloudflare Workers). Überblick: `README.md`, Details: `docs/entwicklung.md`, `docs/betrieb.md`, offene Punkte: `docs/roadmap.md`.
+Spieltisch ist eine mobile Web-Spielesammlung (React + Cloudflare Workers). Überblick: `README.md`, Gesamtkonzept: `docs/konzept.md`, Details: `docs/entwicklung.md`, `docs/betrieb.md`, offene Punkte: `docs/roadmap.md`.
 
 ## Zusammenarbeit
 

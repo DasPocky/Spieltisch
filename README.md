@@ -53,6 +53,7 @@ React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui im Browser; Cloudflare
 
 ## Dokumentation
 
+- [Konzept](docs/konzept.md) – Leitbild, App-Aufbau, Räume, Umsetzungsplan, Ausblick auf native Apps
 - [Entwicklung](docs/entwicklung.md) – Architektur, Grundprinzipien, ein neues Spiel hinzufügen, Tests
 - [Betrieb](docs/betrieb.md) – Deployment, Secrets, Sicherheit, Datenhaltung
 - [Roadmap](docs/roadmap.md) – geplante Spiele und offene Punkte

@@ -8,8 +8,8 @@
 
 ## Plattform
 
+- **App-Hülle, Raumliste, private Räume, ein Raumtyp** – siehe [Konzept](konzept.md), Umsetzung in fünf Schritten
 - **Bot-Modus** – Mitspieler durch die App ersetzen
-- **Regeln vorab** in der Spielauswahl (ⓘ je Spiel)
 - **Profil gliedern** – Abschnitte zusammenfassen, evtl. Tabs
 - Sprachchat-Knopf beim ersten Mal kurz erklären
 
