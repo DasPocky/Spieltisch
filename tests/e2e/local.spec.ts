@@ -6,12 +6,12 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
 });
 
-test("Startseite: erst Spielweise, dann Lobby, dann Spiel – lokal wie online, ohne Scrollen", async ({ page }) => {
+test("Startseite: Lobby, dann Spiel – lokal wie online, ohne Scrollen", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Spieltisch" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Wie spielt ihr?" })).toBeVisible();
-  // Ein Profil-Knopf oben, kein Hell/Dunkel-Knopf auf der Startseite
-  await expect(page.getByRole("button", { name: "Mein Profil" })).toBeVisible();
+  // Tab-Leiste unten, kein Hell/Dunkel-Knopf auf der Startseite
+  await expect(page.getByRole("navigation", { name: "Bereiche" })).toBeVisible();
+  await expect(page.getByTestId("tabbar-profil")).toBeVisible();
   await expect(page.getByRole("button", { name: /Darstellung/ })).toHaveCount(0);
   await expectNoScroll(page);
   await shot(page, "01-home");
@@ -46,13 +46,13 @@ test("Startseite: erst Spielweise, dann Lobby, dann Spiel – lokal wie online, 
 
   // Online: erst den Raum erstellen, dann in der Lobby das Spiel wählen
   await page.goto("/");
-  await page.getByRole("button", { name: /Online-Raum erstellen/ }).click();
+  await page.getByRole("button", { name: "Raum öffnen" }).click();
   await expect(page.getByTestId("create-room")).toBeVisible();
   await expectNoScroll(page);
   await shot(page, "01d-home-online");
   await page.getByLabel("Dein Name").fill("Anna");
   await page.getByLabel(/PIN/).fill("4711");
-  await page.getByRole("button", { name: "Raum erstellen" }).click();
+  await page.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
   await page.getByRole("button", { name: /^Uno/ }).click();
@@ -214,7 +214,7 @@ test("Ohne Netz: Hinweis oben, Online gesperrt, lokal geht weiter", async ({ pag
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
   await expect(page.getByTestId("offline-bar")).toContainText("Kein Netz");
-  await expect(page.getByRole("button", { name: /Online-Raum erstellen/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Raum öffnen/ })).toBeDisabled();
   await shot(page, "02-offline-home");
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   await expect(page.getByTestId("game-card")).toBeVisible();

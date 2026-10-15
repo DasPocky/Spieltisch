@@ -133,7 +133,7 @@ test("Treffpunkt: nur reden, sehen, schreiben – dann ein Spiel", async ({ brow
   await anna.getByTestId("meet-card").click();
   await anna.getByLabel("Dein Name").fill("Anna");
   await anna.getByLabel(/PIN/).fill("3434");
-  await anna.getByRole("button", { name: "Raum erstellen" }).click();
+  await anna.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(anna.getByTestId("meet")).toBeVisible();
   const code = (await anna.evaluate(() => location.pathname.split("/").pop()))!;
   await ben.goto(`/r/${code}`);

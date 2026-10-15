@@ -19,12 +19,14 @@ import { QrCode } from "@/platform/QrCode";
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "–");
 export const groupLink = (code: string) => `${location.origin}/g/${code}`;
 
-function Page({ children, back = "/" }: { children: ReactNode; back?: string }) {
+function Page({ children, back }: { children: ReactNode; back?: string }) {
   return (
-    <main className="mx-auto flex min-h-dvh-safe max-w-md flex-col gap-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-      <header className="flex h-14 shrink-0 items-center">
-        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate(back)}><ChevronLeft />{back === "/" ? "Spieltisch" : "Gruppen"}</Button>
-      </header>
+    <main className={cn("mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6", !back && "pt-[max(1rem,2.5vh)]")}>
+      {back && (
+        <header className="-mb-2 flex h-12 shrink-0 items-center">
+          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate(back)}><ChevronLeft />Alle Gruppen</Button>
+        </header>
+      )}
       {children}
     </main>
   );
@@ -143,7 +145,7 @@ export function Group({ code }: { code: string }) {
     return () => { on = false; };
   }, [code]);
 
-  if (member && cached) return <Page back={groups.codes.length > 1 ? "/gruppe" : "/"}><GroupHome group={cached} active={groups.active === code} /></Page>;
+  if (member && cached) return <Page back="/gruppe"><GroupHome group={cached} active={groups.active === code} /></Page>;
   if (loading) return <Page><Loader2 className="mx-auto mt-[20vh] size-8 animate-spin text-muted-foreground" /></Page>;
   if (preview) return <Page><Invitation preview={preview} /></Page>;
   return (

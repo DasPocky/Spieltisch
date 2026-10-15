@@ -51,7 +51,10 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  html { -webkit-tap-highlight-color: transparent; height: 100%; }
+  /* App-Gefühl: kein Zoom per Doppeltipp, kein Gummiband, keine Textauswahl auf Bedienelementen */
+  html { -webkit-tap-highlight-color: transparent; height: 100%; touch-action: manipulation; }
+  button, [role="button"], [role="tab"], nav, label, img, svg { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  img { -webkit-user-drag: none; }
   body {
     @apply text-foreground antialiased;
     min-height: 100%;
@@ -60,7 +63,7 @@
       radial-gradient(90% 50% at 50% 0%, var(--page-glow) 0%, transparent 70%) fixed,
       linear-gradient(180deg, var(--page-top) 0%, var(--page-mid) 45%, var(--page-bottom) 100%) fixed,
       var(--page-mid);
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
   }
   #root {
     min-height: 100dvh;
@@ -93,6 +96,20 @@
 @media (prefers-reduced-motion: reduce) {
   .flip-inner { transition: none; }
 }
+
+/* Tab-Leiste der App-Hülle und weicher Wechsel zwischen den Tabs */
+.tabbar {
+  background: linear-gradient(180deg, var(--glass-a), var(--glass-b)), var(--page-bottom);
+  box-shadow: 0 -1px 0 var(--border), 0 -8px 24px rgb(0 0 0 / 0.06);
+  backdrop-filter: blur(12px);
+}
+@keyframes tab-in { from { opacity: 0; transform: translateY(8px); } }
+.tab-in { animation: tab-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .tab-in { animation: none; } }
+
+/* Spiele-Tab auf kleinen Handys: Kacheln ohne Spielerzahl, damit alle ohne Scrollen passen */
+@media (max-height: 720px) { .games-sub, .game-tile-players { display: none; } }
+@media (max-height: 600px) { .games-grid .game-tile-icon { width: 2.25rem; height: 2.25rem; } }
 
 @utility h-dvh-safe {
   height: calc(100dvh - env(safe-area-inset-top, 0px));

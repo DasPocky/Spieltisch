@@ -7,7 +7,7 @@ import { NAME_KEY, setPendingJoin } from "./storage";
 export const pickGameKey = (code: string) => `spieltisch:pick:${code}`;
 
 /** Legt einen Online-Raum an und geht hinein. Wirft mit einer lesbaren Meldung, wenn es nicht klappt. */
-export async function createRoom(name: string, pin: string, gameId: string, pickGame = false, meet = false): Promise<void> {
+export async function createRoom(name: string, pin: string, gameId: string, pickGame = false, meet = false, replace = false): Promise<void> {
   const res = await fetch("/api/rooms", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -23,5 +23,6 @@ export async function createRoom(name: string, pin: string, gameId: string, pick
   if (pickGame && !meet) try { sessionStorage.setItem(pickGameKey(data.code), "1"); } catch { /* egal */ }
   // Treffpunkt: erst reden und sehen, gespielt wird später (siehe Meet)
   if (meet) try { sessionStorage.setItem(`spieltisch:meet:${data.code}`, "1"); } catch { /* egal */ }
-  navigate(`/r/${data.code}`);
+  // Aus einem Blatt heraus: dessen Verlaufseintrag ersetzen (siehe useBackClose)
+  navigate(`/r/${data.code}`, replace);
 }

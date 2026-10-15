@@ -4,6 +4,7 @@ import { LOCAL_GAME_KEY } from "@/lib/storage";
 
 export type Route =
   | { name: "home" }
+  | { name: "games" }
   | { name: "local" }
   | { name: "room"; code: string }
   | { name: "admin" }
@@ -15,6 +16,7 @@ export type Route =
 
 function parse(path: string): Route {
   if (/^\/admin\/?$/.test(path)) return { name: "admin" };
+  if (/^\/spiele\/?$/.test(path)) return { name: "games" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };
   const transfer = path.match(/^\/profil\/uebernehmen\/([A-Za-z0-9-]{8,9})\/?$/);
   if (transfer) return { name: "transfer", code: transfer[1].toUpperCase().replace(/-/g, "") };

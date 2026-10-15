@@ -11,6 +11,8 @@ import { lazy, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { OfflineBar } from "@/platform/OfflineBar";
 import { LoadError } from "@/platform/LoadError";
+import { AppShell } from "@/platform/shell/AppShell";
+import { Games } from "@/pages/Games";
 
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
 
@@ -22,11 +24,12 @@ export default function App() {
     <Suspense fallback={<div className="grid h-dvh-safe place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>}>
       {route.name === "admin" && <Admin />}
       {route.name === "gallery" && <Suspense><CardGallery /></Suspense>}
-      {route.name === "profile" && <AccessGate><Profile /></AccessGate>}
+      {route.name === "profile" && <AccessGate><AppShell tab="profil"><Profile /></AppShell></AccessGate>}
       {route.name === "transfer" && <AccessGate><ProfileTransfer code={route.code} /></AccessGate>}
-      {route.name === "groups" && <AccessGate><Groups /></AccessGate>}
-      {route.name === "group" && <AccessGate><Group key={route.code} code={route.code} /></AccessGate>}
-      {route.name === "home" && <AccessGate><Home /></AccessGate>}
+      {route.name === "groups" && <AccessGate><AppShell tab="gruppe"><Groups /></AppShell></AccessGate>}
+      {route.name === "group" && <AccessGate><AppShell tab="gruppe"><Group key={route.code} code={route.code} /></AppShell></AccessGate>}
+      {route.name === "home" && <AccessGate><AppShell tab="start"><Home /></AppShell></AccessGate>}
+      {route.name === "games" && <AccessGate><AppShell tab="spiele"><Games /></AppShell></AccessGate>}
       {route.name === "local" && <LocalGame />}
       {route.name === "room" && <AccessGate><OnlineRoom key={route.code} code={route.code} /></AccessGate>}
       <OfflineBar />

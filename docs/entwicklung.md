@@ -17,11 +17,12 @@ Browser ──HTTP──▶ Worker ──▶ statische React-App (dist/client)
 | `src/platform/` | Plattform-Oberfläche: Lobby, Menü, Einstellungen, Spielerleiste, Siegerehrung |
 | `src/platform/dice3d/` | 3D-Würfel: Physik (cannon-es), Darstellung (three.js), Wurf-Geste und Sperre |
 | `src/platform/chat/`, `call/` | Text-Chat, Treffpunkt, Sprach- und Videochat |
-| `src/pages/` | Startseite, Online-Raum, lokale Partie, Profil, Gruppen, Admin |
+| `src/pages/` | Start, Spiele, Online-Raum, lokale Partie, Profil, Gruppen, Admin |
+| `src/platform/shell/` | App-Hülle mit Tab-Leiste, Blätter „Raum öffnen“ und „Beitreten“ |
 | `src/styles/looks.css` | die Looks als CSS-Variablen (hell und dunkel) |
 | `tests/unit/`, `tests/e2e/` | Vitest und Playwright |
 
-**Routen:** `/` Start · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`
+**Routen:** `/` Start · `/spiele` Spiele · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`
 
 ## Grundprinzipien
 

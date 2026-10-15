@@ -51,15 +51,15 @@ export async function newPhone(browser: Browser): Promise<Page> {
   return ctx.newPage();
 }
 
-/** Online-Raum wie ein Mensch erstellen: Startseite → Name + PIN → in der Lobby das Spiel wählen. Gibt den Code zurück. */
+/** Online-Raum wie ein Mensch erstellen: Startseite → „Raum öffnen“ → Name + PIN → in der Lobby das Spiel wählen. Gibt den Code zurück. */
 export async function createRoom(host: Page, gameId: string, name: string, pin: string): Promise<string> {
   await host.goto("/");
   // Als zuletzt gespieltes Spiel vormerken – so entsteht der Raum gleich mit diesem Spiel (wie beim Wiederkommen)
   await host.evaluate((id) => localStorage.setItem("spieltisch:lastGame", id), gameId);
-  await host.getByRole("button", { name: /Online-Raum erstellen/ }).click();
+  await host.getByRole("button", { name: "Raum öffnen" }).click();
   await host.getByLabel("Dein Name").fill(name);
   await host.getByLabel(/PIN/).fill(pin);
-  await host.getByRole("button", { name: "Raum erstellen" }).click();
+  await host.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(host).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
   await host.getByTestId(`pick-${gameId}`).click();
   await expect(host.getByRole("heading", { name: "Was spielt ihr?" })).toBeHidden();

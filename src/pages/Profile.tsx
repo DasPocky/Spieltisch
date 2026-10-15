@@ -19,6 +19,8 @@ import { adoptAndSync, syncMe, useMyGroups } from "@/lib/group";
 import { Avatar, AvatarPicker } from "@/platform/Avatar";
 import { QrCode } from "@/platform/QrCode";
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
+import { InstallCard } from "@/platform/InstallHint";
+import { goTab } from "@/platform/shell/AppShell";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";
@@ -102,10 +104,12 @@ export function Profile() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh-safe max-w-md flex-col gap-4 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-      <header className="flex h-14 shrink-0 items-center">
-        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => { remove(RETURN_KEY, true); navigate(back ?? "/"); }}><ChevronLeft />{back ? "Zurück zum Spiel" : "Spieltisch"}</Button>
-      </header>
+    <main className={cn("mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6", !back && "pt-[max(1rem,2.5vh)]")}>
+      {back && (
+        <header className="-mb-2 flex h-12 shrink-0 items-center">
+          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => { remove(RETURN_KEY, true); navigate(back); }}><ChevronLeft />Zurück zum Spiel</Button>
+        </header>
+      )}
       <h1 className="text-3xl font-bold tracking-tight">Mein Profil</h1>
 
       <Card className="grid gap-2">
@@ -192,7 +196,7 @@ export function Profile() {
             ))}
           </ul>
         )}
-        <Button variant="secondary" onClick={() => navigate("/gruppe")}>{groups.codes.length ? "Gruppen verwalten" : "Gruppe erstellen oder beitreten"}</Button>
+        <Button variant="secondary" onClick={() => goTab("/gruppe")}>{groups.codes.length ? "Gruppen verwalten" : "Gruppe erstellen oder beitreten"}</Button>
       </Card>
 
       <Card className="grid gap-2.5" data-testid="transfer">
@@ -218,6 +222,7 @@ export function Profile() {
       <Card className="grid gap-2.5">
         <h2 className="font-bold">Darstellung</h2>
         <ThemeSwitch />
+        <InstallCard />
       </Card>
 
       <Card className="grid gap-3" data-testid="play-prefs">
