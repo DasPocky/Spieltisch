@@ -39,6 +39,8 @@ Lokal stehen die Werte in `.dev.vars` (nicht eingecheckt). `scripts/test-env.mjs
 
 IP-Adressen oder Konten speichert die App nicht.
 
+**Frischer Stand:** Admin → Daten → „Alles auswählen“ löscht Räume, Verlauf, Statistik, Gruppen und Profile und setzt die Einstellungen auf den Auslieferungszustand (das Admin-Passwort bleibt als Secret). Dabei vergibt der Server eine neue Neustart-Kennung (`epoch` in `/api/config`). Jedes schon benutzte Handy löscht beim nächsten Öffnen einmal seine Daten auf dem Gerät und beginnt mit dem Willkommen; das Gerät des Admins behält seine. Wer nur einzelne Bereiche löscht, ändert an den Handys nichts.
+
 ## Kosten
 
 Alles läuft im kostenlosen Cloudflare-Tarif (100.000 Worker-Anfragen pro Tag; WebSocket-Nachrichten zählen gebündelt). Ein Spieleabend braucht davon einen Bruchteil.

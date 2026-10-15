@@ -842,6 +842,8 @@ interface SettingsData {
   sessions?: Record<string, number>;
   /** Standard-Einstellungen pro Spiel */
   defaults?: GameDefaults;
+  /** Kennung des letzten kompletten Neustarts */
+  epoch?: string;
 }
 
 /** Vergleich in konstanter Zeit – über die Hashes, damit die Länge nichts verrät */
@@ -886,7 +888,7 @@ export class SiteSettings extends DurableObject<Env> {
 
   async config(): Promise<SiteConfig> {
     // Ältere gespeicherte Einstellungen kennen neue Felder noch nicht – die Prüfung füllt sie mit Standards
-    return { ...sanitizeConfig(this.data.config, GAME_IDS), hasCode: !!this.data.codeHash, defaults: this.data.defaults ?? {} };
+    return { ...sanitizeConfig(this.data.config, GAME_IDS), hasCode: !!this.data.codeHash, defaults: this.data.defaults ?? {}, epoch: this.data.epoch };
   }
 
   async checkCode(code: string): Promise<boolean> {
@@ -1029,6 +1031,11 @@ export class SiteSettings extends DurableObject<Env> {
     // Admin-Sitzungen bleiben (das Passwort liegt als Secret bei Cloudflare).
     if (kinds.includes("settings")) {
       this.data = { ...this.data, config: { ...DEFAULT_CONFIG }, codeHash: null, salt: crypto.randomUUID(), fails: 0, lockUntil: 0, defaults: undefined };
+      await this.save();
+    }
+    // Alles gelöscht: neue Neustart-Kennung – jedes Handy löscht beim nächsten Öffnen einmal seine Daten
+    if (WIPE_KINDS.every((k) => kinds.includes(k))) {
+      this.data.epoch = crypto.randomUUID();
       await this.save();
     }
     return out;

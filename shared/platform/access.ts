@@ -30,6 +30,8 @@ export interface SiteConfig {
   archiveDays: number;
   /** Aussehen der Seite */
   look: LookId;
+  /** Kennung des letzten kompletten Neustarts (Admin hat alles gelöscht) – Handys mit älterer Kennung starten einmal frisch */
+  epoch?: string;
 }
 
 export interface SiteLimits {

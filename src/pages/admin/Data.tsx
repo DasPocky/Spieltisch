@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Download, Loader2, Trash2 } from "lucide-react";
 import { WIPE_KINDS, type ArchivedRoom, type SiteConfig, type WipeKind } from "@shared/platform/access";
 import { setSiteConfig } from "@/hooks/useSiteConfig";
+import { rememberEpoch } from "@/lib/freshStart";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +43,8 @@ export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) =
     setWhat([]); setConfirm("");
     // Einstellungen zurückgesetzt: Admin und App sofort auf den frischen Stand
     if (r.config) { setSiteConfig(r.config); onReset(r.config); }
+    // Dieses Gerät (der Admin) behält seine Daten; alle anderen Handys starten beim nächsten Öffnen frisch
+    if (r.config?.epoch) rememberEpoch(r.config.epoch);
   }, "Gelöscht.");
 
   return (
@@ -64,6 +67,9 @@ export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) =
             </label>
           ))}
           <button type="button" className="justify-self-start text-sm font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setWhat([...WIPE_KINDS])}>Alles auswählen</button>
+          {what.length === WIPE_KINDS.length && (
+            <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm" data-testid="fresh-start">Kompletter Neustart: Jedes Handy löscht beim nächsten Öffnen einmal seine Daten (Name, Profil, Spielstände) und beginnt frisch mit dem Willkommen.</p>
+          )}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="wipe-confirm">Zur Sicherheit <b>LÖSCHEN</b> eintippen</Label>

@@ -3,7 +3,8 @@ import { expectNoScroll, shot } from "./util";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() => { localStorage.clear(); localStorage.setItem("spieltisch:name", "Anna"); });
+  // Alles leeren, nur die Neustart-Kennung behalten (sonst gilt das Gerät als alt und startet einmal frisch)
+  await page.evaluate(() => { const e = localStorage.getItem("spieltisch:epoch"); localStorage.clear(); if (e) localStorage.setItem("spieltisch:epoch", e); localStorage.setItem("spieltisch:name", "Anna"); });
   await page.reload();
 });
 
