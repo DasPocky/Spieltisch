@@ -273,6 +273,13 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(visitor.getByTestId("pick-dame")).toContainText("NEU");
   await visitor.context().close();
 
+  // Ein benutztes Handy (Name, Profil) – vor dem Neustart bleibt beim Laden alles, wie es ist
+  const phone = await newPhone(browser);
+  await phone.goto("/");
+  await phone.evaluate(() => localStorage.setItem("spieltisch:name", "Oma"));
+  await phone.reload();
+  await expect(phone.getByTestId("greeting")).toHaveText("Hallo, Oma!");
+
   // Daten: alles löschen braucht „LÖSCHEN“, danach leer und der Raum ist zu
   await page.getByRole("tab", { name: "Daten" }).click();
   await page.getByRole("button", { name: "Alles auswählen" }).click();
@@ -287,6 +294,25 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(page.getByTestId("history")).toContainText("Noch keine Räume im Verlauf");
   const stats = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
   expect(Object.keys(stats.totals)).toHaveLength(0);
+  // Einstellungen auf Auslieferungszustand: kein Banner, alle Spiele frei, „Ein Handy für alle“ aus, Obergrenze 1 Woche
+  const fresh = await (await request.get("/api/config")).json();
+  expect(fresh).toMatchObject({ banner: "", games: {}, featured: [], limits: { roomHours: 168 }, features: { local: false, online: true } });
+  await page.getByRole("tab", { name: "Optionen" }).click();
+  await expect(page.getByLabel("Hinweis-Banner (optional)")).toHaveValue("");
+  // Kompletter Neustart: das Handy löscht beim nächsten Öffnen einmal alles – danach nie wieder von selbst
+  expect(fresh.epoch).toBeTruthy();
+  await phone.reload();
+  // Die App löscht und lädt dabei selbst neu – danach ohne Namen
+  await expect(phone.getByTestId("greeting")).toHaveText("Spieltisch");
+  expect(await phone.evaluate(() => localStorage.getItem("spieltisch:name"))).toBeNull();
+  expect(await phone.evaluate(() => localStorage.getItem("spieltisch:epoch"))).toBe(fresh.epoch);
+  await phone.evaluate(() => localStorage.setItem("spieltisch:name", "Oma"));
+  await phone.reload();
+  await expect(phone.getByTestId("greeting")).toHaveText("Hallo, Oma!");
+  await phone.context().close();
+  // Der Admin selbst bleibt angemeldet
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Daten" })).toBeVisible();
   await host.context().close();
   await guest.context().close();
 });

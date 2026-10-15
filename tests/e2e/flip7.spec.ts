@@ -19,7 +19,7 @@ async function step(page: Page, stayChance = 0.35) {
     if (await pickable.count()) await tap(pickable.last());
     return;
   }
-  const hit = page.getByRole("button", { name: "Noch eine!" });
+  const hit = page.getByRole("button", { name: "Noch eine!", exact: true });
   if (await hit.isVisible()) {
     if (Math.random() < stayChance) await tap(page.getByRole("button", { name: /Aufhören/ }));
     else await tap(hit);

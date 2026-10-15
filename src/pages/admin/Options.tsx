@@ -22,7 +22,7 @@ const FEATURES: [keyof SiteFeatures, string, string][] = [
   ["offline", "Offline-App", "Seite und Spiele auf dem Handy speichern – lokal ohne Netz"],
 ];
 const LIMITS: [keyof SiteLimits, string, string, number, number][] = [
-  ["roomHours", "Räume verschwinden nach", "Stunden ohne Aktivität", 1, 336],
+  ["roomHours", "Leere Räume höchstens", "Stunden (Obergrenze für die Wahl des Hosts)", 1, 336],
   ["maxPlayers", "Höchstens", "Leute pro Raum", 2, 20],
   ["maxRooms", "Höchstens", "offene Räume (0 = egal)", 0, 500],
 ];

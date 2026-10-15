@@ -8,8 +8,10 @@ Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zus
 
 ## Funktionen
 
+- **Wie eine App** – Tab-Leiste (Start, Spiele, Gruppe, Profil), Begrüßung mit Papierschnitt-Animation, Willkommen mit Rundgang für neue Geräte, direkt installierbar.
 - **Online-Räume** – Raumcode und PIN, alle sehen live denselben Stand. Der Server führt, so bleibt alles synchron, auch nach Funklöchern.
-- **Chat, Sprache, Video** – Text-Chat mit Reaktionen als Sprechblasen, Sprach- und Videochat mit den Gesichtern direkt in der Spielerleiste. Dazu ein **Treffpunkt** zum Reden ohne Spiel.
+- **Räume auf einen Blick** – Der Start zeigt eigene und offene Räume, Gruppe zuerst. Jeder Raum ist öffentlich, nur für die Gruppe oder privat, auf Wunsch mit Anklopfen; leere Räume bleiben 1 Stunde bis 1 Woche, Dauerräume legt der Admin an.
+- **Chat, Sprache, Video** – Text-Chat mit Reaktionen als Sprechblasen, Sprach- und Videochat mit den Gesichtern direkt in der Spielerleiste. Jeder Raum ist zugleich **Treffpunkt**: reden ohne Spiel, spielen ohne Video – beides geht.
 - **Echte 3D-Würfel** – Die Würfel fliegen mit echter Physik über den Bildschirm und landen gut lesbar in der Ablage. Das Ergebnis kommt immer aus fairem Zufall.
 - **Für jede Runde passend** – Alle Spieler in einer Zeile, kein Scrollen, auch auf kleinen Handys. Jedes Spiel geht in der App oder mit echtem Material am Tisch (die App ist dann Punkteblock, Schlüsselkarte oder Erzähler).
 - **14 Looks** – Der Admin wählt den Stil, hell oder dunkel stellt jeder selbst ein.
@@ -53,6 +55,7 @@ React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui im Browser; Cloudflare
 
 ## Dokumentation
 
+- [Konzept](docs/konzept.md) – Leitbild, App-Aufbau, Räume, Umsetzungsplan, Ausblick auf native Apps
 - [Entwicklung](docs/entwicklung.md) – Architektur, Grundprinzipien, ein neues Spiel hinzufügen, Tests
 - [Betrieb](docs/betrieb.md) – Deployment, Secrets, Sicherheit, Datenhaltung
 - [Roadmap](docs/roadmap.md) – geplante Spiele und offene Punkte

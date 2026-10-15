@@ -26,11 +26,12 @@ import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
 import { CallButton, CallContext, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
-import { ChatButton, ChatContext, type ChatControls } from "./chat/Chat";
-import { Meet, meetKey } from "./chat/Meet";
+import { ChatButton, ChatContext, ChatPanel, type ChatControls } from "./chat/Chat";
+import { Meet } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
+import { KnockBar, type KnockEntry } from "./KnockBar";
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
@@ -47,6 +48,9 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   call?: CallControls;
   /** Text-Chat (nur online) */
   chat?: ChatControls;
+  /** Wer gerade anklopft (online, Einlass mit Anklopfen) */
+  knocks?: KnockEntry[];
+  onKnock?: (id: string, decision: "admit" | "deny" | "wait") => void;
 }
 
 /** Gemeinsamer Rahmen für lokales und Online-Spiel: Kopfzeile, Lobby oder das Spielbrett des Moduls. */
@@ -96,8 +100,8 @@ export function RoomScreen(props: Props) {
               <Button variant="ghost" size="icon" className="-ml-2 shrink-0" aria-label={code ? "Raum verlassen" : "Zur Startseite"}><ChevronLeft /></Button>
             </Leave>
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-lg font-bold tracking-tight">Lobby</div>
-              <div className="truncate text-xs text-muted-foreground">{code ? <>Raum <span className="font-semibold tracking-[0.18em]">{code}</span></> : "Ein Handy für alle"}</div>
+              <div className="truncate text-lg font-bold tracking-tight">{code && room.meet ? "Treffpunkt" : "Lobby"}</div>
+              <div className="truncate text-xs text-muted-foreground">{code ? <>{room.access?.name ? `${room.access.name} · ` : "Raum "}<span className="font-semibold tracking-[0.18em]">{code}</span></> : "Ein Handy für alle"}</div>
             </div>
           </div>
         )}
@@ -112,8 +116,12 @@ export function RoomScreen(props: Props) {
       {props.call && <CallStrip call={props.call} players={room.players} me={me} compact={!!board || (!!code && !!room.meet)} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
+      {props.knocks && props.onKnock && (
+        <KnockBar knocks={props.knocks} isHost={isHost} hostOnline={!!room.hostId && !!online?.has(room.hostId)}
+          hostName={room.players.find((p) => p.id === room.hostId)?.name} onAnswer={props.onKnock} />
+      )}
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
-      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
+      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} chat={props.chat} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
     </EveningContext.Provider>
     </CallContext.Provider>
@@ -122,14 +130,14 @@ export function RoomScreen(props: Props) {
   );
 }
 
-/** Mitten in der Partie beigetreten: kurz erklären, wer spielt und dass es mit „Nochmal“ losgeht */
-function BenchWait({ room, me }: { room: RoomState; me: string | null }) {
+/** Mitten in der Partie beigetreten: zuschauen, mitreden – und ab der nächsten Partie mitspielen */
+function BenchWait({ room, me, chat }: { room: RoomState; me: string | null; chat?: ChatControls }) {
   const info = getGame(room.gameId).info;
   const cur = currentPlayerId(room);
   return (
-    <section className="flex flex-1 flex-col items-center justify-center gap-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center" data-testid="bench-wait">
+    <section className={cn("flex flex-1 flex-col items-center gap-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center", chat ? "min-h-0 pt-2" : "justify-center")} data-testid="bench-wait">
       <div>
-        <h2 className="text-xl font-bold tracking-tight">Du bist dabei!</h2>
+        <h2 className="text-xl font-bold tracking-tight">Du schaust zu</h2>
         <p className="mt-1 text-muted-foreground">{info.name} läuft gerade. Du spielst ab der nächsten Partie mit – sobald der Host „Nochmal“ wählt.</p>
       </div>
       <ul className="flex flex-wrap justify-center gap-1.5">
@@ -144,6 +152,7 @@ function BenchWait({ room, me }: { room: RoomState; me: string | null }) {
           </li>
         ))}
       </ul>
+      {chat && <ChatPanel chat={chat} players={[...room.players, ...(room.bench ?? [])]} me={me} className="glass min-h-40 w-full flex-1 rounded-2xl p-2.5 text-left" />}
     </section>
   );
 }
@@ -181,17 +190,30 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
   );
 }
 
+/**
+ * Jeder Online-Raum ist zugleich Treffpunkt: Ohne Spiel füllen Video und Chat den Raum,
+ * „Spiel wählen“ führt mit dem gewählten Spiel in die Lobby. Gespielt werden muss nicht – geredet auch nicht.
+ */
 function Lobby(props: Props & { isHost: boolean }) {
   const { room, me, online, code, dispatch, isHost } = props;
-  // Treffpunkt aus der Startseite: Host schaltet ihn einmal ein; „Ein Spiel starten“ führt in die normale Lobby
-  useEffect(() => {
-    if (!code || !isHost) return;
-    try { if (sessionStorage.getItem(meetKey(code)) === "1") { sessionStorage.removeItem(meetKey(code)); dispatch({ type: "setMeet", on: true }); } } catch { /* egal */ }
-  }, [code, isHost, dispatch]);
   const [local, setLocal] = useState(false);
+  const [pick, setPick] = useState(false);
+  const config = useSiteConfig();
   if (code && room.meet && !local) {
-    return <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
-      onPlay={() => (isHost ? dispatch({ type: "setMeet", on: false }) : setLocal(true))} />;
+    const gameIds = orderGames(GAME_IDS, config?.order ?? []).filter((id) => !config || accessFor(config, id) !== "off");
+    return (
+      <>
+        <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
+          playLabel={isHost ? "Spiel wählen" : "Zur Spiel-Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} />
+        {isHost && (
+          <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online
+            onPick={(id) => {
+              setPick(false);
+              void loadGameUI(id).then(() => { dispatch({ type: "selectGame", gameId: id }); dispatch({ type: "setMeet", on: false }); }, () => toast("Das Spiel lädt gerade nicht – kurz Netz prüfen."));
+            }} />
+        )}
+      </>
+    );
   }
   return <GameLobby {...props} />;
 }
@@ -234,7 +256,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call 
       {call && <CallInvite call={call} />}
       {code && isHost && (
         <button type="button" onClick={() => dispatch({ type: "setMeet", on: true })} className="mt-2 w-full rounded-xl py-1.5 text-sm font-semibold text-primary">
-          Erst mal nur quatschen? Zum Treffpunkt
+          Erst mal nur reden? Zum Treffpunkt
         </button>
       )}
       <EveningLine className="mt-2" />

@@ -5,6 +5,7 @@
  */
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { sanitizeAvatar, type Avatar } from "./group";
+import { sanitizeAccess, type RoomAccess } from "./directory";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
 
 export const MAX_PLAYERS = 20;
@@ -46,6 +47,8 @@ export interface RoomState {
   bench?: Player[];
   /** Spielabend: Siege über alle Partien in diesem Raum (auch über verschiedene Spiele) */
   evening?: Evening;
+  /** Name, Sichtbarkeit, Einlass und Lebensdauer (nur online; fehlt bei alten Räumen) */
+  access?: RoomAccess;
 }
 
 export interface Evening {
@@ -106,6 +109,8 @@ export type RoomAction =
   | { type: "setHints"; on: boolean }
   /** Host: Treffpunkt (reden, sehen, schreiben) statt Spiel-Lobby anzeigen */
   | { type: "setMeet"; on: boolean }
+  /** Host: Raumname, Sichtbarkeit, Einlass, Lebensdauer (Dauerraum bleibt Dauerraum) */
+  | { type: "setAccess"; access: Partial<RoomAccess> }
   | { type: "removePlayer"; id: string }
   | { type: "movePlayer"; id: string; dir: -1 | 1 }
   /** Host: neue Reihenfolge (z. B. gemischt) – muss genau die Spieler enthalten */
@@ -264,6 +269,10 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     case "setMeet": {
       hostOnly();
       return { ...structuredClone(prev), meet: a.on === true };
+    }
+    case "setAccess": {
+      hostOnly();
+      return { ...structuredClone(prev), access: sanitizeAccess(a.access, prev.access) };
     }
     case "setHostTools": {
       hostOnly();

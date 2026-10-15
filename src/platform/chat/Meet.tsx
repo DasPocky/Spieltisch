@@ -7,14 +7,12 @@ import { Avatar } from "../Avatar";
 import type { CallControls } from "../call/CallBar";
 import { ChatPanel, type ChatControls } from "./Chat";
 
-export const meetKey = (code: string) => `spieltisch:meet:${code}`;
-
 /**
  * Treffpunkt: einfach zusammen sein, ohne zu spielen – großes Video-Raster, Sprache, Chat.
- * Ein Spiel lässt sich jederzeit dazu starten („Spielen“ führt in die normale Lobby).
+ * Ein Spiel lässt sich jederzeit dazu wählen (führt in die normale Lobby).
  */
-export function Meet({ room, me, online, call, chat, onPlay }: {
-  room: RoomState; me: string | null; online: Set<string> | null; call?: CallControls; chat?: ChatControls; onPlay: () => void;
+export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel wählen" }: {
+  room: RoomState; me: string | null; online: Set<string> | null; call?: CallControls; chat?: ChatControls; onPlay: () => void; playLabel?: string;
 }) {
   const inCall = call?.phase === "on";
   const ids = room.players.map((p) => p.id);
@@ -37,7 +35,7 @@ export function Meet({ room, me, online, call, chat, onPlay }: {
         </div>
       )}
       {chat && <ChatPanel chat={chat} players={room.players} me={me} className="glass min-h-40 flex-1 rounded-2xl p-2.5" />}
-      <Button size="lg" variant="secondary" className="shrink-0" onClick={onPlay}><Dices />Ein Spiel starten</Button>
+      <Button size="lg" className="shrink-0" onClick={onPlay} data-testid="meet-play"><Dices />{playLabel}</Button>
     </section>
   );
 }

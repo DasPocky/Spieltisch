@@ -4,9 +4,11 @@ import "./index.css";
 import "./lib/theme";
 import { siteConfigNow, whenSiteConfig } from "./hooks/useSiteConfig";
 import App from "./App";
+import { checkFreshStart } from "./lib/freshStart";
 
-// Admin-Einstellungen (u. a. der Look) gleich beim Start holen
+// Admin-Einstellungen (u. a. der Look) gleich beim Start holen – und nach einem Neustart im Admin einmal frisch beginnen
 siteConfigNow();
+void whenSiteConfig().then(checkFreshStart);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

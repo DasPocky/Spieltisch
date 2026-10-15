@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { PING, PONG, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
+import type { KnockView } from "@shared/platform/directory";
 import { credsKey, readJSON, remove, writeJSON, type RoomCreds } from "@/lib/storage";
 import { myAvatar, myProfile } from "@/lib/profile";
 import { activeGroupCode } from "@/lib/group";
 
-export type RoomStatus = "checking" | "missing" | "needsJoin" | "connecting" | "ready" | "failed" | "closed";
+export type RoomStatus = "checking" | "missing" | "needsJoin" | "connecting" | "knocking" | "ready" | "failed" | "closed";
 
 export interface JoinData { name: string; pin: string }
 
@@ -39,21 +40,33 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const [online, setOnline] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
+  const [info, setInfo] = useState<RoomInfo | null>(null);
   const [call, setCall] = useState<Record<string, CallPeer>>({});
   const [pending, setPending] = useState(0);
   const [chat, setChat] = useState<ChatMsg[]>([]);
+  /** Wer gerade anklopft (`at`: lokaler Zeitpunkt des Anklopfens) */
+  const [knocks, setKnocks] = useState<(KnockView & { at: number })[]>([]);
+  /** Selbst vor der Tür: bis wann höchstens (lokale Zeit) */
+  const [knockUntil, setKnockUntil] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const outbox = useRef<Pending[]>([]);
   const flushRef = useRef<() => void>(() => {});
   const hostRef = useRef(false);
+  /** Versuch, bei dem der Raum endgültig abgelehnt hat (entfernt, falsche PIN …) – der baut sich nicht von selbst neu auf */
+  const fatalRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Startet React den Effekt neu (z. B. nach dem Nachladen eines Spiels), darf ein abgelehnter Versuch
+    // nicht still mit Name und PIN wieder beitreten – erst ein neuer Versuch („Nochmal“, Formular) verbindet
+    if (fatalRef.current === attempt) return;
     let stopped = false;
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let joined = false;
     let lastSeen = Date.now();
     let opening = 0;
+    // Vor der Tür: kommt bis zum Ende der Wartezeit nichts, selbst aufgeben – nichts bleibt hängen
+    let knockTimer: ReturnType<typeof setTimeout> | undefined;
     // Gleicher Wert für alle Versuche dieses Beitritts – so entsteht nie ein zweiter Spieler
     const nonce = rid();
 
@@ -118,7 +131,19 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         if (ev.data === PONG) return;
         let msg: ServerMessage;
         try { msg = JSON.parse(ev.data as string) as ServerMessage; } catch { return; }
-        if (msg.type === "joined") {
+        if (msg.type === "knocking") {
+          setKnockUntil(Date.now() + msg.wait);
+          setStatus("knocking");
+          clearTimeout(knockTimer);
+          knockTimer = setTimeout(() => {
+            if (stopped) return;
+            stopped = true;
+            setError("Gerade kann dich niemand hereinlassen. Versuch es später noch einmal.");
+            setStatus("needsJoin");
+            try { ws.close(); } catch { /* egal */ }
+          }, msg.wait + 5000);
+        } else if (msg.type === "joined") {
+          clearTimeout(knockTimer);
           writeJSON(credsKey(code), { playerId: msg.playerId, token: msg.token } satisfies RoomCreds);
           setMe(msg.playerId);
         } else if (msg.type === "state") {
@@ -127,6 +152,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           hostRef.current = msg.state.hostId === msg.you;
           setOnline(new Set(msg.online));
           setCall(msg.call ?? {});
+          const now = Date.now();
+          setKnocks((msg.knocks ?? []).map((k) => ({ ...k, at: now - k.ago })));
           setStatus("ready");
           setError(null);
           if (!joined) { joined = true; flush(); }
@@ -143,11 +170,13 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           if (msg.id) { outbox.current = outbox.current.filter((p) => p.id !== msg.id); syncPending(); }
           if (msg.fatal) {
             stopped = true;
+            fatalRef.current = attempt;
+            clearTimeout(knockTimer);
             if (msg.code === "bad_pin" || msg.code === "kicked" || msg.code === "not_joined" || msg.code === "closed") remove(credsKey(code));
             outbox.current = [];
             syncPending();
             setError(msg.message);
-            setStatus(msg.code === "closed" ? "closed" : msg.code === "bad_pin" || msg.code === "rejected" || msg.code === "not_joined" ? "needsJoin" : "failed");
+            setStatus(msg.code === "closed" ? "closed" : msg.code === "bad_pin" || msg.code === "rejected" || msg.code === "not_joined" || msg.code === "denied" || msg.code === "no_answer" ? "needsJoin" : "failed");
             ws.close();
           } else {
             toast(msg.message);
@@ -205,6 +234,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         if (stopped) return;
         if (!data.exists) { remove(credsKey(code)); setStatus("missing"); return; }
         if (data.gameId) setGameId(data.gameId);
+        setInfo(data);
       } catch {
         // offline oder langsam? dann trotzdem versuchen
       }
@@ -217,6 +247,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
     return () => {
       stopped = true;
       clearTimeout(timer);
+      clearTimeout(knockTimer);
       clearInterval(watch);
       clearInterval(presence);
       window.removeEventListener("online", wake);
@@ -246,6 +277,11 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   }, []);
   const closeRoom = useCallback(() => post({ type: "closeRoom" }), [post]);
   const claimHost = useCallback(() => post({ type: "claimHost" }), [post]);
+  /** Anklopfen beantworten (gleich ausblenden, der Server schickt den neuen Stand) */
+  const answerKnock = useCallback((id: string, decision: "admit" | "deny" | "wait") => {
+    post({ type: "knock", id, decision });
+    if (decision !== "wait") setKnocks((ks) => ks.filter((k) => k.id !== id));
+  }, [post]);
   /** Sprachchat an-/abmelden – still, ohne Hinweis, falls die Verbindung gerade weg ist */
   const announceCall = useCallback((msg: Extract<ClientMessage, { type: "call" }>) => {
     const ws = wsRef.current;
@@ -255,5 +291,5 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   /** Chat-Nachricht oder Reaktion schicken */
   const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost, call, announceCall, pending, chat, say };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil };
 }

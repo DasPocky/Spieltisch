@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { DoorClosed, Loader2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
-import { PIN_RE } from "@shared/platform/protocol";
+import { PIN_RE, type RoomInfo } from "@shared/platform/protocol";
 import { cleanName, MAX_NAME, roomGame } from "@shared/platform/room";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { useRoom, type JoinData } from "@/hooks/useRoom";
 import { navigate } from "@/hooks/useRoute";
 import { credsKey, NAME_KEY, remove, takePendingJoin } from "@/lib/storage";
 import { callEnabled, useCall } from "@/platform/call/useCall";
+import { myAvatar } from "@/lib/profile";
+import { Avatar } from "@/platform/Avatar";
 
 export function OnlineRoom({ code }: { code: string }) {
   const [join, setJoin] = useState<JoinData | null>(() => takePendingJoin(code));
@@ -30,7 +32,7 @@ export function OnlineRoom({ code }: { code: string }) {
     return (
       <Center>
         <h1 className="text-3xl font-bold tracking-tight">Raum {code} gibt es nicht</h1>
-        <p className="mt-2 text-muted-foreground">Vielleicht ein Tippfehler, oder der Raum ist nach 48 Stunden ohne Spiel abgelaufen.</p>
+        <p className="mt-2 text-muted-foreground">Vielleicht ein Tippfehler, oder der Raum war zu lange leer und ist abgelaufen.</p>
         <Button className="mt-6 w-full" onClick={() => navigate("/")}>Zur Startseite</Button>
       </Center>
     );
@@ -41,10 +43,15 @@ export function OnlineRoom({ code }: { code: string }) {
       <JoinForm
         code={code}
         gameId={room.gameId}
+        info={room.info}
         error={room.error}
         onSubmit={(j) => { setJoin(j); setAttempt((a) => a + 1); }}
       />
     );
+  }
+
+  if (room.status === "knocking") {
+    return <Knocking code={code} until={room.knockUntil} onCancel={() => navigate("/")} />;
   }
 
   if (room.status === "closed") {
@@ -86,18 +93,26 @@ export function OnlineRoom({ code }: { code: string }) {
       onClaimHost={room.claimHost}
       call={chat ? { ...call, peers: room.call, silent } : undefined}
       chat={{ messages: room.chat, say: room.say }}
+      knocks={room.knocks}
+      onKnock={room.answerKnock}
     />
   );
 }
 
-function JoinForm({ code, gameId, error, onSubmit }: { code: string; gameId: string | null; error: string | null; onSubmit: (j: JoinData) => void }) {
+function JoinForm({ code, gameId, info, error, onSubmit }: { code: string; gameId: string | null; info: RoomInfo | null; error: string | null; onSubmit: (j: JoinData) => void }) {
   const [name, setName] = useState(() => { try { return localStorage.getItem(NAME_KEY) ?? ""; } catch { return ""; } });
   const [pin, setPin] = useState("");
   const ok = cleanName(name).length > 0 && PIN_RE.test(pin);
   return (
     <Center>
-      <div className="text-sm text-muted-foreground">{isGameId(gameId) ? `${getGame(gameId).info.name} · Raum` : "Raum"}</div>
+      <div className="text-sm text-muted-foreground">{info?.name ? `${info.name} · ` : ""}{isGameId(gameId) ? `${getGame(gameId).info.name} · Raum` : "Raum"}</div>
       <h1 className="text-4xl font-bold tracking-[0.18em]">{code}</h1>
+      {info?.phase === "playing" && isGameId(gameId) && (
+        <p className="mt-2 text-sm text-muted-foreground" data-testid="join-spectate">
+          {getGame(gameId).info.name} läuft gerade{getGame(gameId).joinMidGame ? " – du steigst gleich mit ein." : " – du schaust zu und spielst ab der nächsten Partie mit."}
+        </p>
+      )}
+      {info?.knock && <p className="mt-2 text-sm text-muted-foreground">Nach der PIN klopfst du an – jemand im Raum lässt dich herein.</p>}
       <Card className="mt-6 grid gap-4 text-left">
         <form className="grid gap-4" onSubmit={(e) => {
           e.preventDefault(); if (!ok) return;
@@ -117,6 +132,25 @@ function JoinForm({ code, gameId, error, onSubmit }: { code: string; gameId: str
         </form>
       </Card>
       <Button variant="ghost" className="mt-3 w-full text-muted-foreground" onClick={() => navigate("/")}>Zur Startseite</Button>
+    </Center>
+  );
+}
+
+/** Vor der Tür: PIN stimmt, jetzt lässt der Host (oder jemand im Raum) herein – mit sichtbarer Wartezeit */
+function Knocking({ code, until, onCancel }: { code: string; until: number; onCancel: () => void }) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const left = Math.max(0, Math.ceil((until - now) / 1000));
+  return (
+    <Center>
+      <div className="relative mx-auto w-fit" data-testid="knocking">
+        <DoorClosed className="knock-door size-24 text-primary" strokeWidth={1.5} />
+        <Avatar avatar={myAvatar()} className="absolute -right-4 -bottom-1 size-12 text-2xl ring-4 ring-background" />
+      </div>
+      <h1 className="mt-6 text-3xl font-bold tracking-tight">Du klopfst an …</h1>
+      <p className="mt-2 text-muted-foreground">Raum <b className="tracking-[0.18em] text-foreground">{code}</b> lässt Gäste einzeln herein. Gleich entscheidet jemand.</p>
+      <p className="mt-4 text-sm text-muted-foreground tabular-nums">Höchstens noch {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")} Min.</p>
+      <Button variant="ghost" className="mt-6 w-full text-muted-foreground" onClick={onCancel}>Abbrechen</Button>
     </Center>
   );
 }

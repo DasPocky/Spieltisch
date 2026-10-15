@@ -9,19 +9,21 @@ Browser ──HTTP──▶ Worker ──▶ statische React-App (dist/client)
 
 | Ordner | Inhalt |
 | --- | --- |
-| `shared/platform/` | Gemeinsam für Browser und Server: Raum, Rechte, Zugreihenfolge, fairer Zufall, Protokoll, Looks |
+| `shared/platform/` | Gemeinsam für Browser und Server: Raum, Rechte, Zugreihenfolge, fairer Zufall, Protokoll, Looks; `directory.ts` mit Sichtbarkeit, Einlass, Lebensdauer und Raumkarten |
 | `shared/games/<id>/` | Spiellogik je Spiel (läuft auf Server und Client) |
 | `shared/cards/` | Kartenblätter (französisch 32/52, deutsch 32) |
-| `worker/index.ts` | API und Durable Objects (`GameRoom`, `ProfileStore`, `SiteSettings`) |
+| `worker/index.ts` | API und Durable Objects (`GameRoom`, `ProfileStore`, `SiteSettings` mit Raumverzeichnis) |
 | `src/games/<id>/` | Oberfläche je Spiel: Spielbrett, Regeln, Verlauf |
 | `src/platform/` | Plattform-Oberfläche: Lobby, Menü, Einstellungen, Spielerleiste, Siegerehrung |
 | `src/platform/dice3d/` | 3D-Würfel: Physik (cannon-es), Darstellung (three.js), Wurf-Geste und Sperre |
 | `src/platform/chat/`, `call/` | Text-Chat, Treffpunkt, Sprach- und Videochat |
-| `src/pages/` | Startseite, Online-Raum, lokale Partie, Profil, Gruppen, Admin |
+| `src/pages/` | Start, Spiele, Online-Raum, lokale Partie, Profil, Gruppen, Admin |
+| `src/platform/shell/` | App-Hülle mit Tab-Leiste, Blätter „Raum öffnen“ und „Beitreten“, Raumkarten |
+| `src/platform/intro/` | Willkommen (neues Gerät) und Begrüßung mit Laden (bekanntes Gerät) |
 | `src/styles/looks.css` | die Looks als CSS-Variablen (hell und dunkel) |
 | `tests/unit/`, `tests/e2e/` | Vitest und Playwright |
 
-**Routen:** `/` Start · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`
+**Routen:** `/` Start · `/spiele` Spiele · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`
 
 ## Grundprinzipien
 
@@ -92,3 +94,5 @@ Lobby, Einstellungen, Rechte, Online-Räume, Menü und Siegerehrung funktioniere
 Für die Handy-Tests einmalig `npx playwright install chromium` – oder ein vorhandenes Chromium per `PW_CHROMIUM_PATH=/pfad/zu/chromium npm run test:e2e`. Ein Einrichtungsschritt schaltet „Ein Handy für alle“ für die Tests ein; Screenshots landen in `screenshots/`.
 
 Ohne Grafikchip (z. B. in Testumgebungen) zeichnen die 3D-Würfel automatisch einfacher. Für Vorschaubilder in voller Qualität: `localStorage.setItem("spieltisch:diceHQ", "1")`.
+
+Willkommen (neues Gerät) und Begrüßung (bekanntes Gerät) sind im automatisierten Browser aus, damit die Tests nicht an der Animation hängen. `tests/e2e/intro.spec.ts` schaltet sie mit `localStorage["spieltisch:test-intro"] = "true"` gezielt ein.

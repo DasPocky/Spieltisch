@@ -8,8 +8,9 @@
 
 ## Plattform
 
+- **Native Apps** – Capacitor-Hülle für iOS und Android mit Push („klopft an“, „du bist dran“), siehe [Konzept](konzept.md#11-ausblick-native-apps-für-ios-und-android)
+- **Konto** – geräteübergreifend per E-Mail-Link oder Passkey (das Geräteprofil bleibt die Grundlage)
 - **Bot-Modus** – Mitspieler durch die App ersetzen
-- **Regeln vorab** in der Spielauswahl (ⓘ je Spiel)
 - **Profil gliedern** – Abschnitte zusammenfassen, evtl. Tabs
 - Sprachchat-Knopf beim ersten Mal kurz erklären
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Download, Loader2, Trash2 } from "lucide-react";
-import { WIPE_KINDS, type ArchivedRoom, type WipeKind } from "@shared/platform/access";
+import { WIPE_KINDS, type ArchivedRoom, type SiteConfig, type WipeKind } from "@shared/platform/access";
+import { setSiteConfig } from "@/hooks/useSiteConfig";
+import { rememberEpoch } from "@/lib/freshStart";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,10 +16,11 @@ const WHAT: Record<WipeKind, [string, string]> = {
   stats: ["Statistik", "alle Zähler auf 0"],
   groups: ["Gruppen", "mit Mitgliedern und Bestenliste"],
   profiles: ["Profile", "persönliche Statistiken"],
+  settings: ["Einstellungen", "Freigaben, Standards, Optionen, Look und Zugangscode auf Auslieferungszustand"],
 };
 
 /** Export und Löschen – zum Neustart mit leerer Datenbank */
-export function DataTab({ api }: { api: Api }) {
+export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) => void }) {
   const [what, setWhat] = useState<WipeKind[]>([]);
   const [confirm, setConfirm] = useState("");
   const wipe = useSave();
@@ -36,9 +39,12 @@ export function DataTab({ api }: { api: Api }) {
   }, "Export gespeichert (JSON und Tabelle).");
 
   const run = () => wipe.run(async () => {
-    const r = await api<{ rooms: number; groups: number; profiles: number }>("/api/admin/wipe", { what, confirm: confirm.trim() });
+    const r = await api<{ rooms: number; groups: number; profiles: number; config?: SiteConfig }>("/api/admin/wipe", { what, confirm: confirm.trim() });
     setWhat([]); setConfirm("");
-    void r;
+    // Einstellungen zurückgesetzt: Admin und App sofort auf den frischen Stand
+    if (r.config) { setSiteConfig(r.config); onReset(r.config); }
+    // Dieses Gerät (der Admin) behält seine Daten; alle anderen Handys starten beim nächsten Öffnen frisch
+    if (r.config?.epoch) rememberEpoch(r.config.epoch);
   }, "Gelöscht.");
 
   return (
@@ -52,7 +58,7 @@ export function DataTab({ api }: { api: Api }) {
 
       <Card className="grid gap-3 ring-1 ring-destructive/30">
         <h2 className="font-bold text-destructive">Daten löschen</h2>
-        <p className="text-sm text-muted-foreground">Für einen Neustart mit leerer Datenbank. Einstellungen und Freigaben bleiben. Lade vorher den Export herunter, wenn du etwas behalten willst.</p>
+        <p className="text-sm text-muted-foreground">Für einen Neustart. „Alles auswählen“ ergibt einen frischen Stand wie bei der ersten Auslieferung – nur das Admin-Passwort bleibt. Lade vorher den Export herunter, wenn du etwas behalten willst.</p>
         <div className="grid gap-2.5">
           {WIPE_KINDS.map((k) => (
             <label key={k} className="flex items-center gap-3">
@@ -61,6 +67,9 @@ export function DataTab({ api }: { api: Api }) {
             </label>
           ))}
           <button type="button" className="justify-self-start text-sm font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setWhat([...WIPE_KINDS])}>Alles auswählen</button>
+          {what.length === WIPE_KINDS.length && (
+            <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm" data-testid="fresh-start">Kompletter Neustart: Jedes Handy löscht beim nächsten Öffnen einmal seine Daten (Name, Profil, Spielstände) und beginnt frisch mit dem Willkommen.</p>
+          )}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="wipe-confirm">Zur Sicherheit <b>LÖSCHEN</b> eintippen</Label>
