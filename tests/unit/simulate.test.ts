@@ -345,7 +345,12 @@ function checkCards(r: RoomState) {
   }
 }
 
-function playOut(start: RoomState, online: boolean, maxSteps = 15000) {
+/**
+ * Obergrenze gegen Endlosschleifen. Ludo mit 6 Spielern, Schlagzwang und „bis alle im Ziel“ ist von Natur aus lang
+ * (gemessen an 574 Zufallspartien: Mittel ~4.600, längste ~14.000 Schritte) – die Grenze liegt deutlich darüber,
+ * damit seltene lange Partien nicht als „hängt“ zählen. Ein echter Hänger endet nie und fällt weiter auf.
+ */
+function playOut(start: RoomState, online: boolean, maxSteps = 40000) {
   let r = start;
   for (let step = 0; step < maxSteps; step++) {
     const logic = roomGame(r);
