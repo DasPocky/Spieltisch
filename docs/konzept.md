@@ -131,7 +131,8 @@ Aufbau von oben nach unten, ohne Scrollen:
 1. **Begrüßung:** Avatar, „Hallo *Name*“, bei Bedarf der Hinweis-Banner des Admins.
 2. **Deine Räume:** Räume, in denen man schon war und die noch offen sind. Ein Tipp führt ohne erneute PIN zurück.
 3. **Offene Räume:** Für einen sichtbare Räume anderer, Räume der eigenen Gruppe zuerst. Bei vielen Räumen wird horizontal geblättert.
-4. **Hauptaktionen**, fest über der Tab-Leiste: **Raum öffnen** (groß) und **Code eingeben**. Ist „Ein Handy für alle“ eingeschaltet, kommt ein dritter Knopf dazu, ebenso der Hinweis auf eine noch laufende lokale Partie.
+4. **Schnellstart und Gruppe:** die wichtigsten Spiele als Kacheln (auf kleinen Handys ausgeblendet, sobald Räume da sind) und die eigene Gruppe mit Bestenliste.
+5. **Hauptaktionen**, fest über der Tab-Leiste: **Raum öffnen** (groß) und **Beitreten** (Code oder Link). Ist „Ein Handy für alle“ eingeschaltet, kommt ein dritter Knopf dazu, ebenso der Hinweis auf eine noch laufende lokale Partie.
 
 Ohne Räume zeigt der Bereich eine freundliche Leerstelle mit dem Hinweis, einen Raum zu öffnen oder einen Code einzugeben.
 
@@ -140,7 +141,7 @@ Ohne Räume zeigt der Bereich eine freundliche Leerstelle mit dem Hinweis, einen
 | Element | Beispiel |
 | --- | --- |
 | Raumname oder Host | „Donnerstagsrunde“ · „bei Anna“ |
-| Spiel und Status | „Kniffel · Runde 5“ · „Lobby“ · „Nur Treffpunkt“ |
+| Spiel und Status | „Kniffel · läuft“ · „Uno · Lobby“ · „Treffpunkt“ |
 | Spieler | Avatar-Reihe mit Anzahl, z. B. 4/6; Gruppenmitglieder hervorgehoben |
 | Live-Zeichen | Symbol, wenn gerade jemand per Video oder Sprache verbunden ist |
 | Zugang | Schloss bei Anklopfen, Gruppen-Zeichen bei „Sichtbar für Gruppe“ |
@@ -159,7 +160,8 @@ Treffpunkt und Spielraum werden zu einem Raumtyp zusammengeführt. Jeder Raum is
 
 - **Ohne Spiel:** Videokacheln und Chat füllen den Raum, darunter „Spiel wählen“.
 - **Mit Spiel:** Die Gesichter wandern wie bisher in die Spielerleiste, Chat und Sprache bleiben verfügbar.
-- **Nach der Partie:** Siegerehrung, danach zurück in den Treffpunkt.
+- **Nach der Partie:** Siegerehrung, danach die Lobby für die nächste Partie; der Treffpunkt ist dort einen Tipp entfernt.
+- **Raum öffnen** beginnt im Treffpunkt. Kommt man aus dem Spiele-Tab oder über den Schnellstart, steht das Spiel gleich in der Lobby bereit.
 
 Niemand muss Video oder Sprache nutzen, um zu spielen, und niemand muss spielen, um sich zu treffen.
 
@@ -186,7 +188,7 @@ Die PIN bleibt in jedem Fall Pflicht. „Niemand“ heißt: Der Raum erscheint i
 
 ### Anklopfen
 
-1. Nach richtiger PIN sieht der Gast „Du klopfst an …“, mit „Abbrechen“.
+1. Nach richtiger PIN sieht der Gast „Du klopfst an …“ mit der verbleibenden Wartezeit und „Abbrechen“. Ist gerade niemand im Raum verbunden, der öffnen könnte (etwa beim Ersteller selbst oder in einem leeren Dauerraum), reicht die PIN.
 2. Der Host sieht „*Name* klopft an“ mit **Einlassen**, **Ablehnen** und **Moment**.
 3. **Vertretung**, nur wenn vom Host wirklich keine Reaktion kommt:
    - Ist der Host nicht verbunden, dürfen alle im Raum sofort einlassen oder ablehnen.
@@ -207,7 +209,7 @@ Die Lebensdauer zählt ab dem Zeitpunkt, an dem der Raum leer ist:
 | Wer | Optionen |
 | --- | --- |
 | **Host** | 1 Stunde (Standard) · 1 Tag · 1 Woche |
-| **Admin** | Obergrenze für Hosts, dazu **Dauerräume**, die nie ablaufen |
+| **Admin** | Obergrenze für Hosts (Standard 1 Woche; Optionen darüber blendet die App aus), dazu **Dauerräume**, die nie ablaufen |
 
 Dauerräume legt der Admin im Admin-Bereich an und verwaltet sie dort (Name, PIN, Sichtbarkeit, Einlass, Host-Rechte). Leere Räume verschwinden sofort aus „Offene Räume“, bleiben aber für ihre Mitglieder unter „Deine Räume“ sichtbar, bis sie ablaufen.
 
@@ -231,14 +233,15 @@ Die bisherige Profilansicht: Name, Avatar, Statistik, letzte Partien, Übertragu
 
 | Thema | Umsetzung |
 | --- | --- |
-| **Raumverzeichnis** | Ein zentrales Verzeichnis (eigenes Durable Object oder Erweiterung von `SiteSettings`) hält je offenem Raum eine kleine Zusammenfassung: Code, Name, Host, Spiel, Status, Spieleranzahl, Avatare, Live-Zeichen, Sichtbarkeit, Gruppe. `GameRoom` meldet Änderungen gedrosselt (höchstens alle paar Sekunden) und beim Schließen. |
-| **Raumliste** | `GET /api/rooms?profile=…` liefert die eigenen Räume und die für das Profil sichtbaren offenen Räume. Räume mit „Niemand“ erscheinen nur in den eigenen. |
-| **Raumeinstellungen** | Sichtbarkeit, Einlass, Lebensdauer und Raumname werden Teil des Raumzustands und sind nur für den Host änderbar. |
-| **Anklopfen** | Neuer Zwischenstatus zwischen PIN-Prüfung und Beitritt; die Entscheidung läuft über das bestehende WebSocket-Protokoll, die Fristen über Alarme des Durable Objects. |
-| **Lebensdauer** | Der vorhandene Alarm in `GameRoom` richtet sich künftig nach der gewählten Dauer ab „leer“, begrenzt durch die Admin-Obergrenze. Dauerräume setzen keinen Ablauf. |
-| **Mitgliedschaft** | Der Raum führt Profil-IDs seiner Mitglieder; der Client merkt sich zusätzlich Code und Token. |
+| **Raumverzeichnis** | Die vorhandene Raumübersicht in `SiteSettings` speichert je Raum zusätzlich eine Raumkarte (Name, Host, Spiel, Status, Avatare, Live-Zeichen, Sichtbarkeit) und die Gruppe des Hosts. `GameRoom` meldet sich bei wichtigen Änderungen sofort, wenn der Raum leer wird oder sich wieder belebt, sonst höchstens alle 30 Sekunden. |
+| **Offene Räume** | `GET /api/rooms/open?groups=…` liefert belebte Räume, die für alle oder für eine der genannten Gruppen sichtbar sind, Gruppe zuerst. Die Gruppencodes kennt nur, wer Mitglied ist. |
+| **Deine Räume** | `POST /api/rooms/mine` bekommt die gespeicherten Zugänge des Handys (Code, Spieler, Token); jeder Raum prüft den Token selbst. Ungültige Zugänge meldet der Server zurück, das Handy vergisst sie. Profil-IDs verlassen den Server nie. |
+| **Raumeinstellungen** | Sichtbarkeit, Einlass, Lebensdauer und Raumname stehen als `access` im Raumzustand (`shared/platform/directory.ts`) und sind nur für den Host änderbar (`setAccess`). |
+| **Anklopfen** | Zwischenstatus zwischen PIN-Prüfung und Beitritt; Antworten laufen über das WebSocket-Protokoll (`knock`). Fristen prüft der Raum bei jeder Nachricht, das Handy des Gasts gibt nach Ablauf zusätzlich selbst auf. |
+| **Lebensdauer** | Der Alarm in `GameRoom` richtet sich nach der gewählten Dauer; ist beim Klingeln noch jemand da, verlängert er sich. Dauerräume setzen keinen Ablauf. |
+| **Dauerräume** | `POST /api/admin/rooms/create` legt einen Raum mit Name, PIN, Sichtbarkeit und Einlass an, der nie abläuft. |
 
-Bestehende Räume und Spielstände bleiben kompatibel: Neue Felder bekommen Standardwerte (Sichtbar für Alle, Einlass PIN, bisherige Lebensdauer).
+Bestehende Räume und Spielstände bleiben kompatibel: Alte Räume ohne `access` gelten als „Alle · PIN“ und laufen nach der Obergrenze des Admins ab.
 
 ### Client
 
@@ -252,11 +255,11 @@ Bestehende Räume und Spielstände bleiben kompatibel: Neue Felder bekommen Stan
 
 ### Tests
 
-Für jeden Schritt kommen Handy-Tests in Playwright dazu: Erster Start mit und ohne Übertragungs-Code, Begrüßung überspringen, Raumliste mit allen Sichtbarkeiten, Anklopfen inklusive Vertretung und Timeout, Zuschauer bei laufender Partie, Lebensdauer per Alarm.
+Handy-Tests in Playwright decken ab: Tabs und Zurück-Geste, Erster Start mit und ohne Übertragungs-Code, Begrüßung überspringen, Raumliste mit Sichtbarkeiten, Anklopfen mit „Moment“, Ablehnen und Vertretung bei abwesendem Host, Dauerräume, Zuschauer bei laufender Partie. Die Regeln (Sichtbarkeit, Lebensdauer, wer einlassen darf) prüfen Unit-Tests in `tests/unit/directory.test.ts`.
 
 ## 10. Umsetzungsplan
 
-Die Umsetzung erfolgt in fünf Schritten. Nach jedem Schritt wird das Ergebnis durchgespielt, mit Screenshots im Handy-Format vorgestellt und erst nach Freigabe ausgeliefert.
+Die Umsetzung erfolgte in fünf Schritten; alle sind umgesetzt und mit Handy-Tests abgedeckt (`shell`, `intro`, `rooms`, `roomlist`, `call`).
 
 | Schritt | Inhalt |
 | --- | --- |

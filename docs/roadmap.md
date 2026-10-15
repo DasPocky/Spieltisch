@@ -8,7 +8,8 @@
 
 ## Plattform
 
-- **App-Hülle, Raumliste, private Räume, ein Raumtyp** – siehe [Konzept](konzept.md), Umsetzung in fünf Schritten
+- **Native Apps** – Capacitor-Hülle für iOS und Android mit Push („klopft an“, „du bist dran“), siehe [Konzept](konzept.md#11-ausblick-native-apps-für-ios-und-android)
+- **Konto** – geräteübergreifend per E-Mail-Link oder Passkey (das Geräteprofil bleibt die Grundlage)
 - **Bot-Modus** – Mitspieler durch die App ersetzen
 - **Profil gliedern** – Abschnitte zusammenfassen, evtl. Tabs
 - Sprachchat-Knopf beim ersten Mal kurz erklären
