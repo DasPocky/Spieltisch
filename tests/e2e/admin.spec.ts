@@ -287,6 +287,11 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(page.getByTestId("history")).toContainText("Noch keine Räume im Verlauf");
   const stats = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
   expect(Object.keys(stats.totals)).toHaveLength(0);
+  // Einstellungen auf Auslieferungszustand: kein Banner, alle Spiele frei, „Ein Handy für alle“ aus, Obergrenze 1 Woche
+  const fresh = await (await request.get("/api/config")).json();
+  expect(fresh).toMatchObject({ banner: "", games: {}, featured: [], limits: { roomHours: 168 }, features: { local: false, online: true } });
+  await page.getByRole("tab", { name: "Optionen" }).click();
+  await expect(page.getByLabel("Hinweis-Banner (optional)")).toHaveValue("");
   await host.context().close();
   await guest.context().close();
 });

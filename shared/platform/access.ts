@@ -253,5 +253,5 @@ export interface DirGroup { code: string; name: string; members: number; created
 export interface DirProfile { id: string; name: string; games: number; createdAt: number; lastAt: number }
 
 /** Was der Admin auf einmal löschen kann */
-export type WipeKind = "rooms" | "archive" | "stats" | "groups" | "profiles";
-export const WIPE_KINDS: readonly WipeKind[] = ["rooms", "archive", "stats", "groups", "profiles"];
+export type WipeKind = "rooms" | "archive" | "stats" | "groups" | "profiles" | "settings";
+export const WIPE_KINDS: readonly WipeKind[] = ["rooms", "archive", "stats", "groups", "profiles", "settings"];

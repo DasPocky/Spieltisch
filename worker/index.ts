@@ -1025,6 +1025,12 @@ export class SiteSettings extends DurableObject<Env> {
     if (kinds.includes("stats")) { this.stats = emptySiteStats(Date.now()); await this.ctx.storage.put("stats", this.stats); }
     if (kinds.includes("groups")) out.groups = await drop("grp:");
     if (kinds.includes("profiles")) out.profiles = await drop("prf:");
+    // Einstellungen auf Auslieferungszustand: Freigaben, Standards, Optionen, Look, Banner, Zugangscode weg.
+    // Admin-Sitzungen bleiben (das Passwort liegt als Secret bei Cloudflare).
+    if (kinds.includes("settings")) {
+      this.data = { ...this.data, config: { ...DEFAULT_CONFIG }, codeHash: null, salt: crypto.randomUUID(), fails: 0, lockUntil: 0, defaults: undefined };
+      await this.save();
+    }
     return out;
   }
 
@@ -1489,7 +1495,7 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
     ]);
     // Schließen meldet Räume im Verlauf als beendet – wurde der Verlauf mit gelöscht, dort auch weg
     if (kinds.includes("archive") && open.length) await settings.wipe(["archive"]);
-    return json({ ok: true, rooms: open.length, groups: groups.length, profiles: profiles.length });
+    return json({ ok: true, rooms: open.length, groups: groups.length, profiles: profiles.length, config: kinds.includes("settings") ? await settings.config() : undefined });
   }
 
   // Alles zum Herunterladen

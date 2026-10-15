@@ -47,6 +47,7 @@ export function Admin() {
   const [token, setToken] = useState(readToken);
   const [password, setPassword] = useState("");
   const [config, setConfig] = useState<SiteConfig | null>(null);
+  const [resets, setResets] = useState(0);
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(() => !!readToken());
   const [msg, setMsg] = useState<Msg>(null);
@@ -126,10 +127,11 @@ export function Admin() {
           <TabsContent value="rooms"><RoomsTab api={api} /></TabsContent>
           <TabsContent value="history"><HistoryTab api={api} archiveDays={config.archiveDays} /></TabsContent>
           <TabsContent value="groups"><DirectoryTab api={api} /></TabsContent>
-          <TabsContent value="access" forceMount className="data-[state=inactive]:hidden"><AccessTab config={config} api={api} onSaved={setConfig} /></TabsContent>
-          <TabsContent value="defaults" forceMount className="data-[state=inactive]:hidden"><DefaultsTab config={config} api={api} onSaved={setConfig} /></TabsContent>
-          <TabsContent value="options" forceMount className="data-[state=inactive]:hidden"><OptionsTab config={config} api={api} onSaved={setConfig} /></TabsContent>
-          <TabsContent value="data"><DataTab api={api} /></TabsContent>
+          {/* Nach dem Zurücksetzen frisch aufbauen – die Entwürfe starten sonst mit dem alten Stand */}
+          <TabsContent value="access" forceMount className="data-[state=inactive]:hidden"><AccessTab key={resets} config={config} api={api} onSaved={setConfig} /></TabsContent>
+          <TabsContent value="defaults" forceMount className="data-[state=inactive]:hidden"><DefaultsTab key={resets} config={config} api={api} onSaved={setConfig} /></TabsContent>
+          <TabsContent value="options" forceMount className="data-[state=inactive]:hidden"><OptionsTab key={resets} config={config} api={api} onSaved={setConfig} /></TabsContent>
+          <TabsContent value="data"><DataTab api={api} onReset={(c) => { setConfig(c); setResets((n) => n + 1); }} /></TabsContent>
         </Tabs>
       )}
       {!config && !checking && msg && <p role="alert" className="mt-3 font-semibold text-destructive">{msg.text}</p>}
