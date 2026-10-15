@@ -64,7 +64,7 @@ export function CreateRoomForm({ plan }: { plan: RoomPlan }) {
       </button>
       {more && <RoomAccessForm value={access} onChange={setAccess} idPrefix="new-room" />}
       <Button type="submit" size="lg" disabled={!ok || busy}>{busy && <Loader2 className="animate-spin" />}Öffnen</Button>
-      <p className="-mt-1 text-sm text-muted-foreground">Mitspieler brauchen Raumcode und PIN. Du bist Host{plan.meet ? " – ein Spiel geht jederzeit." : plan.pickGame ? " und wählst gleich das Spiel." : "."}</p>
+      <p className="-mt-1 text-sm text-muted-foreground">Mitspieler brauchen Raumcode und PIN. Du bist Host{plan.meet ? " – ein Spiel wählt ihr, wann ihr wollt." : plan.pickGame ? " und wählst gleich das Spiel." : "."}</p>
       {error && <p role="alert" className="rounded-xl bg-destructive/15 p-3 text-sm text-destructive">{error}</p>}
     </form>
   );
@@ -78,8 +78,8 @@ export function CreateRoomSheet({ plan, onClose }: { plan: RoomPlan | null; onCl
       {/* Name steht schon da: gleich in die PIN */}
       <SheetContent onOpenAutoFocus={(e) => { e.preventDefault(); document.getElementById(read(NAME_KEY) ? "pin" : "name")?.focus(); }}>
         <SheetHeader>
-          <SheetTitle>{plan?.meet ? "Treffpunkt öffnen" : "Raum öffnen"}</SheetTitle>
-          <SheetDescription>{plan?.meet ? "Reden, sehen, schreiben – spielen später" : "Jeder spielt am eigenen Handy"}</SheetDescription>
+          <SheetTitle>Raum öffnen</SheetTitle>
+          <SheetDescription>Reden, sehen, schreiben – und spielen, jeder am eigenen Handy</SheetDescription>
         </SheetHeader>
         <div className="overflow-y-auto px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">{plan && <CreateRoomForm plan={plan} />}</div>
       </SheetContent>

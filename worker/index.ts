@@ -141,11 +141,13 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   /** Legt den Raum an. false, wenn der Code schon vergeben ist. */
-  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS): Promise<boolean> {
+  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS, meet = false): Promise<boolean> {
     if (this.room) return false;
     const salt = crypto.randomUUID();
     const state = createRoom(gameId);
     state.access = access;
+    // Jeder Raum ist auch Treffpunkt: ohne vorgewähltes Spiel geht es dort los
+    if (meet) state.meet = true;
     // Standard-Einstellungen des Admins ersetzen die eingebauten
     state.options = withDefaults(roomGame(state).settings, state.options, defaults?.[state.gameId]);
     this.room = {
@@ -1505,7 +1507,7 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
     if (!access.name) return json({ error: "Bitte gib dem Raum einen Namen." }, 400);
     for (let i = 0; i < 6; i++) {
       const code = makeCode();
-      if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access)) return json({ code }, 201);
+      if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access, true)) return json({ code }, 201);
     }
     return json({ error: "Gerade ist kein Raumcode frei." }, 503);
   }
@@ -1674,7 +1676,7 @@ export default {
 
     // Raum anlegen
     if (url.pathname === "/api/rooms" && request.method === "POST") {
-      let body: { pin?: unknown; game?: unknown; access?: unknown; room?: unknown };
+      let body: { pin?: unknown; game?: unknown; access?: unknown; room?: unknown; meet?: unknown };
       try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
       const pin = String(body.pin ?? "");
       if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
@@ -1694,7 +1696,7 @@ export default {
       for (let i = 0; i < 6; i++) {
         const code = makeCode();
         const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
-        if (await stub.init(pin, gameId, unlocked, code, config.defaults, sanitizeAccess(body.room))) return json({ code }, 201);
+        if (await stub.init(pin, gameId, unlocked, code, config.defaults, sanitizeAccess(body.room), body.meet === true)) return json({ code }, 201);
       }
       return json({ error: "Gerade ist kein Raumcode frei. Versuch es gleich nochmal." }, 503);
     }

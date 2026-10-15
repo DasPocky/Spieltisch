@@ -18,6 +18,7 @@ async function openRoom(page: Page, pin: string, room: { name: string; visibilit
   if (room.visibility) await page.getByRole("radio", { name: room.visibility }).click();
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
+  await page.getByTestId("meet-play").click();
   await page.getByTestId(`pick-${room.game ?? "uno"}`).click();
   await expect(page.getByTestId("game-card")).toBeVisible();
   return page.url().split("/").pop()!;

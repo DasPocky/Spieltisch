@@ -54,6 +54,9 @@ test("Startseite: Lobby, dann Spiel – lokal wie online, ohne Scrollen", async 
   await page.getByLabel(/PIN/).fill("4711");
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
+  // Jeder Raum beginnt im Treffpunkt – „Spiel wählen“ öffnet die Auswahl
+  await expect(page.getByTestId("meet")).toBeVisible();
+  await page.getByTestId("meet-play").click();
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
   await page.getByRole("button", { name: /^Uno/ }).click();
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeHidden();

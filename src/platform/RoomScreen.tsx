@@ -27,7 +27,7 @@ import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
 import { CallButton, CallContext, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
 import { ChatButton, ChatContext, ChatPanel, type ChatControls } from "./chat/Chat";
-import { Meet, meetKey } from "./chat/Meet";
+import { Meet } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
@@ -100,8 +100,8 @@ export function RoomScreen(props: Props) {
               <Button variant="ghost" size="icon" className="-ml-2 shrink-0" aria-label={code ? "Raum verlassen" : "Zur Startseite"}><ChevronLeft /></Button>
             </Leave>
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-lg font-bold tracking-tight">Lobby</div>
-              <div className="truncate text-xs text-muted-foreground">{code ? <>Raum <span className="font-semibold tracking-[0.18em]">{code}</span></> : "Ein Handy für alle"}</div>
+              <div className="truncate text-lg font-bold tracking-tight">{code && room.meet ? "Treffpunkt" : "Lobby"}</div>
+              <div className="truncate text-xs text-muted-foreground">{code ? <>{room.access?.name ? `${room.access.name} · ` : "Raum "}<span className="font-semibold tracking-[0.18em]">{code}</span></> : "Ein Handy für alle"}</div>
             </div>
           </div>
         )}
@@ -190,17 +190,30 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
   );
 }
 
+/**
+ * Jeder Online-Raum ist zugleich Treffpunkt: Ohne Spiel füllen Video und Chat den Raum,
+ * „Spiel wählen“ führt mit dem gewählten Spiel in die Lobby. Gespielt werden muss nicht – geredet auch nicht.
+ */
 function Lobby(props: Props & { isHost: boolean }) {
   const { room, me, online, code, dispatch, isHost } = props;
-  // Treffpunkt aus der Startseite: Host schaltet ihn einmal ein; „Ein Spiel starten“ führt in die normale Lobby
-  useEffect(() => {
-    if (!code || !isHost) return;
-    try { if (sessionStorage.getItem(meetKey(code)) === "1") { sessionStorage.removeItem(meetKey(code)); dispatch({ type: "setMeet", on: true }); } } catch { /* egal */ }
-  }, [code, isHost, dispatch]);
   const [local, setLocal] = useState(false);
+  const [pick, setPick] = useState(false);
+  const config = useSiteConfig();
   if (code && room.meet && !local) {
-    return <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
-      onPlay={() => (isHost ? dispatch({ type: "setMeet", on: false }) : setLocal(true))} />;
+    const gameIds = orderGames(GAME_IDS, config?.order ?? []).filter((id) => !config || accessFor(config, id) !== "off");
+    return (
+      <>
+        <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
+          playLabel={isHost ? "Spiel wählen" : "Zur Spiel-Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} />
+        {isHost && (
+          <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online
+            onPick={(id) => {
+              setPick(false);
+              void loadGameUI(id).then(() => { dispatch({ type: "selectGame", gameId: id }); dispatch({ type: "setMeet", on: false }); }, () => toast("Das Spiel lädt gerade nicht – kurz Netz prüfen."));
+            }} />
+        )}
+      </>
+    );
   }
   return <GameLobby {...props} />;
 }
@@ -243,7 +256,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call 
       {call && <CallInvite call={call} />}
       {code && isHost && (
         <button type="button" onClick={() => dispatch({ type: "setMeet", on: true })} className="mt-2 w-full rounded-xl py-1.5 text-sm font-semibold text-primary">
-          Erst mal nur quatschen? Zum Treffpunkt
+          Erst mal nur reden? Zum Treffpunkt
         </button>
       )}
       <EveningLine className="mt-2" />

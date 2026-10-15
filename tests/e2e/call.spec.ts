@@ -127,10 +127,10 @@ test("Text-Chat: schreiben, Reaktion über dem Platz, Ungelesen-Zähler", async 
   await expect(ben.getByTestId("chat-list")).toContainText("Hallo Ben!");
 });
 
-test("Treffpunkt: nur reden, sehen, schreiben – dann ein Spiel", async ({ browser }) => {
+test("Jeder Raum ist Treffpunkt: erst reden, sehen, schreiben – dann ein Spiel", async ({ browser }) => {
   const [anna, ben] = await Promise.all([phone(browser), phone(browser)]);
   await anna.goto("/");
-  await anna.getByTestId("meet-card").click();
+  await anna.getByRole("button", { name: "Raum öffnen" }).click();
   await anna.getByLabel("Dein Name").fill("Anna");
   await anna.getByLabel(/PIN/).fill("3434");
   await anna.getByRole("button", { name: "Öffnen", exact: true }).click();
@@ -146,7 +146,11 @@ test("Treffpunkt: nur reden, sehen, schreiben – dann ein Spiel", async ({ brow
   await ben.getByRole("button", { name: "Senden" }).click();
   await expect(anna.getByTestId("meet").getByTestId("chat-list")).toContainText("Bin da");
   await shot(ben, "84-meet");
-  await anna.getByRole("button", { name: "Ein Spiel starten" }).click();
-  await expect(anna.getByTestId("game-card")).toBeVisible();
+  // Nicht-Host schaut in die Spiel-Lobby, der Host wählt das Spiel
+  await expect(ben.getByTestId("meet-play")).toHaveText("Zur Spiel-Lobby");
+  await anna.getByTestId("meet-play").click();
+  await anna.getByTestId("pick-kniffel").click();
+  await expect(anna.getByTestId("game-card")).toContainText("Kniffel");
   await expect(ben.getByTestId("meet")).toHaveCount(0);
+  await expect(ben.getByTestId("game-card")).toContainText("Kniffel");
 });

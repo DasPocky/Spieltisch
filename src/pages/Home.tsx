@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, DoorOpen, LogIn, Plus, Settings2, Smartphone, Users, Video } from "lucide-react";
+import { ChevronRight, DoorOpen, LogIn, Plus, Settings2, Smartphone, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
 import { navigate } from "@/hooks/useRoute";
@@ -30,7 +30,7 @@ function runningLocal(): string | null {
 }
 
 /**
- * Start-Tab: Begrüßung, Treffpunkt, Schnellstart und Gruppe – unten fest die Hauptaktionen
+ * Start-Tab: Begrüßung, eigene und offene Räume, Schnellstart und Gruppe – unten fest die Hauptaktionen
  * „Raum öffnen“ und „Beitreten“ (und „Ein Handy für alle“, wenn der Admin es eingeschaltet hat).
  * Name und PIN fragt ein Blatt von unten, das Spiel wählt ihr in der Lobby.
  */
@@ -43,7 +43,8 @@ export function Home() {
   const [avatar] = useState(myAvatar);
   const rooms = useRooms(online);
   const anyRooms = rooms.mine.length + rooms.open.length > 0;
-  const newRoom = (gameId?: string) => setPlan(gameId ? { gameId, pickGame: false } : { gameId: defaultGame(ids, locked), pickGame: true });
+  // Ein Raumtyp für alles: ohne Spiel geht es im Treffpunkt los, mit Schnellstart-Spiel gleich in die Lobby
+  const newRoom = (gameId?: string) => setPlan(gameId ? { gameId, pickGame: false } : { gameId: defaultGame(ids, locked), pickGame: false, meet: true });
 
   return (
     <main className={cn("mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3", anyRooms && "has-rooms")}>
@@ -70,14 +71,6 @@ export function Home() {
           <p className="text-in flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-border ring-dashed" data-testid="no-rooms">
             <DoorOpen className="size-4.5 shrink-0" />Gerade ist kein Raum offen – öffne einen oder tritt mit Code bei.
           </p>
-        )}
-        {online && (
-          <button type="button" onClick={() => setPlan({ gameId: defaultGame(ids, locked), pickGame: true, meet: true })} data-testid="meet-card"
-            className="glass flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary"><Video className="size-5" /></span>
-            <span className="min-w-0 flex-1"><span className="block font-semibold leading-tight">Treffpunkt</span><span className="block truncate text-xs text-muted-foreground">Reden, sehen, schreiben – spielen später</span></span>
-            <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-          </button>
         )}
         {(localOn || online) && <QuickGames games={ids} featured={config?.featured ?? []} order={config?.order ?? []} local={localOn}
           onPick={(id) => { if (localOn) playLocal(ids, locked, id); else newRoom(id); }} onAll={() => goTab("/spiele")} />}

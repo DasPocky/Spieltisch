@@ -52,8 +52,13 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const outbox = useRef<Pending[]>([]);
   const flushRef = useRef<() => void>(() => {});
   const hostRef = useRef(false);
+  /** Versuch, bei dem der Raum endgültig abgelehnt hat (entfernt, falsche PIN …) – der baut sich nicht von selbst neu auf */
+  const fatalRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Startet React den Effekt neu (z. B. nach dem Nachladen eines Spiels), darf ein abgelehnter Versuch
+    // nicht still mit Name und PIN wieder beitreten – erst ein neuer Versuch („Nochmal“, Formular) verbindet
+    if (fatalRef.current === attempt) return;
     let stopped = false;
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -165,6 +170,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           if (msg.id) { outbox.current = outbox.current.filter((p) => p.id !== msg.id); syncPending(); }
           if (msg.fatal) {
             stopped = true;
+            fatalRef.current = attempt;
             clearTimeout(knockTimer);
             if (msg.code === "bad_pin" || msg.code === "kicked" || msg.code === "not_joined" || msg.code === "closed") remove(credsKey(code));
             outbox.current = [];

@@ -14,7 +14,8 @@ async function openRoom(page: Page, name: string, pin: string, extras?: (p: Page
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
   const code = page.url().split("/").pop()!;
-  // Spielauswahl der frischen Lobby schließen
+  // Raum beginnt im Treffpunkt: Spiel wählen
+  await page.getByTestId("meet-play").click();
   await page.getByTestId("pick-uno").click();
   return code;
 }
@@ -94,7 +95,7 @@ test("Dauerraum vom Admin: erster Gast wird Host, Raum bleibt nach dem Verlassen
   const { code } = await res.json();
   // Niemand da, der öffnen könnte: die PIN reicht, wer zuerst kommt, ist Host
   const eva = await knock(browser, code, "Eva", "9999");
-  await expect(eva.getByText("Spiel starten")).toBeVisible();
+  await expect(eva.getByTestId("meet-play")).toHaveText("Spiel wählen");
   await eva.getByRole("button", { name: "Menü" }).click();
   await eva.getByTestId("room-settings").getByRole("button").first().click();
   await expect(eva.getByTestId("room-settings")).toContainText("Dauerraum");

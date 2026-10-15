@@ -13,7 +13,7 @@ export interface NewRoom {
   gameId: string;
   /** Lobby öffnet gleich die Spielauswahl */
   pickGame?: boolean;
-  /** Erst einmal nur Treffpunkt */
+  /** Ohne Spiel im Treffpunkt beginnen (Video, Chat – „Spiel wählen“ jederzeit) */
   meet?: boolean;
   /** Raumname, Sichtbarkeit, Einlass, Lebensdauer */
   room?: Partial<RoomAccess>;
@@ -26,7 +26,7 @@ export async function createRoom({ name, pin, gameId, pickGame = false, meet = f
   const res = await fetch("/api/rooms", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ pin, game: gameId, access: savedAccess() ?? undefined, room }),
+    body: JSON.stringify({ pin, game: gameId, access: savedAccess() ?? undefined, room, meet }),
   }).catch(() => null);
   if (!res) throw new Error("Keine Verbindung zum Server.");
   const data = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
@@ -36,7 +36,5 @@ export async function createRoom({ name, pin, gameId, pickGame = false, meet = f
   try { localStorage.setItem(NAME_KEY, cleanName(name)); } catch { /* egal */ }
   setPendingJoin(data.code, { name: cleanName(name), pin });
   if (pickGame && !meet) try { sessionStorage.setItem(pickGameKey(data.code), "1"); } catch { /* egal */ }
-  // Treffpunkt: erst reden und sehen, gespielt wird später (siehe Meet)
-  if (meet) try { sessionStorage.setItem(`spieltisch:meet:${data.code}`, "1"); } catch { /* egal */ }
   navigate(`/r/${data.code}`, replace);
 }
