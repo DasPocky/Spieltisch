@@ -233,7 +233,9 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   async info(): Promise<RoomInfo> {
-    return this.room ? { exists: true, gameId: this.room.state.gameId } : { exists: false };
+    if (!this.room) return { exists: false };
+    const s = this.room.state;
+    return { exists: true, gameId: s.gameId, name: s.access?.name, phase: s.phase, knock: s.access?.admission === "knock" || undefined };
   }
 
   async fetch(request: Request): Promise<Response> {

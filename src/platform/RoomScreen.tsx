@@ -26,7 +26,7 @@ import { ShareCode } from "./ShareCode";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
 import { CallButton, CallContext, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
-import { ChatButton, ChatContext, type ChatControls } from "./chat/Chat";
+import { ChatButton, ChatContext, ChatPanel, type ChatControls } from "./chat/Chat";
 import { Meet, meetKey } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
@@ -121,7 +121,7 @@ export function RoomScreen(props: Props) {
           hostName={room.players.find((p) => p.id === room.hostId)?.name} onAnswer={props.onKnock} />
       )}
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
-      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
+      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} chat={props.chat} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
     </EveningContext.Provider>
     </CallContext.Provider>
@@ -130,14 +130,14 @@ export function RoomScreen(props: Props) {
   );
 }
 
-/** Mitten in der Partie beigetreten: kurz erklären, wer spielt und dass es mit „Nochmal“ losgeht */
-function BenchWait({ room, me }: { room: RoomState; me: string | null }) {
+/** Mitten in der Partie beigetreten: zuschauen, mitreden – und ab der nächsten Partie mitspielen */
+function BenchWait({ room, me, chat }: { room: RoomState; me: string | null; chat?: ChatControls }) {
   const info = getGame(room.gameId).info;
   const cur = currentPlayerId(room);
   return (
-    <section className="flex flex-1 flex-col items-center justify-center gap-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center" data-testid="bench-wait">
+    <section className={cn("flex flex-1 flex-col items-center gap-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center", chat ? "min-h-0 pt-2" : "justify-center")} data-testid="bench-wait">
       <div>
-        <h2 className="text-xl font-bold tracking-tight">Du bist dabei!</h2>
+        <h2 className="text-xl font-bold tracking-tight">Du schaust zu</h2>
         <p className="mt-1 text-muted-foreground">{info.name} läuft gerade. Du spielst ab der nächsten Partie mit – sobald der Host „Nochmal“ wählt.</p>
       </div>
       <ul className="flex flex-wrap justify-center gap-1.5">
@@ -152,6 +152,7 @@ function BenchWait({ room, me }: { room: RoomState; me: string | null }) {
           </li>
         ))}
       </ul>
+      {chat && <ChatPanel chat={chat} players={[...room.players, ...(room.bench ?? [])]} me={me} className="glass min-h-40 w-full flex-1 rounded-2xl p-2.5 text-left" />}
     </section>
   );
 }

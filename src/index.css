@@ -258,6 +258,9 @@
 
 /* Startseite: auf niedrigen Bildschirmen nur eine Reihe Schnellstart */
 @media (max-height: 700px) { .quick-extra { display: none; } }
+/* Mit Räumen auf dem Start: Schnellstart nur, wenn genug Platz ist */
+@media (max-height: 820px) { .has-rooms .quick-extra { display: none; } }
+@media (max-height: 700px) { .has-rooms .quick-section { display: none; } }
 /* Sehr niedrig (kleines Handy im Browser): Schnellstart ganz weg – die Wege oben reichen */
 @media (max-height: 600px) { .quick-section { display: none; } }
 

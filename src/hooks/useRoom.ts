@@ -40,6 +40,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const [online, setOnline] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
+  const [info, setInfo] = useState<RoomInfo | null>(null);
   const [call, setCall] = useState<Record<string, CallPeer>>({});
   const [pending, setPending] = useState(0);
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -227,6 +228,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         if (stopped) return;
         if (!data.exists) { remove(credsKey(code)); setStatus("missing"); return; }
         if (data.gameId) setGameId(data.gameId);
+        setInfo(data);
       } catch {
         // offline oder langsam? dann trotzdem versuchen
       }
@@ -283,5 +285,5 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   /** Chat-Nachricht oder Reaktion schicken */
   const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil };
 }

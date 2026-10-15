@@ -6,6 +6,7 @@ import { whenSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup } from "@/lib/group";
 import { myName } from "@/lib/profile";
 import { readJSON, writeJSON } from "@/lib/storage";
+import { loadRooms } from "@/lib/rooms";
 
 export const ONBOARDED_KEY = "spieltisch:onboarded";
 const SEEN_KEY = "spieltisch:seen";
@@ -52,10 +53,8 @@ const loaders: Loader[] = [
   () => whenSiteConfig(),
   () => { const c = activeGroupCode(); return c ? loadGroup(c) : Promise.resolve(); },
   () => (document.fonts?.ready ?? Promise.resolve()),
+  () => loadRooms(),
 ];
-
-/** Weitere Daten, die während der Begrüßung laden sollen (z. B. die Raumliste) */
-export function addBootLoader(l: Loader) { loaders.push(l); }
 
 /** Alles parallel laden; `onProgress` bekommt den Anteil 0…1. Fehler zählen als fertig – die Seiten laden selbst nach. */
 export function boot(onProgress: (p: number) => void): Promise<void> {

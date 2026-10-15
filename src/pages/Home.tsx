@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, LogIn, Plus, Settings2, Smartphone, Users, Video } from "lucide-react";
+import { ChevronRight, DoorOpen, LogIn, Plus, Settings2, Smartphone, Users, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
 import { navigate } from "@/hooks/useRoute";
@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { defaultGame, playLocal } from "@/lib/playLocal";
 import { goTab } from "@/platform/shell/AppShell";
 import { CreateRoomSheet, JoinSheet, type RoomPlan } from "@/platform/shell/RoomSheets";
+import { RoomRow } from "@/platform/shell/RoomCards";
+import { useRooms } from "@/lib/rooms";
 
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 /** Läuft auf diesem Handy noch eine lokale Partie? Dann steht das auf der Startseite. */
@@ -39,10 +41,12 @@ export function Home() {
   const [running] = useState(runningLocal);
   const [name] = useState(myName);
   const [avatar] = useState(myAvatar);
+  const rooms = useRooms(online);
+  const anyRooms = rooms.mine.length + rooms.open.length > 0;
   const newRoom = (gameId?: string) => setPlan(gameId ? { gameId, pickGame: false } : { gameId: defaultGame(ids, locked), pickGame: true });
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3">
+    <main className={cn("mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3", anyRooms && "has-rooms")}>
       <header className="flex shrink-0 items-center gap-3">
         <span className="relative shrink-0">
           <Logo className="size-11 -rotate-6 rounded-xl" />
@@ -60,6 +64,13 @@ export function Home() {
 
       <div className="mt-4 grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2.5">
         {config?.banner && <p className="text-in rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
+        {online && <RoomRow title="Deine Räume" cards={rooms.mine} mine testId="my-rooms" />}
+        {online && <RoomRow title="Offene Räume" cards={rooms.open} testId="open-rooms" />}
+        {online && rooms.loaded && !anyRooms && (
+          <p className="text-in flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-border ring-dashed" data-testid="no-rooms">
+            <DoorOpen className="size-4.5 shrink-0" />Gerade ist kein Raum offen – öffne einen oder tritt mit Code bei.
+          </p>
+        )}
         {online && (
           <button type="button" onClick={() => setPlan({ gameId: defaultGame(ids, locked), pickGame: true, meet: true })} data-testid="meet-card"
             className="glass flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">

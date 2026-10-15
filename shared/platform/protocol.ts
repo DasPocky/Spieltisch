@@ -76,4 +76,8 @@ export const ACTION_ID_RE = /^[A-Za-z0-9_-]{6,40}$/;
 export interface RoomInfo {
   exists: boolean;
   gameId?: string;
+  /** Raumname und was gerade läuft – für das Beitrittsformular */
+  name?: string;
+  phase?: "lobby" | "playing";
+  knock?: boolean;
 }

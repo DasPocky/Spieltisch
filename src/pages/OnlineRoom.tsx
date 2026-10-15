@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { DoorClosed, Loader2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
-import { PIN_RE } from "@shared/platform/protocol";
+import { PIN_RE, type RoomInfo } from "@shared/platform/protocol";
 import { cleanName, MAX_NAME, roomGame } from "@shared/platform/room";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ export function OnlineRoom({ code }: { code: string }) {
       <JoinForm
         code={code}
         gameId={room.gameId}
+        info={room.info}
         error={room.error}
         onSubmit={(j) => { setJoin(j); setAttempt((a) => a + 1); }}
       />
@@ -98,14 +99,20 @@ export function OnlineRoom({ code }: { code: string }) {
   );
 }
 
-function JoinForm({ code, gameId, error, onSubmit }: { code: string; gameId: string | null; error: string | null; onSubmit: (j: JoinData) => void }) {
+function JoinForm({ code, gameId, info, error, onSubmit }: { code: string; gameId: string | null; info: RoomInfo | null; error: string | null; onSubmit: (j: JoinData) => void }) {
   const [name, setName] = useState(() => { try { return localStorage.getItem(NAME_KEY) ?? ""; } catch { return ""; } });
   const [pin, setPin] = useState("");
   const ok = cleanName(name).length > 0 && PIN_RE.test(pin);
   return (
     <Center>
-      <div className="text-sm text-muted-foreground">{isGameId(gameId) ? `${getGame(gameId).info.name} · Raum` : "Raum"}</div>
+      <div className="text-sm text-muted-foreground">{info?.name ? `${info.name} · ` : ""}{isGameId(gameId) ? `${getGame(gameId).info.name} · Raum` : "Raum"}</div>
       <h1 className="text-4xl font-bold tracking-[0.18em]">{code}</h1>
+      {info?.phase === "playing" && isGameId(gameId) && (
+        <p className="mt-2 text-sm text-muted-foreground" data-testid="join-spectate">
+          {getGame(gameId).info.name} läuft gerade{getGame(gameId).joinMidGame ? " – du steigst gleich mit ein." : " – du schaust zu und spielst ab der nächsten Partie mit."}
+        </p>
+      )}
+      {info?.knock && <p className="mt-2 text-sm text-muted-foreground">Nach der PIN klopfst du an – jemand im Raum lässt dich herein.</p>}
       <Card className="mt-6 grid gap-4 text-left">
         <form className="grid gap-4" onSubmit={(e) => {
           e.preventDefault(); if (!ok) return;
