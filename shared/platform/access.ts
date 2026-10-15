@@ -5,6 +5,7 @@
 import { DEFAULT_LOOK, isLook, type LookId } from "./looks";
 import { sanitizeOption } from "./room";
 import type { Options, SettingDef } from "./types";
+import type { RoomCard, RoomLife } from "./directory";
 
 export type Access = "on" | "code" | "off";
 
@@ -32,7 +33,7 @@ export interface SiteConfig {
 }
 
 export interface SiteLimits {
-  /** Räume ohne Aktivität verschwinden nach so vielen Stunden */
+  /** Leere Räume verschwinden spätestens nach so vielen Stunden (Obergrenze für die Wahl des Hosts) */
   roomHours: number;
   /** höchstens so viele Leute pro Raum */
   maxPlayers: number;
@@ -54,7 +55,7 @@ export interface SiteFeatures {
   offline: boolean;
 }
 
-export const DEFAULT_LIMITS: SiteLimits = { roomHours: 48, maxPlayers: 20, maxRooms: 0 };
+export const DEFAULT_LIMITS: SiteLimits = { roomHours: 168, maxPlayers: 20, maxRooms: 0 };
 export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true, local: false, offline: false };
 export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
@@ -161,6 +162,12 @@ export interface AdminRoom {
   activeAt: number;
   /** wegen zu vieler falscher PINs gesperrt */
   locked: boolean;
+  /** Raumkarte für den Start-Tab (Name, Host, Avatare, Sichtbarkeit …) */
+  card?: RoomCard;
+  /** Gruppe des Hosts – nur für „Sichtbar für Gruppe“, geht nie an Besucher */
+  groupCode?: string;
+  /** Lebensdauer, wenn leer – Dauerräume verschwinden nie aus der Übersicht */
+  life?: RoomLife;
 }
 
 // ---------- Admin: Statistik ----------

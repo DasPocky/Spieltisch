@@ -89,7 +89,7 @@ export function GameSheet({ gameId, onClose }: { gameId: string | null; onClose:
                 <Suspense fallback={<Loader2 className="mx-auto my-6 size-5 animate-spin text-muted-foreground" />}><Rules gameId={gameId} /></Suspense>
               </div>
             ) : view === "create" ? (
-              <div className="px-5 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"><CreateRoomForm plan={{ gameId, pickGame: false }} /></div>
+              <div className="overflow-y-auto px-5 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"><CreateRoomForm plan={{ gameId, pickGame: false }} /></div>
             ) : (
               <div className="grid gap-2 px-5 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
                 <Button size="lg" disabled={!online} onClick={() => setView("create")}>{onlineOff ? "Online gerade abgeschaltet" : online ? "Raum mit diesem Spiel öffnen" : "Raum öffnen braucht Netz"}</Button>

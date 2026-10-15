@@ -144,6 +144,11 @@
   .paper-piece, .logo-pop, .avatar-stick, .text-rise, .slide-in { animation-duration: 0.01s; animation-delay: 0s !important; }
 }
 
+/* Anklopfen: die Tür wackelt ab und zu */
+@keyframes knock { 0%, 70%, 100% { transform: none; } 75% { transform: rotate(-4deg); } 80% { transform: rotate(3deg); } 85% { transform: rotate(-3deg); } 90% { transform: rotate(2deg); } }
+.knock-door { animation: knock 2.2s ease-in-out infinite; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) { .knock-door { animation: none; } }
+
 @utility h-dvh-safe {
   height: calc(100dvh - env(safe-area-inset-top, 0px));
 }

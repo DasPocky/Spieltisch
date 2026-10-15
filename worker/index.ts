@@ -15,6 +15,10 @@ import {
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
+  DEFAULT_ACCESS, KNOCK_DENY_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
+  type KnockView, type RoomAccess, type RoomCard,
+} from "../shared/platform/directory";
+import {
   ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
   type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
@@ -63,10 +67,28 @@ interface RoomData {
   /** Eigener Raumcode (für die Admin-Übersicht) und letzte Änderung */
   code?: string;
   updatedAt?: number;
+  /** Wer gerade anklopft (Einlass „PIN und Anklopfen“) */
+  knocks?: Knock[];
+  /** Abgelehnt: Profil-ID bzw. Name → darf erst ab dann wieder anklopfen */
+  denied?: Record<string, number>;
+}
+
+/** Ein Gast mit richtiger PIN, der auf Einlass wartet – mit allem, was der Beitritt danach braucht */
+interface Knock {
+  id: string;
+  name: string;
+  at: number;
+  snoozed?: boolean;
+  avatar?: unknown;
+  profile?: string;
+  group?: string;
+  nonce?: string;
 }
 
 interface Attachment {
   playerId: string | null;
+  /** wartet vor der Tür (Anklopfen) */
+  knock?: string;
 }
 
 /** Räume ohne Aktivität werden nach 48 Stunden gelöscht. */
@@ -119,10 +141,11 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   /** Legt den Raum an. false, wenn der Code schon vergeben ist. */
-  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults): Promise<boolean> {
+  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS): Promise<boolean> {
     if (this.room) return false;
     const salt = crypto.randomUUID();
     const state = createRoom(gameId);
+    state.access = access;
     // Standard-Einstellungen des Admins ersetzen die eingebauten
     state.options = withDefaults(roomGame(state).settings, state.options, defaults?.[state.gameId]);
     this.room = {
@@ -146,6 +169,7 @@ export class GameRoom extends DurableObject<Env> {
     const room = this.room;
     if (!room?.code) return null;
     const online = this.onlineIds();
+    const card = this.makeCard(online);
     return {
       code: room.code,
       gameId: room.state.gameId,
@@ -154,7 +178,41 @@ export class GameRoom extends DurableObject<Env> {
       createdAt: room.createdAt,
       activeAt: room.updatedAt ?? room.createdAt,
       locked: Date.now() < room.lockUntil,
+      card: card ?? undefined,
+      groupCode: room.state.hostId ? room.groups?.[room.state.hostId] : undefined,
+      life: room.state.access?.life,
     };
+  }
+
+  /** Raumkarte für den Start-Tab */
+  private makeCard(online = this.onlineIds()): RoomCard | null {
+    const room = this.room;
+    if (!room?.code) return null;
+    const s = room.state;
+    const access = s.access ?? DEFAULT_ACCESS;
+    const all = [...s.players, ...(s.bench ?? [])];
+    return {
+      code: room.code,
+      name: access.name,
+      host: s.players.find((p) => p.id === s.hostId)?.name,
+      gameId: s.gameId,
+      phase: s.phase,
+      meet: s.phase === "lobby" && s.meet === true,
+      players: all.map((p) => ({ name: p.name, avatar: s.avatars?.[p.id], online: online.has(p.id) })),
+      online: all.filter((p) => online.has(p.id)).length,
+      live: Object.keys(room.call ?? {}).some((id) => online.has(id)),
+      visibility: access.visibility,
+      admission: access.admission,
+      permanent: access.life === "forever" || undefined,
+      activeAt: room.updatedAt ?? room.createdAt,
+    };
+  }
+
+  /** Karte für „Deine Räume“ – nur mit gültigem Zugang des Handys; null = Zugang ungültig (Raum vergessen) */
+  async card(playerId: string, token: string): Promise<RoomCard | null> {
+    const room = this.room;
+    if (!room || !playerId || room.tokens[playerId] !== token || !inRoom(room.state, playerId)) return null;
+    return this.makeCard();
   }
 
   /** Admin: Raum schließen – wie beim Host, alle bekommen die Meldung, alles wird gelöscht */
@@ -207,6 +265,8 @@ export class GameRoom extends DurableObject<Env> {
       this.send(ws, { type: "error", message: "Ungültige Nachricht." });
       return;
     }
+
+    await this.expireKnocks();
 
     if (msg.type === "join") {
       await this.handleJoin(ws, msg);
@@ -270,6 +330,13 @@ export class GameRoom extends DurableObject<Env> {
     if (msg.type === "presence") {
       // Nur melden, wenn sich etwas geändert hat (z. B. ein Handy still weggefallen ist)
       if ([...this.onlineIds()].sort().join() !== this.lastOnline) this.broadcast();
+      // Raumverzeichnis frisch halten, solange jemand da ist
+      await this.report(false);
+      return;
+    }
+
+    if (msg.type === "knock") {
+      await this.answerKnock(ws, playerId, msg);
       return;
     }
 
@@ -384,7 +451,17 @@ export class GameRoom extends DurableObject<Env> {
       delete this.room.call[att.playerId];
       await this.persist();
     }
+    // Gast vor der Tür ist gegangen
+    if (att?.knock && this.room?.knocks?.some((k) => k.id === att.knock)) {
+      this.room.knocks = this.room.knocks.filter((k) => k.id !== att.knock);
+      await this.persist();
+    }
     this.broadcast();
+    // Raum ist leer geworden: ab jetzt läuft die Lebensdauer; Verzeichnis gleich Bescheid geben
+    if (this.room && this.onlineIds().size === 0) {
+      await this.scheduleEnd();
+      await this.report(true);
+    }
   }
 
   /** Darf dieser Spieler den Sprachchat nutzen? Optional: gehört ihm die Sitzung? */
@@ -414,9 +491,15 @@ export class GameRoom extends DurableObject<Env> {
     this.broadcast();
   }
 
-  /** Läuft, wenn 48 h lang nichts passiert ist: Raum löschen. */
+  /** Lebensdauer abgelaufen: Ist jemand da, verlängern – sonst den Raum löschen (Dauerräume bleiben). */
   async alarm(): Promise<void> {
-    await this.destroy(`Der Raum ist nach ${Math.round((await this.roomTtl()) / 3_600_000)} Stunden ohne Aktivität abgelaufen.`);
+    if (!this.room) return;
+    const ms = await this.lifeMs();
+    if (ms === null) return;
+    if (this.onlineIds().size > 0) { await this.ctx.storage.setAlarm(Date.now() + ms); return; }
+    const life = this.room.state.access?.life;
+    const label = life && life !== "forever" && ms === LIFE_MS[life] ? LIFE_LABEL[life] : `${Math.round(ms / 3_600_000)} Stunden`;
+    await this.destroy(`Der Raum war ${label} leer und ist abgelaufen.`);
   }
 
   /** Alle rauswerfen und sämtliche gespeicherten Daten des Raums löschen. */
@@ -499,23 +582,133 @@ export class GameRoom extends DurableObject<Env> {
         return;
       }
     } catch { /* ohne Einstellungen gilt die eingebaute Grenze */ }
+
+    // Einlass mit Anklopfen: erst prüfen, ob der Beitritt überhaupt ginge, dann vor der Tür warten.
+    // Ist gerade niemand da, der öffnen könnte (z. B. der Ersteller selbst), reicht die PIN.
+    if (room.state.access?.admission === "knock" && this.onlineIds().size > 0) {
+      try { addPlayer(room.state, { id: "probe", name: msg.name ?? "" }); } catch (e) {
+        this.send(ws, { type: "error", code: "rejected", fatal: true, message: e instanceof GameError ? e.message : "Beitritt nicht möglich." });
+        return;
+      }
+      const profile = typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile) ? msg.profile : undefined;
+      const key = profile ?? cleanName(msg.name).toLowerCase();
+      if ((room.denied?.[key] ?? 0) > Date.now()) {
+        this.send(ws, { type: "error", code: "denied", fatal: true, message: "Du wurdest gerade nicht hereingelassen. Versuch es in einer Minute nochmal." });
+        return;
+      }
+      const knocks = (room.knocks ??= []);
+      // Dasselbe Handy klopft nochmal (neu verbunden): Eintrag behalten, nur die Verbindung tauschen
+      const same = knocks.find((k) => (nonce && k.nonce === nonce) || (profile && k.profile === profile));
+      const knock: Knock = same ?? { id: crypto.randomUUID(), name: cleanName(msg.name), at: Date.now() };
+      Object.assign(knock, { name: cleanName(msg.name), avatar: msg.avatar, profile, group: typeof msg.group === "string" ? msg.group : undefined, nonce: nonce ?? undefined });
+      if (!same) knocks.push(knock);
+      room.knocks = knocks.slice(-10);
+      for (const other of this.ctx.getWebSockets()) {
+        const a = other.deserializeAttachment() as Attachment | null;
+        if (other !== ws && a?.knock === knock.id) { try { other.close(4001, "replaced"); } catch { /* egal */ } }
+      }
+      ws.serializeAttachment({ playerId: null, knock: knock.id } satisfies Attachment);
+      await this.persist();
+      this.send(ws, { type: "knocking", wait: Math.max(0, KNOCK_TIMEOUT_MS - (Date.now() - knock.at)) });
+      this.broadcast();
+      return;
+    }
+
+    await this.addMember(ws, { name: msg.name ?? "", profile: msg.profile, avatar: msg.avatar, group: msg.group, nonce });
+  }
+
+  /** Neuen Spieler anlegen und verbinden (direkt nach der PIN oder nach dem Einlassen) */
+  private async addMember(ws: WebSocket, data: { name: string; profile?: unknown; avatar?: unknown; group?: unknown; nonce?: string | null }): Promise<boolean> {
+    const room = this.room!;
     const playerId = crypto.randomUUID();
     const token = crypto.randomUUID();
     try {
-      room.state = addPlayer(room.state, { id: playerId, name: msg.name ?? "" });
+      room.state = addPlayer(room.state, { id: playerId, name: data.name });
     } catch (e) {
       this.send(ws, { type: "error", code: "rejected", fatal: true, message: e instanceof GameError ? e.message : "Beitritt nicht möglich." });
-      return;
+      return false;
     }
     room.tokens[playerId] = token;
     await this.count("players");
-    if (nonce) room.joins = Object.fromEntries([...Object.entries(room.joins ?? {}), [nonce, playerId]].slice(-40));
-    if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile)) (room.profiles ??= {})[playerId] = msg.profile;
-    await this.applyExtras(playerId, msg);
+    if (data.nonce) room.joins = Object.fromEntries([...Object.entries(room.joins ?? {}), [data.nonce, playerId]].slice(-40));
+    if (typeof data.profile === "string" && PROFILE_ID_RE.test(data.profile)) (room.profiles ??= {})[playerId] = data.profile;
+    await this.applyExtras(playerId, { type: "join", avatar: data.avatar as never, group: data.group as never });
     ws.serializeAttachment({ playerId } satisfies Attachment);
     await this.persist(true);
     this.send(ws, { type: "joined", playerId, token });
     this.send(ws, { type: "chat", messages: room.chat ?? [] });
+    this.broadcast();
+    return true;
+  }
+
+  /** Verbindung des wartenden Gasts */
+  private knockSocket(id: string): WebSocket | null {
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment() as Attachment | null;
+      if (a?.knock === id && ws.readyState === WebSocket.OPEN) return ws;
+    }
+    return null;
+  }
+
+  /** Anklopfen beantworten: Host immer; die anderen, wenn der Host weg ist oder 30 s nicht reagiert hat */
+  private async answerKnock(ws: WebSocket, playerId: string, msg: Extract<ClientMessage, { type: "knock" }>): Promise<void> {
+    const room = this.room!;
+    const knock = room.knocks?.find((k) => k.id === msg.id);
+    if (!knock) { this.send(ws, { type: "error", message: "Darum hat sich schon jemand gekümmert." }); this.sendState(ws, playerId); return; }
+    const isHost = playerId === room.state.hostId;
+    const hostOnline = !!room.state.hostId && this.onlineIds().has(room.state.hostId);
+    if (msg.decision === "wait") {
+      if (!isHost) return;
+      knock.snoozed = true;
+      await this.persist();
+      this.broadcast();
+      return;
+    }
+    if (!mayAdmit({ ago: Date.now() - knock.at, snoozed: knock.snoozed }, isHost, hostOnline)) {
+      this.send(ws, { type: "error", message: "Das entscheidet gerade der Host." });
+      return;
+    }
+    room.knocks = room.knocks!.filter((k) => k.id !== knock.id);
+    const guest = this.knockSocket(knock.id);
+    if (msg.decision === "deny") {
+      room.denied = Object.fromEntries([...Object.entries(room.denied ?? {}).filter(([, t]) => t > Date.now()), [knock.profile ?? knock.name.toLowerCase(), Date.now() + KNOCK_DENY_MS]].slice(-40));
+      if (guest) {
+        this.send(guest, { type: "error", code: "denied", fatal: true, message: "Du wurdest diesmal nicht hereingelassen." });
+        guest.serializeAttachment({ playerId: null } satisfies Attachment);
+        try { guest.close(4403, "denied"); } catch { /* egal */ }
+      }
+      await this.persist();
+      this.broadcast();
+      return;
+    }
+    if (!guest) {
+      await this.persist();
+      this.broadcast();
+      this.send(ws, { type: "error", message: `${knock.name} ist nicht mehr da.` });
+      return;
+    }
+    if (!(await this.addMember(guest, { name: knock.name, profile: knock.profile, avatar: knock.avatar, group: knock.group, nonce: knock.nonce }))) {
+      await this.persist();
+      this.broadcast();
+    }
+  }
+
+  /** Wer zu lange vor der Tür steht, bekommt eine freundliche Absage – nichts bleibt hängen */
+  private async expireKnocks(): Promise<void> {
+    const room = this.room;
+    if (!room?.knocks?.length) return;
+    const now = Date.now();
+    const old = room.knocks.filter((k) => now - k.at >= KNOCK_TIMEOUT_MS);
+    if (!old.length) return;
+    room.knocks = room.knocks.filter((k) => !old.includes(k));
+    for (const k of old) {
+      const guest = this.knockSocket(k.id);
+      if (!guest) continue;
+      this.send(guest, { type: "error", code: "no_answer", fatal: true, message: "Gerade kann dich niemand hereinlassen. Versuch es später noch einmal." });
+      guest.serializeAttachment({ playerId: null } satisfies Attachment);
+      try { guest.close(4408, "timeout"); } catch { /* egal */ }
+    }
+    await this.persist();
     this.broadcast();
   }
 
@@ -568,34 +761,51 @@ export class GameRoom extends DurableObject<Env> {
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {} });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews() });
     }
+  }
+
+  private knockViews(): KnockView[] | undefined {
+    const now = Date.now();
+    const list = (this.room?.knocks ?? []).map((k) => ({ id: k.id, name: k.name, avatar: sanitizeAvatar(k.avatar) ?? undefined, ago: now - k.at, snoozed: k.snoozed || undefined }));
+    return list.length ? list : undefined;
   }
 
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {} });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews() });
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
     try { ws.send(JSON.stringify(msg)); } catch { /* Verbindung weg */ }
   }
 
-  /** Speichern und die 48-Stunden-Frist neu starten. `important`: Admin-Übersicht sofort aktualisieren. */
+  /** Speichern und die Lebensdauer neu starten. `important`: Übersicht sofort aktualisieren. */
   private async persist(important = false): Promise<void> {
     if (!this.room) return;
     this.room.updatedAt = Date.now();
     await this.ctx.storage.put("room", this.room);
-    await this.ctx.storage.setAlarm(Date.now() + await this.roomTtl());
+    await this.scheduleEnd();
     await this.report(important);
   }
 
-  /** Kurzinfo an die Admin-Übersicht – sonst höchstens alle 30 Sekunden */
+  /** Wecker für das Ende des Raums: Lebensdauer ab jetzt (Dauerräume ohne Wecker) */
+  private async scheduleEnd(): Promise<void> {
+    const ms = await this.lifeMs();
+    if (ms === null) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(Date.now() + ms);
+  }
+
+  /** Kurzinfo an Übersicht und Raumverzeichnis – sonst höchstens alle 30 Sekunden, außer der Raum wird leer bzw. wieder belebt */
+  private lastCount = -1;
   private async report(force: boolean): Promise<void> {
-    if (!force && Date.now() - this.lastReport < REPORT_MS) return;
     const info = await this.summary();
     if (!info) return;
+    const count = info.card?.online ?? 0;
+    const flipped = (count === 0) !== (this.lastCount === 0);
+    if (!force && !flipped && Date.now() - this.lastReport < REPORT_MS) return;
     this.lastReport = Date.now();
+    this.lastCount = count;
     try { await settingsOf(this.env).roomReport(info); } catch { /* nur ein Extra */ }
   }
 
@@ -605,15 +815,16 @@ export class GameRoom extends DurableObject<Env> {
     try { await settingsOf(this.env).count(this.room.state.gameId, kind, this.room.code); } catch { /* nur ein Extra */ }
   }
 
-  /** Ablauffrist aus den Admin-Einstellungen (alle paar Minuten neu gelesen) */
-  private ttl = ROOM_TTL_MS;
-  private ttlAt = 0;
-  private async roomTtl(): Promise<number> {
-    if (Date.now() - this.ttlAt > 5 * 60 * 1000) {
-      try { this.ttl = (await settingsOf(this.env).config()).limits.roomHours * 60 * 60 * 1000; } catch { /* alter Wert */ }
-      this.ttlAt = Date.now();
+  /** Obergrenze des Admins (alle paar Minuten neu gelesen) */
+  private maxHours = ROOM_TTL_MS / 3_600_000;
+  private maxAt = 0;
+  /** Wie lange der Raum leer bestehen bleibt (ms), null = Dauerraum */
+  private async lifeMs(): Promise<number | null> {
+    if (Date.now() - this.maxAt > 5 * 60 * 1000) {
+      try { this.maxHours = (await settingsOf(this.env).config()).limits.roomHours; } catch { /* alter Wert */ }
+      this.maxAt = Date.now();
     }
-    return this.ttl;
+    return lifeMs(this.room?.state.access, this.maxHours);
   }
 }
 
@@ -821,9 +1032,25 @@ export class SiteSettings extends DurableObject<Env> {
   async roomList(): Promise<AdminRoom[]> {
     const all = await this.ctx.storage.list<AdminRoom>({ prefix: "room:" });
     const now = Date.now();
-    const stale = [...all].filter(([, r]) => now - r.activeAt > INDEX_STALE_MS).map(([k]) => k);
+    // Dauerräume bleiben, sonst gilt die Lebensdauer des Raums (alte Räume: die eingebaute Frist)
+    const limit = (r: AdminRoom) => (r.life === "forever" ? Infinity : r.life ? LIFE_MS[r.life] + 60 * 60 * 1000 : INDEX_STALE_MS);
+    const stale = [...all].filter(([, r]) => now - r.activeAt > limit(r)).map(([k]) => k);
     if (stale.length) await this.ctx.storage.delete(stale);
     return [...all].filter(([k]) => !stale.includes(k)).map(([, r]) => r);
+  }
+
+  /** Offene Räume für den Start-Tab: belebt, sichtbar für alle oder für eine der eigenen Gruppen. Gruppe zuerst. */
+  async openRooms(groups: string[]): Promise<RoomCard[]> {
+    const all = await this.ctx.storage.list<AdminRoom>({ prefix: "room:" });
+    const cards: RoomCard[] = [];
+    for (const [, r] of all) {
+      const c = r.card;
+      if (!c || c.online === 0) continue;
+      const mine = !!r.groupCode && groups.includes(r.groupCode);
+      if (c.visibility === "none" || (c.visibility === "group" && !mine)) continue;
+      cards.push({ ...c, group: mine || undefined });
+    }
+    return cards.sort((a, b) => Number(!!b.group) - Number(!!a.group) || b.online - a.online || b.activeAt - a.activeAt).slice(0, 30);
   }
 
   // ----- Statistik -----
@@ -1266,6 +1493,21 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
     return json({ exportedAt: new Date().toISOString(), config: await settings.config(), stats: await settings.statsGet(), archive: await settings.archiveList(), ...(await settings.directory()) });
   }
 
+  // Dauerraum anlegen: bleibt bestehen, auch wenn er leer ist; der erste, der hineinkommt, ist Host
+  if (path === "/api/admin/rooms/create" && request.method === "POST") {
+    const pin = String(body.pin ?? "");
+    if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
+    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const config = await settings.config();
+    const access = sanitizeAccess({ ...(body.room && typeof body.room === "object" ? body.room : {}), life: "forever" }, undefined, true);
+    if (!access.name) return json({ error: "Bitte gib dem Raum einen Namen." }, 400);
+    for (let i = 0; i < 6; i++) {
+      const code = makeCode();
+      if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access)) return json({ code }, 201);
+    }
+    return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
   const m = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/(close|unlock)$/);
   if (m && request.method === "POST") {
     if (!ROOM_CODE_RE.test(m[1])) return json({ error: "Ungültiger Raumcode." }, 400);
@@ -1430,7 +1672,7 @@ export default {
 
     // Raum anlegen
     if (url.pathname === "/api/rooms" && request.method === "POST") {
-      let body: { pin?: unknown; game?: unknown; access?: unknown };
+      let body: { pin?: unknown; game?: unknown; access?: unknown; room?: unknown };
       try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
       const pin = String(body.pin ?? "");
       if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
@@ -1450,9 +1692,34 @@ export default {
       for (let i = 0; i < 6; i++) {
         const code = makeCode();
         const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
-        if (await stub.init(pin, gameId, unlocked, code, config.defaults)) return json({ code }, 201);
+        if (await stub.init(pin, gameId, unlocked, code, config.defaults, sanitizeAccess(body.room))) return json({ code }, 201);
       }
       return json({ error: "Gerade ist kein Raumcode frei. Versuch es gleich nochmal." }, 503);
+    }
+
+    // Raumverzeichnis: offene Räume (für alle bzw. die eigenen Gruppen sichtbar)
+    if (url.pathname === "/api/rooms/open" && request.method === "GET") {
+      const groups = (url.searchParams.get("groups") ?? "").split(",").filter((c) => GROUP_CODE_RE.test(c)).slice(0, 20);
+      if (!(await settingsOf(env).config()).features.online) return json({ rooms: [] });
+      return json({ rooms: await settingsOf(env).openRooms(groups) });
+    }
+
+    // Deine Räume: das Handy nennt seine gespeicherten Zugänge, jeder Raum prüft sie selbst
+    if (url.pathname === "/api/rooms/mine" && request.method === "POST") {
+      let body: { rooms?: unknown };
+      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const list = (Array.isArray(body.rooms) ? body.rooms : []).slice(0, 20) as { code?: unknown; playerId?: unknown; token?: unknown }[];
+      const rooms: RoomCard[] = [];
+      const gone: string[] = [];
+      await Promise.all(list.map(async (r) => {
+        const code = String(r.code ?? "");
+        if (!ROOM_CODE_RE.test(code)) return;
+        try {
+          const card = await withTimeout(env.ROOMS.get(env.ROOMS.idFromName(code)).card(String(r.playerId ?? ""), String(r.token ?? "")), 3000);
+          if (card) rooms.push(card); else gone.push(code);
+        } catch { /* Raum gerade nicht erreichbar – beim nächsten Mal */ }
+      }));
+      return json({ rooms: rooms.sort((a, b) => b.online - a.online || b.activeAt - a.activeAt), gone });
     }
 
     // Sprach-/Videochat eingerichtet?

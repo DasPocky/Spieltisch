@@ -21,6 +21,8 @@ import { ThemeSwitch } from "./ThemeSwitch";
 import { ShareCode } from "./ShareCode";
 import { Collapsible, lastLog, PlayersSheet } from "./PlayersHistory";
 import { EveningLine } from "./Evening";
+import { accessSummary, RoomAccessForm } from "./RoomAccessForm";
+import { DEFAULT_ACCESS, type RoomAccess } from "@shared/platform/directory";
 
 export interface MenuProps {
   board: BoardProps | null;
@@ -113,6 +115,14 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
                 <Row icon={BookOpen} label={`Regeln: ${name}`} />
               </RulesSheet>
             </Section>
+
+            {code && (
+              <Section title="Raum" hideTitle>
+                <Collapsible title="Raum & Zugang" badge={<span className="truncate text-xs font-normal text-muted-foreground">{accessSummary(room.access ?? DEFAULT_ACCESS)}</span>} testId="room-settings">
+                  <RoomSettings room={room} isHost={isHost} dispatch={dispatch} />
+                </Collapsible>
+              </Section>
+            )}
 
             {/* In der Lobby steht der Raumcode schon auf der Seite */}
             {code && board && (
@@ -280,5 +290,20 @@ export function Section({ title, hideTitle, children }: { title: string; hideTit
       {!hideTitle && <h3 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>}
       {children}
     </section>
+  );
+}
+
+/** Raumname, Sichtbarkeit, Einlass, Lebensdauer: der Host ändert sie jederzeit, alle anderen sehen sie */
+function RoomSettings({ room, isHost, dispatch }: Pick<BoardProps, "room" | "isHost" | "dispatch">) {
+  const current = room.access ?? DEFAULT_ACCESS;
+  const [draft, setDraft] = useState<RoomAccess>(current);
+  const changed = JSON.stringify(draft) !== JSON.stringify(current);
+  return (
+    <>
+      <RoomAccessForm value={draft} onChange={setDraft} editable={isHost} idPrefix="room-edit" />
+      {isHost ? (
+        <Button disabled={!changed} onClick={() => { dispatch({ type: "setAccess", access: draft }); toast("Raum-Einstellungen gespeichert"); }}>Übernehmen</Button>
+      ) : <p className="-mt-1 text-xs text-muted-foreground">Legt der Host fest.</p>}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { ChevronLeft, Loader2, Lock, LogOut, RefreshCw, ShieldCheck } from "luci
 import { GAMES, getGame } from "@shared/games";
 import { MAX_MESSAGE, withDefaults, type Access, type AdminRoom, type GameDefaults, type SiteConfig } from "@shared/platform/access";
 import { createRoom, type RoomAction } from "@shared/platform/room";
+import { ADMISSION_LABEL, ADMISSIONS, cleanRoomName, MAX_ROOM_NAME, VISIBILITIES, VISIBILITY_LABEL, type Admission, type Visibility } from "@shared/platform/directory";
 import type { Options } from "@shared/platform/types";
 import { Confirm } from "@/components/Confirm";
 import { Button } from "@/components/ui/button";
@@ -216,9 +217,46 @@ function RoomsTab({ api }: { api: Api }) {
         </Button>
       </div>
       <Status msg={msg} />
+      <PermanentRoom api={api} onCreated={load} />
       {rooms?.length === 0 && <Card className="text-center text-muted-foreground">Gerade ist kein Raum offen.</Card>}
       {rooms?.map((r) => <RoomCard key={r.code} room={r} onAct={(what) => act(r.code, what)} />)}
     </div>
+  );
+}
+
+/** Dauerraum: bleibt bestehen, auch wenn er leer ist – z. B. für eine feste Runde */
+function PermanentRoom({ api, onCreated }: { api: Api; onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("all");
+  const [admission, setAdmission] = useState<Admission>("pin");
+  const { busy, msg, run } = useSave();
+  const ok = cleanRoomName(name).length > 0 && /^\d{4,8}$/.test(pin);
+  if (!open) return <Button variant="secondary" onClick={() => setOpen(true)} data-testid="permanent-open">Dauerraum anlegen</Button>;
+  return (
+    <Card className="grid gap-3 p-4" data-testid="permanent-room">
+      <h2 className="font-bold">Dauerraum anlegen</h2>
+      <p className="-mt-1.5 text-sm text-muted-foreground">Bleibt bestehen, auch wenn niemand drin ist. Wer zuerst hineinkommt, ist Host.</p>
+      <div className="grid gap-1.5">
+        <Label htmlFor="perm-name">Name</Label>
+        <Input id="perm-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={MAX_ROOM_NAME} placeholder="z. B. Donnerstagsrunde" />
+      </div>
+      <div className="grid gap-1.5">
+        <Label htmlFor="perm-pin">PIN (4–8 Ziffern)</Label>
+        <Input id="perm-pin" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))} inputMode="numeric" className="tracking-[0.3em]" />
+      </div>
+      <Segmented label="Sichtbar für" value={visibility} onChange={setVisibility} options={VISIBILITIES.map((v) => ({ value: v, label: VISIBILITY_LABEL[v] }))} />
+      <Segmented label="Einlass" value={admission} onChange={setAdmission} options={ADMISSIONS.map((v) => ({ value: v, label: ADMISSION_LABEL[v] }))} />
+      <Status msg={msg} />
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="ghost" onClick={() => setOpen(false)}>Abbrechen</Button>
+        <Button disabled={!ok || busy} onClick={() => run(async () => {
+          await api<{ code: string }>("/api/admin/rooms/create", { pin, room: { name, visibility, admission } });
+          setName(""); setPin(""); onCreated();
+        }, "Dauerraum ist angelegt.")}>Anlegen</Button>
+      </div>
+    </Card>
   );
 }
 
@@ -229,10 +267,12 @@ function RoomCard({ room: r, onAct }: { room: AdminRoom; onAct: (what: "close" |
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-mono text-xl font-bold tracking-widest">{r.code}</div>
-          <div className="truncate text-sm text-muted-foreground">{gameName(r.gameId)}</div>
+          <div className="truncate text-sm text-muted-foreground">{r.card?.name ? `${r.card.name} · ` : ""}{gameName(r.gameId)}</div>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
           {r.locked && <span className="flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive"><Lock className="size-3" />PIN gesperrt</span>}
+          {r.life === "forever" && <span className="rounded-full bg-primary/14 px-2 py-0.5 text-xs font-semibold text-primary">Dauerraum</span>}
+          {r.card && r.card.visibility !== "all" && <span className="rounded-full bg-navy-800 px-2 py-0.5 text-xs font-semibold text-muted-foreground">{r.card.visibility === "group" ? "nur Gruppe" : "privat"}</span>}
           <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", r.phase === "playing" ? "bg-primary/14 text-primary" : "bg-navy-800 text-muted-foreground")}>
             {r.phase === "playing" ? "läuft" : "Lobby"}
           </span>

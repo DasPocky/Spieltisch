@@ -31,6 +31,7 @@ import { Meet, meetKey } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
+import { KnockBar, type KnockEntry } from "./KnockBar";
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
@@ -47,6 +48,9 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   call?: CallControls;
   /** Text-Chat (nur online) */
   chat?: ChatControls;
+  /** Wer gerade anklopft (online, Einlass mit Anklopfen) */
+  knocks?: KnockEntry[];
+  onKnock?: (id: string, decision: "admit" | "deny" | "wait") => void;
 }
 
 /** Gemeinsamer Rahmen für lokales und Online-Spiel: Kopfzeile, Lobby oder das Spielbrett des Moduls. */
@@ -112,6 +116,10 @@ export function RoomScreen(props: Props) {
       {props.call && <CallStrip call={props.call} players={room.players} me={me} compact={!!board || (!!code && !!room.meet)} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
+      {props.knocks && props.onKnock && (
+        <KnockBar knocks={props.knocks} isHost={isHost} hostOnline={!!room.hostId && !!online?.has(room.hostId)}
+          hostName={room.players.find((p) => p.id === room.hostId)?.name} onAnswer={props.onKnock} />
+      )}
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
       <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
