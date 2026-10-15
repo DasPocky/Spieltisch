@@ -102,3 +102,31 @@ test("Dauerraum vom Admin: erster Gast wird Host, Raum bleibt nach dem Verlassen
   await eva.context().close();
   expect((await (await request.get(`/api/rooms/${code}`)).json()).exists).toBe(true);
 });
+
+test("Anklopfen mit Funkloch: kurz weg ist kein Drama – weder beim Gast noch beim Host", async ({ browser }) => {
+  const anna = await newPhone(browser);
+  const code = await openRoom(anna, "Anna", "3141", async (p) => { await p.getByRole("radio", { name: /Anklopfen/ }).click(); });
+  const ben = await knock(browser, code, "Ben", "3141");
+  await expect(anna.getByTestId("knock-bar")).toContainText("Ben klopft an");
+
+  // Ben hat ein Funkloch – Anna lässt ihn trotzdem ein, nach dem Wiederverbinden ist er drin
+  await ben.context().setOffline(true);
+  await anna.waitForTimeout(1500);
+  await expect(anna.getByTestId("knock-bar")).toContainText("Ben klopft an");
+  await anna.getByTestId("knock-bar").getByRole("button", { name: "Einlassen" }).click();
+  await anna.waitForTimeout(1500);
+  await ben.context().setOffline(false);
+  await expect(ben.getByText("Warte, bis der Host das Spiel startet …")).toBeVisible({ timeout: 25_000 });
+  await expect(anna.getByText("Ben", { exact: true })).toBeVisible();
+
+  // Anna hat ein kurzes Funkloch, während Cem anklopft: Ben übernimmt nicht sofort
+  const cem = await knock(browser, code, "Cem", "3141");
+  await expect(ben.getByTestId("knock-bar")).toContainText("Cem klopft an");
+  await anna.context().setOffline(true);
+  await ben.waitForTimeout(5000);
+  await expect(ben.getByTestId("knock-bar").getByRole("button", { name: "Einlassen" })).toHaveCount(0);
+  await anna.context().setOffline(false);
+  await expect(anna.getByTestId("knock-bar")).toContainText("Cem klopft an", { timeout: 25_000 });
+  await anna.getByTestId("knock-bar").getByRole("button", { name: "Einlassen" }).click();
+  await expect(cem.getByText("Warte, bis der Host das Spiel startet …")).toBeVisible({ timeout: 15_000 });
+});

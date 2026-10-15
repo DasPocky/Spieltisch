@@ -107,6 +107,10 @@ export const KNOCK_TIMEOUT_MS = 2 * 60_000;
 export const KNOCK_DELEGATE_MS = 30_000;
 /** Abgelehnt: so lange kein neues Anklopfen */
 export const KNOCK_DENY_MS = 60_000;
+/** Funkloch beim Gast: so lange bleibt sein Anklopfen stehen (und ein Einlassen gilt beim Wiederverbinden) */
+export const KNOCK_GRACE_MS = 20_000;
+/** Funkloch beim Host: erst nach so langer Zeit ohne Verbindung dürfen die anderen für ihn entscheiden */
+export const HOST_AWAY_MS = 15_000;
 
 /** Wer gerade anklopft (für alle im Raum sichtbar) */
 export interface KnockView {
@@ -117,9 +121,11 @@ export interface KnockView {
   ago: number;
   /** Host hat „Moment“ gesagt – dann entscheidet nur er */
   snoozed?: boolean;
+  /** Verbindung des Gasts ist gerade kurz weg */
+  away?: boolean;
 }
 
-/** Darf diese Person über ein Anklopfen entscheiden? */
+/** Darf diese Person über ein Anklopfen entscheiden? `hostOnline`: verbunden oder erst kurz weg (HOST_AWAY_MS) */
 export function mayAdmit(k: Pick<KnockView, "ago" | "snoozed">, isHost: boolean, hostOnline: boolean): boolean {
   if (isHost) return true;
   if (!hostOnline) return true;

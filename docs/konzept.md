@@ -194,7 +194,8 @@ Die PIN bleibt in jedem Fall Pflicht. „Niemand“ heißt: Der Raum erscheint i
    - Ist der Host nicht verbunden, dürfen alle im Raum sofort einlassen oder ablehnen.
    - Ist er verbunden, reagiert aber nicht, dürfen es nach 30 Sekunden alle im Raum.
    - Hat der Host die Anfrage gesehen und „Moment“ gewählt, gibt es keine Vertretung.
-4. **Timeout:** Nach zwei Minuten ohne Entscheidung erhält der Gast „Gerade kann dich niemand einlassen. Versuch es später noch einmal.“
+4. **Timeout:** Nach zwei Minuten ohne Entscheidung erhält der Gast „Gerade kann dich niemand hereinlassen. Versuch es später noch einmal.“
+5. **Funklöcher:** Verliert der Gast kurz die Verbindung, bleibt sein Anklopfen 20 Sekunden stehen, die Wartezeit läuft weiter; wird er in dieser Zeit eingelassen, ist er beim Wiederverbinden direkt drin. Der Host gilt erst nach 15 Sekunden ohne Verbindung als weg – ein kurzes Funkloch übergibt die Entscheidung nicht an die anderen.
 
 Abgelehnte Gäste können frühestens nach einer Minute erneut anklopfen. Wer einmal eingelassen wurde, kommt als Mitglied ohne erneutes Anklopfen zurück.
 

@@ -15,7 +15,7 @@ import {
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import {
-  DEFAULT_ACCESS, KNOCK_DENY_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
+  DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
 } from "../shared/platform/directory";
 import {
@@ -83,6 +83,10 @@ interface Knock {
   profile?: string;
   group?: string;
   nonce?: string;
+  /** Verbindung des Gasts weg seit – nach einem kurzen Funkloch geht es einfach weiter */
+  goneAt?: number;
+  /** Eingelassen, während der Gast kurz weg war – beim Wiederverbinden kommt er direkt hinein */
+  admitted?: boolean;
 }
 
 interface Attachment {
@@ -455,9 +459,10 @@ export class GameRoom extends DurableObject<Env> {
       delete this.room.call[att.playerId];
       await this.persist();
     }
-    // Gast vor der Tür ist gegangen
-    if (att?.knock && this.room?.knocks?.some((k) => k.id === att.knock)) {
-      this.room.knocks = this.room.knocks.filter((k) => k.id !== att.knock);
+    // Gast vor der Tür hat die Verbindung verloren: Eintrag bleibt kurz stehen (Funkloch), erst danach fällt er weg
+    const gone = att?.knock ? this.room?.knocks?.find((k) => k.id === att.knock) : undefined;
+    if (gone && !this.knockSocket(gone.id)) {
+      gone.goneAt = Date.now();
       await this.persist();
     }
     this.broadcast();
@@ -603,6 +608,13 @@ export class GameRoom extends DurableObject<Env> {
       const knocks = (room.knocks ??= []);
       // Dasselbe Handy klopft nochmal (neu verbunden): Eintrag behalten, nur die Verbindung tauschen
       const same = knocks.find((k) => (nonce && k.nonce === nonce) || (profile && k.profile === profile));
+      // Während des Funklochs eingelassen: jetzt direkt hinein
+      if (same?.admitted) {
+        room.knocks = knocks.filter((k) => k !== same);
+        await this.addMember(ws, { name: same.name, profile: same.profile, avatar: same.avatar, group: same.group, nonce: same.nonce });
+        return;
+      }
+      if (same) delete same.goneAt;
       const knock: Knock = same ?? { id: crypto.randomUUID(), name: cleanName(msg.name), at: Date.now() };
       Object.assign(knock, { name: cleanName(msg.name), avatar: msg.avatar, profile, group: typeof msg.group === "string" ? msg.group : undefined, nonce: nonce ?? undefined });
       if (!same) knocks.push(knock);
@@ -660,7 +672,7 @@ export class GameRoom extends DurableObject<Env> {
     const knock = room.knocks?.find((k) => k.id === msg.id);
     if (!knock) { this.send(ws, { type: "error", message: "Darum hat sich schon jemand gekümmert." }); this.sendState(ws, playerId); return; }
     const isHost = playerId === room.state.hostId;
-    const hostOnline = !!room.state.hostId && this.onlineIds().has(room.state.hostId);
+    const hostOnline = this.hostPresent();
     if (msg.decision === "wait") {
       if (!isHost) return;
       knock.snoozed = true;
@@ -672,8 +684,15 @@ export class GameRoom extends DurableObject<Env> {
       this.send(ws, { type: "error", message: "Das entscheidet gerade der Host." });
       return;
     }
-    room.knocks = room.knocks!.filter((k) => k.id !== knock.id);
     const guest = this.knockSocket(knock.id);
+    // Gast gerade im Funkloch: Einlassen gilt, sobald er wieder verbunden ist
+    if (msg.decision === "admit" && !guest && knock.goneAt) {
+      knock.admitted = true;
+      await this.persist();
+      this.broadcast();
+      return;
+    }
+    room.knocks = room.knocks!.filter((k) => k.id !== knock.id);
     if (msg.decision === "deny") {
       room.denied = Object.fromEntries([...Object.entries(room.denied ?? {}).filter(([, t]) => t > Date.now()), [knock.profile ?? knock.name.toLowerCase(), Date.now() + KNOCK_DENY_MS]].slice(-40));
       if (guest) {
@@ -702,7 +721,7 @@ export class GameRoom extends DurableObject<Env> {
     const room = this.room;
     if (!room?.knocks?.length) return;
     const now = Date.now();
-    const old = room.knocks.filter((k) => now - k.at >= KNOCK_TIMEOUT_MS);
+    const old = room.knocks.filter((k) => now - k.at >= KNOCK_TIMEOUT_MS || (k.goneAt !== undefined && now - k.goneAt >= KNOCK_GRACE_MS));
     if (!old.length) return;
     room.knocks = room.knocks.filter((k) => !old.includes(k));
     for (const k of old) {
@@ -757,10 +776,21 @@ export class GameRoom extends DurableObject<Env> {
     return online;
   }
 
+  /** Wann der Host zuletzt verbunden war (nur im Speicher) */
+  private hostSeenAt = 0;
+  /** Host da – oder erst so kurz weg, dass es ein Funkloch sein kann */
+  private hostPresent(): boolean {
+    const host = this.room?.state.hostId;
+    if (!host) return false;
+    if (this.onlineIds().has(host)) { this.hostSeenAt = Date.now(); return true; }
+    return Date.now() - this.hostSeenAt < HOST_AWAY_MS;
+  }
+
   private broadcast(): void {
     if (!this.room) return;
     const sockets = this.ctx.getWebSockets();
     const onlineList = [...this.onlineIds()];
+    if (this.room.state.hostId && onlineList.includes(this.room.state.hostId)) this.hostSeenAt = Date.now();
     this.lastOnline = [...onlineList].sort().join();
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
@@ -771,7 +801,8 @@ export class GameRoom extends DurableObject<Env> {
 
   private knockViews(): KnockView[] | undefined {
     const now = Date.now();
-    const list = (this.room?.knocks ?? []).map((k) => ({ id: k.id, name: k.name, avatar: sanitizeAvatar(k.avatar) ?? undefined, ago: now - k.at, snoozed: k.snoozed || undefined }));
+    const list = (this.room?.knocks ?? []).filter((k) => !k.admitted)
+      .map((k) => ({ id: k.id, name: k.name, avatar: sanitizeAvatar(k.avatar) ?? undefined, ago: now - k.at, snoozed: k.snoozed || undefined, away: k.goneAt !== undefined || undefined }));
     return list.length ? list : undefined;
   }
 
