@@ -8,9 +8,9 @@ import {
   sanitizeGroupResult, upsertMember, viewGroup, cleanGroupName, type GroupData, type GroupPreview, type GroupView,
 } from "../shared/platform/group";
 import {
-  ACCESS_CODE_RE, accessFor, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
+  ACCESS_CODE_RE, accessFor, countFeature, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
   WIPE_KINDS, type AccessConfig, type AdminRoom, type ArchivedRoom, type DirGroup, type DirProfile, type GameDefaults, type SiteConfig, type SiteStats,
-  type StatKind, type WipeKind,
+  type FeatureKind, type StatKind, type WipeKind,
 } from "../shared/platform/access";
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
@@ -173,6 +173,7 @@ export class GameRoom extends DurableObject<Env> {
     };
     await this.persist(true);
     await this.count("rooms");
+    if (access.visibility !== "all" || access.admission === "knock") await this.feature("private");
     return true;
   }
 
@@ -413,6 +414,7 @@ export class GameRoom extends DurableObject<Env> {
 
     if (msg.type === "call") {
       const call = (this.room.call ??= {});
+      const was = call[playerId];
       if (msg.session === null) delete call[playerId];
       else {
         // Nur Sitzungen, die dieser Spieler über unseren Server angelegt hat
@@ -422,6 +424,9 @@ export class GameRoom extends DurableObject<Env> {
       }
       await this.persist();
       this.broadcast();
+      const now = call[playerId];
+      if (now && !was) await this.feature("call");
+      if (now?.cam && !was?.cam) await this.feature("video");
       return;
     }
 
@@ -444,8 +449,9 @@ export class GameRoom extends DurableObject<Env> {
       await this.persist();
       for (const s of this.ctx.getWebSockets()) {
         const att = s.deserializeAttachment() as Attachment | null;
-        if (att?.playerId) this.send(s, { type: "chat", messages: [m], append: true });
+        if (att?.playerId || att?.watch) this.send(s, { type: "chat", messages: [m], append: true });
       }
+      await this.feature("chat");
       return;
     }
 
@@ -741,6 +747,7 @@ export class GameRoom extends DurableObject<Env> {
       await this.persist();
       this.send(ws, { type: "knocking", wait: Math.max(0, KNOCK_TIMEOUT_MS - (Date.now() - knock.at)) });
       this.broadcast();
+      if (!same) await this.feature("knock");
       return;
     }
 
@@ -969,6 +976,12 @@ export class GameRoom extends DurableObject<Env> {
   private async count(kind: StatKind): Promise<void> {
     if (!this.room) return;
     try { await settingsOf(this.env).count(this.room.state.gameId, kind, this.room.code); } catch { /* nur ein Extra */ }
+  }
+
+  /** Statistik: eine Funktion wurde benutzt (Anruf, Kamera, Chat, Anklopfen, privater Raum) */
+  private async feature(kind: FeatureKind): Promise<void> {
+    if (!this.room) return;
+    try { await settingsOf(this.env).feature(kind); } catch { /* nur ein Extra */ }
   }
 
   /** Obergrenze des Admins (alle paar Minuten neu gelesen) */
@@ -1239,6 +1252,11 @@ export class SiteSettings extends DurableObject<Env> {
     }
   }
 
+  async feature(kind: FeatureKind): Promise<void> {
+    this.stats = countFeature(this.stats, kind, Date.now());
+    await this.ctx.storage.put("stats", this.stats);
+  }
+
   async statsGet(): Promise<SiteStats> {
     return this.stats;
   }
@@ -1368,6 +1386,7 @@ export class GroupStore extends DurableObject<Env> {
     const id = upsertMember(g, profileId, member, avatar, Date.now());
     this.group = g;
     await this.save();
+    try { await settingsOf(this.env).feature("group"); } catch { /* nur ein Extra */ }
     return viewGroup(g, id);
   }
 
