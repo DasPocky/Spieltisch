@@ -26,9 +26,14 @@ async function login(page: Page) {
   await page.goto("/admin");
   await page.getByLabel("Admin-Passwort").fill(PW);
   await page.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page.getByTestId("stats")).toBeVisible();
-  await page.getByRole("tab", { name: "Freigaben" }).click();
-  await expect(page.getByRole("radiogroup", { name: "Spieltisch" })).toBeVisible();
+  await expect(page.getByTestId("admin-tile-live")).toBeVisible();
+}
+
+/** Bereich der Verwaltung öffnen (über die Kachel auf dem Admin-Start) */
+async function section(page: Page, id: "live" | "statistik" | "spiele" | "leute" | "einstellungen") {
+  if (!/\/admin\/?$/.test(new URL(page.url()).pathname)) await page.goto("/admin");
+  await page.getByTestId(`admin-tile-${id}`).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/${id}$`));
 }
 
 test.afterEach(async ({ request }) => {
@@ -46,12 +51,18 @@ test("Admin: falsches Passwort wird abgelehnt", async ({ page }) => {
 test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, request }) => {
   await setConfig(request, allOn, null);
   await login(page);
-  await page.getByRole("radiogroup", { name: "Kniffel" }).getByRole("radio", { name: /Aus/ }).click();
-  await page.getByRole("radiogroup", { name: "Flip 7" }).getByRole("radio", { name: /Code/ }).click();
-  await page.getByLabel(/Zugangscode/).fill("spieleabend");
-  await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByRole("status")).toHaveText("Gespeichert.");
+  await section(page, "spiele");
+  await page.getByRole("radiogroup", { name: "Freigabe Kniffel" }).getByRole("radio", { name: "Aus" }).click();
+  await expect(page.getByText("Kniffel: Aus")).toBeVisible();
+  await page.getByRole("radiogroup", { name: "Freigabe Flip 7" }).getByRole("radio", { name: "Code" }).click();
+  await expect(page.getByText("Flip 7: Code")).toBeVisible();
   await shot(page, "99-admin");
+  // Ohne Zugangscode weist der Admin-Start darauf hin – ein Tipp führt hin
+  await page.goto("/admin");
+  await page.getByTestId("admin-notes").getByRole("button", { name: "Festlegen" }).click();
+  await page.getByLabel(/Zugangscode/).fill("spieleabend");
+  await page.getByRole("button", { name: "Setzen" }).click();
+  await expect(page.getByRole("status")).toHaveText("Zugangscode gespeichert.");
 
   // Spielauswahl der Lobby: Kniffel weg, Flip 7 mit Schloss
   await page.goto("/");
@@ -102,7 +113,7 @@ test("Admin: bleibt nach dem Neuladen angemeldet, Abmelden beendet die Sitzung",
   expect((await request.get("/api/admin/stats", { headers: { authorization: `Bearer ${token}` } })).ok()).toBe(true);
 
   await page.reload();
-  await expect(page.getByRole("tab", { name: "Räume" })).toBeVisible();
+  await expect(page.getByTestId("admin-tile-live")).toBeVisible();
   await expect(page.getByLabel("Admin-Passwort")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Abmelden" }).click();
@@ -132,23 +143,28 @@ test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ pa
   }, code);
 
   await login(page);
-  await page.getByRole("tab", { name: "Räume" }).click();
+  // Admin-Start meldet die Sperre und löst sie mit einem Tipp; der Tab trägt einen Punkt
+  await expect(page.getByTestId("admin-notes")).toContainText(code);
+  await expect(page.getByTestId("admin-dot")).toBeVisible();
+  await section(page, "live");
   const card = page.getByTestId(`room-${code}`);
   await expect(card).toBeVisible();
   await expect(card).toContainText("Tutto");
   await expect(card).toContainText("Lobby");
-  await expect(card).toContainText("1 Spieler · 1 online");
-  await expect(card).toContainText("Hanna");
-  await expect(card).toContainText("PIN gesperrt");
+  await expect(card).toContainText("1 Spieler, 1 online");
+  await expect(card).toContainText("gesperrt");
   await adminShot(page, "2-raeume");
 
-  await card.getByRole("button", { name: "PIN-Sperre aufheben" }).click();
-  await expect(page.getByRole("status")).toHaveText(`PIN-Sperre von ${code} ist aufgehoben.`);
-  await expect(card).not.toContainText("PIN gesperrt");
+  await card.click();
+  const sheet = page.getByTestId("room-sheet");
+  await expect(sheet.getByTestId("room-player-Hanna")).toBeVisible();
+  await sheet.getByRole("button", { name: "Lösen" }).click();
+  await expect(page.getByText(`PIN-Sperre von ${code} ist aufgehoben.`)).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Lösen" })).toHaveCount(0);
 
-  await card.getByRole("button", { name: "Raum schließen" }).click();
+  await sheet.getByRole("button", { name: "Raum schließen" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Schließen" }).click();
-  await expect(page.getByRole("status")).toHaveText(`Raum ${code} ist geschlossen.`);
+  await expect(page.getByText(`Raum ${code} ist geschlossen.`)).toBeVisible();
   await expect(card).toHaveCount(0);
   await expect(host.getByRole("heading", { name: "Raum beendet" })).toBeVisible();
   await expect(host.getByText("Der Raum wurde geschlossen.")).toBeVisible();
@@ -157,13 +173,14 @@ test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ pa
 
 test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({ page, browser }) => {
   await login(page);
-  await page.getByRole("tab", { name: "Standards" }).click();
-  await page.getByRole("button", { name: "Kniffel", exact: true }).click();
-  await page.getByRole("radio", { name: /Ohne Extra/ }).click();
+  await section(page, "spiele");
+  await page.getByRole("button", { name: "Standards Kniffel" }).click();
+  const sheet = page.getByTestId("defaults-sheet");
+  await sheet.getByRole("radio", { name: /Ohne Extra/ }).click();
+  await expect(page.getByText(/^Kniffel: /)).toBeVisible();
   await adminShot(page, "3-standards");
-  await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByRole("status")).toHaveText("Gespeichert.");
-  await expect(page.getByRole("button", { name: "Kniffel (angepasst)" })).toBeVisible();
+  await sheet.getByRole("button", { name: "Fertig" }).click();
+  await expect(page.getByTestId("admin-game-kniffel")).toContainText("eigene Standards");
 
   // Online: neuer Raum hat den Standard
   const host = await newPhone(browser);
@@ -194,14 +211,19 @@ test("Admin: Übersicht zählt Räume und Partien", async ({ page, request, brow
   await expect(host.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
   await host.context().close();
 
+  const after = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
+  expect(after.totals.kniffel.rooms).toBeGreaterThanOrEqual(rooms + 1);
+  // Spitzenzeit gezählt
+  expect(Object.values(after.days[0].slots ?? {}).reduce((a: number, b) => a + (b as number), 0)).toBeGreaterThanOrEqual(1);
+
   await login(page);
-  await page.getByRole("tab", { name: "Übersicht" }).click();
+  await section(page, "statistik");
+  await page.getByRole("radio", { name: "Gesamt" }).click();
   const row = page.getByTestId("stat-game-kniffel");
   await expect(row).toBeVisible();
-  const cells = row.getByRole("cell");
-  expect(Number(await cells.nth(1).textContent())).toBeGreaterThanOrEqual(rooms + 1);
-  expect(Number(await cells.nth(2).textContent())).toBeGreaterThanOrEqual(1);
-  await expect(page.getByRole("heading", { name: "Pro Woche" })).toBeVisible();
+  await expect(row).toContainText(/[1-9]\d* online/);
+  await expect(page.getByRole("heading", { name: "Partien pro Woche" })).toBeVisible();
+  await expect(page.getByTestId("stat-heatmap")).toContainText("Am meisten los");
   await adminShot(page, "4-statistik");
 
   // Lokale Meldung: nur bekannte Spiele
@@ -219,8 +241,8 @@ test("Admin: Screenshot schmales Handy", async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 320, height: 640 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "de-DE" });
   const page = await ctx.newPage();
   await login(page);
-  await page.getByRole("tab", { name: "Übersicht" }).click();
-  await expect(page.getByRole("heading", { name: "Pro Woche" })).toBeVisible();
+  await section(page, "statistik");
+  await expect(page.getByRole("heading", { name: "Partien pro Tag" })).toBeVisible();
   await adminShot(page, "5-statistik-320");
   const w = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(w).toBeLessThanOrEqual(320);
@@ -241,12 +263,11 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(host.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
 
   await login(page);
-  // Übersicht: gerade offen
-  await page.getByRole("tab", { name: "Übersicht" }).click();
-  await expect(page.getByTestId("live-rooms")).not.toHaveText("0");
+  // Admin-Start: gerade offen
+  await expect(page.getByTestId("live-rooms")).not.toContainText(/^Räume offen0/);
   await adminShot(page, "6-uebersicht");
   // Verlauf: Raum mit beiden Namen, Leute-Liste, Suche
-  await page.getByRole("tab", { name: "Verlauf" }).click();
+  await section(page, "leute");
   const card = page.getByTestId(`arch-${code}`);
   await expect(card).toContainText("Henrike");
   await expect(card).toContainText("Gustav");
@@ -258,12 +279,14 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(page.getByTestId("people")).not.toContainText("Gustav");
   await adminShot(page, "7-verlauf");
 
-  // Optionen: Banner und „Neu“ erscheinen für Besucher
-  await page.getByRole("tab", { name: "Optionen" }).click();
-  await page.getByLabel("Hinweis-Banner (optional)").fill("Neu: Mühle und Dame!");
+  // Banner und „Neu“ gelten sofort für Besucher
+  await section(page, "spiele");
   await page.getByRole("button", { name: "Dame als neu markieren" }).click();
-  await page.getByTestId("options").getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByTestId("options").getByRole("status")).toHaveText("Gespeichert.");
+  await expect(page.getByText("Dame als neu markiert")).toBeVisible();
+  await section(page, "einstellungen");
+  await page.getByLabel("Hinweis-Banner (optional)").fill("Neu: Mühle und Dame!");
+  await page.getByLabel("Hinweis-Banner (optional)").press("Enter");
+  await expect(page.getByText("Banner gespeichert")).toBeVisible();
   await adminShot(page, "8-optionen");
   const visitor = await newPhone(browser);
   await visitor.goto("/");
@@ -281,7 +304,6 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(phone.getByTestId("greeting")).toHaveText("Hallo, Oma!");
 
   // Daten: alles löschen braucht „LÖSCHEN“, danach leer und der Raum ist zu
-  await page.getByRole("tab", { name: "Daten" }).click();
   await page.getByRole("button", { name: "Alles auswählen" }).click();
   const wipe = page.getByRole("button", { name: /endgültig löschen/ });
   await expect(wipe).toBeDisabled();
@@ -290,14 +312,14 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await wipe.click();
   await expect(page.getByTestId("data").getByRole("status")).toHaveText("Gelöscht.");
   await expect(host.getByText(/geschlossen|beendet/i).first()).toBeVisible();
-  await page.getByRole("tab", { name: "Verlauf" }).click();
+  await page.goto("/admin/leute");
   await expect(page.getByTestId("history")).toContainText("Noch keine Räume im Verlauf");
   const stats = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
   expect(Object.keys(stats.totals)).toHaveLength(0);
   // Einstellungen auf Auslieferungszustand: kein Banner, alle Spiele frei, „Ein Handy für alle“ aus, Obergrenze 1 Woche
   const fresh = await (await request.get("/api/config")).json();
   expect(fresh).toMatchObject({ banner: "", games: {}, featured: [], limits: { roomHours: 168 }, features: { local: false, online: true } });
-  await page.getByRole("tab", { name: "Optionen" }).click();
+  await page.goto("/admin/einstellungen");
   await expect(page.getByLabel("Hinweis-Banner (optional)")).toHaveValue("");
   // Kompletter Neustart: das Handy löscht beim nächsten Öffnen einmal alles – danach nie wieder von selbst
   expect(fresh.epoch).toBeTruthy();
@@ -312,7 +334,7 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await phone.context().close();
   // Der Admin selbst bleibt angemeldet
   await page.reload();
-  await expect(page.getByRole("tab", { name: "Daten" })).toBeVisible();
+  await expect(page.getByTestId("data")).toBeVisible();
   await host.context().close();
   await guest.context().close();
 });
@@ -326,7 +348,8 @@ test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich lösc
   const code = g.group.code as string;
 
   await login(page);
-  await page.getByRole("tab", { name: "Gruppen" }).click();
+  await section(page, "leute");
+  await page.getByRole("radio", { name: /Gruppen & Profile/ }).click();
   await expect(page.getByTestId(`group-${code}`)).toContainText("Testrunde");
   await expect(page.getByTestId(`profile-${profile}`)).toContainText("1 Partie");
   await adminShot(page, "10-gruppen");

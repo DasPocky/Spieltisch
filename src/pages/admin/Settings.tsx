@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { LOOKS } from "@shared/platform/looks";
 import { MAX_BANNER, MAX_MESSAGE, type Access, type SiteFeatures, type SiteLimits } from "@shared/platform/access";
@@ -38,7 +38,9 @@ export function SettingsSection() {
   const { config, save, api, setConfig } = useAdmin();
   const [resets, setResets] = useState(0);
   return (
-    <div className="grid gap-4 lg:grid-cols-2 lg:items-start" data-testid="admin-settings" key={resets}>
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start" data-testid="admin-settings">
+      {/* Nach „Einstellungen zurücksetzen“ die Felder frisch aufbauen – die Meldung unter „Daten“ bleibt stehen */}
+      <Fragment key={resets}>
       <Section title="Aussehen" hint="Gilt für alle. Hell oder dunkel stellt jeder selbst ein." wide>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" role="radiogroup" aria-label="Aussehen">
           {LOOKS.map((l) => (
@@ -87,6 +89,7 @@ export function SettingsSection() {
         <NumberField label="Verlauf behalten Tage" before="Verlauf behalten" after="Tage" min={1} max={365} value={config.archiveDays}
           onSave={(archiveDays) => save({ archiveDays }, `Verlauf: ${archiveDays} Tage`)} />
       </Section>
+      </Fragment>
 
       <div className="lg:col-span-2">
         <DataTab api={api} onReset={(c) => { setConfig(c); setResets((n) => n + 1); }} />
