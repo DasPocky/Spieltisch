@@ -100,3 +100,16 @@ test("Verwaltung Live: Nachricht, Host, Einstellungen, Partie beenden, PIN, Entf
   await admin.getByRole("alertdialog").getByRole("button", { name: "Schließen" }).click();
   await expect(anna.getByText("Raum beendet")).toBeVisible();
 });
+
+test("Verwaltung Status: Version, Dienste und Anfragen; Details zum Aufklappen", async ({ page, request }) => {
+  const s = await (await request.get("/api/admin/status", { headers: { "x-admin-password": PW } })).json();
+  expect(s.build.sha).toMatch(/^([0-9a-f]{40}|dev)$/);
+  expect(s.services).toMatchObject({ password: true, realtime: true });
+  expect(typeof s.requests.count).toBe("number");
+  expect((await request.get("/api/admin/status")).status()).toBe(403);
+  await adminPhone(page);
+  await expect(page.getByTestId("status-version")).not.toHaveText(/…/);
+  await page.getByTestId("admin-status").getByRole("button").first().click();
+  await expect(page.getByTestId("status-details")).toContainText("Anfragen heute");
+  await expect(page.getByTestId("status-details")).toContainText(s.build.sha.slice(0, 7));
+});

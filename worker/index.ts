@@ -14,6 +14,7 @@ import {
 } from "../shared/platform/access";
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
+import { BUILD, type ServerStatus } from "../shared/build";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
@@ -1252,6 +1253,26 @@ export class SiteSettings extends DurableObject<Env> {
     }
   }
 
+  /** Worker-Anfragen pro Tag (ungefähr: jede Instanz meldet gesammelt) */
+  async addRequests(n: number): Promise<void> {
+    const day = new Date().toISOString().slice(0, 10);
+    const r = (await this.ctx.storage.get<{ day: string; count: number; since: number }>("requests")) ?? { day, count: 0, since: Date.now() };
+    const next = r.day === day ? { ...r, count: r.count + n } : { day, count: n, since: r.since };
+    await this.ctx.storage.put("requests", next);
+  }
+
+  async status(): Promise<Omit<ServerStatus, "build" | "services">> {
+    const day = new Date().toISOString().slice(0, 10);
+    const r = (await this.ctx.storage.get<{ day: string; count: number; since: number }>("requests")) ?? { day, count: 0, since: Date.now() };
+    const rooms = await this.roomList();
+    return {
+      now: Date.now(),
+      requests: r.day === day ? r : { day, count: 0, since: r.since },
+      rooms: rooms.length,
+      connections: rooms.reduce((n, x) => n + (x.card?.online ?? x.players.filter((p) => p.online).length), 0),
+    };
+  }
+
   async feature(kind: FeatureKind): Promise<void> {
     this.stats = countFeature(this.stats, kind, Date.now());
     await this.ctx.storage.put("stats", this.stats);
@@ -1629,6 +1650,14 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
   if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status ?? 403);
 
   if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
+  if (path === "/api/admin/status" && request.method === "GET") {
+    const status: ServerStatus = {
+      ...(await settings.status()),
+      build: BUILD,
+      services: { realtime: !!(env.REALTIME_APP_ID && env.REALTIME_APP_TOKEN), realtimeFake: !!env.REALTIME_FAKE, password: !!env.ADMIN_PASSWORD },
+    };
+    return json(status);
+  }
 
   // Offene Räume: jeder Raum wird selbst gefragt – was nicht mehr existiert, fliegt aus der Übersicht
   if (path === "/api/admin/rooms" && request.method === "GET") {
@@ -1816,9 +1845,22 @@ function fakeSfu(op: CallOp, payload: { tracks?: { location?: string; sessionId?
   return {};
 }
 
+/** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
+let pendingRequests = 0;
+let lastFlush = Date.now();
+function countRequest(env: Env, ctx: ExecutionContext): void {
+  pendingRequests++;
+  if (pendingRequests < 25 && Date.now() - lastFlush < 60_000) return;
+  const n = pendingRequests;
+  pendingRequests = 0;
+  lastFlush = Date.now();
+  ctx.waitUntil(settingsOf(env).addRequests(n).catch(() => undefined));
+}
+
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
+    countRequest(env, ctx);
 
     // Freigaben für alle (ohne Geheimnisse)
     if (url.pathname === "/api/config" && request.method === "GET") return json(await settingsOf(env).config());
