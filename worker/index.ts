@@ -8,19 +8,22 @@ import {
   sanitizeGroupResult, upsertMember, viewGroup, cleanGroupName, type GroupData, type GroupPreview, type GroupView,
 } from "../shared/platform/group";
 import {
-  ACCESS_CODE_RE, accessFor, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
+  ACCESS_CODE_RE, accessFor, countFeature, countStat, DEFAULT_CONFIG, emptySiteStats, sanitizeConfig, sanitizeDefaults, STAT_KINDS, withDefaults,
   WIPE_KINDS, type AccessConfig, type AdminRoom, type ArchivedRoom, type DirGroup, type DirProfile, type GameDefaults, type SiteConfig, type SiteStats,
-  type StatKind, type WipeKind,
+  type FeatureKind, type StatKind, type WipeKind,
 } from "../shared/platform/access";
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
+import { BUILD, type ServerStatus } from "../shared/build";
+import { BOT_PREFIX, botMove } from "../shared/platform/bots";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
 } from "../shared/platform/directory";
 import {
   ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
-  type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
+  ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID,
+  type AdminRoomAction, type AdminRoomDetail, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
 
 interface Env {
@@ -71,6 +74,8 @@ interface RoomData {
   knocks?: Knock[];
   /** Abgelehnt: Profil-ID bzw. Name → darf erst ab dann wieder anklopfen */
   denied?: Record<string, number>;
+  /** Testraum (Bots): unsichtbar unter „Offene Räume“, zählt nicht in der Statistik */
+  test?: boolean;
 }
 
 /** Ein Gast mit richtiger PIN, der auf Einlass wartet – mit allem, was der Beitritt danach braucht */
@@ -93,7 +98,12 @@ interface Attachment {
   playerId: string | null;
   /** wartet vor der Tür (Anklopfen) */
   knock?: string;
+  /** Verwaltung schaut unsichtbar zu (nur lesen) */
+  watch?: boolean;
 }
+
+/** Innerer Pfad, über den der Worker eine geprüfte Zuschauer-Verbindung der Verwaltung weiterreicht */
+const WATCH_PATH = "/__admin-watch";
 
 /** Räume ohne Aktivität werden nach 48 Stunden gelöscht. */
 const ROOM_TTL_MS = 48 * 60 * 60 * 1000;
@@ -107,6 +117,12 @@ async function hashPin(salt: string, pin: string): Promise<string> {
   const data = new TextEncoder().encode(`${salt}:${pin}`);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function shuffleIds(xs: string[]): string[] {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
 }
 
 /** Raumcode aus 32 Zeichen – 256 ist durch 32 teilbar, also keine Modulo-Verzerrung. */
@@ -145,7 +161,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   /** Legt den Raum an. false, wenn der Code schon vergeben ist. */
-  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS, meet = false): Promise<boolean> {
+  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS, meet = false, test = false): Promise<boolean> {
     if (this.room) return false;
     const salt = crypto.randomUUID();
     const state = createRoom(gameId);
@@ -164,9 +180,11 @@ export class GameRoom extends DurableObject<Env> {
       createdAt: Date.now(),
       unlocked,
       code: code && ROOM_CODE_RE.test(code) ? code : undefined,
+      ...(test ? { test: true } : {}),
     };
     await this.persist(true);
     await this.count("rooms");
+    if (access.visibility !== "all" || access.admission === "knock") await this.feature("private");
     return true;
   }
 
@@ -210,6 +228,7 @@ export class GameRoom extends DurableObject<Env> {
       visibility: access.visibility,
       admission: access.admission,
       permanent: access.life === "forever" || undefined,
+      test: room.test || undefined,
       activeAt: room.updatedAt ?? room.createdAt,
     };
   }
@@ -238,6 +257,143 @@ export class GameRoom extends DurableObject<Env> {
     return true;
   }
 
+  /** Admin: Einzelheiten für die Raum-Ansicht */
+  async adminDetail(): Promise<AdminRoomDetail | null> {
+    const room = this.room;
+    if (!room?.code) return null;
+    const s = room.state;
+    // Bots sind immer da
+    const online = new Set([...this.onlineIds(), ...(s.bots ?? [])]);
+    return {
+      code: room.code,
+      gameId: s.gameId,
+      phase: s.phase,
+      access: s.access ?? DEFAULT_ACCESS,
+      hostId: s.hostId,
+      players: [
+        ...s.players.map((p) => ({ id: p.id, name: p.name, online: online.has(p.id), ...(s.bots?.includes(p.id) ? { bot: true } : {}) })),
+        ...(s.bench ?? []).map((p) => ({ id: p.id, name: p.name, online: online.has(p.id), bench: true, ...(s.bots?.includes(p.id) ? { bot: true } : {}) })),
+      ],
+      knocks: (room.knocks ?? []).filter((k) => !k.admitted).map((k) => k.name),
+      locked: Date.now() < room.lockUntil,
+      createdAt: room.createdAt,
+      activeAt: room.updatedAt ?? room.createdAt,
+      chat: room.chat?.length ?? 0,
+      call: Object.keys(room.call ?? {}).filter((id) => online.has(id)).length,
+      ...(room.test ? { test: true } : {}),
+    };
+  }
+
+  /** Admin: in den Raum eingreifen – Nachricht, Einstellungen, Host, Spieler, Partie, PIN */
+  async adminAct(a: AdminRoomAction): Promise<{ ok: boolean; error?: string; creds?: { playerId: string; token: string } }> {
+    const room = this.room;
+    if (!room) return { ok: false, error: "Den Raum gibt es nicht mehr." };
+    const s = room.state;
+    // Aktionen wie der Host ausführen – ohne Host (leerer Dauerraum) wie der erste Spieler
+    const actor = s.hostId ?? s.players[0]?.id ?? "";
+    try {
+      switch (a.type) {
+        case "message": {
+          const text = String(a.text ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NOTICE);
+          if (!text) return { ok: false, error: "Die Nachricht ist leer." };
+          const m: ChatMsg = { id: crypto.randomUUID().replace(/-/g, "").slice(0, 20), from: ADMIN_CHAT_ID, at: Date.now(), text: text.slice(0, CHAT_MAX) };
+          const chat = (room.chat ??= []);
+          chat.push(m);
+          if (chat.length > CHAT_KEEP) chat.splice(0, chat.length - CHAT_KEEP);
+          await this.persist();
+          for (const ws of this.ctx.getWebSockets()) {
+            const att = ws.deserializeAttachment() as Attachment | null;
+            if (att?.playerId || att?.watch) {
+              this.send(ws, { type: "chat", messages: [m], append: true });
+              if (att.playerId) this.send(ws, { type: "notice", text });
+            }
+          }
+          return { ok: true };
+        }
+        case "access": {
+          const base = s.access ?? DEFAULT_ACCESS;
+          const next = sanitizeAccess({ ...base, ...a.access }, base, true);
+          // „Dauerraum“ aufheben: zurück auf eine normale Lebensdauer
+          if (base.life === "forever" && a.access?.life && a.access.life !== "forever") next.life = sanitizeAccess({ life: a.access.life }).life;
+          room.state = { ...s, access: next };
+          // Kein Anklopfen mehr: wer vor der Tür steht, kommt herein, sobald er neu verbindet – bis dahin bleibt der Eintrag
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "host": {
+          if (!s.players.some((p) => p.id === a.id)) return { ok: false, error: "Diesen Spieler gibt es nicht (mehr)." };
+          room.state = { ...s, hostId: a.id };
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "kick": {
+          room.state = applyRoomAction(s, { type: "removePlayer", id: a.id }, a.id === actor ? a.id : actor);
+          this.kick(a.id);
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "lobby": {
+          if (s.phase !== "playing") return { ok: true };
+          room.state = applyRoomAction(s, { type: "toLobby" }, actor);
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "addBots": {
+          const n = Math.max(1, Math.min(10, Math.floor(Number(a.n) || 1)));
+          const hadHost = s.hostId;
+          let next = s;
+          const names = new Set([...s.players, ...(s.bench ?? [])].map((p) => p.name.toLowerCase()));
+          for (let i = 0, k = 1; i < n; k++) {
+            if (names.has(`bot ${k}`)) continue;
+            const id = `${BOT_PREFIX}${crypto.randomUUID().slice(0, 8)}`;
+            next = addPlayer(next, { id, name: `Bot ${k}` });
+            next.bots = [...(next.bots ?? []), id];
+            names.add(`bot ${k}`);
+            i++;
+          }
+          // Wer zuerst als Mensch hereinkommt, wird Host – nicht ein Bot
+          if (!hadHost) next.hostId = null;
+          room.state = next;
+          room.test = true;
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "botMove": {
+          if (!s.bots?.includes(a.id)) return { ok: false, error: "Das ist kein Testspieler." };
+          if (!(await this.botStep(a.id))) return { ok: false, error: "Der Bot kann gerade nichts tun." };
+          return { ok: true };
+        }
+        case "takeOver": {
+          if (!s.bots?.includes(a.id)) return { ok: false, error: "Das ist kein Testspieler." };
+          // Ab jetzt spielt das Admin-Gerät für ihn – er zieht nicht mehr von selbst
+          room.state = { ...s, bots: s.bots.filter((id) => id !== a.id) };
+          const token = crypto.randomUUID();
+          room.tokens[a.id] = token;
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true, creds: { playerId: a.id, token } };
+        }
+        case "pin": {
+          const pin = String(a.pin ?? "");
+          if (!PIN_RE.test(pin)) return { ok: false, error: "Die PIN muss 4 bis 8 Ziffern haben." };
+          room.pinHash = await hashPin(room.salt, pin);
+          room.fails = 0;
+          room.lockUntil = 0;
+          await this.persist(true);
+          return { ok: true };
+        }
+      }
+    } catch (e) {
+      return { ok: false, error: e instanceof GameError ? e.message : "Das ging gerade nicht." };
+    }
+    return { ok: false, error: "Unbekannte Aktion." };
+  }
+
   async info(): Promise<RoomInfo> {
     if (!this.room) return { exists: false };
     const s = this.room.state;
@@ -251,7 +407,13 @@ export class GameRoom extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ playerId: null } satisfies Attachment);
+    // Zuschauen der Verwaltung: nur über den inneren Pfad, den der Worker nach der Anmeldeprüfung nutzt
+    const watch = new URL(request.url).pathname === WATCH_PATH;
+    server.serializeAttachment({ playerId: null, ...(watch ? { watch: true } : {}) } satisfies Attachment);
+    if (watch) {
+      this.send(server, { type: "chat", messages: this.room.chat ?? [] });
+      this.sendWatch(server);
+    }
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -273,6 +435,9 @@ export class GameRoom extends DurableObject<Env> {
       this.send(ws, { type: "error", message: "Ungültige Nachricht." });
       return;
     }
+
+    // Wer zuschaut, liest nur mit
+    if ((ws.deserializeAttachment() as Attachment | null)?.watch) return;
 
     await this.expireKnocks();
 
@@ -299,6 +464,7 @@ export class GameRoom extends DurableObject<Env> {
 
     if (msg.type === "call") {
       const call = (this.room.call ??= {});
+      const was = call[playerId];
       if (msg.session === null) delete call[playerId];
       else {
         // Nur Sitzungen, die dieser Spieler über unseren Server angelegt hat
@@ -308,6 +474,9 @@ export class GameRoom extends DurableObject<Env> {
       }
       await this.persist();
       this.broadcast();
+      const now = call[playerId];
+      if (now && !was) await this.feature("call");
+      if (now?.cam && !was?.cam) await this.feature("video");
       return;
     }
 
@@ -330,8 +499,9 @@ export class GameRoom extends DurableObject<Env> {
       await this.persist();
       for (const s of this.ctx.getWebSockets()) {
         const att = s.deserializeAttachment() as Attachment | null;
-        if (att?.playerId) this.send(s, { type: "chat", messages: [m], append: true });
+        if (att?.playerId || att?.watch) this.send(s, { type: "chat", messages: [m], append: true });
       }
+      await this.feature("chat");
       return;
     }
 
@@ -410,7 +580,8 @@ export class GameRoom extends DurableObject<Env> {
     const was = before.phase === "playing" && before.game && before.gameId === now.gameId && before.round === now.round && logic.isOver(before.game);
     if (was || !logic.isOver(now.game)) return;
     await this.count("finished");
-    if (!logic.results || !room.profiles) return;
+    // Testräume schreiben nichts in Profile und Gruppen
+    if (room.test || !logic.results || !room.profiles) return;
     const ctx = { players: now.players, hostId: now.hostId, actorId: null, options: now.options, now: Date.now() };
     const results = logic.results(now.game, ctx);
     const players = results.length;
@@ -627,6 +798,7 @@ export class GameRoom extends DurableObject<Env> {
       await this.persist();
       this.send(ws, { type: "knocking", wait: Math.max(0, KNOCK_TIMEOUT_MS - (Date.now() - knock.at)) });
       this.broadcast();
+      if (!same) await this.feature("knock");
       return;
     }
 
@@ -789,11 +961,14 @@ export class GameRoom extends DurableObject<Env> {
   private broadcast(): void {
     if (!this.room) return;
     const sockets = this.ctx.getWebSockets();
-    const onlineList = [...this.onlineIds()];
+    // Bots sind immer „da“ (für die Anzeige; die Lebensdauer des Raums hängt nur an echten Verbindungen)
+    const onlineList = [...this.onlineIds(), ...(this.room.state.bots ?? [])];
+    this.scheduleBots();
     if (this.room.state.hostId && onlineList.includes(this.room.state.hostId)) this.hostSeenAt = Date.now();
     this.lastOnline = [...onlineList].sort().join();
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
+      if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
       this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews() });
     }
@@ -809,6 +984,41 @@ export class GameRoom extends DurableObject<Env> {
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
     this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews() });
+  }
+
+  /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */
+  private botTimer: ReturnType<typeof setTimeout> | null = null;
+  private scheduleBots(): void {
+    const s = this.room?.state;
+    if (this.botTimer || !s?.bots?.length || s.phase !== "playing") return;
+    // Ohne echte Verbindung ruhen die Bots – so bleibt ein leerer Testraum nicht ewig wach
+    if (this.onlineIds().size === 0) return;
+    this.botTimer = setTimeout(() => {
+      this.botTimer = null;
+      void (async () => {
+        for (const id of shuffleIds(this.room?.state.bots ?? [])) if (await this.botStep(id)) return;
+      })();
+    }, 900 + Math.floor(Math.random() * 900));
+  }
+
+  /** Ein Zug eines Bots wie eine normale Aktion: speichern, zählen, allen schicken. false, wenn er nichts tun kann. */
+  private async botStep(id: string): Promise<boolean> {
+    const room = this.room;
+    if (!room) return false;
+    const before = room.state;
+    const res = botMove(before, id, true);
+    if (!res) return false;
+    room.state = res.next;
+    await this.persist();
+    this.broadcast();
+    await this.recordIfFinished(before);
+    return true;
+  }
+
+  /** Für die Verwaltung: Sicht eines Gasts ohne eigene Karten, dazu wer online ist und wer klopft */
+  private sendWatch(ws: WebSocket, online = [...this.onlineIds(), ...(this.room?.state.bots ?? [])]): void {
+    if (!this.room) return;
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, WATCH_ID), you: WATCH_ID, online, call: this.room.call ?? {}, knocks: this.knockViews() });
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
@@ -846,8 +1056,14 @@ export class GameRoom extends DurableObject<Env> {
 
   /** Statistik: Raum angelegt, Partie gestartet oder beendet */
   private async count(kind: StatKind): Promise<void> {
-    if (!this.room) return;
+    if (!this.room || this.room.test) return;
     try { await settingsOf(this.env).count(this.room.state.gameId, kind, this.room.code); } catch { /* nur ein Extra */ }
+  }
+
+  /** Statistik: eine Funktion wurde benutzt (Anruf, Kamera, Chat, Anklopfen, privater Raum) */
+  private async feature(kind: FeatureKind): Promise<void> {
+    if (!this.room || this.room.test) return;
+    try { await settingsOf(this.env).feature(kind); } catch { /* nur ein Extra */ }
   }
 
   /** Obergrenze des Admins (alle paar Minuten neu gelesen) */
@@ -887,8 +1103,8 @@ async function sameSecret(a: string, b: string): Promise<boolean> {
 
 const GAME_IDS = Object.keys(GAMES);
 const ADMIN_MAX_FAILS = 8;
-/** Admin bleibt 12 Stunden angemeldet; höchstens so viele Sitzungen gleichzeitig */
-const SESSION_MS = 12 * 60 * 60 * 1000;
+/** Admin-Gerät bleibt 30 Tage angemeldet (Abmelden beendet die Sitzung sofort); höchstens so viele Sitzungen gleichzeitig */
+const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_SESSIONS = 20;
 const ADMIN_TOKEN_RE = /^[0-9a-f]{64}$/;
 /** Raum-Übersicht: Einträge ohne Lebenszeichen fliegen nach Ablauf der Raum-Frist raus */
@@ -1093,7 +1309,7 @@ export class SiteSettings extends DurableObject<Env> {
     const cards: RoomCard[] = [];
     for (const [, r] of all) {
       const c = r.card;
-      if (!c || c.online === 0) continue;
+      if (!c || c.online === 0 || c.test) continue;
       const mine = !!r.groupCode && groups.includes(r.groupCode);
       if (c.visibility === "none" || (c.visibility === "group" && !mine)) continue;
       cards.push({ ...c, group: mine || undefined });
@@ -1116,6 +1332,31 @@ export class SiteSettings extends DurableObject<Env> {
         if (a) await this.ctx.storage.put(key, { ...a, partien: a.partien + 1, games: a.games.includes(gameId) ? a.games : [...a.games, gameId] });
       }
     }
+  }
+
+  /** Worker-Anfragen pro Tag (ungefähr: jede Instanz meldet gesammelt) */
+  async addRequests(n: number): Promise<void> {
+    const day = new Date().toISOString().slice(0, 10);
+    const r = (await this.ctx.storage.get<{ day: string; count: number; since: number }>("requests")) ?? { day, count: 0, since: Date.now() };
+    const next = r.day === day ? { ...r, count: r.count + n } : { day, count: n, since: r.since };
+    await this.ctx.storage.put("requests", next);
+  }
+
+  async status(): Promise<Omit<ServerStatus, "build" | "services">> {
+    const day = new Date().toISOString().slice(0, 10);
+    const r = (await this.ctx.storage.get<{ day: string; count: number; since: number }>("requests")) ?? { day, count: 0, since: Date.now() };
+    const rooms = await this.roomList();
+    return {
+      now: Date.now(),
+      requests: r.day === day ? r : { day, count: 0, since: r.since },
+      rooms: rooms.length,
+      connections: rooms.reduce((n, x) => n + (x.card?.online ?? x.players.filter((p) => p.online).length), 0),
+    };
+  }
+
+  async feature(kind: FeatureKind): Promise<void> {
+    this.stats = countFeature(this.stats, kind, Date.now());
+    await this.ctx.storage.put("stats", this.stats);
   }
 
   async statsGet(): Promise<SiteStats> {
@@ -1247,6 +1488,7 @@ export class GroupStore extends DurableObject<Env> {
     const id = upsertMember(g, profileId, member, avatar, Date.now());
     this.group = g;
     await this.save();
+    try { await settingsOf(this.env).feature("group"); } catch { /* nur ein Extra */ }
     return viewGroup(g, id);
   }
 
@@ -1458,6 +1700,17 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
   }
   const cred = adminCred(request, body.password);
 
+  // Zuschauen: WebSocket kann keine Kopfzeilen setzen – das Sitzungs-Token kommt deshalb in der Adresse
+  const watch = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/watch$/);
+  if (watch && request.headers.get("Upgrade") === "websocket") {
+    const token = new URL(request.url).searchParams.get("t");
+    // Ohne Token gar nicht erst prüfen (sonst zählte es als falsches Passwort)
+    const ok = token ? await settings.auth({ token }) : { ok: false, status: 401, error: "Bitte melde dich neu an." };
+    if (!ok.ok || !ROOM_CODE_RE.test(watch[1])) return json({ ok: false, error: ok.error }, ok.status ?? 403);
+    const inner = new Request(new URL(WATCH_PATH, request.url), request);
+    return env.ROOMS.get(env.ROOMS.idFromName(watch[1])).fetch(inner);
+  }
+
   // Anmelden (gibt ein Sitzungs-Token zurück) oder Freigaben/Standards speichern
   if (path === "/api/admin" && request.method === "POST") {
     const update = body.config === undefined && body.defaults === undefined ? undefined : {
@@ -1478,6 +1731,14 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
   if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status ?? 403);
 
   if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
+  if (path === "/api/admin/status" && request.method === "GET") {
+    const status: ServerStatus = {
+      ...(await settings.status()),
+      build: BUILD,
+      services: { realtime: !!(env.REALTIME_APP_ID && env.REALTIME_APP_TOKEN), realtimeFake: !!env.REALTIME_FAKE, password: !!env.ADMIN_PASSWORD },
+    };
+    return json(status);
+  }
 
   // Offene Räume: jeder Raum wird selbst gefragt – was nicht mehr existiert, fliegt aus der Übersicht
   if (path === "/api/admin/rooms" && request.method === "GET") {
@@ -1554,6 +1815,39 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
       if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access, true)) return json({ code }, 201);
     }
     return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
+  // Entwickler-Modus: Testraum mit Bots – unsichtbar, zählt nicht; der Admin tritt als Erster bei und ist Host
+  if (path === "/api/admin/test-room" && request.method === "POST") {
+    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const n = Math.max(1, Math.min(10, Math.floor(Number(body.bots) || 3)));
+    const pin = String(1000 + Math.floor(Math.random() * 9000));
+    const config = await settings.config();
+    const access: RoomAccess = { name: "Testraum", visibility: "none", admission: "pin", life: "hour" };
+    for (let i = 0; i < 6; i++) {
+      const code = makeCode();
+      const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
+      if (!(await stub.init(pin, gameId, true, code, config.defaults, access, false, true))) continue;
+      const res = await stub.adminAct({ type: "addBots", n });
+      if (!res.ok) return json(res, 400);
+      return json({ code, pin }, 201);
+    }
+    return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
+  // Einzelheiten und Eingriffe in einen Raum
+  const r = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)(?:\/(act))?$/);
+  if (r && ROOM_CODE_RE.test(r[1])) {
+    const stub = env.ROOMS.get(env.ROOMS.idFromName(r[1]));
+    if (!r[2] && request.method === "GET") {
+      const detail = await stub.adminDetail();
+      if (!detail) await settings.roomGone(r[1]);
+      return detail ? json({ room: detail }) : json({ ok: false, error: "Den Raum gibt es nicht mehr." }, 404);
+    }
+    if (r[2] && request.method === "POST") {
+      const res = await stub.adminAct(body.action as AdminRoomAction);
+      return json(res, res.ok ? 200 : 400);
+    }
   }
 
   const m = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/(close|unlock)$/);
@@ -1650,9 +1944,22 @@ function fakeSfu(op: CallOp, payload: { tracks?: { location?: string; sessionId?
   return {};
 }
 
+/** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
+let pendingRequests = 0;
+let lastFlush = Date.now();
+function countRequest(env: Env, ctx: ExecutionContext): void {
+  pendingRequests++;
+  if (pendingRequests < 25 && Date.now() - lastFlush < 60_000) return;
+  const n = pendingRequests;
+  pendingRequests = 0;
+  lastFlush = Date.now();
+  ctx.waitUntil(settingsOf(env).addRequests(n).catch(() => undefined));
+}
+
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
+    countRequest(env, ctx);
 
     // Freigaben für alle (ohne Geheimnisse)
     if (url.pathname === "/api/config" && request.method === "GET") return json(await settingsOf(env).config());

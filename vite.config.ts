@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
@@ -22,7 +23,18 @@ function precacheList(): Plugin {
   };
 }
 
+/** Stand des Codes: in Cloudflare-Builds aus deren Umgebung, sonst aus git */
+function buildInfo() {
+  const git = (cmd: string) => { try { return execSync(`git ${cmd}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); } catch { return ""; } };
+  return {
+    sha: process.env.WORKERS_CI_COMMIT_SHA || git("rev-parse HEAD") || "dev",
+    branch: process.env.WORKERS_CI_BRANCH || git("rev-parse --abbrev-ref HEAD"),
+    time: new Date().toISOString(),
+  };
+}
+
 export default defineConfig({
+  define: { __BUILD__: JSON.stringify(buildInfo()) },
   plugins: [react(), tailwindcss(), cloudflare(), precacheList()],
   resolve: {
     alias: {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GAMES, isGameId } from "@shared/games";
-import { countStat, emptySiteStats, isoWeek, sanitizeConfig, orderGames, sanitizeDefaults, STAT_WEEKS, sumStats, withDefaults } from "@shared/platform/access";
+import { countFeature, countStat, emptySiteStats, slotOf, isoWeek, sanitizeConfig, orderGames, sanitizeDefaults, STAT_WEEKS, sumStats, withDefaults } from "@shared/platform/access";
 import { createRoom } from "@shared/platform/room";
 
 const defs = (id: string) => (isGameId(id) ? GAMES[id].settings : undefined);
@@ -75,5 +75,25 @@ describe("Admin", () => {
     expect(s.weeks).toHaveLength(STAT_WEEKS);
     expect(s.weeks[0].week).toBe(isoWeek(t0 + 20 * 7 * DAY));
     expect(s.totals.tutto.finished).toBe(20);
+  });
+
+  it("Spitzenzeiten nach deutscher Zeit, Funktionen pro Tag", () => {
+    // Freitag, 2. Oktober 2026, 18:30 UTC = 20:30 Sommerzeit
+    const fri = Date.UTC(2026, 9, 2, 18, 30);
+    expect(slotOf(fri)).toBe("4-20");
+    // Montag, 5. Januar 2026, 23:30 UTC = Dienstag 0:30 Winterzeit
+    expect(slotOf(Date.UTC(2026, 0, 5, 23, 30))).toBe("1-0");
+    let s = emptySiteStats(fri);
+    s = countStat(s, "tutto", "started", fri);
+    s = countStat(s, "tutto", "local", fri);
+    s = countStat(s, "tutto", "rooms", fri);
+    expect(s.days?.[0].slots).toEqual({ "4-20": 2 });
+    s = countFeature(s, "chat", fri);
+    s = countFeature(s, "chat", fri);
+    s = countFeature(s, "video", fri + DAY);
+    expect(s.days?.[1].features).toEqual({ chat: 2 });
+    expect(s.days?.[0].features).toEqual({ video: 1 });
+    // Unbekanntes wird nicht gezählt
+    expect(countFeature(s, "nix" as never, fri)).toBe(s);
   });
 });

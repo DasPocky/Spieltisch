@@ -15,13 +15,25 @@ export const TEST_INTRO_KEY = "spieltisch:test-intro";
 /** Wer nur kurz weg war (App gewechselt, neu geladen), sieht keine Begrüßung */
 const QUIET_MS = 5 * 60 * 1000;
 
-export type IntroMode = "onboarding" | "welcome" | null;
+export type IntroMode = "onboarding" | "welcome" | "tour" | null;
+
+/** Entwickler-Modus: einen Ablauf beim nächsten Laden noch einmal zeigen */
+const REPLAY_KEY = "spieltisch:replay";
+export function replayIntro(mode: Exclude<IntroMode, null>) {
+  try { sessionStorage.setItem(REPLAY_KEY, mode); } catch { /* egal */ }
+  location.href = "/";
+}
 
 /** Nur auf den Seiten der App-Hülle – wer einen Raum-Link öffnet, will gleich in den Raum */
 const SHELL_PATH = /^\/(spiele|profil|gruppe|g\/[A-Za-z0-9]{6})?\/?$/;
 
 function decide(): IntroMode {
   if (typeof window === "undefined") return null;
+  try {
+    const replay = sessionStorage.getItem(REPLAY_KEY) as IntroMode;
+    sessionStorage.removeItem(REPLAY_KEY);
+    if (replay === "onboarding" || replay === "welcome" || replay === "tour") return replay;
+  } catch { /* egal */ }
   // Automatisierte Tests sollen nicht an der Animation hängen (eigene Tests schalten sie gezielt ein)
   if (navigator.webdriver && !readJSON<boolean>(TEST_INTRO_KEY)) return null;
   if (!SHELL_PATH.test(location.pathname)) return null;

@@ -35,7 +35,7 @@ import { KnockBar, type KnockEntry } from "./KnockBar";
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
-  onAddLocal?: (name: string, from?: GroupPick) => void;
+  onAddLocal?: (name: string, from?: GroupPick, bot?: boolean) => void;
   room: RoomState;
   /** null im lokalen Modus */
   me: string | null;

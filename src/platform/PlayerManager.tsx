@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, Shuffle, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Bot, Plus, Shuffle, X } from "lucide-react";
 import { getGame } from "@shared/games";
 import type { Avatar as AvatarData } from "@shared/platform/group";
 import { MAX_NAME, MAX_PLAYERS, type RoomAction, type RoomState } from "@shared/platform/room";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Confirm } from "@/components/Confirm";
 import { cn } from "@/lib/utils";
 import { useActiveGroup } from "@/lib/group";
+import { useDev } from "@/lib/dev";
 import { Avatar, AvatarContext, AvatarPicker } from "./Avatar";
 import { Bubble } from "./chat/Chat";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -22,7 +23,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
   online: Set<string> | null;
   editable: boolean;
   dispatch: (a: RoomAction) => void;
-  onAddLocal?: (name: string, from?: GroupPick) => void;
+  onAddLocal?: (name: string, from?: GroupPick, bot?: boolean) => void;
 }) {
   const [name, setName] = useState("");
   const [edit, setEdit] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     dispatch({ type: "orderPlayers", ids });
   };
+  const devOn = useDev().on;
   const add = () => { if (!name.trim() || !onAddLocal) return; onAddLocal(name); setName(""); };
   const max = Math.min(MAX_PLAYERS, getGame(room.gameId).info.maxPlayers);
   // Mitglieder der aktiven Gruppe, die noch nicht mitspielen – ein Tipp genügt
@@ -151,6 +153,14 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" maxLength={MAX_NAME} autoComplete="off" enterKeyHint="done" aria-label="Name des Spielers" />
             <Button type="submit" disabled={!name.trim()}>Hinzufügen</Button>
           </form>
+          {devOn && (
+            <Button variant="ghost" size="sm" className="mt-1.5 text-muted-foreground" onClick={() => {
+              const taken = new Set([...room.players, ...bench].map((p) => p.name.toLowerCase()));
+              let k = 1;
+              while (taken.has(`bot ${k}`)) k++;
+              onAddLocal(`Bot ${k}`, undefined, true);
+            }}><Bot />Bot dazu <span className="font-normal">(Entwickler-Modus)</span></Button>
+          )}
           {room.phase === "playing" && !getGame(room.gameId).joinMidGame && (
             <p className="mt-1.5 px-1 text-xs text-muted-foreground">Kommt mitten in der Partie dazu und spielt ab der nächsten Partie mit („Nochmal“).</p>
           )}

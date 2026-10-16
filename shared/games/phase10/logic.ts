@@ -259,8 +259,15 @@ function finishAppRound(s: P10State, ctx: GameContext, winner: string) {
 }
 
 /** Alle liegen und jede Gruppe ist eine volle Folge 1–12: niemand kann mehr anlegen oder rauskommen */
+/**
+ * Sackgasse: Alle haben ausgelegt, und keine Karte außerhalb der Auslagen (Hände, Stapel, Ablage) passt noch irgendwo an –
+ * z. B. volle Folgen 1–12 oder Drillinge, deren Zahlen und Joker alle schon liegen. Dann endet die Runde von selbst.
+ */
 function deadEnd(s: P10State, ctx: GameContext): boolean {
-  return ctx.players.every((p) => s.laid[p.id]) && Object.values(s.laid).flat().every((g) => g.kind === "run" && g.lo === 1 && g.hi === 12);
+  if (!ctx.players.every((p) => s.laid[p.id])) return false;
+  const groups = Object.values(s.laid).flat();
+  const rest = [...Object.values(s.hands).flat(), ...s.pile, ...s.discard];
+  return !rest.some((c) => groups.some((g) => extend(g, c) || extend(g, c, "lo") || extend(g, c, "hi")));
 }
 function checkDeadEnd(s: P10State, ctx: GameContext) {
   if ((s.step !== "draw" && s.step !== "play") || !deadEnd(s, ctx)) return;

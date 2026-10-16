@@ -182,9 +182,22 @@ export const STAT_WEEKS = 12;
 /** So viele Tage Tagesstatistik */
 export const STAT_DAYS = 60;
 
+/** Gezählte Funktionen: Anruf beigetreten, Kamera an, Chat-Nachricht, Anklopfen, Gruppe angelegt, privater Raum */
+export type FeatureKind = "call" | "video" | "chat" | "knock" | "group" | "private";
+export const FEATURE_KINDS: readonly FeatureKind[] = ["call", "video", "chat", "knock", "group", "private"];
+export type FeatureCounts = Partial<Record<FeatureKind, number>>;
+
+export interface StatDay {
+  day: string;
+  games: Record<string, StatCounts>;
+  /** Gestartete Partien nach Wochentag und Stunde (deutsche Zeit): Schlüssel „<0–6, Mo = 0>-<0–23>“ */
+  slots?: Record<string, number>;
+  features?: FeatureCounts;
+}
+
 export interface SiteStats {
   /** Neuester Tag zuerst (YYYY-MM-DD, UTC), höchstens STAT_DAYS */
-  days?: { day: string; games: Record<string, StatCounts> }[];
+  days?: StatDay[];
   /** Neueste Woche zuerst, höchstens STAT_WEEKS */
   weeks: { week: string; games: Record<string, StatCounts> }[];
   totals: Record<string, StatCounts>;
@@ -205,14 +218,38 @@ export function isoWeek(ms: number): string {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
+const BERLIN = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", weekday: "short", hour: "2-digit", hourCycle: "h23" });
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+/** Wochentag (Mo = 0) und Stunde in deutscher Zeit, als Schlüssel „3-20“ */
+export function slotOf(ms: number): string {
+  const parts = BERLIN.formatToParts(new Date(ms));
+  const wd = WEEKDAYS.indexOf(parts.find((p) => p.type === "weekday")?.value ?? "Mon");
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0) % 24;
+  return `${Math.max(0, wd)}-${h}`;
+}
+
+/** Tag von `now` vorne anlegen (falls neu), ändern, sortieren und kürzen */
+function withDay(prev: SiteStats, now: number, change: (d: StatDay) => StatDay): StatDay[] {
+  const day = new Date(now).toISOString().slice(0, 10);
+  const prevDays = prev.days ?? [];
+  const days = prevDays.some((d) => d.day === day) ? prevDays : [{ day, games: {} }, ...prevDays];
+  return days.map((d) => (d.day === day ? change(d) : d)).sort((a, b) => (a.day < b.day ? 1 : -1)).slice(0, STAT_DAYS);
+}
+
+/** Zählt die Nutzung einer Funktion am Tag von `now` */
+export function countFeature(prev: SiteStats, kind: FeatureKind, now: number): SiteStats {
+  if (!FEATURE_KINDS.includes(kind)) return prev;
+  return { ...prev, days: withDay(prev, now, (d) => ({ ...d, features: { ...d.features, [kind]: (d.features?.[kind] ?? 0) + 1 } })) };
+}
+
 /** Zählt ein Ereignis in der Woche von `now` und insgesamt; alte Wochen fallen raus */
 export function countStat(prev: SiteStats, gameId: string, kind: StatKind, now: number): SiteStats {
   const week = isoWeek(now);
   const day = new Date(now).toISOString().slice(0, 10);
   const bump = (c: StatCounts | undefined): StatCounts => ({ ...c, [kind]: (c?.[kind] ?? 0) + 1 });
   const weeks = prev.weeks.some((w) => w.week === week) ? prev.weeks : [{ week, games: {} }, ...prev.weeks];
-  const prevDays = prev.days ?? [];
-  const days = prevDays.some((d) => d.day === day) ? prevDays : [{ day, games: {} }, ...prevDays];
+  // Spitzenzeiten: gestartete Partien (online und lokal)
+  const slot = kind === "started" || kind === "local" ? slotOf(now) : null;
   return {
     since: prev.since,
     totals: { ...prev.totals, [gameId]: bump(prev.totals[gameId]) },
@@ -220,10 +257,12 @@ export function countStat(prev: SiteStats, gameId: string, kind: StatKind, now: 
       .map((w) => (w.week === week ? { week, games: { ...w.games, [gameId]: bump(w.games[gameId]) } } : w))
       .sort((a, b) => (a.week < b.week ? 1 : -1))
       .slice(0, STAT_WEEKS),
-    days: days
-      .map((d) => (d.day === day ? { day, games: { ...d.games, [gameId]: bump(d.games[gameId]) } } : d))
-      .sort((a, b) => (a.day < b.day ? 1 : -1))
-      .slice(0, STAT_DAYS),
+    days: withDay(prev, now, (d) => ({
+      ...d,
+      day,
+      games: { ...d.games, [gameId]: bump(d.games[gameId]) },
+      ...(slot ? { slots: { ...d.slots, [slot]: (d.slots?.[slot] ?? 0) + 1 } } : {}),
+    })),
   };
 }
 

@@ -77,6 +77,8 @@ export interface RoomCard {
   admission: Admission;
   /** Dauerraum des Admins */
   permanent?: boolean;
+  /** Testraum mit Bots (Entwickler-Modus) – erscheint nie unter „Offene Räume“ */
+  test?: boolean;
   activeAt: number;
   /** Gehört zur eigenen Gruppe (nur bei „Offene Räume“) */
   group?: boolean;

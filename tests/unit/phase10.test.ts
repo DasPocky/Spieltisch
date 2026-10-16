@@ -152,4 +152,19 @@ describe("Phase 10 – Sackgasse", () => {
     expect(after.phase).toEqual({ p1: 7, p2: 6 });
     expect(after.scores).toEqual({ p1: 5 + 15 + 5, p2: 5 + 5 });
   });
+
+  it("Alle Einsen, Zweien und Joker liegen schon: niemand kann mehr anlegen, Runde endet", () => {
+    let r = act(roomWith(["Anna", "Ben"]), { type: "selectGame", gameId: "phase10" });
+    r = act(r, { type: "start" });
+    const s = r.game as P10State;
+    // Wie in einer Zufallspartie gefunden: beide haben Phase 1 aus Einsen und Zweien – nur Rot 2 fehlt noch
+    const laid: P10State["laid"] = {
+      p2: [{ kind: "set", cards: ["b-1", "y-1", "W", "g-1", "W", "W"], value: 1 }, { kind: "set", cards: ["r-2", "y-2", "W", "y-2"], value: 2 }],
+      p1: [{ kind: "set", cards: ["r-1", "g-1", "y-1", "W", "W", "b-1", "r-1"], value: 1 }, { kind: "set", cards: ["b-2", "b-2", "g-2", "W", "g-2", "W"], value: 2 }],
+    };
+    r = { ...r, game: { ...s, curId: "p1", step: "play", laid, hands: { p1: ["r-2", "r-5", "b-9"], p2: ["y-7", "g-11"] }, pile: ["b-3", "g-4"], discard: ["r-12"] } };
+    // Noch passt Rot 2 – es geht weiter, bis sie liegt
+    r = game(r, { type: "hit", card: "r-2", owner: "p1", g: 1 });
+    expect((r.game as P10State).step).toBe("roundEnd");
+  });
 });

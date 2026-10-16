@@ -7,7 +7,7 @@ import { Welcome } from "./Welcome";
 export function Intro({ onProfile }: { onProfile: () => void }) {
   const [mode, setMode] = useState(introMode);
   useEffect(() => trackSeen(), []);
-  if (mode === "onboarding") return <Onboarding onDone={() => { setMode(null); onProfile(); }} />;
+  if (mode === "onboarding" || mode === "tour") return <Onboarding start={mode === "tour" ? "tour?" : "hello"} onDone={() => { setMode(null); onProfile(); }} />;
   if (mode === "welcome") return <Welcome onDone={() => setMode(null)} />;
   return null;
 }

@@ -1,6 +1,6 @@
 import type { Avatar } from "./group";
 import type { RoomAction, RoomState } from "./room";
-import type { KnockView } from "./directory";
+import type { KnockView, RoomAccess } from "./directory";
 
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_CODE_LENGTH = 5;
@@ -63,6 +63,8 @@ export type ServerMessage =
   | { type: "ack"; id: string }
   /** Chat: beim Beitreten die letzten Nachrichten, danach jeweils die neue */
   | { type: "chat"; messages: ChatMsg[]; append?: boolean }
+  /** Nachricht der Verwaltung an alle im Raum */
+  | { type: "notice"; text: string }
   | { type: "error"; message: string; code?: ErrorCode; fatal?: boolean; /** gehört zu dieser Aktion */ id?: string };
 
 /** Herzschlag als reiner Text – der Server antwortet, ohne aufzuwachen */
@@ -80,4 +82,42 @@ export interface RoomInfo {
   name?: string;
   phase?: "lobby" | "playing";
   knock?: boolean;
+}
+
+// ---------- Verwaltung: Eingriffe in einen Raum ----------
+
+/** Absender von Nachrichten der Verwaltung im Chat */
+export const ADMIN_CHAT_ID = "@admin";
+/** So sieht die Verwaltung beim Zuschauen den Raum: wie ein Gast ohne eigene Karten */
+export const WATCH_ID = "@watch";
+export const MAX_NOTICE = 200;
+
+export type AdminRoomAction =
+  | { type: "message"; text: string }
+  | { type: "access"; access: Partial<RoomAccess> }
+  | { type: "host"; id: string }
+  | { type: "kick"; id: string }
+  | { type: "lobby" }
+  | { type: "pin"; pin: string }
+  /** Entwickler-Modus: Testspieler dazu, einen sofort ziehen lassen, einen übernehmen */
+  | { type: "addBots"; n: number }
+  | { type: "botMove"; id: string }
+  | { type: "takeOver"; id: string };
+
+/** Einzelheiten eines Raums für die Verwaltung */
+export interface AdminRoomDetail {
+  code: string;
+  gameId: string;
+  phase: "lobby" | "playing";
+  access: RoomAccess;
+  hostId: string | null;
+  players: { id: string; name: string; online: boolean; bench?: boolean; bot?: boolean }[];
+  knocks: string[];
+  locked: boolean;
+  createdAt: number;
+  activeAt: number;
+  chat: number;
+  call: number;
+  /** Testraum (mit Bots) – unsichtbar unter „Offene Räume“, zählt nicht in der Statistik */
+  test?: boolean;
 }

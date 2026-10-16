@@ -16,7 +16,8 @@ Technische Details stehen in [Entwicklung](entwicklung.md) und [Betrieb](betrieb
 8. [Spiele-, Gruppen- und Profil-Tab](#8-spiele--gruppen--und-profil-tab)
 9. [Technische Umsetzung](#9-technische-umsetzung)
 10. [Umsetzungsplan](#10-umsetzungsplan)
-11. [Ausblick: native Apps für iOS und Android](#11-ausblick-native-apps-für-ios-und-android)
+11. [Verwaltung](#11-verwaltung)
+12. [Ausblick: native Apps für iOS und Android](#12-ausblick-native-apps-für-ios-und-android)
 
 ## 1. Leitbild
 
@@ -53,7 +54,7 @@ Der Standard-Look ist **Papierschnitt**. Animationen und Übergänge orientieren
 | **Spiel** | Eine Partie innerhalb eines Raums. Logik in `shared/games/`, Oberfläche in `src/games/`. |
 | **Gruppe** | Feste Runde mit Mitgliedern und Bestenliste über viele Spieleabende. |
 | **Spieleabend** | Wertung über mehrere Partien in einem Raum. |
-| **Admin** | Freigaben je Spiel, Standard-Einstellungen, Look, Funktionen, Verlauf, Export und künftig Dauerräume. |
+| **Verwaltung** | Eigener Tab auf Admin-Geräten: Live-Räume mit Eingriffen, Statistik, Spiele, Leute, Einstellungen, Status und ein Entwickler-Modus mit Testspielern (siehe Abschnitt 11). |
 
 Optional vom Admin einschaltbar bleiben **Ein Handy für alle** (eine Partie, ein Gerät, ohne Netz) und **Offline-Nutzung**.
 
@@ -70,7 +71,7 @@ Unten liegt eine feste Tab-Leiste mit vier Bereichen:
 | **Gruppe** | Aktive Gruppe mit Bestenliste, Gruppen verwalten |
 | **Profil** | Name, Avatar, Statistik, Übertragung, Einstellungen |
 
-In einem Raum oder einer laufenden Partie ist die Tab-Leiste ausgeblendet; dort führt das Raummenü zurück. Ist eine Funktion im Admin abgeschaltet (z. B. Gruppen oder Profile), verschwindet der zugehörige Tab.
+In einem Raum oder einer laufenden Partie ist die Tab-Leiste ausgeblendet; dort führt das Raummenü zurück. Ist eine Funktion im Admin abgeschaltet (z. B. Gruppen oder Profile), verschwindet der zugehörige Tab. Auf Admin-Geräten kommt ein fünfter Tab **Verwaltung** hinzu (Abschnitt 11).
 
 ### Volle Fläche
 
@@ -248,7 +249,7 @@ Bestehende Räume und Spielstände bleiben kompatibel: Alte Räume ohne `access`
 
 | Thema | Umsetzung |
 | --- | --- |
-| **Hülle** | Neue Layout-Komponente mit Tab-Leiste; Routen `/`, `/spiele`, `/gruppe`, `/profil` werden zu Tabs. Raum, lokale Partie und Admin bleiben Vollbild-Routen. |
+| **Hülle** | Neue Layout-Komponente mit Tab-Leiste; Routen `/`, `/spiele`, `/gruppe`, `/profil` und auf Admin-Geräten `/admin` werden zu Tabs. Raum und lokale Partie bleiben Vollbild-Routen. |
 | **Begrüßung** | Eigene Komponente, die beim Start parallel Konfiguration, Raumliste und Gruppe lädt und frühestens nach der Animation, spätestens nach drei Sekunden übergibt. |
 | **Aktualität** | Raumliste beim Öffnen und bei Rückkehr in die App neu laden, solange der Start-Tab sichtbar ist zusätzlich in kurzen Abständen. |
 | **Installation** | Das Installationsereignis des Browsers abfangen und für den Knopf aufheben; im installierten Modus alle Installationshinweise ausblenden. |
@@ -270,7 +271,50 @@ Die Umsetzung erfolgte in fünf Schritten; alle sind umgesetzt und mit Handy-Tes
 | **4. Raumliste** | Deine Räume und offene Räume auf dem Start-Tab, Raumkarten, Beitritt als Zuschauer |
 | **5. Ein Raumtyp** | Treffpunkt und Spielraum zusammenführen, Raum-Einstellungen für den Host |
 
-## 11. Ausblick: native Apps für iOS und Android
+## 11. Verwaltung
+
+Die Verwaltung richtet sich an wenige Personen, die den Spieltisch betreiben. Sie ist kompakt, aber vollständig, und funktioniert auf dem Handy wie am Computer gleich gut.
+
+### Zugang
+
+| Thema | Lösung |
+| --- | --- |
+| **Erster Zugang** | Ein unauffälliger Link „Verwaltung“ ganz unten im Profil-Tab führt zur Anmeldung mit dem Admin-Passwort. |
+| **Admin-Gerät** | Nach der Anmeldung merkt sich das Gerät, dass es einem Admin gehört, und zeigt den fünften Tab **Verwaltung**. Die Sitzung gilt 30 Tage; „Abmelden“ beendet sie sofort und nimmt den Tab wieder weg. |
+| **Hinweis-Punkt** | Braucht etwas Aufmerksamkeit (z. B. ein Raum ist nach falschen PINs gesperrt), trägt der Tab einen Punkt. |
+
+### Aufbau
+
+Die **Übersicht** zeigt oben die Status-Leiste, darunter drei Kennzahlen (Räume offen, online jetzt, Partien heute) und **Hinweise mit Ein-Tipp-Lösung** (Sperre lösen, Spieltisch öffnen, Zugangscode festlegen, Online-Räume einschalten, Banner entfernen). Darunter führen Kacheln in die Bereiche. Am Computer steht links eine Seitenleiste, die Bereiche nutzen zwei Spalten.
+
+| Bereich | Inhalt |
+| --- | --- |
+| **Live** | Offene Räume als kompakte Zeilen. Ein Tipp öffnet das Raum-Blatt: unsichtbar **zuschauen** (nur lesen, niemand im Raum merkt es), **Nachricht an alle** (Hinweis und Chat-Eintrag „Verwaltung“), **Partie beenden**, **Host übergeben**, **Spieler entfernen**, Name, Sichtbarkeit, Einlass und Lebensdauer ändern (auch zum Dauerraum machen), **neue PIN** setzen, PIN-Sperre lösen, Raum schließen. Dazu „Dauerraum anlegen“. |
+| **Statistik** | Zeitraum 7, 30, 60 Tage oder gesamt: Partien, Räume, Beitritte, Verlauf, beliebteste Spiele, **Spitzenzeiten** nach Wochentag und Stunde (deutsche Zeit) und **genutzte Funktionen** (Anruf, Kamera, Chat, Anklopfen, Gruppen, private Räume). |
+| **Spiele** | Je Spiel Freigabe (an, mit Zugangscode, aus), „Neu“-Markierung, Reihenfolge und eigene Standard-Einstellungen. |
+| **Leute** | Verlauf (wer wann in welchem Raum war) sowie Gruppen und Profile. |
+| **Einstellungen** | Look, Hinweis-Banner, Zugang zum Spieltisch und Zugangscode, Funktionen, Grenzen, Entwickler-Modus, Daten (Export, Löschen, frischer Stand). |
+
+**Speichern:** Jede Änderung gilt sofort; ein Hinweis bietet „Rückgängig“ an. Textfelder speichern beim Verlassen des Felds. Nur der geheime Zugangscode hat einen eigenen Knopf.
+
+### Status und Version
+
+Die Status-Leiste zeigt die Antwortzeit des Servers, ob die Version aktuell ist und wie viel vom täglichen Gratis-Kontingent (100.000 Anfragen) verbraucht ist. Aufgeklappt vergleicht sie drei Stände: das Gerät, den Server und den letzten Commit auf `main` (öffentliche GitHub-Schnittstelle). Läuft auf dem Server eine neuere Version als auf dem Gerät, bietet sie „Neu laden“ an. Dazu kommen eingerichtete Dienste (Admin-Passwort, Audio und Video) sowie offene Räume und Verbindungen.
+
+### Entwickler-Modus
+
+Je Admin-Gerät in den Einstellungen einschaltbar. Er blendet den Bereich **Entwickler** ein:
+
+| Funktion | Zweck |
+| --- | --- |
+| **Testraum mit Bots** | Spiel und Anzahl wählen; der Admin tritt als Host bei. Bots ziehen von selbst zufällig, aber nur erlaubte Züge. Im Raum-Blatt lässt sich ein Bot sofort ziehen lassen oder **übernehmen** (das Gerät spielt dann für ihn). Testräume erscheinen nie unter „Offene Räume“ und zählen nicht in Statistik, Profilen oder Gruppen. |
+| **Bots lokal** | In „Ein Handy für alle“ gibt es „Bot dazu“; ist ein Bot dran, zieht er nach kurzer Pause. |
+| **Diagnose-Anzeige** | Version, Fenstergröße, Netz, Raum-Verbindung und Antwortzeit oben links. |
+| **Netz simulieren** | Künstliches Funkloch (5, 20, 60 s) und Verzögerung – um zu prüfen, dass kurzes Offline keine Dramen auslöst. |
+| **Abläufe erneut zeigen** | Willkommen, Rundgang, Begrüßung, App-Einladung, Würfel in voller Qualität, lokale Daten zurücksetzen. |
+| **Vorschau-Schalter** | Noch nicht freigegebene Funktionen nur auf diesem Gerät einschalten. |
+
+## 12. Ausblick: native Apps für iOS und Android
 
 Spieltisch ist als Progressive Web App gebaut und lässt sich schon heute auf dem Startbildschirm installieren. Eine Veröffentlichung in den App-Stores ist eine Option für später. Dieser Abschnitt bewertet die Wege grob.
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, DoorOpen, LogIn, Plus, Settings2, Smartphone, Users } from "lucide-react";
+import { ChevronRight, DoorOpen, LogIn, Plus, Smartphone, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
-import { navigate } from "@/hooks/useRoute";
 import { useGames } from "@/hooks/useGames";
 import { LOCAL_GAME_KEY, localKey, readJSON } from "@/lib/storage";
 import { getGame, isGameId } from "@shared/games";
@@ -57,10 +56,6 @@ export function Home() {
           <h1 className="truncate text-2xl font-bold leading-tight tracking-tight" data-testid="greeting">{name ? `Hallo, ${name}!` : "Spieltisch"}</h1>
           <p className="truncate text-sm text-muted-foreground">{name ? "Was spielt ihr heute?" : "Für euren Spieleabend"}</p>
         </div>
-        <button type="button" aria-label="Admin" onClick={() => navigate("/admin")}
-          className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground/70 outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring">
-          <Settings2 className="size-4.5" />
-        </button>
       </header>
 
       <div className="mt-4 grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2.5">

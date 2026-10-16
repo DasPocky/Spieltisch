@@ -42,7 +42,7 @@ export function HistoryTab({ api, archiveDays }: { api: Api; archiveDays: number
 
   return (
     <div className="grid gap-3" data-testid="history">
-      <p className="text-sm text-muted-foreground">Online-Räume der letzten {archiveDays} Tage (einstellbar unter „Optionen“). „Ein Handy für alle“ bleibt auf den Geräten und erscheint hier nicht.</p>
+      <p className="text-sm text-muted-foreground">Online-Räume der letzten {archiveDays} Tage (einstellbar unter „Einstellungen“). „Ein Handy für alle“ bleibt auf den Geräten und erscheint hier nicht.</p>
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-navy-950/50 p-1 ring-1 ring-inset ring-border" role="radiogroup" aria-label="Ansicht">
         {([["rooms", `Räume · ${rooms.length}`], ["people", `Leute · ${people.length}`]] as const).map(([v, label]) => (
           <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}
