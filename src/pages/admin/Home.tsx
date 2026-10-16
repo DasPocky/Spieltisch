@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "./context";
 import { goSection, SectionTile } from "./nav";
+import { useDev } from "@/lib/dev";
 import { StatusBar } from "./Status";
 import { Tile } from "./shared";
 
@@ -33,6 +34,7 @@ const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 export function AdminHome() {
   const { config, api, save } = useAdmin();
   const { rooms, load } = useAdminRooms();
+  const devOn = useDev().on;
   const [stats, setStats] = useState<SiteStats | null>(null);
   useEffect(() => { api<SiteStats>("/api/admin/stats").then(setStats).catch(() => { /* ohne Zahlen */ }); }, [api]);
 
@@ -83,6 +85,7 @@ export function AdminHome() {
         <SectionTile id="spiele" info={`${Object.keys(GAMES).length - off - coded} frei${coded ? ` · ${coded} mit Code` : ""}${off ? ` · ${off} aus` : ""}`} />
         <SectionTile id="leute" />
         <SectionTile id="einstellungen" info={`Look: ${LOOKS.find((l) => l.id === config.look)?.name ?? config.look}`} />
+        {devOn && <SectionTile id="entwickler" />}
       </div>
     </div>
   );

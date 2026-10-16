@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { Activity, BarChart3, ChevronRight, Dices, Settings2, Users, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, ChevronRight, Dices, Settings2, Users, Wrench, type LucideIcon } from "lucide-react";
 import { navigate } from "@/hooks/useRoute";
+import { useDev } from "@/lib/dev";
 
-export type AdminSection = "start" | "live" | "statistik" | "spiele" | "leute" | "einstellungen";
+export type AdminSection = "start" | "live" | "statistik" | "spiele" | "leute" | "einstellungen" | "entwickler";
 
 export const SECTIONS: { id: Exclude<AdminSection, "start">; title: string; icon: LucideIcon; desc: string }[] = [
   { id: "live", title: "Live", icon: Activity, desc: "Offene Räume, Dauerräume, wer gerade da ist" },
@@ -10,7 +11,14 @@ export const SECTIONS: { id: Exclude<AdminSection, "start">; title: string; icon
   { id: "spiele", title: "Spiele", icon: Dices, desc: "Freigaben, Standards, Neu und Reihenfolge" },
   { id: "leute", title: "Leute", icon: Users, desc: "Verlauf, Gruppen und Profile" },
   { id: "einstellungen", title: "Einstellungen", icon: Settings2, desc: "Aussehen, Zugang, Funktionen, Daten" },
+  { id: "entwickler", title: "Entwickler", icon: Wrench, desc: "Testräume mit Bots, Diagnose, Netz, Abläufe" },
 ];
+
+/** Bereiche dieses Geräts – „Entwickler“ nur im Entwickler-Modus */
+export function useSections() {
+  const on = useDev().on;
+  return SECTIONS.filter((s) => s.id !== "entwickler" || on);
+}
 
 export const goSection = (s: AdminSection) => navigate(s === "start" ? "/admin" : `/admin/${s}`);
 

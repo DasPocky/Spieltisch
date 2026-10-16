@@ -49,6 +49,8 @@ export interface RoomState {
   evening?: Evening;
   /** Name, Sichtbarkeit, Einlass und Lebensdauer (nur online; fehlt bei alten Räumen) */
   access?: RoomAccess;
+  /** Testspieler (Entwickler-Modus): ziehen von selbst zufällig, aber erlaubt */
+  bots?: string[];
 }
 
 export interface Evening {
@@ -285,6 +287,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
         const s = structuredClone(prev);
         s.bench = s.bench!.filter((p) => p.id !== a.id);
         if (!s.bench.length) delete s.bench;
+        if (s.bots) s.bots = s.bots.filter((id) => id !== a.id);
         if (s.avatars) delete s.avatars[a.id];
         if (s.members) delete s.members[a.id];
         return s;
@@ -296,6 +299,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
         s.game = logic.onPlayerRemoved(s.game, a.id, context(s, actorId));
       }
       s.players.splice(i, 1);
+      if (s.bots) s.bots = s.bots.filter((id) => id !== a.id);
       if (s.avatars) delete s.avatars[a.id];
       if (s.members) delete s.members[a.id];
       if (s.hostId === a.id) s.hostId = s.players[0]?.id ?? null;

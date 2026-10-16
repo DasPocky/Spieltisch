@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/platform/Segmented";
 import { useAdmin } from "./context";
+import { setDev, useDev } from "@/lib/dev";
 import { DataTab } from "./Data";
 import { AuthError } from "./shared";
 
@@ -81,6 +82,8 @@ export function SettingsSection() {
         ))}
       </Section>
 
+      <DevSwitch />
+
       <Section title="Grenzen">
         {LIMITS.map(([key, before, after, min, max]) => (
           <NumberField key={key} label={`${before} ${after}`} before={before} after={after} min={min} max={max} value={config.limits[key]}
@@ -95,6 +98,19 @@ export function SettingsSection() {
         <DataTab api={api} onReset={(c) => { setConfig(c); setResets((n) => n + 1); }} />
       </div>
     </div>
+  );
+}
+
+/** Entwickler-Modus: nur für dieses Gerät */
+function DevSwitch() {
+  const d = useDev();
+  return (
+    <Section title="Entwickler-Modus" hint="Nur auf diesem Gerät: Testräume mit Bots, Diagnose, Netz simulieren, Abläufe erneut zeigen.">
+      <label className="flex items-center gap-3">
+        <Checkbox checked={d.on} aria-label="Entwickler-Modus" onCheckedChange={(c) => setDev({ on: c === true, ...(c === true ? {} : { overlay: false, delay: 0 }) })} />
+        <span><span className="block font-semibold">Entwickler-Modus</span><span className="block text-xs text-muted-foreground">{d.on ? "an – Bereich „Entwickler“ ist in der Übersicht" : "aus"}</span></span>
+      </label>
+    </Section>
   );
 }
 

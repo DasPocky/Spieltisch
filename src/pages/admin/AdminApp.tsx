@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { AdminProvider, useAdmin } from "./context";
-import { goSection, SECTIONS, type AdminSection } from "./nav";
+import { goSection, SECTIONS, useSections, type AdminSection } from "./nav";
 import { AdminHome } from "./Home";
 import { LiveSection } from "./Live";
 import { StatsSection } from "./Stats";
 import { GamesSection } from "./GamesAdmin";
 import { PeopleSection } from "./People";
 import { SettingsSection } from "./Settings";
+import { DevSection } from "./Dev";
 
 /** Verwaltung: Anmeldung, dann Admin-Start oder ein Bereich. Am Computer mit Seitenleiste. */
 export function AdminApp({ section }: { section: AdminSection }) {
@@ -25,6 +26,7 @@ export function AdminApp({ section }: { section: AdminSection }) {
 
 function Layout({ section }: { section: AdminSection }) {
   const { logout } = useAdmin();
+  const sections = useSections();
   const current = SECTIONS.find((s) => s.id === section);
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-4 lg:px-6" data-testid="admin">
@@ -33,7 +35,7 @@ function Layout({ section }: { section: AdminSection }) {
         <h1 className="mb-4 flex items-center gap-2 text-xl font-bold tracking-tight"><ShieldCheck className="size-6 text-primary" />Verwaltung</h1>
         <nav className="grid gap-1">
           <NavItem icon={LayoutGrid} label="Übersicht" active={section === "start"} onClick={() => goSection("start")} />
-          {SECTIONS.map((s) => <NavItem key={s.id} icon={s.icon} label={s.title} active={section === s.id} onClick={() => goSection(s.id)} />)}
+          {sections.map((s) => <NavItem key={s.id} icon={s.icon} label={s.title} active={section === s.id} onClick={() => goSection(s.id)} />)}
         </nav>
         <Button variant="ghost" size="sm" className="mt-6 text-muted-foreground" onClick={logout}><LogOut />Abmelden</Button>
       </aside>
@@ -60,6 +62,7 @@ function Layout({ section }: { section: AdminSection }) {
           {section === "spiele" && <GamesSection />}
           {section === "leute" && <PeopleSection />}
           {section === "einstellungen" && <SettingsSection />}
+          {section === "entwickler" && <DevSection />}
         </div>
       </main>
     </div>

@@ -15,6 +15,7 @@ import {
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import { BUILD, type ServerStatus } from "../shared/build";
+import { BOT_PREFIX, botMove } from "../shared/platform/bots";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
@@ -73,6 +74,8 @@ interface RoomData {
   knocks?: Knock[];
   /** Abgelehnt: Profil-ID bzw. Name → darf erst ab dann wieder anklopfen */
   denied?: Record<string, number>;
+  /** Testraum (Bots): unsichtbar unter „Offene Räume“, zählt nicht in der Statistik */
+  test?: boolean;
 }
 
 /** Ein Gast mit richtiger PIN, der auf Einlass wartet – mit allem, was der Beitritt danach braucht */
@@ -116,6 +119,12 @@ async function hashPin(salt: string, pin: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function shuffleIds(xs: string[]): string[] {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
 /** Raumcode aus 32 Zeichen – 256 ist durch 32 teilbar, also keine Modulo-Verzerrung. */
 function makeCode(): string {
   const bytes = new Uint8Array(ROOM_CODE_LENGTH);
@@ -152,7 +161,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   /** Legt den Raum an. false, wenn der Code schon vergeben ist. */
-  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS, meet = false): Promise<boolean> {
+  async init(pin: string, gameId: string, unlocked = false, code?: string, defaults?: GameDefaults, access: RoomAccess = DEFAULT_ACCESS, meet = false, test = false): Promise<boolean> {
     if (this.room) return false;
     const salt = crypto.randomUUID();
     const state = createRoom(gameId);
@@ -171,6 +180,7 @@ export class GameRoom extends DurableObject<Env> {
       createdAt: Date.now(),
       unlocked,
       code: code && ROOM_CODE_RE.test(code) ? code : undefined,
+      ...(test ? { test: true } : {}),
     };
     await this.persist(true);
     await this.count("rooms");
@@ -218,6 +228,7 @@ export class GameRoom extends DurableObject<Env> {
       visibility: access.visibility,
       admission: access.admission,
       permanent: access.life === "forever" || undefined,
+      test: room.test || undefined,
       activeAt: room.updatedAt ?? room.createdAt,
     };
   }
@@ -251,7 +262,8 @@ export class GameRoom extends DurableObject<Env> {
     const room = this.room;
     if (!room?.code) return null;
     const s = room.state;
-    const online = this.onlineIds();
+    // Bots sind immer da
+    const online = new Set([...this.onlineIds(), ...(s.bots ?? [])]);
     return {
       code: room.code,
       gameId: s.gameId,
@@ -259,8 +271,8 @@ export class GameRoom extends DurableObject<Env> {
       access: s.access ?? DEFAULT_ACCESS,
       hostId: s.hostId,
       players: [
-        ...s.players.map((p) => ({ id: p.id, name: p.name, online: online.has(p.id) })),
-        ...(s.bench ?? []).map((p) => ({ id: p.id, name: p.name, online: online.has(p.id), bench: true })),
+        ...s.players.map((p) => ({ id: p.id, name: p.name, online: online.has(p.id), ...(s.bots?.includes(p.id) ? { bot: true } : {}) })),
+        ...(s.bench ?? []).map((p) => ({ id: p.id, name: p.name, online: online.has(p.id), bench: true, ...(s.bots?.includes(p.id) ? { bot: true } : {}) })),
       ],
       knocks: (room.knocks ?? []).filter((k) => !k.admitted).map((k) => k.name),
       locked: Date.now() < room.lockUntil,
@@ -268,11 +280,12 @@ export class GameRoom extends DurableObject<Env> {
       activeAt: room.updatedAt ?? room.createdAt,
       chat: room.chat?.length ?? 0,
       call: Object.keys(room.call ?? {}).filter((id) => online.has(id)).length,
+      ...(room.test ? { test: true } : {}),
     };
   }
 
   /** Admin: in den Raum eingreifen – Nachricht, Einstellungen, Host, Spieler, Partie, PIN */
-  async adminAct(a: AdminRoomAction): Promise<{ ok: boolean; error?: string }> {
+  async adminAct(a: AdminRoomAction): Promise<{ ok: boolean; error?: string; creds?: { playerId: string; token: string } }> {
     const room = this.room;
     if (!room) return { ok: false, error: "Den Raum gibt es nicht mehr." };
     const s = room.state;
@@ -328,6 +341,42 @@ export class GameRoom extends DurableObject<Env> {
           await this.persist(true);
           this.broadcast();
           return { ok: true };
+        }
+        case "addBots": {
+          const n = Math.max(1, Math.min(10, Math.floor(Number(a.n) || 1)));
+          const hadHost = s.hostId;
+          let next = s;
+          const names = new Set([...s.players, ...(s.bench ?? [])].map((p) => p.name.toLowerCase()));
+          for (let i = 0, k = 1; i < n; k++) {
+            if (names.has(`bot ${k}`)) continue;
+            const id = `${BOT_PREFIX}${crypto.randomUUID().slice(0, 8)}`;
+            next = addPlayer(next, { id, name: `Bot ${k}` });
+            next.bots = [...(next.bots ?? []), id];
+            names.add(`bot ${k}`);
+            i++;
+          }
+          // Wer zuerst als Mensch hereinkommt, wird Host – nicht ein Bot
+          if (!hadHost) next.hostId = null;
+          room.state = next;
+          room.test = true;
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "botMove": {
+          if (!s.bots?.includes(a.id)) return { ok: false, error: "Das ist kein Testspieler." };
+          if (!(await this.botStep(a.id))) return { ok: false, error: "Der Bot kann gerade nichts tun." };
+          return { ok: true };
+        }
+        case "takeOver": {
+          if (!s.bots?.includes(a.id)) return { ok: false, error: "Das ist kein Testspieler." };
+          // Ab jetzt spielt das Admin-Gerät für ihn – er zieht nicht mehr von selbst
+          room.state = { ...s, bots: s.bots.filter((id) => id !== a.id) };
+          const token = crypto.randomUUID();
+          room.tokens[a.id] = token;
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true, creds: { playerId: a.id, token } };
         }
         case "pin": {
           const pin = String(a.pin ?? "");
@@ -531,7 +580,8 @@ export class GameRoom extends DurableObject<Env> {
     const was = before.phase === "playing" && before.game && before.gameId === now.gameId && before.round === now.round && logic.isOver(before.game);
     if (was || !logic.isOver(now.game)) return;
     await this.count("finished");
-    if (!logic.results || !room.profiles) return;
+    // Testräume schreiben nichts in Profile und Gruppen
+    if (room.test || !logic.results || !room.profiles) return;
     const ctx = { players: now.players, hostId: now.hostId, actorId: null, options: now.options, now: Date.now() };
     const results = logic.results(now.game, ctx);
     const players = results.length;
@@ -911,7 +961,9 @@ export class GameRoom extends DurableObject<Env> {
   private broadcast(): void {
     if (!this.room) return;
     const sockets = this.ctx.getWebSockets();
-    const onlineList = [...this.onlineIds()];
+    // Bots sind immer „da“ (für die Anzeige; die Lebensdauer des Raums hängt nur an echten Verbindungen)
+    const onlineList = [...this.onlineIds(), ...(this.room.state.bots ?? [])];
+    this.scheduleBots();
     if (this.room.state.hostId && onlineList.includes(this.room.state.hostId)) this.hostSeenAt = Date.now();
     this.lastOnline = [...onlineList].sort().join();
     for (const ws of sockets) {
@@ -934,8 +986,37 @@ export class GameRoom extends DurableObject<Env> {
     this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews() });
   }
 
+  /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */
+  private botTimer: ReturnType<typeof setTimeout> | null = null;
+  private scheduleBots(): void {
+    const s = this.room?.state;
+    if (this.botTimer || !s?.bots?.length || s.phase !== "playing") return;
+    // Ohne echte Verbindung ruhen die Bots – so bleibt ein leerer Testraum nicht ewig wach
+    if (this.onlineIds().size === 0) return;
+    this.botTimer = setTimeout(() => {
+      this.botTimer = null;
+      void (async () => {
+        for (const id of shuffleIds(this.room?.state.bots ?? [])) if (await this.botStep(id)) return;
+      })();
+    }, 900 + Math.floor(Math.random() * 900));
+  }
+
+  /** Ein Zug eines Bots wie eine normale Aktion: speichern, zählen, allen schicken. false, wenn er nichts tun kann. */
+  private async botStep(id: string): Promise<boolean> {
+    const room = this.room;
+    if (!room) return false;
+    const before = room.state;
+    const res = botMove(before, id, true);
+    if (!res) return false;
+    room.state = res.next;
+    await this.persist();
+    this.broadcast();
+    await this.recordIfFinished(before);
+    return true;
+  }
+
   /** Für die Verwaltung: Sicht eines Gasts ohne eigene Karten, dazu wer online ist und wer klopft */
-  private sendWatch(ws: WebSocket, online = [...this.onlineIds()]): void {
+  private sendWatch(ws: WebSocket, online = [...this.onlineIds(), ...(this.room?.state.bots ?? [])]): void {
     if (!this.room) return;
     this.send(ws, { type: "state", state: viewRoom(this.room.state, WATCH_ID), you: WATCH_ID, online, call: this.room.call ?? {}, knocks: this.knockViews() });
   }
@@ -975,13 +1056,13 @@ export class GameRoom extends DurableObject<Env> {
 
   /** Statistik: Raum angelegt, Partie gestartet oder beendet */
   private async count(kind: StatKind): Promise<void> {
-    if (!this.room) return;
+    if (!this.room || this.room.test) return;
     try { await settingsOf(this.env).count(this.room.state.gameId, kind, this.room.code); } catch { /* nur ein Extra */ }
   }
 
   /** Statistik: eine Funktion wurde benutzt (Anruf, Kamera, Chat, Anklopfen, privater Raum) */
   private async feature(kind: FeatureKind): Promise<void> {
-    if (!this.room) return;
+    if (!this.room || this.room.test) return;
     try { await settingsOf(this.env).feature(kind); } catch { /* nur ein Extra */ }
   }
 
@@ -1228,7 +1309,7 @@ export class SiteSettings extends DurableObject<Env> {
     const cards: RoomCard[] = [];
     for (const [, r] of all) {
       const c = r.card;
-      if (!c || c.online === 0) continue;
+      if (!c || c.online === 0 || c.test) continue;
       const mine = !!r.groupCode && groups.includes(r.groupCode);
       if (c.visibility === "none" || (c.visibility === "group" && !mine)) continue;
       cards.push({ ...c, group: mine || undefined });
@@ -1732,6 +1813,24 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
     for (let i = 0; i < 6; i++) {
       const code = makeCode();
       if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access, true)) return json({ code }, 201);
+    }
+    return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
+  // Entwickler-Modus: Testraum mit Bots – unsichtbar, zählt nicht; der Admin tritt als Erster bei und ist Host
+  if (path === "/api/admin/test-room" && request.method === "POST") {
+    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const n = Math.max(1, Math.min(10, Math.floor(Number(body.bots) || 3)));
+    const pin = String(1000 + Math.floor(Math.random() * 9000));
+    const config = await settings.config();
+    const access: RoomAccess = { name: "Testraum", visibility: "none", admission: "pin", life: "hour" };
+    for (let i = 0; i < 6; i++) {
+      const code = makeCode();
+      const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
+      if (!(await stub.init(pin, gameId, true, code, config.defaults, access, false, true))) continue;
+      const res = await stub.adminAct({ type: "addBots", n });
+      if (!res.ok) return json(res, 400);
+      return json({ code, pin }, 201);
     }
     return json({ error: "Gerade ist kein Raumcode frei." }, 503);
   }

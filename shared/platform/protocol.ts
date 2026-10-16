@@ -98,7 +98,11 @@ export type AdminRoomAction =
   | { type: "host"; id: string }
   | { type: "kick"; id: string }
   | { type: "lobby" }
-  | { type: "pin"; pin: string };
+  | { type: "pin"; pin: string }
+  /** Entwickler-Modus: Testspieler dazu, einen sofort ziehen lassen, einen übernehmen */
+  | { type: "addBots"; n: number }
+  | { type: "botMove"; id: string }
+  | { type: "takeOver"; id: string };
 
 /** Einzelheiten eines Raums für die Verwaltung */
 export interface AdminRoomDetail {
@@ -107,11 +111,13 @@ export interface AdminRoomDetail {
   phase: "lobby" | "playing";
   access: RoomAccess;
   hostId: string | null;
-  players: { id: string; name: string; online: boolean; bench?: boolean }[];
+  players: { id: string; name: string; online: boolean; bench?: boolean; bot?: boolean }[];
   knocks: string[];
   locked: boolean;
   createdAt: number;
   activeAt: number;
   chat: number;
   call: number;
+  /** Testraum (mit Bots) – unsichtbar unter „Offene Räume“, zählt nicht in der Statistik */
+  test?: boolean;
 }

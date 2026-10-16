@@ -13,6 +13,7 @@ import { OfflineBar } from "@/platform/OfflineBar";
 import { LoadError } from "@/platform/LoadError";
 import { AppShell } from "@/platform/shell/AppShell";
 import { Games } from "@/pages/Games";
+import { DevOverlay } from "@/platform/DevOverlay";
 
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp").then((m) => ({ default: m.AdminApp })));
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
@@ -40,6 +41,7 @@ export default function App() {
       <Intro onProfile={() => setGen((g) => g + 1)} />
       <OfflineBar />
       <Toaster />
+      <DevOverlay />
     </Suspense>
     </LoadError>
   );

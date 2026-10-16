@@ -26,8 +26,8 @@ const TOUR = [
  * Erster Start auf einem neuen Gerät: Willkommen → Name und Avatar (oder Profil per Code übernehmen) → Rundgang ja/nein.
  * Jeder Schritt lässt sich überspringen; ohne Namen fragt die App ihn spätestens beim ersten Raum.
  */
-export function Onboarding({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState<Step>("hello");
+export function Onboarding({ onDone, start = "hello" }: { onDone: () => void; start?: Step }) {
+  const [step, setStep] = useState<Step>(start);
   const [name, setName] = useState(myName);
   const [avatar, setAvatar] = useState<AvatarData>(myAvatar);
   const [adopting, setAdopting] = useState(false);

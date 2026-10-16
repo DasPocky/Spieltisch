@@ -16,7 +16,7 @@ export type Route =
   | { name: "gallery" };
 
 function parse(path: string): Route {
-  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|leute|einstellungen))?\/?$/);
+  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|leute|einstellungen|entwickler))?\/?$/);
   if (admin) return { name: "admin", section: (admin[1] ?? "start") as AdminSection };
   if (/^\/spiele\/?$/.test(path)) return { name: "games" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };

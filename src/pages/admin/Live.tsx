@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Crown, Eye, Lock, RefreshCw, Send, UserX } from "lucide-react";
+import { Bot, ChevronRight, Crown, Eye, Lock, Play, RefreshCw, Send, UserX } from "lucide-react";
 import type { AdminRoom } from "@shared/platform/access";
 import {
   ADMISSION_LABEL, ADMISSIONS, cleanRoomName, LIFE_LABEL, MAX_ROOM_NAME, VISIBILITIES, VISIBILITY_LABEL,
@@ -15,6 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gameIcon } from "@/games";
 import { cn } from "@/lib/utils";
+import { navigate } from "@/hooks/useRoute";
+import { useDev } from "@/lib/dev";
+import { credsKey, writeJSON, type RoomCreds } from "@/lib/storage";
 import { IconTile } from "@/platform/Logo";
 import { Segmented } from "@/platform/Segmented";
 import { useAdmin } from "./context";
@@ -103,6 +106,7 @@ function RoomRow({ room: r, onOpen }: { room: AdminRoom; onOpen: () => void }) {
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
         {r.locked && <Badge warn><Lock className="size-3" />gesperrt</Badge>}
+        {r.card?.test && <Badge><Bot className="size-3" />Test</Badge>}
         {r.life === "forever" && <Badge>Dauerraum</Badge>}
         {r.card && r.card.visibility !== "all" && <Badge>{r.card.visibility === "group" ? "Gruppe" : "privat"}</Badge>}
       </span>
@@ -141,11 +145,14 @@ function RoomSheet({ code, onClose, onChanged, onWatch }: { code: string | null;
     return () => clearInterval(t);
   }, [code, load]);
 
+  const devOn = useDev().on;
   const act = async (action: AdminRoomAction, done: string, undo?: AdminRoomAction) => {
     if (!code) return;
     setBusy(true);
     try {
-      await api(`/api/admin/rooms/${code}/act`, { action });
+      const r = await api<{ creds?: RoomCreds }>(`/api/admin/rooms/${code}/act`, { action });
+      // Bot übernehmen: dieses Gerät spielt ab jetzt für ihn
+      if (r.creds) { writeJSON(credsKey(code), r.creds); navigate(`/r/${code}`); return; }
       toast(done, undo ? { action: { label: "Rückgängig", onClick: () => void act(undo, "Zurückgenommen") } } : undefined);
       await load(code);
       onChanged();
@@ -210,9 +217,18 @@ function RoomSheet({ code, onClose, onChanged, onWatch }: { code: string | null;
                   <li key={p.id} className="flex items-center gap-2 rounded-xl bg-navy-800/50 py-1 pr-1 pl-3 text-sm" data-testid={`room-player-${p.name}`}>
                     <span className={cn("size-2 shrink-0 rounded-full", p.online ? "bg-ok" : "bg-muted-foreground/40")} aria-label={p.online ? "online" : "offline"} />
                     <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
+                    {p.bot && <span className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"><Bot className="size-3.5" />Bot</span>}
+                    {p.bot && (
+                      <>
+                        <Button size="icon" variant="ghost" className="size-7" disabled={busy || room.phase !== "playing"} aria-label={`${p.name}: jetzt ziehen`}
+                          onClick={() => void act({ type: "botMove", id: p.id }, `${p.name} hat gezogen.`)}><Play /></Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={busy} aria-label={`${p.name} übernehmen`}
+                          onClick={() => void act({ type: "takeOver", id: p.id }, `Du spielst jetzt für ${p.name}.`)}>Übernehmen</Button>
+                      </>
+                    )}
                     {p.id === room.hostId && <span className="flex items-center gap-1 text-xs font-semibold text-primary"><Crown className="size-3.5" />Host</span>}
                     {p.bench && <span className="text-xs text-muted-foreground">wartet</span>}
-                    {p.id !== room.hostId && !p.bench && (
+                    {p.id !== room.hostId && !p.bench && !p.bot && (
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={busy} aria-label={`${p.name} zum Host machen`}
                         onClick={() => void act({ type: "host", id: p.id }, `${p.name} ist jetzt Host.`, room.hostId ? { type: "host", id: room.hostId } : undefined)}>
                         Host machen
@@ -225,6 +241,12 @@ function RoomSheet({ code, onClose, onChanged, onWatch }: { code: string | null;
                   </li>
                 ))}
               </ul>
+              {devOn && (
+                <Button variant="secondary" size="sm" className="justify-self-start" disabled={busy} onClick={() => void act({ type: "addBots", n: 1 }, "Bot ist dabei – der Raum ist jetzt ein Testraum.")}>
+                  <Bot />Bot dazu
+                </Button>
+              )}
+              {room.test && <p className="text-xs text-muted-foreground">Testraum: unsichtbar unter „Offene Räume“, zählt nicht in der Statistik.</p>}
               {room.knocks.length > 0 && <p className="text-sm text-muted-foreground">Vor der Tür: {room.knocks.join(", ")}</p>}
               {!host && room.players.length > 0 && <p className="text-xs text-muted-foreground">Gerade ohne Host – wer da ist, kann ihn übernehmen.</p>}
             </section>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { addPlayer, applyRoomAction, createRoom, defaultOptions, roomGame, type RoomAction, type RoomState } from "@shared/platform/room";
+import { botMove } from "@shared/platform/bots";
+import { addPlayer, applyRoomAction, createRoom, currentPlayerId, defaultOptions, roomGame, type RoomAction, type RoomState } from "@shared/platform/room";
 import { withDefaults, type GameDefaults } from "@shared/platform/access";
 import { GAME_IDS, getGame, isGameId } from "@shared/games";
 import { GameError } from "@shared/platform/types";
@@ -108,6 +109,14 @@ export function LocalGame() {
     });
   }, []);
 
+  // Testspieler: ist ein Bot dran, zieht er nach kurzer Pause von selbst (jeder kann auch für ihn tippen)
+  const botTurn = room.bots?.length && room.phase === "playing" ? currentPlayerId(room) : null;
+  useEffect(() => {
+    if (!botTurn || !room.bots?.includes(botTurn)) return;
+    const t = setTimeout(() => run((s) => botMove(s, botTurn, false)?.next ?? s), 900 + Math.random() * 600);
+    return () => clearTimeout(t);
+  }, [room, botTurn, run]);
+
   // „Ein Handy für alle“ ist standardmäßig aus – nur wenn der Admin es eingeschaltet hat (Online-Räume abgeschaltet: lokal als Rückfall)
   if (config && config.features?.local !== true && config.features?.online !== false) {
     return (
@@ -130,11 +139,12 @@ export function LocalGame() {
         // Anderes Spiel gewählt: Standard-Einstellungen übernehmen
         return next.gameId !== s.gameId ? applyDefaults(next, siteConfigNow()?.defaults) : next;
       })}
-      onAddLocal={(name, from?: GroupPick) => {
+      onAddLocal={(name, from?: GroupPick, bot?: boolean) => {
         const id = crypto.randomUUID();
         if (from) linkLocalPlayer(id, from.code, from.member);
         run((s) => {
           const next = addPlayer(s, { id, name });
+          if (bot) next.bots = [...(next.bots ?? []), id];
           return from ? { ...next, avatars: { ...next.avatars, [id]: from.avatar }, members: { ...next.members, [id]: from.member } } : next;
         });
       }}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { dev, diag, netDown, netDownUntil, onNetChange } from "@/lib/dev";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { PING, PONG, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
 import type { KnockView } from "@shared/platform/directory";
@@ -105,9 +106,12 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
     };
     flushRef.current = flush;
 
+    let pingAt = 0;
     const connect = () => {
       if (stopped) return;
       clearTimeout(timer);
+      // Entwickler-Modus: künstliches Funkloch – erst danach wieder verbinden
+      if (netDown()) { setStatus((s) => (s === "ready" ? "connecting" : s)); timer = setTimeout(connect, netDownUntil() - Date.now() + 100); return; }
       setStatus((s) => (s === "ready" || s === "checking" ? "connecting" : s));
       const proto = location.protocol === "https:" ? "wss" : "ws";
       let ws: WebSocket;
@@ -126,9 +130,10 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         ws.send(JSON.stringify(msg));
       };
 
-      ws.onmessage = (ev) => {
+      const handle = (ev: MessageEvent) => {
         lastSeen = Date.now();
-        if (ev.data === PONG) return;
+        diag.lastMessage = lastSeen;
+        if (ev.data === PONG) { if (pingAt) diag.rtt = lastSeen - pingAt; return; }
         let msg: ServerMessage;
         try { msg = JSON.parse(ev.data as string) as ServerMessage; } catch { return; }
         if (msg.type === "knocking") {
@@ -186,6 +191,13 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         }
       };
 
+      // Entwickler-Modus: langsames Netz – alles kommt verzögert an
+      ws.onmessage = (ev) => {
+        const d = dev().delay;
+        if (d) setTimeout(() => { if (wsRef.current === ws) handle(ev); }, d);
+        else handle(ev);
+      };
+
       ws.onclose = () => { if (wsRef.current === ws) kill(Math.min(5000, 400 * 2 ** retry++)); };
       ws.onerror = () => { /* onclose folgt */ };
     };
@@ -200,8 +212,12 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       if (ws.readyState !== WebSocket.OPEN) return;
       if (now - lastSeen > DEAD_MS) { kill(0); return; }
       if (outbox.current.some((p) => p.sent !== null && now - p.sent > ACK_MS)) { kill(0); return; }
-      try { ws.send(PING); } catch { kill(0); }
+      try { ws.send(PING); pingAt = Date.now(); } catch { kill(0); }
+      diag.socket = joined ? "verbunden" : "verbindet";
     }, PING_MS);
+    diag.room = code;
+    // Künstliches Funkloch beginnt: Verbindung sofort weg
+    const offNet = onNetChange(() => { if (netDown()) kill(netDownUntil() - Date.now() + 100); });
 
     // Host fragt ab und zu nach, wer noch da ist – so fällt ein still verschwundenes Handy auf
     const presence = setInterval(() => {
@@ -251,6 +267,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       clearTimeout(timer);
       clearTimeout(knockTimer);
       clearInterval(watch);
+      offNet();
+      diag.room = ""; diag.socket = "–"; diag.rtt = null;
       clearInterval(presence);
       window.removeEventListener("online", wake);
       document.removeEventListener("visibilitychange", wake);

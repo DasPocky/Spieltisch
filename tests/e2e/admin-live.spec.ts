@@ -113,3 +113,73 @@ test("Verwaltung Status: Version, Dienste und Anfragen; Details zum Aufklappen",
   await expect(page.getByTestId("status-details")).toContainText("Anfragen heute");
   await expect(page.getByTestId("status-details")).toContainText(s.build.sha.slice(0, 7));
 });
+
+test("Entwickler-Modus: Testraum mit Bots – Bots ziehen selbst, Raum ist unsichtbar, Bot lässt sich übernehmen", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  await adminPhone(page);
+  await page.goto("/admin/einstellungen");
+  await page.getByRole("checkbox", { name: "Entwickler-Modus" }).click();
+  await page.goto("/admin");
+  await page.getByTestId("admin-tile-entwickler").click();
+  await page.getByTestId("dev-game").selectOption("tutto");
+  await page.getByRole("button", { name: "Ein Bot weniger" }).click();
+  await expect(page.getByTestId("dev-bots")).toHaveText("2");
+  await page.getByRole("button", { name: "Testraum öffnen" }).click();
+  await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
+  const code = page.url().slice(-5);
+  // Der Admin ist Host und startet
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  // Bots sind zuerst dran und geben irgendwann ab
+  await expect(page.getByTestId("current-player")).toHaveText("Du", { timeout: 60_000 });
+  await shot(page, "dev-testraum");
+
+  // Unsichtbar für andere
+  const other = await newPhone(browser);
+  await other.goto("/");
+  const open = await (await other.request.get("/api/rooms/open")).json();
+  expect(open.rooms.map((r: { code: string }) => r.code)).not.toContain(code);
+
+  // Live: Testraum mit Bots; Bot übernehmen
+  await page.goto("/admin/live");
+  await expect(page.getByTestId(`room-${code}`)).toContainText("Test");
+  await page.getByTestId(`room-${code}`).click();
+  const sheet = page.getByTestId("room-sheet");
+  await expect(sheet.getByTestId("room-player-Bot 1")).toContainText("Bot");
+  await shot(page, "dev-live-bots");
+  await sheet.getByRole("button", { name: "Bot 2 übernehmen" }).click();
+  await expect(page).toHaveURL(new RegExp(`/r/${code}$`));
+  await expect(page.getByTestId("tutto-board").or(page.getByTestId("current-player"))).toBeVisible();
+});
+
+test("Entwickler-Modus: Bots in „Ein Handy für alle“ ziehen, wenn sie dran sind", async ({ page }) => {
+  test.setTimeout(120_000);
+  await adminPhone(page);
+  await page.evaluate(() => localStorage.setItem("spieltisch:dev", JSON.stringify({ on: true })));
+  await page.goto("/spiel/tutto/lokal");
+  await page.getByRole("button", { name: /Bot dazu/ }).click();
+  await page.getByLabel("Name des Spielers").fill("Anna");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(page.getByTestId("current-player")).toHaveText("Anna", { timeout: 60_000 });
+});
+
+test("Entwickler-Modus: Diagnose-Anzeige und künstliches Funkloch – der Raum verbindet sich danach von selbst", async ({ page, browser }) => {
+  test.setTimeout(90_000);
+  const host = await newPhone(browser);
+  const code = await createRoom(host, "tutto", "Hanna", "4321");
+  await adminPhone(page);
+  await page.evaluate(() => localStorage.setItem("spieltisch:dev", JSON.stringify({ on: true, overlay: true })));
+  await joinRoom(page, code, "Admin", "4321");
+  await expect(page.getByTestId("dev-overlay")).toContainText(`Raum ${code}: verbunden`);
+  // In die Verwaltung (ohne Neuladen), Funkloch auslösen, zurück in den Raum
+  await page.evaluate(() => { history.pushState(null, "", "/admin/entwickler"); dispatchEvent(new PopStateEvent("popstate")); });
+  await expect(page.getByTestId("admin-dev")).toBeVisible();
+  await shot(page, "dev-bereich");
+  await page.getByRole("button", { name: "5 s weg" }).click();
+  await page.evaluate(() => history.back());
+  await expect(page.getByTestId("dev-overlay")).toContainText("Funkloch");
+  await shot(page, "dev-funkloch");
+  await expect(page.getByTestId("dev-overlay")).toContainText("Netz: online", { timeout: 15_000 });
+  await expect(page.getByTestId("dev-overlay")).toContainText(`Raum ${code}: verbunden`, { timeout: 15_000 });
+  await expect(host.getByText("Admin")).toBeVisible();
+});
