@@ -17,13 +17,19 @@ Browser ──HTTP──▶ Worker ──▶ statische React-App (dist/client)
 | `src/platform/` | Plattform-Oberfläche: Lobby, Menü, Einstellungen, Spielerleiste, Siegerehrung |
 | `src/platform/dice3d/` | 3D-Würfel: Physik (cannon-es), Darstellung (three.js), Wurf-Geste und Sperre |
 | `src/platform/chat/`, `call/` | Text-Chat, Treffpunkt, Sprach- und Videochat |
-| `src/pages/` | Start, Spiele, Online-Raum, lokale Partie, Profil, Gruppen, Admin |
+| `src/pages/` | Start, Spiele, Online-Raum, lokale Partie, Profil, Gruppen |
+| `src/pages/admin/` | Verwaltung: Anmeldung und Speichern (`context.tsx`), Übersicht, Live mit Raum-Blatt und Zuschauen, Statistik, Spiele, Leute, Einstellungen, Status, Entwickler |
+| `shared/platform/bots.ts` | Testspieler: Zug-Kandidaten je Spiel und `botMove()` – genutzt vom Server, von „Ein Handy für alle“ und von der Simulation |
+| `shared/build.ts` | Stand des Codes (Commit, Zweig, Bauzeit), beim Bauen über `vite.config.ts` eingesetzt |
+| `src/lib/dev.ts` | Entwickler-Modus je Admin-Gerät: Diagnose, Netz-Simulation, Vorschau-Schalter |
 | `src/platform/shell/` | App-Hülle mit Tab-Leiste, Blätter „Raum öffnen“ und „Beitreten“, Raumkarten |
-| `src/platform/intro/` | Willkommen (neues Gerät) und Begrüßung mit Laden (bekanntes Gerät) |
+| `src/platform/intro/` | Zum schnellen Ausprobieren eines Spiels: Verwaltung → Einstellungen → Entwickler-Modus, dann Entwickler → „Testraum mit Bots“. Bots ziehen zufällig erlaubte Züge; der Raum bleibt unsichtbar und zählt nicht.
+
+Willkommen (neues Gerät) und Begrüßung mit Laden (bekanntes Gerät) |
 | `src/styles/looks.css` | die Looks als CSS-Variablen (hell und dunkel) |
 | `tests/unit/`, `tests/e2e/` | Vitest und Playwright |
 
-**Routen:** `/` Start · `/spiele` Spiele · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`
+**Routen:** `/` Start · `/spiele` Spiele · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`, `/admin/<bereich>` (live, statistik, spiele, leute, einstellungen, entwickler)
 
 ## Grundprinzipien
 
@@ -87,7 +93,7 @@ Lobby, Einstellungen, Rechte, Online-Räume, Menü und Siegerehrung funktioniere
 | Was | Wo |
 | --- | --- |
 | Regeln je Spiel | `tests/unit/<id>.test.ts` (Hilfen in `helpers.ts`, z. B. `fixDice()`) |
-| Zufallspartien aller Spiele | `tests/unit/simulate.test.ts` – Bots spielen je Einstellung 25 Partien lokal und online; jede muss enden, nie darf ein Zug fehlen, keine Karte verloren gehen (gründlicher: `SIM_ROUNDS=200 npm test`) |
+| Zufallspartien aller Spiele | `tests/unit/simulate.test.ts` – Bots (`shared/platform/bots.ts`) spielen je Einstellung 25 Partien lokal und online; jede muss enden, nie darf ein Zug fehlen, keine Karte verloren gehen (gründlicher: `SIM_ROUNDS=200 npm test`) |
 | Fairness | `tests/unit/fairness.test.ts` – Statistik-Tests für Würfel, Mischen und Startspieler |
 | Handy-Tests | `tests/e2e/` – Playwright im Format 390×844, inkl. Online-Raum mit mehreren Browsern; `expectNoScroll()` prüft, dass nichts scrollt |
 

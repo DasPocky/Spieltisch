@@ -16,7 +16,7 @@ Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zus
 - **Für jede Runde passend** – Alle Spieler in einer Zeile, kein Scrollen, auch auf kleinen Handys. Jedes Spiel geht in der App oder mit echtem Material am Tisch (die App ist dann Punkteblock, Schlüsselkarte oder Erzähler).
 - **14 Looks** – Der Admin wählt den Stil, hell oder dunkel stellt jeder selbst ein.
 - **Rund um die Partie** – Siegerehrung mit Podium, Spielabend-Wertung, Gruppen mit Bestenliste, Profile mit Statistik.
-- **Admin-Bereich** – Freigaben je Spiel, Standard-Einstellungen, Look, Funktionen, Verlauf, Export.
+- **Verwaltung** – Eigener Tab auf Admin-Geräten: Live-Räume mit Eingriffen und unsichtbarem Zuschauen, Statistik mit Spitzenzeiten, Freigaben und Standards je Spiel, Status mit Versionsabgleich und ein Entwickler-Modus mit Testspielern.
 - **Als App installierbar** – eigenes Icon und Vorschaubild beim Teilen. Optional einschaltbar: „Ein Handy für alle“ und Offline-Nutzung.
 
 <p align="center"><img src="docs/images/funktionen.png" alt="Lobby, Chat und Video, 14 Looks, Siegerehrung"></p>
