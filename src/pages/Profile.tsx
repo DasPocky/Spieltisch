@@ -21,6 +21,7 @@ import { QrCode } from "@/platform/QrCode";
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
 import { InstallCard } from "@/platform/InstallHint";
 import { goTab } from "@/platform/shell/AppShell";
+import { useAdminDevice } from "@/pages/admin/context";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";
@@ -46,6 +47,7 @@ export function Profile() {
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const groups = useMyGroups();
+  const admin = useAdminDevice();
   const otherCode = parseProfileId(other);
   const otherOk = TRANSFER_CODE_RE.test(otherCode) || PROFILE_ID_RE.test(otherCode);
   // Aus dem Menü einer Partie gekommen: zurück dorthin
@@ -252,6 +254,10 @@ export function Profile() {
           <Button variant="ghost" className="text-destructive">Alle Daten auf diesem Gerät löschen</Button>
         </Confirm>
       </Card>
+      {!admin && (
+        <button type="button" onClick={() => navigate("/admin")} data-testid="admin-link"
+          className="mx-auto -mt-1 rounded-full px-3 py-1 text-xs text-muted-foreground/70 outline-none focus-visible:ring-2 focus-visible:ring-ring">Verwaltung</button>
+      )}
     </main>
   );
 }

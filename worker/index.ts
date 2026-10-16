@@ -887,8 +887,8 @@ async function sameSecret(a: string, b: string): Promise<boolean> {
 
 const GAME_IDS = Object.keys(GAMES);
 const ADMIN_MAX_FAILS = 8;
-/** Admin bleibt 12 Stunden angemeldet; höchstens so viele Sitzungen gleichzeitig */
-const SESSION_MS = 12 * 60 * 60 * 1000;
+/** Admin-Gerät bleibt 30 Tage angemeldet (Abmelden beendet die Sitzung sofort); höchstens so viele Sitzungen gleichzeitig */
+const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_SESSIONS = 20;
 const ADMIN_TOKEN_RE = /^[0-9a-f]{64}$/;
 /** Raum-Übersicht: Einträge ohne Lebenszeichen fliegen nach Ablauf der Raum-Frist raus */

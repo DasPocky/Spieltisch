@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
 import { LOCAL_GAME_KEY } from "@/lib/storage";
+import type { AdminSection } from "@/pages/admin/nav";
 
 export type Route =
   | { name: "home" }
   | { name: "games" }
   | { name: "local" }
   | { name: "room"; code: string }
-  | { name: "admin" }
+  | { name: "admin"; section: AdminSection }
   | { name: "profile" }
   | { name: "transfer"; code: string }
   | { name: "groups" }
@@ -15,7 +16,8 @@ export type Route =
   | { name: "gallery" };
 
 function parse(path: string): Route {
-  if (/^\/admin\/?$/.test(path)) return { name: "admin" };
+  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|leute|einstellungen))?\/?$/);
+  if (admin) return { name: "admin", section: (admin[1] ?? "start") as AdminSection };
   if (/^\/spiele\/?$/.test(path)) return { name: "games" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };
   const transfer = path.match(/^\/profil\/uebernehmen\/([A-Za-z0-9-]{8,9})\/?$/);

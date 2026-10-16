@@ -16,7 +16,7 @@ const WHAT: Record<WipeKind, [string, string]> = {
   stats: ["Statistik", "alle Zähler auf 0"],
   groups: ["Gruppen", "mit Mitgliedern und Bestenliste"],
   profiles: ["Profile", "persönliche Statistiken"],
-  settings: ["Einstellungen", "Freigaben, Standards, Optionen, Look und Zugangscode auf Auslieferungszustand"],
+  settings: ["Einstellungen", "Freigaben, Standards, Funktionen, Grenzen, Look und Zugangscode auf Auslieferungszustand"],
 };
 
 /** Export und Löschen – zum Neustart mit leerer Datenbank */
