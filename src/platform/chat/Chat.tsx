@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { MessageCircle, Send } from "lucide-react";
-import { CHAT_EMOJIS, CHAT_MAX, type ChatMsg } from "@shared/platform/protocol";
+import { ADMIN_CHAT_ID, CHAT_EMOJIS, CHAT_MAX, type ChatMsg } from "@shared/platform/protocol";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,7 +70,7 @@ export function ChatButton({ code, chat, players, me }: { code: string; chat: Ch
     const t = setTimeout(() => setFlash(null), 3500);
     return () => clearTimeout(t);
   }, [chat.messages, me, open]);
-  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "Jemand";
+  const nameOf = (id: string) => (id === ADMIN_CHAT_ID ? "Verwaltung" : players.find((p) => p.id === id)?.name ?? "Jemand");
 
   return (
     <>
@@ -111,7 +111,7 @@ export function ChatPanel({ chat, players, me, className }: { chat: ChatControls
   const avatars = useContext(AvatarContext);
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" }); }, [chat.messages.length]);
   const send = () => { const t = text.trim(); if (!t) return; chat.say({ text: t }); setText(""); };
-  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "Jemand";
+  const nameOf = (id: string) => (id === ADMIN_CHAT_ID ? "Verwaltung" : players.find((p) => p.id === id)?.name ?? "Jemand");
   const time = (at: number) => new Date(at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
   return (

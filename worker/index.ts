@@ -20,7 +20,8 @@ import {
 } from "../shared/platform/directory";
 import {
   ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
-  type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
+  ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID,
+  type AdminRoomAction, type AdminRoomDetail, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
 
 interface Env {
@@ -93,7 +94,12 @@ interface Attachment {
   playerId: string | null;
   /** wartet vor der Tür (Anklopfen) */
   knock?: string;
+  /** Verwaltung schaut unsichtbar zu (nur lesen) */
+  watch?: boolean;
 }
+
+/** Innerer Pfad, über den der Worker eine geprüfte Zuschauer-Verbindung der Verwaltung weiterreicht */
+const WATCH_PATH = "/__admin-watch";
 
 /** Räume ohne Aktivität werden nach 48 Stunden gelöscht. */
 const ROOM_TTL_MS = 48 * 60 * 60 * 1000;
@@ -238,6 +244,105 @@ export class GameRoom extends DurableObject<Env> {
     return true;
   }
 
+  /** Admin: Einzelheiten für die Raum-Ansicht */
+  async adminDetail(): Promise<AdminRoomDetail | null> {
+    const room = this.room;
+    if (!room?.code) return null;
+    const s = room.state;
+    const online = this.onlineIds();
+    return {
+      code: room.code,
+      gameId: s.gameId,
+      phase: s.phase,
+      access: s.access ?? DEFAULT_ACCESS,
+      hostId: s.hostId,
+      players: [
+        ...s.players.map((p) => ({ id: p.id, name: p.name, online: online.has(p.id) })),
+        ...(s.bench ?? []).map((p) => ({ id: p.id, name: p.name, online: online.has(p.id), bench: true })),
+      ],
+      knocks: (room.knocks ?? []).filter((k) => !k.admitted).map((k) => k.name),
+      locked: Date.now() < room.lockUntil,
+      createdAt: room.createdAt,
+      activeAt: room.updatedAt ?? room.createdAt,
+      chat: room.chat?.length ?? 0,
+      call: Object.keys(room.call ?? {}).filter((id) => online.has(id)).length,
+    };
+  }
+
+  /** Admin: in den Raum eingreifen – Nachricht, Einstellungen, Host, Spieler, Partie, PIN */
+  async adminAct(a: AdminRoomAction): Promise<{ ok: boolean; error?: string }> {
+    const room = this.room;
+    if (!room) return { ok: false, error: "Den Raum gibt es nicht mehr." };
+    const s = room.state;
+    // Aktionen wie der Host ausführen – ohne Host (leerer Dauerraum) wie der erste Spieler
+    const actor = s.hostId ?? s.players[0]?.id ?? "";
+    try {
+      switch (a.type) {
+        case "message": {
+          const text = String(a.text ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NOTICE);
+          if (!text) return { ok: false, error: "Die Nachricht ist leer." };
+          const m: ChatMsg = { id: crypto.randomUUID().replace(/-/g, "").slice(0, 20), from: ADMIN_CHAT_ID, at: Date.now(), text: text.slice(0, CHAT_MAX) };
+          const chat = (room.chat ??= []);
+          chat.push(m);
+          if (chat.length > CHAT_KEEP) chat.splice(0, chat.length - CHAT_KEEP);
+          await this.persist();
+          for (const ws of this.ctx.getWebSockets()) {
+            const att = ws.deserializeAttachment() as Attachment | null;
+            if (att?.playerId || att?.watch) {
+              this.send(ws, { type: "chat", messages: [m], append: true });
+              if (att.playerId) this.send(ws, { type: "notice", text });
+            }
+          }
+          return { ok: true };
+        }
+        case "access": {
+          const base = s.access ?? DEFAULT_ACCESS;
+          const next = sanitizeAccess({ ...base, ...a.access }, base, true);
+          // „Dauerraum“ aufheben: zurück auf eine normale Lebensdauer
+          if (base.life === "forever" && a.access?.life && a.access.life !== "forever") next.life = sanitizeAccess({ life: a.access.life }).life;
+          room.state = { ...s, access: next };
+          // Kein Anklopfen mehr: wer vor der Tür steht, kommt herein, sobald er neu verbindet – bis dahin bleibt der Eintrag
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "host": {
+          if (!s.players.some((p) => p.id === a.id)) return { ok: false, error: "Diesen Spieler gibt es nicht (mehr)." };
+          room.state = { ...s, hostId: a.id };
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "kick": {
+          room.state = applyRoomAction(s, { type: "removePlayer", id: a.id }, a.id === actor ? a.id : actor);
+          this.kick(a.id);
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "lobby": {
+          if (s.phase !== "playing") return { ok: true };
+          room.state = applyRoomAction(s, { type: "toLobby" }, actor);
+          await this.persist(true);
+          this.broadcast();
+          return { ok: true };
+        }
+        case "pin": {
+          const pin = String(a.pin ?? "");
+          if (!PIN_RE.test(pin)) return { ok: false, error: "Die PIN muss 4 bis 8 Ziffern haben." };
+          room.pinHash = await hashPin(room.salt, pin);
+          room.fails = 0;
+          room.lockUntil = 0;
+          await this.persist(true);
+          return { ok: true };
+        }
+      }
+    } catch (e) {
+      return { ok: false, error: e instanceof GameError ? e.message : "Das ging gerade nicht." };
+    }
+    return { ok: false, error: "Unbekannte Aktion." };
+  }
+
   async info(): Promise<RoomInfo> {
     if (!this.room) return { exists: false };
     const s = this.room.state;
@@ -251,7 +356,13 @@ export class GameRoom extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ playerId: null } satisfies Attachment);
+    // Zuschauen der Verwaltung: nur über den inneren Pfad, den der Worker nach der Anmeldeprüfung nutzt
+    const watch = new URL(request.url).pathname === WATCH_PATH;
+    server.serializeAttachment({ playerId: null, ...(watch ? { watch: true } : {}) } satisfies Attachment);
+    if (watch) {
+      this.send(server, { type: "chat", messages: this.room.chat ?? [] });
+      this.sendWatch(server);
+    }
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -273,6 +384,9 @@ export class GameRoom extends DurableObject<Env> {
       this.send(ws, { type: "error", message: "Ungültige Nachricht." });
       return;
     }
+
+    // Wer zuschaut, liest nur mit
+    if ((ws.deserializeAttachment() as Attachment | null)?.watch) return;
 
     await this.expireKnocks();
 
@@ -794,6 +908,7 @@ export class GameRoom extends DurableObject<Env> {
     this.lastOnline = [...onlineList].sort().join();
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
+      if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
       this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews() });
     }
@@ -809,6 +924,12 @@ export class GameRoom extends DurableObject<Env> {
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
     this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews() });
+  }
+
+  /** Für die Verwaltung: Sicht eines Gasts ohne eigene Karten, dazu wer online ist und wer klopft */
+  private sendWatch(ws: WebSocket, online = [...this.onlineIds()]): void {
+    if (!this.room) return;
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, WATCH_ID), you: WATCH_ID, online, call: this.room.call ?? {}, knocks: this.knockViews() });
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
@@ -1458,6 +1579,17 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
   }
   const cred = adminCred(request, body.password);
 
+  // Zuschauen: WebSocket kann keine Kopfzeilen setzen – das Sitzungs-Token kommt deshalb in der Adresse
+  const watch = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/watch$/);
+  if (watch && request.headers.get("Upgrade") === "websocket") {
+    const token = new URL(request.url).searchParams.get("t");
+    // Ohne Token gar nicht erst prüfen (sonst zählte es als falsches Passwort)
+    const ok = token ? await settings.auth({ token }) : { ok: false, status: 401, error: "Bitte melde dich neu an." };
+    if (!ok.ok || !ROOM_CODE_RE.test(watch[1])) return json({ ok: false, error: ok.error }, ok.status ?? 403);
+    const inner = new Request(new URL(WATCH_PATH, request.url), request);
+    return env.ROOMS.get(env.ROOMS.idFromName(watch[1])).fetch(inner);
+  }
+
   // Anmelden (gibt ein Sitzungs-Token zurück) oder Freigaben/Standards speichern
   if (path === "/api/admin" && request.method === "POST") {
     const update = body.config === undefined && body.defaults === undefined ? undefined : {
@@ -1554,6 +1686,21 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
       if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access, true)) return json({ code }, 201);
     }
     return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
+  // Einzelheiten und Eingriffe in einen Raum
+  const r = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)(?:\/(act))?$/);
+  if (r && ROOM_CODE_RE.test(r[1])) {
+    const stub = env.ROOMS.get(env.ROOMS.idFromName(r[1]));
+    if (!r[2] && request.method === "GET") {
+      const detail = await stub.adminDetail();
+      if (!detail) await settings.roomGone(r[1]);
+      return detail ? json({ room: detail }) : json({ ok: false, error: "Den Raum gibt es nicht mehr." }, 404);
+    }
+    if (r[2] && request.method === "POST") {
+      const res = await stub.adminAct(body.action as AdminRoomAction);
+      return json(res, res.ok ? 200 : 400);
+    }
   }
 
   const m = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/(close|unlock)$/);

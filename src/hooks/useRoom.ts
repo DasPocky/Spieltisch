@@ -163,6 +163,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
             const ids = new Set(prev.map((m) => m.id));
             return [...prev, ...msg.messages.filter((m) => !ids.has(m.id))].slice(-100);
           });
+        } else if (msg.type === "notice") {
+          toast("Nachricht der Verwaltung", { description: msg.text, duration: 15_000 });
         } else if (msg.type === "ack") {
           outbox.current = outbox.current.filter((p) => p.id !== msg.id);
           syncPending();
