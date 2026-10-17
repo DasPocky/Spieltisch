@@ -47,7 +47,7 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
       const avatar = m.avatar === undefined ? undefined : isObj(m.avatar) && plain(m.avatar) ? m.avatar : BAD;
       const p = pick({
         name: str(m.name, 64), pin: str(m.pin, 16), playerId: str(m.playerId, 64), token: str(m.token, 128),
-        profile: str(m.profile, 32), profileKey: str(m.profileKey, 64), avatar, group: str(m.group, 16), nonce: str(m.nonce, 64),
+        profile: str(m.profile, 32), profileKey: str(m.profileKey, 64), avatar, group: str(m.group, 16), nonce: str(m.nonce, 64), pairCode: str(m.pairCode, 16), companion: bool(m.companion),
       });
       return p ? ({ type: "join", ...p } as unknown as ClientMessage) : null;
     }
@@ -60,6 +60,7 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
     case "presence":
     case "closeRoom":
     case "claimHost":
+    case "pair":
       return { type: m.type };
     case "call": {
       if (m.session !== null && typeof m.session !== "string") return null;

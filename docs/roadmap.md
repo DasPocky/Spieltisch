@@ -31,7 +31,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 ## Phase 1 – Grundlage für alle Spielweisen 🔨
 
-Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅
+Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅
 
 1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
 2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.
@@ -42,7 +42,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
    - **nur am Handy** wie bisher.
    Ohne 3D (schwacher Rechner, WebGL-Ausfall) ein **einfacher flacher Tisch** mit gleicher Anordnung. 2D und 3D sind nur Ansichten desselben Spielstands.
 5. **Gemeinsame Bausteine** statt Einzellösungen: `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
-6. **Handy als Begleiter:** Kamera + Mikro, Chat + Reaktionen, private Hand, Fernbedienung.
+6. **Handy als Begleiter:** Koppeln ✅; offen: Kamera + Mikro, Chat + Reaktionen, private Hand, Fernbedienung.
 7. **Fernseher-Beitritt:** QR, Name + Bild/Selfie ohne Profil, Spieler ohne Handy am Fernseher; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
 8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken.
 9. **R2** für größere Daten (Selfies, Bildkarten): Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen.

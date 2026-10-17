@@ -9,6 +9,9 @@ describe("Nachrichten ans Server prüfen", () => {
     expect(parseClientMessage({ type: "call", session: null })).toEqual({ type: "call", session: null });
     // „aus“ ist ein gültiger Wert
     expect(parseClientMessage({ type: "call", session: "s1", audio: "a-1", mic: false, cam: false })).toEqual({ type: "call", session: "s1", audio: "a-1", mic: false, cam: false });
+    // Begleit-Handy koppeln
+    expect(parseClientMessage({ type: "pair", x: 1 })).toEqual({ type: "pair" });
+    expect(parseClientMessage({ type: "join", pairCode: "ABCD2345", companion: true, nonce: "n1n1n1n1" })).toEqual({ type: "join", pairCode: "ABCD2345", companion: true, nonce: "n1n1n1n1" });
     expect(parseClientMessage({ type: "knock", id: "k1", decision: "admit" })).toEqual({ type: "knock", id: "k1", decision: "admit" });
     expect(parseClientMessage({ type: "table", pin: "1234" })).toEqual({ type: "table", pin: "1234" });
   });

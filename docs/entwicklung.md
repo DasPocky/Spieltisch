@@ -98,6 +98,8 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Am Rechner mitspielen:** Auf großen Bildschirmen zeigt der Raum bei Spielen mit „Am Rechner“ den Tisch aus eigener Sicht (`platform/desk`); das Spiel bekommt `desk: true` in den Board-Props und zeigt dann nur die eigene Hand mit Knöpfen, Maus und Tastatur (Beispiel: `games/maumau/Board.tsx`, `DeskHand`). Umschaltbar auf die klassische Ansicht.
 
+**Handy als Begleiter:** Am Rechner zeigt „Handy koppeln“ (`platform/desk/PairSheet.tsx`) einen QR mit `/r/CODE#pair=XXXXXXXX`. Der Raum gibt den Code auf `{ type: "pair" }` aus (8 Zeichen, 5 Minuten gültig, `room.pairs`). Das Handy tritt mit `pairCode` bei und wird zweites Gerät desselben Spielers (`Attachment.companion`) – Rechner und Handy verdrängen sich nicht gegenseitig. Der Code gilt nur für den Tab, der ihn eingelöst hat (Beitritts-Wert je Tab); danach verbindet das Handy über den Zugang neu.
+
 **Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.
 
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
