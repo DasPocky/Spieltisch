@@ -181,3 +181,28 @@ export interface AdminRoomDetail {
   /** Testraum (mit Bots) – unsichtbar unter „Offene Räume“, zählt nicht in der Statistik */
   test?: boolean;
 }
+
+/** Betriebskennzahlen eines Tages (ohne Inhalte): Verbindungen, abgelehnte Züge nach Art, kaputte Nachrichten */
+export interface HealthDay {
+  day: string;
+  /** Beitritte mit gespeichertem Zugang (Wiederverbinden nach Funkloch, Neuladen, Update) */
+  reconnects: number;
+  joins: number;
+  /** abgelehnte Spielzüge je Aktionstyp */
+  rejected: Record<string, number>;
+  /** ungültige Nachrichten (kaputt, falsche Felder) */
+  bad: number;
+}
+export type HealthDelta = Omit<HealthDay, "day">;
+export const emptyHealth = (): HealthDelta => ({ reconnects: 0, joins: 0, rejected: {}, bad: 0 });
+export const HEALTH_DAYS = 14;
+
+/** Zähler zusammenführen (neuester Tag zuerst, höchstens HEALTH_DAYS) */
+export function addHealth(days: HealthDay[], d: HealthDelta, now: number): HealthDay[] {
+  const day = new Date(now).toISOString().slice(0, 10);
+  const list = days[0]?.day === day ? days : [{ day, ...emptyHealth() }, ...days];
+  const t = { ...list[0], rejected: { ...list[0].rejected } };
+  t.reconnects += d.reconnects; t.joins += d.joins; t.bad += d.bad;
+  for (const [k, n] of Object.entries(d.rejected)) t.rejected[k] = (t.rejected[k] ?? 0) + n;
+  return [t, ...list.slice(1)].slice(0, HEALTH_DAYS);
+}

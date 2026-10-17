@@ -1,24 +1,78 @@
 # Roadmap
 
-## Neue Spiele
+Die eine gültige Roadmap (Fassung 3, Oktober 2026) – Gesamtplan aus den Fragenblöcken plus die externe Code-Analyse.
+Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
-- **Welle 2:** Herzen, Schocken, Bluff, Stadt-Land-Fluss, Wer bin ich, ein Tabu-artiges Erklärspiel
-- **Welle 3:** Ankreuzspiel, Klingel, Shithead, Zahlen-Rommé, Doppelkopf, Skat
-- weitere Würfelspiele
+**Ziel:** Jedes Spiel läuft gleichwertig auf dem Handy, am Desktop und am Fernseher (Tisch oder Bühne mit Moderator). Updates gehen live, ohne dass eine Runde etwas merkt.
 
-## Plattform
+**Leitlinie (aus der Analyse):** keine Neuentwicklung – erst Sicherheits- und Update-Fundament, dann **ein** Referenzspiel vollständig, von dort Spiel für Spiel. Je Schritt ein PR mit Screenshots, durchgespielt, Freigabe, Abschnitt „Für Spieler“ (→ `shared/news.ts`).
 
-- **Native Apps** – Capacitor-Hülle für iOS und Android mit Push („klopft an“, „du bist dran“), siehe [Konzept](konzept.md#12-ausblick-native-apps-für-ios-und-android)
-- **Konto** – geräteübergreifend per E-Mail-Link oder Passkey (das Geräteprofil bleibt die Grundlage)
-- **Desktop-Version** – in Arbeit, Schritt für Schritt:
-  1. Desktop-Rahmen (Seitenleiste, breite Startseite) und **Großer Tisch**: Laptop/Fernseher zeigt einen eckigen Holztisch in 3D, die Handys sind die Hände; Plätze am Rand mit Bild, Name und Video. Zuerst Mau-Mau und Uno
-  2. Würfelspiele (Würfel groß in 3D, Punkteliste), Werwolf (Tisch als Spielleiter), Wortgitter – danach nach und nach alle Spiele
-  3. Am Rechner selbst mitspielen (Hand unten, Maus und Tastatur)
-  4. Neue Spiele für Tisch + Handys: Zeichnen & Raten, Quiz & Schätzen, Brettspiele mit großem Plan
-  - **Handy als Kamera:** wer am Rechner keine Kamera hat, schaltet sein Handy als Kamera dazu
-  - **Party-Modus für den Fernseher:** der große Bildschirm als Showbühne für Partyspiele
-  - **Moderator:** eine Stimme bzw. Figur, die am Fernseher durch den Abend führt, ansagt und kommentiert
-  - **Gemischt spielen:** großer Bildschirm zeigt, Handys sind Eingabe – wie bei bekannten Party-Spielen im Netz
-- **Bot-Modus für alle** – Mitspieler durch die App ersetzen (Testspieler gibt es schon im Entwickler-Modus; für alle bräuchten sie eine Spielstärke statt Zufall)
-- **Profil gliedern** – Abschnitte zusammenfassen, evtl. Tabs
-- Sprachchat-Knopf beim ersten Mal kurz erklären
+## Phase 0 – Fundament: Updates, Versionen, Sicherheit 🔨
+
+| Punkt | Stand |
+| --- | --- |
+| Versions-Handschlag: Gerät lädt an ruhigem Moment neu (Lobby, Partie-Ende, nicht dran; spätestens 2 Min.), zurück in denselben Raum, „Neue Version geladen“, keine Neulade-Schleife | ✅ |
+| Fehlende Programmdateien: einmal neu laden; Server liefert die Dateien der vorigen Version mit; installierte App behält die vorige Version im Speicher | ✅ |
+| Vier Versionen getrennt: Build, Nachrichtenformat (`PROTOCOL`, bei Abweichung sofort neu), Raum-Format (`ROOM_SCHEMA` + Übernahmen + Fixtures), Spielstand je Spiel | ✅ |
+| Laufende Partie: mit gesicherter alter Version zu Ende (`scripts/legacy.mjs`), sonst umrechnen (`migrate`), sonst sanftes Ende mit Hinweis | ✅ |
+| Raum-Revision `rev` in Stand und Bestätigung, ältere Stände verwerfen | ✅ |
+| Update-Zeitpunkt im Admin (sofort · nach Rundenende je Raum · wenn keine Partie läuft · Uhrzeit · Knopf), `UPDATE_MODE` überschreibt, „Jetzt live“, Verlauf | ✅ (Warten braucht noch `RELEASE_SECRET` + `DEPLOY_TOKEN` + Deploy-Befehl, siehe Betrieb) |
+| Hinweis im Raum, „Was ist neu?“ einmal pro Gerät, Neuigkeiten im Profil, im Admin bearbeitbar | ✅ |
+| Analyse F-01: Beitritts-Nonce nur 2 Min. und nur mit PIN | ✅ |
+| Analyse F-02/F-03: Geräteschlüssel für Profile, Gruppen und Profil im Raum; Übertragung gibt eigenen Schlüssel | ✅ |
+| Analyse F-06: globale Ratenbremse (Cloudflare Rate Limiting) + Fehlversuche, lokale Bremse ohne Komplett-Leerung | ✅ |
+| Analyse F-07: Raum-Bausteine als reine Funktionen (`worker/room/`) | ✅ erster Schritt (weitere bei Bedarf) |
+| Analyse F-08: zentrale Prüfung aller Nachrichten (`parseClientMessage`) mit Negativtests | ✅ |
+| Analyse F-09: Großer Tisch ohne Chat; Protokoll der Verwaltung | ✅ |
+| Analyse F-10: Desktop-/Fernseher-Reihe in der CI, Namen-Prüfung für Knöpfe, ohne WebGL, reduzierte Bewegung | ✅ |
+| Analyse F-11: Ergebnisse mit Partie-Kennung, nur einmal gezählt, bei Fehlern wiederholt | ✅ |
+| Analyse F-14: Betriebskennzahlen je Tag (Beitritte, Wiederverbindungen, abgelehnte Züge, kaputte Nachrichten) | ✅ |
+| CI: `npm audit` als Hinweis | ✅ · Branch-Schutz auf „Handy-Tests (Playwright)“ und „Build & Unit-Tests“ in GitHub einschalten ⏳ (Einstellung in GitHub) |
+
+## Phase 1 – Grundlage für alle Spielweisen ⏳
+
+1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
+2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.
+3. **Grafik-Stufen** hoch/mittel/einfach nach Gerät **und gemessener Bildrate**, im Profil wählbar; WebGL-Ausfall → 2D ohne Raumverlust; reduzierte Bewegung beachten.
+4. **Desktop-Gerüst:** 3D-Tisch aus eigener Sicht oder 2D, automatisch, umschaltbar; Klicken, Ziehen, Tastatur (mit Hilfe), Hover-Hinweise; Video an den Plätzen, Chat rechts. 2D und 3D sind nur Ansichten desselben Spielstands.
+5. **Gemeinsame Bausteine** statt Einzellösungen: `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
+6. **Handy als Begleiter:** Kamera + Mikro, Chat + Reaktionen, private Hand, Fernbedienung.
+7. **Fernseher-Beitritt:** QR, Name + Bild/Selfie ohne Profil, Spieler ohne Handy am Fernseher; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
+8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken.
+9. **R2** für größere Daten (Selfies, Bildkarten): Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen.
+10. **Bots:** Spielstärke getrennt vom Zufall, reproduzierbar mit festem Startwert, keine fremden Geheimnisse.
+
+## Phase 2 – Referenzspiel + Bühne und Moderator ⏳
+
+1. **Referenzspiel vollständig** (Mau-Mau oder Uno): Desktop 2D/3D, Tisch/TV, private Hand, Tastatur/Touch, gemeinsame Bausteine herausgelöst, Abnahmeblatt (siehe unten) – danach erst die Spieleliste.
+2. **Moderator-Vorschau** (Branch-Preview, nur Admin): 3–4 Figuren (Papierschnitt, freie realistische Modelle mit geprüfter Lizenz), Sprech-Animation, Grafik-Stufen – Auswahl durch dich.
+3. **Moderator-MVP:** eine Bühne, ein Spiel (Schamlos), feste Ansagen, Gerätestimme, vollständiger Rückfall ohne Ton/Video/KI. Moderator ist Darstellung, keine Regelinstanz.
+4. **3D-Showstudio** mit Pulten, Lichtern, Kamerafahrten; TV-Ansicht je Spiel (Tisch oder Bühne), beim Einrichten wählbar, im Raum umschaltbar.
+5. **KI-Sprüche** über Cloudflare Workers AI, mit Tages- und Raumlimit, Filter und Rückfall auf feste Texte; später KI-Stimme. Charakter je Runde (charmant/frech/böse) – „frech/böse“ nur mit Zustimmung der Runde und passendem Set.
+6. **Partyabend:** Reihenfolge planen, abstimmen, Mini-Runden, Gesamtwertung, Siegerehrung.
+
+## Phase 3 – Spiel für Spiel komplett ⏳
+
+„Komplett“ = Desktop 2D + 3D · Tisch/TV (Bühne, wo es passt) · Moderator-Ansagen · Bots mit Spielstärke. Reihenfolge nach Beliebtheit (Statistik), Mau-Mau, Uno, Schamlos zuerst.
+
+**Abnahmeblatt je Spiel:** Regel-Tests inkl. Grenzfälle · Zufallspartien mit festen Startwerten · Geheimhaltung (Tisch/Zuschauer sehen nichts Privates) und Rechte · lokal, online, Wiederverbinden, Update mitten in der Partie · 2D/3D/TV/Bühne soweit vorgesehen · Tastatur/Touch/Maus, reduzierte Bewegung, kleine Displays · Bots ohne illegale Züge, Moderator-Rückfall · Doku, Screenshots, „Für Spieler“.
+
+| Spielart | Spiele | Besonderheiten |
+| --- | --- | --- |
+| Karten | Mau-Mau, Uno, Skip-Bo, Skyjo, Phase 10, Flip 7, Fischen, Hellseher | Ablagen/Auslagen in 3D, Ziehen mit der Maus |
+| Würfel | Kniffel, Tutto, Mäxchen | Würfel fliegen über den Tisch, Handy schütteln, Mäxchen mit Becher |
+| Party | Werwolf, Eine Nacht, Spion, Codenames, Schamlos | Moderator als Spielleiter, Nacht-Stimmung, Abstimmung live, Geheimes nur am Handy |
+| Brett | Dame, Mühle, Vier gewinnt, Ludo | Holzbrett auf dem Tisch, Züge animiert |
+
+**Dazwischen, sobald die Bühne steht:** Zeichnen & Raten · Quiz & Schätzen · **Schamlos Paket B** (Kartenset-Baukasten auch für Quiz/Codenames/Zeichnen, private Sets, öffentliche Sets und Karten mit Freigabe, Bildkarten in R2).
+
+## Phase 4 – Später ⏳
+
+- **Neue Spiele:** Welle 2 (Herzen, Schocken, Bluff, Stadt-Land-Fluss, Wer bin ich, Erklärspiel), Welle 3 (Ankreuzspiel, Klingel, Shithead, Zahlen-Rommé, Doppelkopf, Skat) – jedes von Anfang an komplett.
+- **Konto** (E-Mail-Link oder Passkey): Gastprofile nachweisbar zuordnen (Schlüssel-Basis ist da, die ID allein reicht nicht).
+- **Native Apps** erst, wenn Web-App, Push und Deep Links an Grenzen stoßen.
+- Profil gliedern, Hinweis zum Sprachchat-Knopf.
+
+## Phase 5 – Dokuseite ⏳
+
+Eigene Seite (eigenes Cloudflare-Projekt, Suche, Dunkelmodus), bei jedem Merge gebaut, Deutsch + Englisch, aus `docs/` als einziger Quelle. Bereiche: Spieler · Gastgeber/Admins · Selbst betreiben (lückenlos) · Entwickler. Getrennt: generierte Referenz (Regeln, Einstellungen aus dem Code), Konzept, Betriebshandbuch. Screenshots/Clips ausgewählt und stabil, nie Medien von Spielenden. Hilfe-Links aus der App.

@@ -15,7 +15,7 @@ export const gameName = (id: string) => (isGameId(id) ? GAMES[id].info.name : id
 /** Nur die Felder, die der Admin speichert – aus der aktuellen Konfiguration */
 export const toAccess = (c: SiteConfig): AccessConfig => ({
   site: c.site, games: c.games, message: c.message, banner: c.banner, featured: c.featured, order: c.order,
-  limits: c.limits, features: c.features, archiveDays: c.archiveDays, look: c.look,
+  limits: c.limits, features: c.features, archiveDays: c.archiveDays, look: c.look, update: c.update, news: c.news,
 });
 
 export { ago, dateTime, duration } from "@/lib/time";

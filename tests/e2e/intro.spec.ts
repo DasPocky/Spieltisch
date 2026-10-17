@@ -54,9 +54,10 @@ test("Erster Start: Profil vom alten Handy per Code übernehmen", async ({ brows
   await old.goto("/");
   await old.evaluate(() => localStorage.setItem("spieltisch:name", "Oma"));
   const code = await old.evaluate(async () => {
-    const id = JSON.parse(localStorage.getItem("spieltisch:profile")!).id;
-    await fetch(`/api/profile/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "Oma", avatar: { color: 3, emoji: 5 } }) });
-    return (await (await fetch(`/api/profile/${id}/transfer`, { method: "POST" })).json()).code as string;
+    const { id, key } = JSON.parse(localStorage.getItem("spieltisch:profile")!);
+    const headers = { "content-type": "application/json", "x-profile-key": key };
+    await fetch(`/api/profile/${id}`, { method: "PUT", headers, body: JSON.stringify({ name: "Oma", avatar: { color: 3, emoji: 5 } }) });
+    return (await (await fetch(`/api/profile/${id}/transfer`, { method: "POST", headers })).json()).code as string;
   });
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "de-DE" })).newPage();
   await withIntro(page);

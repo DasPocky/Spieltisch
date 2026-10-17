@@ -3,6 +3,7 @@ import type { GameRoom } from "./rooms";
 import type { SiteSettings } from "./settings";
 import type { ProfileStore } from "./profiles";
 import type { GroupStore } from "./groups";
+import type { RateLimit } from "./http";
 
 export interface Env {
   ROOMS: DurableObjectNamespace<GameRoom>;
@@ -16,6 +17,17 @@ export interface Env {
   REALTIME_APP_TOKEN?: string;
   /** Nur für lokale Tests: SFU-Antworten simulieren statt Cloudflare zu fragen */
   REALTIME_FAKE?: string;
+  /** Updates: Zeitpunkt fest vorgeben (now, round, idle, time, manual) – überschreibt die Admin-Einstellung */
+  UPDATE_MODE?: string;
+  /** Secret: damit meldet der Build neue Versionen an (/api/release) */
+  RELEASE_SECRET?: string;
+  /** Secret: Cloudflare-API-Token zum Freischalten wartender Versionen (Recht „Workers Scripts: Edit“) */
+  DEPLOY_TOKEN?: string;
+  /** Konto und Name dieses Workers bei Cloudflare (für das Freischalten) */
+  CF_ACCOUNT_ID?: string;
+  WORKER_NAME?: string;
+  /** Globale Ratenbremse von Cloudflare für sicherheitsrelevante Wege (Profil-Schlüssel, Übertragung, PIN) */
+  SENSITIVE?: RateLimit;
 }
 
 /** Kurzwege zu den Durable Objects */

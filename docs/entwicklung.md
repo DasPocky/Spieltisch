@@ -96,6 +96,34 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
 
+## Versionen und Updates
+
+Es gibt vier getrennte Versionen:
+
+| Version | Wo | Wann erhöhen |
+| --- | --- | --- |
+| Build (Commit + Bauzeit) | `shared/build.ts` | automatisch – Geräte laden bei neuerem Server neu |
+| Nachrichtenformat | `PROTOCOL` in `shared/platform/protocol.ts` | wenn alte Geräte neue Nachrichten nicht verstehen (oder umgekehrt) – dann sofortiges Neuladen |
+| Raum-Format | `RoomState.v`, `ROOM_SCHEMA` + `ROOM_MIGRATIONS` in `shared/platform/room.ts` | bei Umbau des Raums; Übernahme eintragen und Fixture unter `tests/fixtures/rooms/` ablegen |
+| Spielstand je Spiel | `version` im Spiel-Modul | bei inkompatibler Änderung des Spielstands |
+
+**Spielversion erhöhen:** `version` hochzählen, dann `node scripts/legacy.mjs <spiel>`. Das sichert Logik und Oberfläche der vorigen Version aus `origin/main` nach `shared/legacy/<spiel>-v<N>` und `src/legacy/<spiel>-v<N>` (Importe angepasst, in die Verzeichnisse eingetragen) und zieht `shared/games/versions.json` nach. Laufende Partien spielen damit zu Ende, die nächste startet aktuell (`gameVersion` merkt sich der Raum beim Start). Alternativ `migrate(state, from)` im Spiel schreiben und `--no-snapshot` nehmen. Ohne beides endet eine laufende Partie nach dem Update sanft (zurück in die Lobby mit Hinweis, Gruppe und Spielabend bleiben). Der Test `tests/unit/upgrade.test.ts` erinnert, wenn `versions.json` nicht passt. Alte Stände entfernen, wenn keine Partie mehr damit läuft: `node scripts/legacy.mjs --prune <spiel>-v<N>`.
+
+Jede gespeicherte Änderung erhöht die **Revision** des Raums (`rev` in `state`/`ack`); Geräte verwerfen ältere Stände.
+
+## Zugriffsmodell
+
+Profil ≠ Gerät ≠ Spieler ≠ Rolle ≠ Verbindung:
+
+- **Profil** (dauerhafte Gast-Identität): ID plus Geräteschlüssel je Gerät (`myProfile().key`, Kopfzeile `x-profile-key`). Server-Prüfung in `worker/auth.ts`.
+- **Spieler im Raum:** Spieler-ID plus Token (Wiederverbinden); Host-Rechte prüft die Plattform je Aktion.
+- **Großer Tisch / Zuschauer:** nur lesen, öffentliche Sicht, kein Chat am Tisch.
+- **Verwaltung:** eigenes Passwort und Sitzungen, ist kein Mitspieler, jeder Eingriff wird protokolliert.
+
+Negativtests dazu: `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
+
+Raum-Bausteine ohne Durable-Object-Abhängigkeit liegen in `worker/room/` (Beitritt, Chat, Ergebnisse, Typen) – `worker/rooms.ts` bleibt die Fassade.
+
 ## Tests
 
 | Was | Wo |
@@ -104,10 +132,12 @@ Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/mo
 | Zufallspartien aller Spiele | `tests/unit/simulate.test.ts` – Bots (`shared/platform/bots.ts`) spielen je Einstellung 25 Partien lokal und online; jede muss enden, nie darf ein Zug fehlen, keine Karte verloren gehen (gründlicher: `SIM_ROUNDS=200 npm test`) |
 | Fairness | `tests/unit/fairness.test.ts` – Statistik-Tests für Würfel, Mischen und Startspieler |
 | Handy-Tests | `tests/e2e/` – Playwright im Format 390×844, inkl. Online-Raum mit mehreren Browsern; `expectNoScroll()` prüft, dass nichts scrollt |
+| Desktop & Fernseher | `tests/e2e/geraete.spec.ts` (Projekt `geraete`) – Startseite, Tastatur, Namen für alle Knöpfe, Partie am Rechner, Tisch in 1920×1080 ohne WebGL und mit reduzierter Bewegung |
+| Updates | `tests/e2e/update.spec.ts` – Neuladen alter Apps, kein Neuladen mitten im eigenen Zug, keine Schleife, „Was ist neu?“; `tests/unit/upgrade.test.ts` – alte Spielversionen, Raum-Fixtures, Update-Zeitpunkte |
 
 Für die Handy-Tests einmalig `npx playwright install chromium` – oder ein vorhandenes Chromium per `PW_CHROMIUM_PATH=/pfad/zu/chromium npm run test:e2e`. Ein Einrichtungsschritt schaltet „Ein Handy für alle“ für die Tests ein; Screenshots landen in `screenshots/`.
 
-**CI** (`.github/workflows/ci.yml`): Build und Unit-Tests laufen gleichzeitig mit den Handy-Tests. Die Handy-Tests sind auf vier Rechner verteilt (`--shard`), die Admin-Tests laufen auf einem fünften, weil sie Spiele abschalten; jeder Rechner hat seinen eigenen Server. Die Zufallssimulation spielt im PR 5 Partien je Einstellung, auf main 25 und nachts 200. Der Haken „Handy-Tests (Playwright)“ fasst alle Rechner zusammen.
+**CI** (`.github/workflows/ci.yml`): Build und Unit-Tests laufen gleichzeitig mit den Handy-Tests (dazu `npm audit` als Hinweis). Die Handy-Tests sind auf vier Rechner verteilt (`--shard`), die Admin-Tests laufen auf einem fünften, weil sie Spiele abschalten, Desktop & Fernseher auf einem sechsten; jeder Rechner hat seinen eigenen Server. Die Zufallssimulation spielt im PR 5 Partien je Einstellung, auf main 25 und nachts 200. Der Haken „Handy-Tests (Playwright)“ fasst alle Rechner zusammen.
 
 Ohne Grafikchip (z. B. in Testumgebungen) zeichnen die 3D-Würfel automatisch einfacher. Für Vorschaubilder in voller Qualität: `localStorage.setItem("spieltisch:diceHQ", "1")`.
 

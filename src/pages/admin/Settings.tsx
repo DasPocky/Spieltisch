@@ -12,6 +12,7 @@ import { useAdmin } from "./context";
 import { setDev, useDev } from "@/lib/dev";
 import { DataTab } from "./Data";
 import { AuthError, Panel } from "./shared";
+import { AuditPanel, HealthPanel, NewsPanel, UpdatesPanel } from "./Updates";
 
 const LEVELS = [
   { value: "on", label: "Offen", hint: "für alle" },
@@ -91,6 +92,11 @@ export function SettingsSection() {
         <NumberField label="Verlauf behalten Tage" before="Verlauf behalten" after="Tage" min={1} max={365} value={config.archiveDays}
           onSave={(archiveDays) => save({ archiveDays }, `Verlauf: ${archiveDays} Tage`)} />
       </Panel>
+
+      <UpdatesPanel />
+      <NewsPanel />
+      <HealthPanel />
+      <AuditPanel />
       </Fragment>
 
       <div className="lg:col-span-2">

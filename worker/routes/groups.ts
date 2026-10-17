@@ -4,13 +4,17 @@ import { GROUP_CODE_LENGTH, GROUP_CODE_RE, MEMBER_ID_RE, randomCode } from "../.
 import { cleanName } from "../../shared/platform/room";
 import { Env, settingsOf, profileOf, groupOf } from "../env";
 import { allowed, readBody, json } from "../http";
+import { ownsProfile } from "../auth";
 import { GroupAnswer } from "../groups";
+
+const notYours = () => json({ error: "Dein Profil passt nicht zu diesem Gerät. Übertrage es neu („Code zum Übertragen anzeigen“)." }, 403);
 
 export const answer = (r: GroupAnswer | { ok: true; gone: true }) =>
   r.ok ? json("gone" in r ? { ok: true, gone: true } : { ok: true, group: r.group }) : json({ error: r.error }, r.status);
 /**
  * Gruppen: anlegen, ansehen (Mitglieder alles, sonst Vorschau), beitreten, umbenennen, Mitglied entfernen, Ergebnis melden.
- * Wer fragt, weist sich mit seiner Profil-ID aus (Kopfzeile x-profile bzw. Feld `profile`).
+ * Wer fragt, nennt seine Profil-ID (Kopfzeile x-profile bzw. Feld `profile`) und weist sich mit dem Geräteschlüssel
+ * des Profils aus (Kopfzeile x-profile-key) – ohne passenden Schlüssel gibt es nur die Vorschau bzw. nichts zu ändern.
  */
 export async function handleGroups(request: Request, env: Env, path: string): Promise<Response> {
   const ip = request.headers.get("cf-connecting-ip") ?? "local";
@@ -19,6 +23,7 @@ export async function handleGroups(request: Request, env: Env, path: string): Pr
     const body = await readBody(request);
     const profile = String(body?.profile ?? "");
     if (!body || !PROFILE_ID_RE.test(profile)) return json({ error: "Ungültige Anfrage." }, 400);
+    if (!(await ownsProfile(env, profile, request))) return notYours();
     if (!allowed("group-new", ip, 10)) return json({ error: "Zu viele neue Gruppen. Bitte später nochmal." }, 429);
     if (!cleanName(body.member)) return json({ error: "Bitte gib deinen Namen ein." }, 400);
     for (let i = 0; i < 6; i++) {
@@ -40,7 +45,8 @@ export async function handleGroups(request: Request, env: Env, path: string): Pr
 
   if (!op && request.method === "GET") {
     const profile = request.headers.get("x-profile") ?? "";
-    const pid = PROFILE_ID_RE.test(profile) ? profile : null;
+    // Nur mit Schlüssel als Mitglied – sonst Vorschau wie für Fremde
+    const pid = PROFILE_ID_RE.test(profile) && (await ownsProfile(env, profile, request)) ? profile : null;
     const res = await store.get(pid);
     // Raten von Gruppencodes bremsen: Vorschauen und Fehlgriffe sind begrenzt
     if (!res?.group && !allowed("group-look", ip, 60)) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);
@@ -51,6 +57,7 @@ export async function handleGroups(request: Request, env: Env, path: string): Pr
   const body = await readBody(request);
   const profile = String(body?.profile ?? "");
   if (!body || !PROFILE_ID_RE.test(profile)) return json({ error: "Ungültige Anfrage." }, 400);
+  if (!(await ownsProfile(env, profile, request))) return notYours();
 
   if (op === "join" && request.method === "POST") {
     if (!allowed("group-join", ip, 30)) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);

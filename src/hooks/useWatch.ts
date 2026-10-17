@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PING, PONG, type ChatMsg, type ClientMessage, type ServerMessage } from "@shared/platform/protocol";
 import type { RoomState } from "@shared/platform/room";
 import { wsUrl } from "@/lib/storage";
+import { noteServerBuild } from "@/lib/update";
 
 export type WatchStatus = "connecting" | "live" | "closed";
 
@@ -35,7 +36,8 @@ export function useWatch(path: string, hello?: ClientMessage) {
         if (typeof ev.data !== "string" || ev.data === PONG) return;
         let msg: ServerMessage;
         try { msg = JSON.parse(ev.data) as ServerMessage; } catch { return; }
-        if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setStatus("live"); }
+        if (msg.type === "hello") noteServerBuild(msg.build, msg.protocol);
+        else if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setStatus("live"); }
         else if (msg.type === "chat") setChat((prev) => (msg.append ? [...prev, ...msg.messages].slice(-100) : msg.messages));
         else if (msg.type === "error" && msg.fatal) { done = true; setError(msg.message); setStatus("closed"); }
       };

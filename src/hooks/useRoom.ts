@@ -7,6 +7,7 @@ import type { KnockView } from "@shared/platform/directory";
 import { credsKey, readJSON, remove, writeJSON, wsUrl, type RoomCreds } from "@/lib/storage";
 import { myAvatar, myProfile } from "@/lib/profile";
 import { activeGroupCode } from "@/lib/group";
+import { noteServerBuild } from "@/lib/update";
 
 export type RoomStatus = "checking" | "missing" | "needsJoin" | "connecting" | "knocking" | "ready" | "failed" | "closed";
 
@@ -55,11 +56,14 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const hostRef = useRef(false);
   /** Versuch, bei dem der Raum endgültig abgelehnt hat (entfernt, falsche PIN …) – der baut sich nicht von selbst neu auf */
   const fatalRef = useRef<number | null>(null);
+  /** Zuletzt gesehene Revision des Raums */
+  const revRef = useRef(0);
 
   useEffect(() => {
     // Startet React den Effekt neu (z. B. nach dem Nachladen eines Spiels), darf ein abgelehnter Versuch
     // nicht still mit Name und PIN wieder beitreten – erst ein neuer Versuch („Nochmal“, Formular) verbindet
     if (fatalRef.current === attempt) return;
+    revRef.current = 0;
     let stopped = false;
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -125,7 +129,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         lastSeen = Date.now();
         const creds = readJSON<RoomCreds>(credsKey(code));
         // Mit gespeichertem Zugang wiederverbinden; Name und PIN nur als Rückfall
-        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), nonce, profile: myProfile().id, avatar: myAvatar(), group: activeGroupCode() ?? undefined };
+        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), nonce, profile: myProfile().id, profileKey: myProfile().key, avatar: myAvatar(), group: activeGroupCode() ?? undefined };
         ws.send(JSON.stringify(msg));
       };
 
@@ -135,7 +139,9 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         if (ev.data === PONG) { if (pingAt) diag.rtt = lastSeen - pingAt; return; }
         let msg: ServerMessage;
         try { msg = JSON.parse(ev.data as string) as ServerMessage; } catch { return; }
-        if (msg.type === "knocking") {
+        if (msg.type === "hello") {
+          noteServerBuild(msg.build, msg.protocol);
+        } else if (msg.type === "knocking") {
           setKnockUntil(Date.now() + msg.wait);
           setStatus("knocking");
           clearTimeout(knockTimer);
@@ -151,6 +157,11 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           writeJSON(credsKey(code), { playerId: msg.playerId, token: msg.token } satisfies RoomCreds);
           setMe(msg.playerId);
         } else if (msg.type === "state") {
+          // Veralteter Stand (kam nach einem neueren an): verwerfen
+          if (msg.rev !== undefined) {
+            if (msg.rev < revRef.current) return;
+            revRef.current = msg.rev;
+          }
           setState(msg.state);
           setMe(msg.you);
           hostRef.current = msg.state.hostId === msg.you;

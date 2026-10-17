@@ -1,12 +1,15 @@
 /** Profile (Statistik je Gerät) und Übertragungs-Codes aufs neue Handy */
 import { DurableObject } from "cloudflare:workers";
-import { addResult, emptyStats, MAX_PROFILE_GROUPS, PROFILE_ID_RE, TRANSFER_MS, type ProfileStats, type RecentGame } from "../shared/platform/profile";
+import { addResult, emptyStats, MAX_PROFILE_GROUPS, PROFILE_ID_RE, PROFILE_KEY_RE, TRANSFER_MS, type ProfileStats, type RecentGame } from "../shared/platform/profile";
 import { GROUP_CODE_RE, sanitizeAvatar } from "../shared/platform/group";
 import { cleanName } from "../shared/platform/room";
 import { Env, settingsOf } from "./env";
+import { hashPin } from "./http";
 
 /** Ein Durable Object pro Profil: Name und Statistik. Ohne Aktivität nach einem Jahr gelöscht. */
 export const PROFILE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+/** So viele Geräte dürfen ein Profil gleichzeitig nutzen */
+export const MAX_KEYS = 10;
 export class ProfileStore extends DurableObject<Env> {
   private stats: ProfileStats | null = null;
 
@@ -19,8 +22,14 @@ export class ProfileStore extends DurableObject<Env> {
     return this.stats ?? emptyStats(Date.now());
   }
 
-  async record(entry: RecentGame, id?: string): Promise<ProfileStats> {
+  /** Ergebnis eintragen. `event`: Kennung der Partie – kommt dasselbe Ergebnis nochmal (Wiederholung nach Fehler), zählt es nur einmal. */
+  async record(entry: RecentGame, id?: string, event?: string): Promise<ProfileStats> {
     if (id && PROFILE_ID_RE.test(id)) this.pid = id;
+    if (event) {
+      const done = (await this.ctx.storage.get<string[]>("events")) ?? [];
+      if (done.includes(event)) return this.stats ?? emptyStats(Date.now());
+      await this.ctx.storage.put("events", [...done, event].slice(-50));
+    }
     this.stats = addResult(this.stats ?? emptyStats(Date.now()), entry);
     await this.save();
     return this.stats;
@@ -45,6 +54,33 @@ export class ProfileStore extends DurableObject<Env> {
     s.groups = member ? [code, ...rest].slice(0, MAX_PROFILE_GROUPS) : rest;
     this.stats = s;
     await this.save();
+  }
+
+  // ----- Geräteschlüssel: wer das Profil nutzen darf (die ID allein reicht nicht) -----
+
+  /**
+   * Gehört der Schlüssel zu diesem Profil? Ein Profil ohne Schlüssel (neu, oder von vor den Schlüsseln)
+   * übernimmt den ersten, der sich meldet – danach zählen nur noch bekannte Schlüssel.
+   */
+  async owns(key: string): Promise<boolean> {
+    if (!PROFILE_KEY_RE.test(key)) return false;
+    const h = await hashPin("profile", key);
+    const keys = (await this.ctx.storage.get<string[]>("keys")) ?? [];
+    if (keys.includes(h)) return true;
+    if (keys.length) return false;
+    await this.ctx.storage.put("keys", [h]);
+    await this.ctx.storage.setAlarm(Date.now() + PROFILE_TTL_MS);
+    return true;
+  }
+
+  /** Neuer Schlüssel für ein weiteres Gerät (Übertragung) – höchstens MAX_KEYS, die ältesten fallen raus */
+  async addKey(): Promise<string> {
+    const b = new Uint8Array(24);
+    crypto.getRandomValues(b);
+    const key = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+    const keys = (await this.ctx.storage.get<string[]>("keys")) ?? [];
+    await this.ctx.storage.put("keys", [...keys, await hashPin("profile", key)].slice(-MAX_KEYS));
+    return key;
   }
 
   // ----- Übertragungs-Code (eigenes Objekt je Code, nicht im Profil) -----

@@ -4,6 +4,7 @@
  * Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
  */
 import type { RoomState } from "@shared/platform/room";
+import { getGame } from "@shared/games";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import type { UnoState } from "@shared/games/uno/logic";
 import { HAND, type SchamlosState } from "@shared/games/schamlos/logic";
@@ -55,6 +56,8 @@ export const TABLE_GAMES = ["maumau", "uno", "schamlos"] as const;
 
 export function tableModel(room: RoomState): TableModel | null {
   if (room.phase !== "playing" || !room.game) return null;
+  // Partie läuft nach einem Update noch mit einer älteren Version: Tisch zeigt sie wie ein Handy
+  if (room.gameVersion !== undefined && room.gameVersion !== getGame(room.gameId).version) return null;
   if (room.gameId === "maumau") {
     const s = room.game as MauMauState;
     if (s.mode === "table") return null;

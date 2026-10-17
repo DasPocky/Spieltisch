@@ -26,7 +26,13 @@
   "observability": { "enabled": true },
   // Nicht geheim und deshalb hier statt im Dashboard: dort gesetzte Variablen löscht jeder Deploy.
   // Das Gegenstück REALTIME_APP_TOKEN bleibt ein Secret (wrangler secret put).
-  "vars": { "REALTIME_APP_ID": "6a2b13fa601e8f01bf6a94ccf63620bf" },
+  // CF_ACCOUNT_ID und WORKER_NAME braucht das Freischalten wartender Updates (mit dem Secret DEPLOY_TOKEN).
+  // UPDATE_MODE hier setzen, um den Update-Zeitpunkt aus dem Admin zu überschreiben (now, round, idle, time, manual).
+  "vars": { "REALTIME_APP_ID": "6a2b13fa601e8f01bf6a94ccf63620bf", "CF_ACCOUNT_ID": "ef9cbceacd8be6cff839033e54c0cb6b", "WORKER_NAME": "spieltisch" },
+  // Globale Ratenbremse für sicherheitsrelevante Wege (Profil-Schlüssel, Übertragungs-Code) – je Adresse und Minute
+  "ratelimits": [{ "name": "SENSITIVE", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
+  // Alle 5 Minuten prüfen, ob ein wartendes Update live gehen darf
+  "triggers": { "crons": ["*/5 * * * *"] },
   // Vorschau je Zweig (Cloudflare Worker Previews, nur für Nicht-main-Zweige):
   // Jede Vorschau bekommt eigene, leere Durable Objects – Räume, Einstellungen, Profile und Gruppen von live bleiben unberührt.
   // Secrets erbt sie nicht: ohne ADMIN_PASSWORD ist die Verwaltung dort aus, ohne Realtime-Token auch Audio und Video.

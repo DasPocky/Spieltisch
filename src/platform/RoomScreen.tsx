@@ -33,6 +33,7 @@ import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
 import { KnockBar, type KnockEntry } from "./KnockBar";
+import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
@@ -58,7 +59,7 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
 export function RoomScreen(props: Props) {
   const { room, me, online, dispatch, reconnecting, code } = props;
   const mode = useViewMode();
-  const ui = getGameUI(room.gameId);
+  const ui = getGameUI(room.gameId, room.phase === "playing" ? room.gameVersion : undefined);
   const info = getGame(room.gameId).info;
   const isHost = me === null || me === room.hostId;
   const hostTools = me === null || (isHost && !!room.hostTools);
@@ -66,6 +67,7 @@ export function RoomScreen(props: Props) {
   // Mitten in der Partie dazugekommen: wartet auf die nächste Partie
   const benched = playing && me !== null && !!room.bench?.some((p) => p.id === me);
   const feedback = useGameFeedback(room, me);
+  useRoomUpdateGate(room, me);
 
   const board: BoardProps | null = playing && !benched
     ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch }
@@ -117,6 +119,7 @@ export function RoomScreen(props: Props) {
       {props.call && <CallStrip call={props.call} players={room.players} me={me} compact={!!board || (!!code && !!room.meet)} />}
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
+      <UpdateBar playing={playing} />
       {props.knocks && props.onKnock && (
         <KnockBar knocks={props.knocks} isHost={isHost} hostOnline={!!room.hostId && !!online?.has(room.hostId)}
           hostName={room.players.find((p) => p.id === room.hostId)?.name} onAnswer={props.onKnock} />
@@ -252,6 +255,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call 
         </span>
         {canPick && <span className="flex items-center text-sm font-semibold text-primary">Wechseln<ChevronRight className="size-4" /></span>}
       </button>
+      <UpdatedNote room={room} />
       {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
       {call && <CallInvite call={call} />}

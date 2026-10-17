@@ -4,8 +4,9 @@ import { GAMES, isGameId } from "../shared/games";
 import { PROFILE_ID_RE } from "../shared/platform/profile";
 import { GROUP_CODE_RE } from "../shared/platform/group";
 import { ACCESS_CODE_RE, DEFAULT_CONFIG, sanitizeConfig, sanitizeDefaults, type AccessConfig, type GameDefaults, type SiteConfig } from "../shared/platform/access";
-import { countFeature, countStat, emptySiteStats, STAT_KINDS, WIPE_KINDS, type AdminRoom, type ArchivedRoom, type DirGroup, type DirProfile, type SiteStats, type FeatureKind, type StatKind, type WipeKind } from "../shared/platform/admin";
-import { type ServerStatus } from "../shared/build";
+import { addHealth, countFeature, countStat, emptySiteStats, type HealthDay, type HealthDelta, STAT_KINDS, WIPE_KINDS, type AdminRoom, type ArchivedRoom, type DirGroup, type DirProfile, type SiteStats, type FeatureKind, type StatKind, type WipeKind } from "../shared/platform/admin";
+import { BUILD, type ServerStatus } from "../shared/build";
+import { DEFAULT_UPDATE, releaseDue, sanitizeUpdate, type PendingRelease, type ReleaseEntry, type ReleaseHow, type ReleaseStatus, type UpdateConfig, type UpdateMode, type VersionInfo } from "../shared/platform/update";
 import { LIFE_MS, type RoomCard } from "../shared/platform/directory";
 import { ROOM_CODE_RE } from "../shared/platform/protocol";
 import { Env } from "./env";
@@ -25,6 +26,8 @@ export interface SettingsData {
   /** Kennung des letzten kompletten Neustarts */
   epoch?: string;
 }
+/** Eintrag im Protokoll der Verwaltung */
+export interface AuditEntry { at: number; what: string }
 export const GAME_IDS = Object.keys(GAMES);
 export const ADMIN_MAX_FAILS = 8;
 /** Admin-Gerät bleibt 30 Tage angemeldet (Abmelden beendet die Sitzung sofort); höchstens so viele Sitzungen gleichzeitig */
@@ -282,6 +285,117 @@ export class SiteSettings extends DurableObject<Env> {
 
   async statsGet(): Promise<SiteStats> {
     return this.stats;
+  }
+
+  // ----- Betriebskennzahlen (gesammelt von den Räumen) -----
+
+  async health(d: HealthDelta): Promise<void> {
+    const days = (await this.ctx.storage.get<HealthDay[]>("health")) ?? [];
+    await this.ctx.storage.put("health", addHealth(days, d, Date.now()));
+  }
+
+  async healthList(): Promise<HealthDay[]> {
+    return (await this.ctx.storage.get<HealthDay[]>("health")) ?? [];
+  }
+
+  // ----- Protokoll der Verwaltung: wer hat wann zugeschaut oder eingegriffen (ohne Inhalte, PINs oder Tokens) -----
+
+  async audit(what: string): Promise<void> {
+    const list = (await this.ctx.storage.get<AuditEntry[]>("audit")) ?? [];
+    list.unshift({ at: Date.now(), what: what.slice(0, 120) });
+    await this.ctx.storage.put("audit", list.slice(0, 200));
+  }
+
+  async auditList(): Promise<AuditEntry[]> {
+    return (await this.ctx.storage.get<AuditEntry[]>("audit")) ?? [];
+  }
+
+  // ----- Updates: neue Versionen zum gewählten Zeitpunkt freischalten -----
+
+  /** Gilt gerade: Variable UPDATE_MODE vor der Admin-Einstellung */
+  private updateConfig(): UpdateConfig & { fromEnv: boolean } {
+    const cfg = sanitizeUpdate(this.data.config.update ?? DEFAULT_UPDATE);
+    const env = this.env.UPDATE_MODE;
+    const fromEnv = !!env && sanitizeUpdate({ mode: env }).mode === env;
+    return { ...cfg, mode: fromEnv ? (env as UpdateMode) : cfg.mode, fromEnv };
+  }
+
+  private canPromote(): boolean {
+    return !!(this.env.DEPLOY_TOKEN && this.env.CF_ACCOUNT_ID && this.env.WORKER_NAME);
+  }
+
+  private async releases(): Promise<{ pending: PendingRelease | null; history: ReleaseEntry[] }> {
+    return (await this.ctx.storage.get<{ pending: PendingRelease | null; history: ReleaseEntry[] }>("releases")) ?? { pending: null, history: [] };
+  }
+
+  private async saveReleases(r: { pending: PendingRelease | null; history: ReleaseEntry[] }): Promise<void> {
+    r.history = r.history.slice(0, 30);
+    await this.ctx.storage.put("releases", r);
+  }
+
+  /**
+   * Der Build hat eine neue Version hochgeladen: sofort live („now“) oder warten?
+   * Ohne Schlüssel zum Freischalten gilt immer „sofort“ – sonst bliebe das Update für immer liegen.
+   */
+  async releaseOffer(v: { versionId: string; sha: string; time: string }): Promise<"now" | "later"> {
+    const cfg = this.updateConfig();
+    const r = await this.releases();
+    const later = (cfg.mode === "idle" || cfg.mode === "time" || cfg.mode === "manual") && this.canPromote();
+    // Ältere wartende Version wird überholt – die neue enthält alles
+    if (r.pending) r.history = r.history.map((h) => (h.sha === r.pending!.sha && !h.liveAt ? { ...h, skipped: true } : h));
+    r.history.unshift({ sha: v.sha, time: v.time, at: Date.now(), ...(later ? {} : { liveAt: Date.now(), how: "sofort" as const }) });
+    r.pending = later ? { ...v, at: Date.now() } : null;
+    await this.saveReleases(r);
+    return later ? "later" : "now";
+  }
+
+  /** Läuft gerade irgendwo eine Partie (mit jemandem online)? */
+  private async playingRooms(): Promise<number> {
+    return (await this.roomList()).filter((r) => r.phase === "playing" && (r.card?.online ?? r.players.filter((p) => p.online).length) > 0).length;
+  }
+
+  /** Wartendes Update freischalten, wenn es dran ist (alle 5 Minuten) – oder sofort (`force`, Knopf im Admin) */
+  async releaseTick(force = false): Promise<{ ok: boolean; error?: string; live?: boolean }> {
+    const r = await this.releases();
+    if (!r.pending) return { ok: true, live: false };
+    const how: ReleaseHow | null = force ? "knopf" : releaseDue(r.pending, this.updateConfig(), Date.now(), await this.playingRooms());
+    if (!how) return { ok: true, live: false };
+    const error = await this.promote(r.pending.versionId, r.pending.sha);
+    if (error) return { ok: false, error };
+    r.history = r.history.map((h) => (h.sha === r.pending!.sha && !h.liveAt ? { ...h, liveAt: Date.now(), how, skipped: undefined } : h));
+    r.pending = null;
+    await this.saveReleases(r);
+    return { ok: true, live: true };
+  }
+
+  /** Version bei Cloudflare zu 100 % live schalten */
+  private async promote(versionId: string, sha: string): Promise<string | undefined> {
+    if (!this.canPromote()) return "Zum Freischalten fehlt der Schlüssel DEPLOY_TOKEN (siehe docs/betrieb.md).";
+    try {
+      const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${this.env.CF_ACCOUNT_ID}/workers/scripts/${this.env.WORKER_NAME}/deployments`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${this.env.DEPLOY_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ strategy: "percentage", versions: [{ version_id: versionId, percentage: 100 }], annotations: { "workers/message": `Spieltisch ${sha.slice(0, 7)}` } }),
+      });
+      if (res.ok) return undefined;
+      const body = (await res.json().catch(() => null)) as { errors?: { message?: string }[] } | null;
+      return `Cloudflare lehnt ab: ${body?.errors?.[0]?.message ?? res.status}`;
+    } catch (e) {
+      return `Cloudflare nicht erreichbar: ${(e as Error).message}`;
+    }
+  }
+
+  async releaseStatus(): Promise<ReleaseStatus> {
+    const cfg = this.updateConfig();
+    const r = await this.releases();
+    return { mode: cfg.mode, modeFromEnv: cfg.fromEnv, canPromote: this.canPromote(), canReceive: !!this.env.RELEASE_SECRET, pending: r.pending, history: r.history };
+  }
+
+  /** Für alle: welche Version läuft, wann kommt die nächste */
+  async version(): Promise<VersionInfo> {
+    const cfg = this.updateConfig();
+    const r = await this.releases();
+    return { build: BUILD, mode: cfg.mode, pending: r.pending ? { at: r.pending.at, mode: cfg.mode, ...(cfg.mode === "time" ? { hour: cfg.hour } : {}) } : null };
   }
 
   private async save() {

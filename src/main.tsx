@@ -5,10 +5,13 @@ import "./lib/theme";
 import { siteConfigNow, whenSiteConfig } from "./hooks/useSiteConfig";
 import App from "./App";
 import { checkFreshStart } from "./lib/freshStart";
+import { startUpdates } from "./lib/update";
 
 // Admin-Einstellungen (u. a. der Look) gleich beim Start holen – und nach einem Neustart im Admin einmal frisch beginnen
 siteConfigNow();
 void whenSiteConfig().then(checkFreshStart);
+// Neue Versionen bemerken und an einem ruhigen Moment neu laden
+startUpdates();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

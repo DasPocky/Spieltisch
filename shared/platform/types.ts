@@ -80,8 +80,17 @@ export interface GameInfo {
 
 export interface GameLogic<S = unknown, A extends { type: string } = { type: string }> {
   info: GameInfo;
-  /** Version des Spielstand-Formats – bei inkompatiblen Änderungen erhöhen */
+  /**
+   * Version des Spielstand-Formats – bei inkompatiblen Änderungen erhöhen.
+   * Danach `node scripts/legacy.mjs <id>`: sichert die vorige Version, damit laufende Partien nach einem Update
+   * mit ihr zu Ende gespielt werden können (siehe docs/entwicklung.md, „Updates“).
+   */
   version: number;
+  /**
+   * Spielstand einer älteren Version übernehmen (optional). Gibt es keine gesicherte alte Version,
+   * rechnet der Server damit um; null bzw. fehlend: die Partie endet sanft und die Gruppe startet neu.
+   */
+  migrate?(state: unknown, from: number): S | null;
   settings: SettingDef[];
   /** Zugbasiert? Dann gibt es die Einstellung „Wer darf für den Spieler am Zug handeln?“ */
   turnBased: boolean;

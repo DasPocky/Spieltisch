@@ -8,6 +8,8 @@ import { randomCode } from "./random";
 
 export const PROFILE_ID_LENGTH = 16;
 export const PROFILE_ID_RE = /^[A-HJ-NP-Z2-9]{16}$/;
+/** Geräteschlüssel eines Profils (48 Hex-Zeichen, bleibt auf dem Gerät; der Server kennt nur seinen Hash) */
+export const PROFILE_KEY_RE = /^[0-9a-f]{48}$/;
 export const MAX_RECENT = 30;
 
 export interface GameStats {

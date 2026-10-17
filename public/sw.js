@@ -10,14 +10,22 @@ self.addEventListener("install", (e) => {
   e.waitUntil(precache());
 });
 
+/** Merkliste: Dateien dieser und der vorigen Version (die vorige braucht eine noch offene alte App) */
+const LISTS = "/__precache-lists";
+
 async function precache() {
   try {
     const files = await (await fetch("/precache.json", { cache: "no-store" })).json();
     const c = await caches.open(CACHE);
     const missing = [];
     for (const f of files) if (!(await c.match(f, { ignoreVary: true }))) missing.push(f);
-    // Dateien alter Versionen aufräumen
-    const keep = new Set(files);
+    // Dateien alter Versionen aufräumen – aber erst zwei Versionen später: eine gerade noch offene alte App
+    // kann sonst Teile, die sie noch braucht, weder vom Server (neue Version) noch von hier laden
+    const saved = await c.match(LISTS).then((r) => (r ? r.json() : null)).catch(() => null);
+    const same = saved && JSON.stringify(saved.current) === JSON.stringify(files);
+    const previous = same ? saved.previous ?? [] : saved?.current ?? [];
+    await c.put(LISTS, new Response(JSON.stringify({ current: files, previous })));
+    const keep = new Set([...files, ...previous]);
     for (const req of await c.keys()) { const path = new URL(req.url).pathname; if (path.startsWith("/assets/") && !keep.has(path)) await c.delete(req); }
     // Einzeln, damit eine fehlende Datei nicht alles abbricht
     await Promise.all(missing.map((f) => fetch(f).then((res) => (res.ok ? c.put(f, res) : null)).catch(() => null)));

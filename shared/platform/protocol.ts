@@ -1,6 +1,15 @@
 import type { Avatar } from "./avatar";
 import type { RoomAction, RoomState } from "./room";
 import type { KnockView } from "./directory";
+import type { BuildInfo } from "../build";
+
+/**
+ * Version des Nachrichtenformats zwischen Gerät und Server. Erhöhen, wenn alte Geräte neue Nachrichten nicht mehr
+ * verstehen (oder umgekehrt) – dann laden Geräte mit anderer Version sofort neu statt an einem ruhigen Moment.
+ * Weitere Versionen: Build (shared/build.ts), Raum-Schema (RoomState.v), Spielstand je Spiel (GameLogic.version) –
+ * siehe docs/entwicklung.md, „Versionen und Updates“.
+ */
+export const PROTOCOL = 1;
 
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_CODE_LENGTH = 5;
@@ -9,6 +18,7 @@ export const PIN_RE = /^\d{4,8}$/;
 
 export type ClientMessage =
   | { type: "join"; name?: string; pin?: string; playerId?: string; token?: string; /** Profil-ID für die Statistik (optional) */ profile?: string;
+      /** Geräteschlüssel des Profils – ohne ihn zählt das Profil nicht */ profileKey?: string;
       /** Avatar und aktive Gruppe (optional) – die Gruppe bekommt das Ergebnis mit */ avatar?: Avatar; group?: string;
       /** Zufallswert je Beitritt: geht die Antwort verloren und das Handy versucht es nochmal, entsteht kein zweiter Spieler */ nonce?: string }
   /** `id`: eindeutig je Aktion – wird sie nach einem Abbruch nochmal geschickt, führt der Server sie nur einmal aus */
@@ -57,12 +67,15 @@ export const CALL_TRACK_RE = /^[A-Za-z0-9_-]{1,64}$/;
 export type ErrorCode = "bad_pin" | "locked" | "kicked" | "not_joined" | "rejected" | "closed" | "denied" | "no_answer";
 
 export type ServerMessage =
+  /** Gleich nach dem Verbinden: welche Version der Server hat und welches Protokoll er spricht */
+  | { type: "hello"; build: BuildInfo; protocol: number }
   | { type: "joined"; playerId: string; token: string }
-  | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer>; /** wer gerade anklopft */ knocks?: KnockView[] }
+  | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer>; /** wer gerade anklopft */ knocks?: KnockView[];
+      /** Revision des Raums – ein Stand mit kleinerer Revision als der zuletzt gesehene ist veraltet */ rev?: number }
   /** An den Gast: PIN stimmt, jetzt wartet er auf Einlass (`wait`: so lange höchstens noch, ms) */
   | { type: "knocking"; wait: number }
   /** Aktion angekommen (oder schon früher ausgeführt) */
-  | { type: "ack"; id: string }
+  | { type: "ack"; id: string; rev?: number }
   /** Chat: beim Beitreten die letzten Nachrichten, danach jeweils die neue */
   | { type: "chat"; messages: ChatMsg[]; append?: boolean }
   /** Nachricht der Verwaltung an alle im Raum */

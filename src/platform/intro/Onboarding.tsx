@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adoptAndSync, syncMe } from "@/lib/group";
-import { myAvatar, myName, redeemTransfer, saveAvatar, saveName } from "@/lib/profile";
+import { canUseProfile, myAvatar, myName, redeemTransfer, saveAvatar, saveName } from "@/lib/profile";
 import { NAME_KEY, writeJSON } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarPicker } from "@/platform/Avatar";
@@ -56,12 +56,18 @@ export function Onboarding({ onDone, start = "hello" }: { onDone: () => void; st
   const adopt = async () => {
     setBusy(true); setError(null);
     let pid = otherCode;
+    let key: string | undefined;
     if (TRANSFER_CODE_RE.test(otherCode)) {
       const res = await redeemTransfer(otherCode);
       if (!res.id) { setBusy(false); setError(res.error ?? "Das hat nicht geklappt."); return; }
       pid = res.id;
+      key = res.key;
+    } else if (!(await canUseProfile(pid))) {
+      setBusy(false);
+      setError("Dieses Profil gehört schon zu einem Handy – nimm dort „Code zum Übertragen anzeigen“.");
+      return;
     }
-    await adoptAndSync(pid);
+    await adoptAndSync(pid, key);
     setBusy(false);
     setName(myName()); setAvatar(myAvatar());
     setStep("tour?");

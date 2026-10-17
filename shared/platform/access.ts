@@ -5,6 +5,8 @@
 import { DEFAULT_LOOK, isLook, type LookId } from "./looks";
 import { sanitizeOption } from "./room";
 import type { Options, SettingDef } from "./types";
+import { DEFAULT_UPDATE, sanitizeUpdate, type UpdateConfig } from "./update";
+import { EMPTY_NEWS, sanitizeNews, type NewsOverrides } from "../news";
 
 export type Access = "on" | "code" | "off";
 
@@ -29,6 +31,10 @@ export interface SiteConfig {
   archiveDays: number;
   /** Aussehen der Seite */
   look: LookId;
+  /** Wann neue Versionen live gehen */
+  update: UpdateConfig;
+  /** „Was ist neu?“: ausgeblendete und geänderte Einträge */
+  news: NewsOverrides;
   /** Kennung des letzten kompletten Neustarts (Admin hat alles gelöscht) – Handys mit älterer Kennung starten einmal frisch */
   epoch?: string;
 }
@@ -62,11 +68,12 @@ export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
 
 /** Was der Admin unter „Einstellungen“ speichert */
-export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays" | "look">;
+export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays" | "look" | "update" | "news">;
 
 export const DEFAULT_CONFIG: SiteConfig = {
   site: "on", games: {}, message: "", hasCode: false, defaults: {},
   banner: "", featured: [], order: [], limits: DEFAULT_LIMITS, features: DEFAULT_FEATURES, archiveDays: DEFAULT_ARCHIVE_DAYS, look: DEFAULT_LOOK,
+  update: DEFAULT_UPDATE, news: EMPTY_NEWS,
 };
 export const MAX_MESSAGE = 200;
 export const ACCESS_CODE_RE = /^.{4,32}$/;
@@ -101,6 +108,8 @@ export function sanitizeConfig(x: unknown, gameIds: readonly string[]): AccessCo
     features: Object.fromEntries((Object.keys(DEFAULT_FEATURES) as (keyof SiteFeatures)[]).map((k) => [k, typeof f[k] === "boolean" ? f[k] : DEFAULT_FEATURES[k]])) as unknown as SiteFeatures,
     archiveDays: num(o.archiveDays, 1, 365, DEFAULT_ARCHIVE_DAYS),
     look: isLook(o.look) ? o.look : DEFAULT_LOOK,
+    update: sanitizeUpdate(o.update),
+    news: sanitizeNews(o.news),
   };
 }
 
