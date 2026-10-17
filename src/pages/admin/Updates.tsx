@@ -66,6 +66,7 @@ export function UpdatesPanel() {
         </p>
       )}
 
+      {status?.error && <p className="rounded-xl bg-destructive/10 p-2.5 text-sm text-destructive" data-testid="update-error">{status.error}</p>}
       {status?.pending ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-primary/10 p-2.5 text-sm" data-testid="update-pending">
           <Rocket className="size-4 text-primary" />

@@ -320,6 +320,18 @@ export class SiteSettings extends DurableObject<Env> {
     return { ...cfg, mode: fromEnv ? (env as UpdateMode) : cfg.mode, fromEnv };
   }
 
+  /** Ist DEPLOY_TOKEN noch gültig (nicht abgelaufen, nicht gelöscht)? */
+  private async tokenOk(): Promise<boolean> {
+    try {
+      const res = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", { headers: { authorization: `Bearer ${this.env.DEPLOY_TOKEN}` } });
+      const body = (await res.json().catch(() => null)) as { result?: { status?: string } } | null;
+      const ok = res.ok && body?.result?.status === "active";
+      if (!ok) await this.ctx.storage.put("releaseError", "DEPLOY_TOKEN ist ungültig oder abgelaufen – Updates gehen sofort live, bis ein neuer Schlüssel gesetzt ist.");
+      else await this.ctx.storage.delete("releaseError");
+      return ok;
+    } catch { return false; }
+  }
+
   private canPromote(): boolean {
     return !!(this.env.DEPLOY_TOKEN && this.env.CF_ACCOUNT_ID && this.env.WORKER_NAME);
   }
@@ -340,7 +352,8 @@ export class SiteSettings extends DurableObject<Env> {
   async releaseOffer(v: { versionId: string; sha: string; time: string }): Promise<"now" | "later"> {
     const cfg = this.updateConfig();
     const r = await this.releases();
-    const later = (cfg.mode === "idle" || cfg.mode === "time" || cfg.mode === "manual") && this.canPromote();
+    // Warten nur, wenn der Worker später auch selbst freischalten kann (Schlüssel gültig) – sonst bliebe das Update liegen
+    const later = (cfg.mode === "idle" || cfg.mode === "time" || cfg.mode === "manual") && this.canPromote() && (await this.tokenOk());
     // Ältere wartende Version wird überholt – die neue enthält alles
     if (r.pending) r.history = r.history.map((h) => (h.sha === r.pending!.sha && !h.liveAt ? { ...h, skipped: true } : h));
     r.history.unshift({ sha: v.sha, time: v.time, at: Date.now(), ...(later ? {} : { liveAt: Date.now(), how: "sofort" as const }) });
@@ -361,7 +374,8 @@ export class SiteSettings extends DurableObject<Env> {
     const how: ReleaseHow | null = force ? "knopf" : releaseDue(r.pending, this.updateConfig(), Date.now(), await this.playingRooms());
     if (!how) return { ok: true, live: false };
     const error = await this.promote(r.pending.versionId, r.pending.sha);
-    if (error) return { ok: false, error };
+    if (error) { await this.ctx.storage.put("releaseError", error); return { ok: false, error }; }
+    await this.ctx.storage.delete("releaseError");
     r.history = r.history.map((h) => (h.sha === r.pending!.sha && !h.liveAt ? { ...h, liveAt: Date.now(), how, skipped: undefined } : h));
     r.pending = null;
     await this.saveReleases(r);
@@ -388,7 +402,8 @@ export class SiteSettings extends DurableObject<Env> {
   async releaseStatus(): Promise<ReleaseStatus> {
     const cfg = this.updateConfig();
     const r = await this.releases();
-    return { mode: cfg.mode, modeFromEnv: cfg.fromEnv, canPromote: this.canPromote(), canReceive: !!this.env.RELEASE_SECRET, pending: r.pending, history: r.history };
+    return { mode: cfg.mode, modeFromEnv: cfg.fromEnv, canPromote: this.canPromote(), canReceive: !!this.env.RELEASE_SECRET, pending: r.pending, history: r.history,
+      error: (await this.ctx.storage.get<string>("releaseError")) ?? undefined };
   }
 
   /** Für alle: welche Version läuft, wann kommt die nächste */

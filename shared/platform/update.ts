@@ -94,6 +94,8 @@ export interface ReleaseStatus {
   canReceive: boolean;
   pending: PendingRelease | null;
   history: ReleaseEntry[];
+  /** letzter Fehler beim Freischalten (z. B. Schlüssel abgelaufen) */
+  error?: string;
 }
 
 /** Antwort auf GET /api/version – fürs Neuladen und den Hinweis im Raum */
