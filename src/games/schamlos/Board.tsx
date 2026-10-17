@@ -16,7 +16,7 @@ type P = BoardProps<SchamlosState, SchamlosAction>;
 export function BlackCard({ prompt, answers = [], className }: { prompt: string; answers?: string[]; className?: string }) {
   const parts = fillIn(prompt, answers);
   return (
-    <div className={cn("rounded-2xl bg-[#1b1e25] p-4 text-lg font-bold leading-snug text-white shadow-lg", className)} data-testid="black-card">
+    <div className={cn("rounded-2xl bg-[#1b1e25] p-4 text-lg font-bold leading-snug text-white shadow-lg hyphens-auto [overflow-wrap:anywhere] lg:p-7 lg:text-3xl", className)} data-testid="black-card">
       {parts.map((p, i) => p.fill
         ? <span key={i} className={cn(answers.length ? "text-[#ffb59c]" : "tracking-widest text-white/50")}>{answers.length ? p.text : "______"}</span>
         : <span key={i}>{p.text}</span>)}
@@ -98,14 +98,14 @@ function Pick({ game: s, me, act, local, name, room }: Sub) {
   }
   const toggle = (c: string) => setSel((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c].slice(-s.blanks)));
   return (
-    <>
-      <BlackCard prompt={s.prompt} answers={sel} className="shrink-0" />
-      <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto" data-testid="hand">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-6">
+      <BlackCard prompt={s.prompt} answers={sel} className="shrink-0 lg:row-span-2 lg:self-start" />
+      <div className="-m-1 grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-1 lg:grid-cols-3 lg:gap-3" lang="de" data-testid="hand">
         {hand.map((c) => {
           const i = sel.indexOf(c);
           return (
             <button key={c} type="button" onClick={() => toggle(c)} aria-pressed={i >= 0}
-              className={cn("relative min-h-20 rounded-xl bg-white p-3 text-left text-[0.95rem] font-semibold leading-snug text-[#1b1e25] shadow-sm ring-1 ring-black/10 transition active:scale-[0.98]",
+              className={cn("relative min-h-20 rounded-xl bg-white p-3 text-left hyphens-auto [overflow-wrap:anywhere] text-[0.95rem] font-semibold leading-snug lg:min-h-36 lg:p-4 lg:text-xl lg:hover:-translate-y-0.5 text-[#1b1e25] shadow-sm ring-1 ring-black/10 transition active:scale-[0.98]",
                 i >= 0 && "ring-3 ring-primary")}>
               {cardText(c)}
               {i >= 0 && s.blanks > 1 && <span className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{i + 1}</span>}
@@ -113,11 +113,11 @@ function Pick({ game: s, me, act, local, name, room }: Sub) {
           );
         })}
       </div>
-      <Button size="lg" className="h-13 shrink-0 rounded-2xl text-base" disabled={sel.length !== s.blanks}
+      <Button size="lg" className="h-13 shrink-0 rounded-2xl text-base lg:col-start-2 lg:h-15 lg:text-lg" disabled={sel.length !== s.blanks}
         onClick={() => { act({ type: "play", cards: sel, ...(local && who ? { player: who } : {}) }); setSel([]); }}>
         {sel.length === s.blanks ? (s.blanks > 1 ? "Karten legen" : "Karte legen") : s.blanks > 1 ? `Wähle ${s.blanks} Karten` : "Wähle eine Karte"}
       </Button>
-    </>
+    </div>
   );
 }
 
@@ -138,10 +138,10 @@ function Judge({ game: s, me, act, local, name, isHost }: Sub) {
       <p className="shrink-0 text-center text-sm text-muted-foreground">
         {mayChoose ? "Lies alle Sätze vor – und tipp den besten an." : `${name(s.czar)} liest vor und wählt …`}
       </p>
-      <div className="grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto" data-testid="schamlos-subs">
+      <div className="grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto lg:grid-cols-2 lg:gap-4" data-testid="schamlos-subs">
         {s.subs.map((x, i) => (
           <button key={i} type="button" disabled={!mayChoose} onClick={() => act({ type: "choose", index: i })}
-            className={cn("rounded-2xl bg-[#1b1e25] p-3.5 text-left leading-snug text-white shadow transition enabled:active:scale-[0.98]", x.by === me && "ring-2 ring-white/40")}>
+            className={cn("rounded-2xl bg-[#1b1e25] p-3.5 text-left leading-snug text-white shadow transition enabled:active:scale-[0.98] lg:p-6 lg:text-2xl lg:enabled:hover:ring-2 lg:enabled:hover:ring-primary", x.by === me && "ring-2 ring-white/40")}>
             <Sentence prompt={s.prompt} cards={x.cards} />
             {x.by === me && <span className="ml-1 text-xs text-white/60">(deine)</span>}
           </button>
@@ -159,12 +159,12 @@ function Result({ game: s, me, act, local, name, isHost, room }: Sub) {
   return (
     <>
       {win && (
-        <div className="shrink-0 rounded-2xl bg-[#1b1e25] p-4 text-lg leading-snug text-white shadow-lg" data-testid="schamlos-win">
+        <div className="shrink-0 rounded-2xl bg-[#1b1e25] p-4 text-lg leading-snug text-white shadow-lg lg:p-8 lg:text-3xl" data-testid="schamlos-win">
           <Sentence prompt={s.prompt} cards={win.cards} />
           <div className="mt-3 text-sm text-white/70">Punkt für <b className="text-white">{win.by === me ? "dich" : name(win.by)}</b> – gewählt von {s.czar === me ? "dir" : name(s.czar)}</div>
         </div>
       )}
-      <ul className="glass grid min-h-0 shrink auto-rows-min gap-1.5 overflow-y-auto rounded-2xl p-3 text-sm">
+      <ul className="glass grid min-h-0 shrink auto-rows-min gap-1.5 overflow-y-auto rounded-2xl p-3 text-sm lg:grid-cols-3 lg:gap-x-8 lg:p-5 lg:text-lg">
         {ranking.map((r) => (
           <li key={r.id} className="flex items-center justify-between"><span className={cn(r.id === win?.by && "font-bold")}>{name(r.id)}</span><b className="tabular-nums">{r.score} / {s.goal}</b></li>
         ))}

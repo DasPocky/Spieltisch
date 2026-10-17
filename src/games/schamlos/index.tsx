@@ -1,4 +1,5 @@
-import { schamlos, HAND, TIERS, type SchamlosAction, type SchamlosState } from "@shared/games/schamlos/logic";
+import { schamlos, HAND, type SchamlosAction, type SchamlosState } from "@shared/games/schamlos/logic";
+import { SETS } from "@shared/games/schamlos/cards";
 import type { BoardProps, GameUI } from "@/games/types";
 import { LogList } from "@/platform/PlayersHistory";
 import { Board } from "./Board";
@@ -20,11 +21,11 @@ function Rules() {
         <li>Sind alle Antworten da, werden sie gemischt aufgedeckt. Der Zar liest alle Sätze laut vor und wählt den besten – ohne zu wissen, von wem er ist.</li>
         <li>Wer den Satz gelegt hat, bekommt einen Punkt. Alle ziehen auf {HAND} Karten nach, der nächste wird Zar.</li>
       </ol>
-      <h3 className={h}>Stufen</h3>
+      <h3 className={h}>Kartensets</h3>
       <ul className="mt-1.5 list-disc space-y-1 pl-5">
-        {TIERS.map((t) => <li key={t.value}><b className="text-foreground">{t.label}</b> – {t.hint}</li>)}
+        {SETS.map((t) => <li key={t.id}><b className="text-foreground">{t.name}</b> – {t.hint}</li>)}
       </ul>
-      <p className="mt-1.5">Höhere Stufen spielen die Karten der darunter mit. Die Stufe wählt der Host vor dem Start.</p>
+      <p className="mt-1.5">Der Host wählt in den Einstellungen ein oder mehrere Sets – alle gewählten werden zusammengemischt.</p>
       <h3 className={h}>Sieg</h3>
       <p className="mt-1.5">Wer zuerst die eingestellten Punkte hat (Standard 7), gewinnt.</p>
       <h3 className={h}>Großer Tisch</h3>
@@ -40,13 +41,13 @@ function History({ game: s }: BoardProps<SchamlosState, SchamlosAction>) {
 function HeaderExtra({ game: s }: BoardProps<SchamlosState, SchamlosAction>) {
   return (
     <span className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold whitespace-nowrap ring-1 ring-inset ring-border">
-      {TIERS.find((t) => t.value === s.tier)?.label}
+      {s.sets.length > 2 ? `${s.sets.length} Sets` : s.sets.map((id) => SETS.find((x) => x.id === id)?.name).join(" + ")}
     </span>
   );
 }
 
 export const schamlosUI: GameUI<SchamlosState, SchamlosAction> = {
-  logic: schamlos, Icon, Board, Rules, History, HeaderExtra,
+  logic: schamlos, Icon, Board, Rules, History, HeaderExtra, wide: true,
   log: (s) => s.log,
   overview: (s) => ({ cols: ["Punkte"], rows: Object.fromEntries(Object.entries(s.scores).map(([id, n]) => [id, [n]])), curId: s.czar }),
 };

@@ -84,7 +84,7 @@ export function RoomScreen(props: Props) {
     <ChatContext.Provider value={props.chat ?? null}>
     <CallContext.Provider value={props.call ? { call: props.call, me } : null}>
     <EveningContext.Provider value={{ room, isHost, dispatch }}>
-    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
+    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing && ui.wide && "lg:max-w-6xl", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="room-head flex h-14 shrink-0 items-center justify-between">
         {playing ? (
           <div className="flex min-w-0 flex-1 items-center gap-2.5">

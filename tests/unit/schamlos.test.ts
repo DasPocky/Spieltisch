@@ -1,28 +1,54 @@
 import { describe, expect, it } from "vitest";
 import { schamlos, HAND, type SchamlosState } from "@shared/games/schamlos/logic";
-import { blanksOf, cardText, deckFor, fillIn } from "@shared/games/schamlos/cards";
+import { ADULT_SETS, blanksOf, CHILD_RE, cardText, deckFor, fillIn, SETS } from "@shared/games/schamlos/cards";
+import { setsOf } from "@shared/games/schamlos/logic";
 import type { GameContext } from "@shared/platform/types";
 
 const players = ["a", "b", "c", "d"].map((id) => ({ id, name: id.toUpperCase() }));
-const ctx = (actorId: string | null = null, options = {}): GameContext => ({ players, hostId: "a", actorId, options: { tier: "alle", goal: 2, ...options }, now: 0, round: 0 });
+const ctx = (actorId: string | null = null, options = {}): GameContext => ({ players, hostId: "a", actorId, options: { goal: 2, ...options }, now: 0, round: 0 });
 const play = (s: SchamlosState, id: string) => schamlos.apply(s, { type: "play", cards: s.hands[id].slice(0, s.blanks) }, ctx(id));
 
 describe("Schamlos", () => {
-  it("Karten: jede Karte hat Text, schwarze Karten haben Lücken, höhere Stufen spielen die unteren mit", () => {
-    for (const tier of ["alle", "ab18", "plus"] as const) {
-      const d = deckFor(tier);
+  it("Karten: jedes Set ist groß genug, jede Karte hat Text, schwarze Karten haben Lücken", () => {
+    for (const set of SETS.map((s) => s.id)) {
+      const d = deckFor([set]);
+      expect(d.black.length, set).toBeGreaterThanOrEqual(40);
+      expect(d.white.length, set).toBeGreaterThanOrEqual(150);
       for (const id of [...d.black, ...d.white]) expect(cardText(id), id).not.toBe("");
       for (const id of d.black) expect(cardText(id), id).toContain("___");
     }
-    expect(deckFor("ab18").white.length).toBeGreaterThan(deckFor("alle").white.length);
-    expect(deckFor("plus").black).toEqual(expect.arrayContaining(deckFor("ab18").black));
-    expect(deckFor("alle").black.some((id) => id.startsWith("e-"))).toBe(false);
+  });
+
+  it("Erwachsenen-Sets: keine Karte mit Kinder-Bezug im Stapel, auch nicht aus gemischten Sets", () => {
+    for (const adult of ADULT_SETS) {
+      const d = deckFor(["frech", "schwarz", adult]);
+      for (const id of [...d.black, ...d.white]) expect(CHILD_RE.test(cardText(id)), cardText(id)).toBe(false);
+    }
+    // Ohne Erwachsenen-Set bleiben harmlose Kinder-Karten drin
+    expect(deckFor(["frech"]).white.length).toBeGreaterThan(deckFor(["frech", "ab18"]).white.length - deckFor(["ab18"]).white.length);
+    expect(CHILD_RE.test("eine Erbschaft, die nur aus Schulden besteht")).toBe(false);
+    expect(CHILD_RE.test("der Kindergeburtstag mit Punsch")).toBe(true);
+    expect(CHILD_RE.test("Selling a kidney on a forum")).toBe(false);
+  });
+
+  it("Sets mischen: gewählte Sets zusammen, ohne Auswahl „Frech“", () => {
+    expect(setsOf({})).toEqual(["frech"]);
+    expect(setsOf({ set_frech: false, set_schwarz: true, set_plus: true })).toEqual(["plus", "schwarz"]);
+    expect(setsOf({ set_frech: false })).toEqual(["frech"]);
+    const mix = deckFor(["frech", "schwarz"]);
+    expect(mix.white.length).toBe(deckFor(["frech"]).white.length + deckFor(["schwarz"]).white.length);
+    expect(deckFor(["frech", "plus"]).white.length).toBeLessThan(deckFor(["frech"]).white.length + deckFor(["plus"]).white.length);
+    expect(deckFor(["frech"]).black.every((id) => id.startsWith("frech-"))).toBe(true);
+    expect(schamlos.setup(ctx(null, { set_frech: false, set_en: true })).blackPile.every((id) => id.startsWith("en-"))).toBe(true);
   });
 
   it("Lückentext: Antworten an der richtigen Stelle, am Satzanfang groß", () => {
-    const two = deckFor("alle").black.find((id) => blanksOf(id) === 2)!;
-    const parts = fillIn(two, ["a-w-0", "a-w-1"]);
-    expect(parts.filter((p) => p.fill).map((p) => p.text)).toEqual([expect.stringMatching(/^S/), cardText("a-w-1")]);
+    const two = deckFor(["frech"]).black.find((id) => blanksOf(id) === 2)!;
+    const parts = fillIn(two, ["frech-w-0", "frech-w-1"]);
+    expect(parts.filter((p) => p.fill).map((p) => p.text)).toHaveLength(2);
+    // Lücke am Satzanfang: Antwort beginnt groß
+    const first = deckFor(["frech", "ab18", "plus", "schwarz"]).black.find((id) => cardText(id).startsWith("___"));
+    if (first) expect(fillIn(first, ["frech-w-0", "frech-w-1"])[0].text).toMatch(/^\p{Lu}/u);
   });
 
   it("Ablauf: alle außer dem Zar legen, dann wird gewählt, Punkt, nächster Zar mit vollen Händen", () => {

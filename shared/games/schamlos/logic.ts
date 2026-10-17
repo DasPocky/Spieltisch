@@ -2,20 +2,19 @@
  * Schamlos – Lückensätze frech füllen. Reihum ist jemand Kartenzar und deckt eine schwarze Karte mit Lücke auf.
  * Alle anderen legen verdeckt eine (oder zwei) weiße Karten dazu. Der Zar liest alle Sätze vor und wählt – ohne zu wissen,
  * von wem sie sind – den besten. Wer zuerst die Zielpunkte hat, gewinnt.
- * Drei Stufen: „Für alle“ (frech, für jede Runde), „Ab 18“ (Freunde) und „Feuchtfröhlich“ (Freundschaft plus und mehr).
- * Höhere Stufen spielen die Karten der darunter mit.
+ * Kartensets frei kombinierbar: Frech (für alle), Ab 18, Feuchtfröhlich, Rabenschwarz und English.
  */
-import { GameError, type GameContext, type GameLogic, type PlayerResult } from "../../platform/types";
+import { GameError, type GameContext, type GameLogic, type Options, type PlayerResult } from "../../platform/types";
 import { shuffle } from "../../platform/random";
 import { playerName } from "../../platform/turns";
-import { blanksOf, deckFor, type Tier } from "./cards";
+import { blanksOf, deckFor, SETS } from "./cards";
 
 export const HAND = 7;
-export const TIERS: { value: Tier; label: string; hint: string }[] = [
-  { value: "alle", label: "Für alle", hint: "frech, für jede Runde" },
-  { value: "ab18", label: "Ab 18", hint: "für Freunde" },
-  { value: "plus", label: "Feuchtfröhlich", hint: "Freundschaft plus" },
-];
+/** Gewählte Kartensets (Einstellung „set_<id>“); ohne Auswahl „Frech“ */
+export function setsOf(o: Options): string[] {
+  const on = SETS.filter((s) => (o[`set_${s.id}`] ?? s.id === "frech") === true).map((s) => s.id);
+  return on.length ? on : ["frech"];
+}
 
 export interface Submission {
   /** wer – bleibt verborgen, bis der Zar gewählt hat */
@@ -25,7 +24,8 @@ export interface Submission {
 
 export interface SchamlosState {
   v: 1;
-  tier: Tier;
+  /** gemischte Kartensets */
+  sets: string[];
   goal: number;
   phase: "pick" | "judge" | "result" | "over";
   /** Reihenfolge, in der Zar wird */
@@ -83,7 +83,7 @@ function startRound(s: SchamlosState, ctx: GameContext): void {
     hand.push(...draw(s, HAND - hand.length));
   }
   s.order = s.order.filter((id) => ids.includes(id));
-  if (!s.blackPile.length) s.blackPile = shuffle(deckFor(s.tier).black);
+  if (!s.blackPile.length) s.blackPile = shuffle(deckFor(s.sets).black);
   s.prompt = s.blackPile.pop()!;
   s.blanks = blanksOf(s.prompt);
   s.played = {};
@@ -110,18 +110,18 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
   info: { id: "schamlos", name: "Schamlos", tagline: "Lückensätze frech füllen – der Zar kürt die beste Antwort", category: "Party", minPlayers: 3, maxPlayers: 12, duration: "30 Min." },
   version: 1,
   settings: [
-    { key: "tier", label: "Stufe", type: "choice", default: "alle", choices: TIERS },
+    ...SETS.map((s) => ({ key: `set_${s.id}`, label: s.name, hint: s.hint, type: "toggle" as const, default: s.id === "frech", group: "Kartensets" })),
     { key: "goal", label: "Punkte zum Sieg", type: "number", default: 7, min: 3, max: 15, step: 1 },
   ],
   turnBased: false,
   joinMidGame: true,
 
   setup(ctx) {
-    const tier = (TIERS.some((t) => t.value === ctx.options.tier) ? ctx.options.tier : "alle") as Tier;
-    const deck = deckFor(tier);
+    const sets = setsOf(ctx.options);
+    const deck = deckFor(sets);
     const order = ctx.players.map((p) => p.id);
     const s: SchamlosState = {
-      v: 1, tier, goal: Number(ctx.options.goal) || 7, phase: "pick", order,
+      v: 1, sets, goal: Number(ctx.options.goal) || 7, phase: "pick", order,
       // Zar wandert von Partie zu Partie weiter
       czar: order[(ctx.round ?? 0) % order.length],
       prompt: "", blanks: 1, hands: {}, played: {}, subs: [], pick: null, scores: {},
