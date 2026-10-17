@@ -24,7 +24,8 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
     trace: "retain-on-failure",
   },
-  // Der Admin-Test schaltet Spiele ab – deshalb läuft er erst, wenn alle anderen fertig sind
+  // Der Admin-Test schaltet Spiele ab – deshalb läuft er erst, wenn alle anderen fertig sind.
+  // In der CI läuft er auf einem eigenen Rechner (mit eigenem Server), die Spiele-Tests verteilt auf vier (siehe .github/workflows/ci.yml).
   projects: [
     { name: "setup", testMatch: /\.setup\.ts$/ },
     { name: "spiele", testIgnore: [/admin\.spec\.ts/, /\.setup\.ts$/], dependencies: ["setup"] },

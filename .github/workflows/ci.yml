@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Nachts die gründliche Zufallssimulation (viele Partien je Spiel)
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
 
 jobs:
   check:
@@ -17,12 +21,26 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Zufallspartien: im PR eine kurze Runde, auf main die übliche, nachts gründlich
       - run: npm test
+        env:
+          SIM_ROUNDS: ${{ github.event_name == 'pull_request' && '5' || github.event_name == 'schedule' && '200' || '25' }}
 
+  # Handy-Tests laufen gleichzeitig mit dem Build, verteilt auf mehrere Rechner – jeder mit eigenem Server.
+  # Die Admin-Tests schalten Spiele ab und laufen deshalb für sich.
   e2e:
-    name: Handy-Tests (Playwright)
+    name: Handy-Tests (${{ matrix.name }})
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Spiele 1/4", args: "--project=spiele --no-deps --shard=1/4", setup: true }
+          - { name: "Spiele 2/4", args: "--project=spiele --no-deps --shard=2/4", setup: true }
+          - { name: "Spiele 3/4", args: "--project=spiele --no-deps --shard=3/4", setup: true }
+          - { name: "Spiele 4/4", args: "--project=spiele --no-deps --shard=4/4", setup: true }
+          - { name: "Verwaltung", args: "--project=admin --no-deps", setup: false }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,14 +49,28 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      # Einrichtung (z. B. „Ein Handy für alle“ einschalten) auf dem eigenen Server dieses Rechners
+      - if: matrix.setup
+        run: npx playwright test --project=setup
+        env:
+          CI: true
+      - run: npx playwright test ${{ matrix.args }}
         env:
           CI: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: screenshots
+          name: screenshots-${{ strategy.job-index }}
           path: |
             screenshots/
             test-results/
           retention-days: 7
+
+  # Ein gemeinsamer Haken für Branch-Schutz und Übersicht: grün, wenn alle Handy-Tests grün sind
+  e2e-done:
+    name: Handy-Tests (Playwright)
+    if: always() && github.event_name != 'schedule'
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.e2e.result }}" = "success"

@@ -36,6 +36,11 @@ async function section(page: Page, id: "live" | "statistik" | "spiele" | "leute"
   await expect(page).toHaveURL(new RegExp(`/admin/${id}$`));
 }
 
+// Läuft in der CI auf einem eigenen Server ohne Einrichtungsschritt – deshalb hier selbst alles einschalten
+test.beforeAll(async ({ request }) => {
+  await setConfig(request, allOn, null);
+});
+
 test.afterEach(async ({ request }) => {
   await setConfig(request, allOn, null);
   await setDefaults(request, {});

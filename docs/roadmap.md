@@ -17,4 +17,4 @@
 
 ## Entwicklung
 
-- **CI beschleunigen** – Handy-Tests auf 4 Rechner verteilen (Playwright-Shards), lange Statistik-Simulationen nur nachts. Ziel: etwa 10 statt 40 Minuten.
+- **Testhilfen bündeln** – doppelte Helfer in den Handy-Tests (lokale Lobby, Admin-Anmeldung, Räume) nach `tests/e2e/util.ts`, feste Wartezeiten durch Erwartungen ersetzen

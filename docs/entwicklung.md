@@ -99,6 +99,8 @@ Lobby, Einstellungen, Rechte, Online-Räume, Menü und Siegerehrung funktioniere
 
 Für die Handy-Tests einmalig `npx playwright install chromium` – oder ein vorhandenes Chromium per `PW_CHROMIUM_PATH=/pfad/zu/chromium npm run test:e2e`. Ein Einrichtungsschritt schaltet „Ein Handy für alle“ für die Tests ein; Screenshots landen in `screenshots/`.
 
+**CI** (`.github/workflows/ci.yml`): Build und Unit-Tests laufen gleichzeitig mit den Handy-Tests. Die Handy-Tests sind auf vier Rechner verteilt (`--shard`), die Admin-Tests laufen auf einem fünften, weil sie Spiele abschalten; jeder Rechner hat seinen eigenen Server. Die Zufallssimulation spielt im PR 5 Partien je Einstellung, auf main 25 und nachts 200. Der Haken „Handy-Tests (Playwright)“ fasst alle Rechner zusammen.
+
 Ohne Grafikchip (z. B. in Testumgebungen) zeichnen die 3D-Würfel automatisch einfacher. Für Vorschaubilder in voller Qualität: `localStorage.setItem("spieltisch:diceHQ", "1")`.
 
 Willkommen (neues Gerät) und Begrüßung (bekanntes Gerät) sind im automatisierten Browser aus, damit die Tests nicht an der Animation hängen. `tests/e2e/intro.spec.ts` schaltet sie mit `localStorage["spieltisch:test-intro"] = "true"` gezielt ein.
