@@ -1,5 +1,8 @@
 /** Kleine Helfer rund um localStorage – alles in try/catch, weil Storage fehlen kann. */
 
+/** WebSocket-Adresse auf demselben Server (wss, wenn die Seite über https läuft) */
+export const wsUrl = (path: string) => `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${path}`;
+
 /** Alle Schlüssel der App beginnen so */
 export const KEY_PREFIX = "spieltisch:";
 

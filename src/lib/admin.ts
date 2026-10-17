@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { readStr, writeStr } from "./storage";
+import { createStore } from "./store";
 
 /**
  * Admin-Gerät und Sitzung: wird von der Tab-Leiste, dem Profil und dem Entwickler-Modus gebraucht,
@@ -14,21 +15,13 @@ export const DEVICE_KEY = "spieltisch:admin-device";
 export const adminToken = () => readStr(TOKEN_KEY);
 export const isAdminDevice = () => readStr(DEVICE_KEY) === "1";
 
-const deviceListeners = new Set<() => void>();
+const device = createStore(isAdminDevice());
 export function setAdminDevice(on: boolean) {
   writeStr(DEVICE_KEY, on ? "1" : null);
-  deviceListeners.forEach((l) => l());
+  device.set(on);
 }
 /** Für die Tab-Leiste: ist dieses Gerät ein Admin-Gerät? (ändert sich beim An- und Abmelden) */
-export function useAdminDevice(): boolean {
-  const [on, setOn] = useState(isAdminDevice);
-  useEffect(() => {
-    const l = () => setOn(isAdminDevice());
-    deviceListeners.add(l);
-    return () => { deviceListeners.delete(l); };
-  }, []);
-  return on;
-}
+export const useAdminDevice = device.use;
 
 /**
  * Hinweis-Punkt am Tab „Verwaltung“: zählt, was Aufmerksamkeit braucht (z. B. Räume mit PIN-Sperre).

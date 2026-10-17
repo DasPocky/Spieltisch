@@ -23,6 +23,7 @@ import { loadGroup, activeGroupCode, useActiveGroup } from "@/lib/group";
 import { SettingsPanel, settingsSummary } from "./SettingsPanel";
 import { Collapsible } from "./PlayersHistory";
 import { ShareCode } from "./ShareCode";
+import { NavRow } from "./NavRow";
 import { ConnectionBar } from "./ConnectionBar";
 import { InfoBar } from "./InfoBar";
 import { CallButton, CallContext, CallInvite, CallStrip, type CallControls } from "./call/CallBar";
@@ -268,15 +269,8 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call 
       <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} />
 
       {/* Einstellungen als eine Zeile – alles Weitere im Sheet */}
-      <button type="button" onClick={() => setSettings(true)} data-testid="settings-summary"
-        className="glass mt-3 flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
-        <SlidersHorizontal className="size-4.5 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Einstellungen</span>
-          <span className="block truncate text-sm text-muted-foreground">{settingsSummary(room, !!code)}</span>
-        </span>
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-      </button>
+      <NavRow icon={SlidersHorizontal} onClick={() => setSettings(true)} data-testid="settings-summary" className="mt-3"
+        title="Einstellungen" sub={settingsSummary(room, !!code)} />
 
       <div className="min-h-4 flex-1" />
       {/* Start bleibt immer sichtbar unten */}

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Check, ChevronLeft, ChevronRight, Loader2, LogOut, Pencil, QrCode as QrIcon, Share2, Trophy, Users, X } from "lucide-react";
+import { Check, ChevronLeft, Loader2, LogOut, Pencil, QrCode as QrIcon, Share2, Trophy, Users, X } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { GROUP_CODE_RE, leaderboard, MAX_GROUP_NAME, MAX_MEMBERS, playedGames, type GroupPreview, type GroupView } from "@shared/platform/group";
 import { cleanName, MAX_NAME } from "@shared/platform/room";
@@ -15,6 +15,7 @@ import { myAvatar, myName, saveName } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/platform/Avatar";
 import { QrCode } from "@/platform/QrCode";
+import { NavRow } from "@/platform/NavRow";
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "–");
 export const groupLink = (code: string) => `${location.origin}/g/${code}`;
@@ -81,14 +82,9 @@ export function Groups() {
             const g = groups.cache[c];
             return (
               <li key={c}>
-                <button type="button" onClick={() => navigate(`/g/${c}`)} className="glass flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary"><Users className="size-5" /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 font-semibold">{g?.name ?? c}{groups.active === c && <ActiveBadge />}</span>
-                    <span className="block text-sm text-muted-foreground">{g ? `${g.members.length} ${g.members.length === 1 ? "Mitglied" : "Mitglieder"} · ` : ""}{c}</span>
-                  </span>
-                  <ChevronRight className="size-5 text-muted-foreground" />
-                </button>
+                <NavRow icon={Users} tile onClick={() => navigate(`/g/${c}`)}
+                  title={<span className="flex items-center gap-2">{g?.name ?? c}{groups.active === c && <ActiveBadge />}</span>}
+                  sub={`${g ? `${g.members.length} ${g.members.length === 1 ? "Mitglied" : "Mitglieder"} · ` : ""}${c}`} />
               </li>
             );
           })}

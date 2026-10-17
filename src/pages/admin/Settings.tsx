@@ -1,9 +1,8 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { LOOKS } from "@shared/platform/looks";
 import { MAX_BANNER, MAX_MESSAGE, type Access, type SiteFeatures, type SiteLimits } from "@shared/platform/access";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +11,7 @@ import { Segmented } from "@/platform/Segmented";
 import { useAdmin } from "./context";
 import { setDev, useDev } from "@/lib/dev";
 import { DataTab } from "./Data";
-import { AuthError } from "./shared";
+import { AuthError, Panel } from "./shared";
 
 const LEVELS = [
   { value: "on", label: "Offen", hint: "für alle" },
@@ -42,7 +41,7 @@ export function SettingsSection() {
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start" data-testid="admin-settings">
       {/* Nach „Einstellungen zurücksetzen“ die Felder frisch aufbauen – die Meldung unter „Daten“ bleibt stehen */}
       <Fragment key={resets}>
-      <Section title="Aussehen" hint="Gilt für alle. Hell oder dunkel stellt jeder selbst ein." wide>
+      <Panel title="Aussehen" hint="Gilt für alle. Hell oder dunkel stellt jeder selbst ein." wide>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" role="radiogroup" aria-label="Aussehen">
           {LOOKS.map((l) => (
             <button key={l.id} type="button" role="radio" aria-checked={config.look === l.id} data-testid={`look-${l.id}`}
@@ -58,21 +57,21 @@ export function SettingsSection() {
             </button>
           ))}
         </div>
-      </Section>
+      </Panel>
 
-      <Section title="Startseite">
+      <Panel title="Startseite">
         <SaveField id="admin-banner" label="Hinweis-Banner (optional)" value={config.banner} max={MAX_BANNER} placeholder="z. B. Neu: Ludo und Mühle!"
           onSave={(banner) => save({ banner }, banner ? "Banner gespeichert" : "Banner entfernt")} />
-      </Section>
+      </Panel>
 
-      <Section title="Zugang" hint="Wer den Spieltisch öffnen darf. Einzelne Spiele stellst du unter „Spiele“ ein.">
+      <Panel title="Zugang" hint="Wer den Spieltisch öffnen darf. Einzelne Spiele stellst du unter „Spiele“ ein.">
         <Segmented label="Spieltisch" value={config.site} options={LEVELS} onChange={(site) => void save({ site }, `Spieltisch: ${LEVELS.find((l) => l.value === site)?.label}`)} />
         <SaveField id="admin-msg" label="Hinweis für Besucher (optional)" value={config.message} max={MAX_MESSAGE} placeholder="z. B. Heute ab 20 Uhr wieder offen"
           onSave={(message) => save({ message }, "Hinweis gespeichert")} />
         <AccessCode />
-      </Section>
+      </Panel>
 
-      <Section title="Funktionen">
+      <Panel title="Funktionen">
         {FEATURES.map(([key, label, hint]) => (
           <label key={key} className="flex items-center gap-3">
             <Checkbox checked={config.features[key]} aria-label={label}
@@ -80,18 +79,18 @@ export function SettingsSection() {
             <span><span className="block font-semibold">{label}</span><span className="block text-xs text-muted-foreground">{hint}</span></span>
           </label>
         ))}
-      </Section>
+      </Panel>
 
       <DevSwitch />
 
-      <Section title="Grenzen">
+      <Panel title="Grenzen">
         {LIMITS.map(([key, before, after, min, max]) => (
           <NumberField key={key} label={`${before} ${after}`} before={before} after={after} min={min} max={max} value={config.limits[key]}
             onSave={(v) => save({ limits: { ...config.limits, [key]: v } }, `${before} ${v} ${after}`)} />
         ))}
         <NumberField label="Verlauf behalten Tage" before="Verlauf behalten" after="Tage" min={1} max={365} value={config.archiveDays}
           onSave={(archiveDays) => save({ archiveDays }, `Verlauf: ${archiveDays} Tage`)} />
-      </Section>
+      </Panel>
       </Fragment>
 
       <div className="lg:col-span-2">
@@ -105,26 +104,15 @@ export function SettingsSection() {
 function DevSwitch() {
   const d = useDev();
   return (
-    <Section title="Entwickler-Modus" hint="Nur auf diesem Gerät: Testräume mit Bots, Diagnose, Netz simulieren, Abläufe erneut zeigen.">
+    <Panel title="Entwickler-Modus" hint="Nur auf diesem Gerät: Testräume mit Bots, Diagnose, Netz simulieren, Abläufe erneut zeigen.">
       <label className="flex items-center gap-3">
         <Checkbox checked={d.on} aria-label="Entwickler-Modus" onCheckedChange={(c) => setDev({ on: c === true, ...(c === true ? {} : { overlay: false, delay: 0 }) })} />
         <span><span className="block font-semibold">Entwickler-Modus</span><span className="block text-xs text-muted-foreground">{d.on ? "an – Bereich „Entwickler“ ist in der Übersicht" : "aus"}</span></span>
       </label>
-    </Section>
+    </Panel>
   );
 }
 
-function Section({ title, hint, wide, children }: { title: string; hint?: string; wide?: boolean; children: ReactNode }) {
-  return (
-    <Card className={cn("grid gap-3", wide && "lg:col-span-2")}>
-      <div>
-        <h2 className="font-bold">{title}</h2>
-        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
-      </div>
-      {children}
-    </Card>
-  );
-}
 
 /** Textfeld, das beim Verlassen (oder mit Enter) speichert */
 function SaveField({ id, label, value, max, placeholder, onSave }: { id: string; label: string; value: string; max: number; placeholder?: string; onSave: (v: string) => unknown }) {

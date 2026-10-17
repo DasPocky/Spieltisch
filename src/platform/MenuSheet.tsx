@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cloneElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { BookOpen, ChevronRight, Crown, Flag, History, Home, LogOut, Menu, Repeat, RotateCcw, Undo2, UserRound, Wrench } from "lucide-react";
+import { BookOpen, Crown, Flag, History, Home, LogOut, Menu, Repeat, RotateCcw, Undo2, UserRound, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { getGame } from "@shared/games";
 import { currentPlayerId, skipLabel, type RoomState } from "@shared/platform/room";
@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { RulesSheet } from "./RulesSheet";
 import { hasInGameSettings, HINT_GAMES, SettingsPanel } from "./SettingsPanel";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { Segmented } from "./Segmented";
+import { NavRow } from "./NavRow";
 import { ShareCode } from "./ShareCode";
 import { Collapsible, lastLog, PlayersSheet } from "./PlayersHistory";
 import { EveningLine } from "./Evening";
@@ -227,15 +229,8 @@ function MyDevice({ room }: { room: RoomState }) {
   const quick = QUICK.filter(([k]) => (k !== "hints" || HINT_GAMES.has(room.gameId)) && (k !== "diceMarks" || DICE_MARK_GAMES.has(room.gameId)));
   return (
     <>
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-navy-950/50 p-1 ring-1 ring-inset ring-border" role="radiogroup" aria-label="Ansicht">
-        {([["simple", "Einfach", "große Tasten"], ["full", "Voll", "alle Infos"]] as const).map(([m, label, hint]) => (
-          <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setViewMode(m)}
-            className={cn("rounded-lg py-2 text-center text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring",
-              mode === m ? "bg-navy-600 shadow-md" : "text-muted-foreground")}>
-            <span className="font-semibold">{label}</span> <span className="text-xs text-muted-foreground">· {hint}</span>
-          </button>
-        ))}
-      </div>
+      <Segmented ariaLabel="Ansicht" value={mode} small onChange={setViewMode}
+        options={[{ value: "simple", label: "Einfach", hint: "große Tasten" }, { value: "full", label: "Voll", hint: "alle Infos" }]} />
       <ThemeSwitch />
       <div className="flex flex-wrap gap-1.5">
         {quick.map(([key, label]) => {
@@ -269,18 +264,8 @@ export function Leave({ code, isHost, onLeave, children }: { code?: string; isHo
 }
 
 /** Eine Zeile mit Pfeil, die etwas öffnet */
-function Row({ icon: Icon, label, sub, onClick, ...rest }: { icon: typeof History; label: string; sub?: string; onClick?: () => void }) {
-  return (
-    <button type="button" onClick={onClick} {...rest}
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left ring-1 ring-inset ring-border outline-none transition active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring">
-      <Icon className="size-4.5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{label}</span>
-        {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
-      </span>
-      <ChevronRight className="size-4.5 shrink-0 text-muted-foreground" />
-    </button>
-  );
+function Row({ icon, label, sub, onClick, ...rest }: { icon: typeof History; label: string; sub?: string; onClick?: () => void }) {
+  return <NavRow icon={icon} outline title={label} sub={sub} onClick={onClick} {...rest} />;
 }
 
 /** Abschnitt mit kleiner Überschrift (auch für Spiele in MenuExtras) */

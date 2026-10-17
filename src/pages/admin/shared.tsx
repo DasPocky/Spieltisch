@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { GAMES, isGameId } from "@shared/games";
 import type { AccessConfig, SiteConfig } from "@shared/platform/access";
 import { Card } from "@/components/ui/card";
-import { fmt } from "@/lib/utils";
+import { cn, fmt } from "@/lib/utils";
 
 export type Msg = { ok: boolean; text: string } | null;
 /** Anfrage mit Sitzungs-Token; wirft mit lesbarer Meldung */
@@ -55,4 +55,17 @@ export function download(name: string, text: string, type = "application/json") 
   a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Karte eines Admin-Bereichs: Überschrift, optional Hinweis darunter oder etwas rechts daneben, dann der Inhalt */
+export function Panel({ title, hint, extra, wide, children }: { title: string; hint?: string; extra?: ReactNode; wide?: boolean; children: ReactNode }) {
+  return (
+    <Card className={cn("grid gap-3", wide && "lg:col-span-2")}>
+      <div>
+        <div className="flex items-baseline justify-between gap-2"><h2 className="font-bold">{title}</h2>{extra}</div>
+        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      </div>
+      {children}
+    </Card>
+  );
 }

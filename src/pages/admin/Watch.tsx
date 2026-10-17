@@ -1,11 +1,12 @@
 import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Eye, Loader2, X } from "lucide-react";
-import { PING, WATCH_ID, type ChatMsg, type ServerMessage } from "@shared/platform/protocol";
+import { PING, PONG, WATCH_ID, type ChatMsg, type ServerMessage } from "@shared/platform/protocol";
 import type { RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { adminToken } from "@/lib/admin";
+import { wsUrl } from "@/lib/storage";
 import { gameName } from "./shared";
 
 type WatchStatus = "connecting" | "live" | "closed";
@@ -24,14 +25,13 @@ function useWatch(code: string) {
     let retry: ReturnType<typeof setTimeout> | undefined;
     let done = false;
     const connect = () => {
-      const proto = location.protocol === "https:" ? "wss" : "ws";
-      ws = new WebSocket(`${proto}://${location.host}/api/admin/rooms/${code}/watch?t=${encodeURIComponent(adminToken() ?? "")}`);
+      ws = new WebSocket(wsUrl(`/api/admin/rooms/${code}/watch?t=${encodeURIComponent(adminToken() ?? "")}`));
       ws.onopen = () => {
         tries.current = 0;
         ping = setInterval(() => { try { ws?.send(PING); } catch { /* egal */ } }, 4000);
       };
       ws.onmessage = (ev) => {
-        if (typeof ev.data !== "string" || ev.data === "pong") return;
+        if (typeof ev.data !== "string" || ev.data === PONG) return;
         let msg: ServerMessage;
         try { msg = JSON.parse(ev.data) as ServerMessage; } catch { return; }
         if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setStatus("live"); }

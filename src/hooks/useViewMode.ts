@@ -1,26 +1,15 @@
-import { useSyncExternalStore } from "react";
+import { readStr, writeStr } from "@/lib/storage";
+import { createStore } from "@/lib/store";
 
 /** "simple": große Tasten, wenig Text. "full": alle Tasten und Infos. Gilt pro Gerät. */
 export type ViewMode = "simple" | "full";
 
 const KEY = "spieltisch:view";
-const listeners = new Set<() => void>();
-
-function read(): ViewMode {
-  try { return localStorage.getItem(KEY) === "full" ? "full" : "simple"; } catch { return "simple"; }
-}
-
-let current: ViewMode = read();
+const store = createStore<ViewMode>(readStr(KEY) === "full" ? "full" : "simple");
 
 export function setViewMode(mode: ViewMode) {
-  current = mode;
-  try { localStorage.setItem(KEY, mode); } catch { /* egal */ }
-  listeners.forEach((l) => l());
+  writeStr(KEY, mode);
+  store.set(mode);
 }
 
-export function useViewMode(): ViewMode {
-  return useSyncExternalStore(
-    (l) => { listeners.add(l); return () => listeners.delete(l); },
-    () => current,
-  );
-}
+export const useViewMode = store.use;
