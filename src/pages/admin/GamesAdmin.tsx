@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, SlidersHorizontal, Sparkles } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { orderGames, withDefaults, type Access } from "@shared/platform/access";
+import { MODE_STATES, modeState, PLAY_MODES, type ModeState } from "@shared/platform/modes";
 import { createRoom, type RoomAction } from "@shared/platform/room";
 import type { Options } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ export function GamesSection() {
                   </button>
                 ))}
               </span>
+              <ModeRow id={id} />
               <span className="flex w-full items-center justify-end gap-0.5 sm:w-auto">
                 <button type="button" aria-pressed={isNew} aria-label={`${gameName(id)} als neu markieren`}
                   onClick={() => void save({ featured: isNew ? config.featured.filter((x) => x !== id) : [...config.featured, id] }, isNew ? `${gameName(id)} nicht mehr neu` : `${gameName(id)} als neu markiert`)}
@@ -74,6 +76,35 @@ export function GamesSection() {
       </ol>
       <DefaultsSheet gameId={edit} onClose={() => setEdit(null)} />
     </div>
+  );
+}
+
+/** Spielweisen eines Spiels (Tisch, am Rechner, Bühne): an, Beta (nur Geräte der Verwaltung), aus */
+function ModeRow({ id }: { id: string }) {
+  const { config, save } = useAdmin();
+  const modes = PLAY_MODES.filter((m) => modeState(config.modes, id, m.value) !== "none");
+  if (!modes.length) return null;
+  return (
+    <span className="flex w-full flex-wrap gap-1.5" data-testid={`admin-modes-${id}`}>
+      {modes.map((m) => {
+        const st = modeState(config.modes, id, m.value) as ModeState;
+        return (
+          <span key={m.value} className="flex items-center gap-1 rounded-full bg-navy-950/30 py-0.5 pr-0.5 pl-2.5 text-xs ring-1 ring-inset ring-border" title={m.hint}>
+            <span className="font-semibold">{m.label}</span>
+            <span className="flex" role="radiogroup" aria-label={`${gameName(id)}: ${m.label}`}>
+              {MODE_STATES.map((o) => (
+                <button key={o.value} type="button" role="radio" aria-checked={st === o.value}
+                  onClick={() => st !== o.value && void save({ modes: { ...config.modes, [id]: { ...config.modes[id], [m.value]: o.value } } }, `${gameName(id)} ${m.label}: ${o.label}`)}
+                  className={cn("h-6 rounded-full px-2 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    st === o.value ? (o.value === "off" ? "bg-destructive/15 text-destructive" : o.value === "beta" ? "bg-ice/20 text-ice" : "bg-primary/15 text-primary") : "text-muted-foreground")}>
+                  {o.label}
+                </button>
+              ))}
+            </span>
+          </span>
+        );
+      })}
+    </span>
   );
 }
 

@@ -71,6 +71,8 @@ test("Fernseher (4K-Fläche): Tisch-Lobby passt, ohne 3D bleibt alles bedienbar,
   await tv.getByTestId("table-new").click();
   await expect(tv).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
   await expect(tv.getByTestId("table-lobby")).toBeVisible();
+  // ohne WebGL: der einfache flache Tisch
+  await expect(tv.getByTestId("table-flat")).toBeAttached();
   await expectNoScroll(tv);
   await expectNamedControls(tv);
   await shot(tv, "g3-tv-ohne-3d");

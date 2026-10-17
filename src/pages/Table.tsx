@@ -21,6 +21,11 @@ import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
+import { createFlatScene } from "@/platform/table/flat";
+import { useQuality } from "@/lib/quality";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
+import { useAdminDevice } from "@/lib/admin";
+import { modeAllowed } from "@shared/platform/modes";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
 const newPin = () => String(randomInt(900000) + 100000);
@@ -144,7 +149,11 @@ function toggleFullscreen() {
 }
 
 function TableView({ code, pin, room, online }: { code: string; pin: string; room: RoomState; online: Set<string> }) {
-  const model = useMemo(() => tableModel(room), [room]);
+  // Tisch-Ansicht des Spiels aus (oder Beta und kein Gerät der Verwaltung): Partie wie am Handy in der Mitte
+  const config = useSiteConfig();
+  const admin = useAdminDevice();
+  const tableOn = modeAllowed(config?.modes, room.gameId, "table", admin);
+  const model = useMemo(() => (tableOn ? tableModel(room) : null), [room, tableOn]);
   const playing = room.phase === "playing";
   const game = GAME_LIST.find((g) => g.id === room.gameId) ?? null;
   const avatars = useMemo(() => roomAvatars(room), [room]);
@@ -158,7 +167,7 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   }, []);
   const seats = room.players.map((p) => p.id);
   // Schamlos hat keine Karten auf dem Tisch, sondern Sätze: eigene Mitte, Plätze zeigen Punkte und Zar
-  const sham = playing && room.gameId === "schamlos" ? (room.game as SchamlosState) : null;
+  const sham = playing && tableOn && room.gameId === "schamlos" ? (room.game as SchamlosState) : null;
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
 
@@ -201,22 +210,40 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   );
 }
 
-/** Die 3D-Szene in voller Größe – ohne WebGL bleibt der Platz leer (die Plätze stehen trotzdem am Rand) */
+/**
+ * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
+ * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
+ */
 function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void }) {
-  const ref = useRef<HTMLCanvasElement>(null);
   const scene = useRef<TableScene | null>(null);
+  const holder = useRef<HTMLDivElement>(null);
   const seatKey = seats.join();
+  const level = useQuality();
+  // WebGL verloren (Grafiktreiber, zu wenig Speicher): ab jetzt flach
+  const [lost, setLost] = useState(false);
+  const flat = level === "flach" || lost || !webglOk();
+  const latest = useRef({ model, seats });
+  latest.current = { model, seats };
 
   useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas || !webglOk()) return;
+    const box = holder.current;
+    if (!box) return;
+    // Eigenes Canvas je Darstellung – ein Canvas kann nicht von 3D auf 2D wechseln
+    const canvas = document.createElement("canvas");
+    canvas.className = "absolute inset-0 size-full";
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.dataset.testid = flat ? "table-flat" : "table-3d";
+    box.replaceChildren(canvas);
     let s: TableScene;
-    try { s = createTableScene(canvas); } catch { return; }
+    try { s = flat ? createFlatScene(canvas) : createTableScene(canvas, level); } catch { s = createFlatScene(canvas); }
     scene.current = s;
+    const onLost = (e: Event) => { e.preventDefault(); setLost(true); };
+    canvas.addEventListener("webglcontextlost", onLost);
     const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); onSeats(s.seatPoints(), s.feltRect()); });
     ro.observe(canvas);
-    return () => { ro.disconnect(); s.dispose(); scene.current = null; };
-  }, [onSeats]);
+    s.update(latest.current.model, latest.current.seats);
+    return () => { ro.disconnect(); canvas.removeEventListener("webglcontextlost", onLost); s.dispose(); scene.current = null; };
+  }, [onSeats, flat, level]);
 
   useEffect(() => {
     const s = scene.current;
@@ -225,7 +252,7 @@ function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seat
     onSeats(s.seatPoints(), s.feltRect());
   }, [model, seatKey, onSeats]);
 
-  return <canvas ref={ref} className="absolute inset-0 size-full" aria-hidden="true" />;
+  return <div ref={holder} className="absolute inset-0" />;
 }
 
 function Seat({ x, y, name, avatar, count, turn, away, host, note }: {
