@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { FEATURE_KINDS, isoWeek, STAT_KINDS, sumStats, type FeatureCounts, type FeatureKind, type SiteStats, type StatCounts } from "@shared/platform/admin";
-import { Card } from "@/components/ui/card";
 import { readStr, writeStr } from "@/lib/storage";
 import { fmt } from "@/lib/utils";
 import { Segmented } from "@/platform/Segmented";
 import { dayKey } from "@/lib/time";
 import { useAdmin } from "./context";
-import { AuthError, gameName, Tile } from "./shared";
+import { AuthError, gameName, Panel, Tile } from "./shared";
 
 type Range = "7" | "30" | "60" | "all";
 const RANGES: { value: Range; label: string }[] = [
@@ -80,28 +79,20 @@ export function StatsSection() {
         <Tile label="Fertig gespielt" value={total.finished} hint="online beendet" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <Block title={range === "all" ? "Partien pro Woche" : "Partien pro Tag"} extra={<Legend />}>
+        <Panel title={range === "all" ? "Partien pro Woche" : "Partien pro Tag"} extra={<Legend />}>
           <Bars bars={data.bars} />
-        </Block>
+        </Panel>
         <PopularGames games={data.games} />
-        <Block title="Spitzenzeiten" extra={<span className="text-xs text-muted-foreground">gestartete Partien</span>}>
+        <Panel title="Spitzenzeiten" extra={<span className="text-xs text-muted-foreground">gestartete Partien</span>}>
           <Heatmap slots={data.slots} />
           <p className="text-xs text-muted-foreground">Deutsche Zeit. {data.counted ? `Gezählt seit ${new Date(data.counted).toLocaleDateString("de-DE")}.` : "Wird ab jetzt gezählt."}</p>
-        </Block>
+        </Panel>
         <Features features={data.features} counted={data.counted} />
       </div>
     </div>
   );
 }
 
-function Block({ title, extra, children }: { title: string; extra?: ReactNode; children: ReactNode }) {
-  return (
-    <Card className="grid gap-3 p-4">
-      <div className="flex items-baseline justify-between gap-2"><h2 className="font-bold">{title}</h2>{extra}</div>
-      {children}
-    </Card>
-  );
-}
 
 function Bars({ bars }: { bars: { key: string; label: string; online: number; local: number }[] }) {
   const max = Math.max(1, ...bars.map((b) => b.online + b.local));
@@ -138,7 +129,7 @@ function PopularGames({ games }: { games: Record<string, StatCounts> }) {
     .sort((a, b) => b.played - a.played || (b.c.rooms ?? 0) - (a.c.rooms ?? 0));
   const max = Math.max(1, ...list.map((g) => g.played));
   return (
-    <Block title="Beliebteste Spiele">
+    <Panel title="Beliebteste Spiele">
       {list.length === 0 ? <p className="text-sm text-muted-foreground">In diesem Zeitraum nichts gespielt.</p> : (
         <ol className="grid gap-1.5">
           {list.slice(0, 10).map(({ id, c, played }, i) => (
@@ -156,7 +147,7 @@ function PopularGames({ games }: { games: Record<string, StatCounts> }) {
         </ol>
       )}
       {list.length > 10 && <p className="text-xs text-muted-foreground">… und {list.length - 10} weitere</p>}
-    </Block>
+    </Panel>
   );
 }
 
@@ -194,7 +185,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function Features({ features, counted }: { features: FeatureCounts; counted?: string }) {
   const max = Math.max(1, ...FEATURE_KINDS.map((k) => features[k] ?? 0));
   return (
-    <Block title="Genutzte Funktionen">
+    <Panel title="Genutzte Funktionen">
       <ul className="grid gap-1.5" data-testid="stat-features">
         {FEATURE_KINDS.map((k) => (
           <li key={k} className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_2.5rem] items-center gap-2 text-sm">
@@ -205,6 +196,6 @@ function Features({ features, counted }: { features: FeatureCounts; counted?: st
         ))}
       </ul>
       <p className="text-xs text-muted-foreground">Nur Online-Räume (und Gruppen). {counted ? `Gezählt seit ${new Date(counted).toLocaleDateString("de-DE")}.` : "Wird ab jetzt gezählt."}</p>
-    </Block>
+    </Panel>
   );
 }

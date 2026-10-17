@@ -1,7 +1,7 @@
 import { Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { chosenVoice, setSpeech, setVoice, setVoiceRate, speak, speechSupported, useSpeechEnabled, useVoices, voiceRate, type Rate } from "@/platform/speech";
-import { cn } from "@/lib/utils";
+import { Segmented } from "./Segmented";
 
 const RATES: [Rate, string][] = [["calm", "Ruhig"], ["normal", "Normal"], ["quick", "Flott"]];
 
@@ -27,12 +27,7 @@ export function VoiceSettings() {
           </select>
         </label>
       ) : <p className="text-sm text-muted-foreground">Keine deutsche Stimme gefunden – das Handy nimmt seine Standardstimme.</p>}
-      <div className="grid grid-cols-3 gap-1 rounded-xl bg-navy-950/50 p-1 ring-1 ring-inset ring-border" role="radiogroup" aria-label="Sprechtempo">
-        {RATES.map(([r, label]) => (
-          <button key={r} type="button" role="radio" aria-checked={rate === r} onClick={() => setVoiceRate(r)}
-            className={cn("rounded-lg py-2 text-sm font-semibold", rate === r ? "bg-navy-600 shadow-sm" : "text-muted-foreground")}>{label}</button>
-        ))}
-      </div>
+      <Segmented ariaLabel="Sprechtempo" value={rate} small options={RATES.map(([r, label]) => ({ value: r, label }))} onChange={setVoiceRate} />
       <Button variant="secondary" onClick={() => void speak("Es wird Nacht in Düsterwald. Noch 30 Sekunden. 5, 4, 3, 2, 1.", { force: true })}><Volume2 />Probe hören</Button>
       <p className="text-xs leading-snug text-muted-foreground">
         Tipp: Bessere Stimmen lassen sich nachladen – iPhone: Einstellungen › Bedienungshilfen › Gesprochene Inhalte › Stimmen › Deutsch (z. B. „Anna (Premium)“).

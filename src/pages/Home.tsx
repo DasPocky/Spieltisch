@@ -17,6 +17,7 @@ import { defaultGame, playLocal } from "@/lib/playLocal";
 import { goTab } from "@/platform/shell/AppShell";
 import { CreateRoomSheet, JoinSheet, type RoomPlan } from "@/platform/shell/RoomSheets";
 import { RoomRow } from "@/platform/shell/RoomCards";
+import { NavRow } from "@/platform/NavRow";
 import { useRooms } from "@/lib/rooms";
 
 /** Läuft auf diesem Handy noch eine lokale Partie? Dann steht das auf der Startseite. */
@@ -76,12 +77,8 @@ export function Home() {
 
       <div className="grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2" data-testid="home-actions">
         {localOn && (
-          <button type="button" onClick={() => playLocal(ids, locked)}
-            className="glass flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary"><Smartphone className="size-5" /></span>
-            <span className="min-w-0 flex-1"><span className="block font-semibold leading-tight">Ein Handy für alle</span><span className="block truncate text-xs text-muted-foreground">{running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"}</span></span>
-            <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-          </button>
+          <NavRow icon={Smartphone} tile onClick={() => playLocal(ids, locked)} title="Ein Handy für alle"
+            sub={running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"} />
         )}
         <div className="flex gap-2">
           <Button size="lg" className="h-14 flex-1 rounded-2xl text-base" disabled={!online} onClick={() => newRoom()}>
@@ -106,12 +103,7 @@ function GroupCard() {
   useEffect(() => { const c = activeGroupCode(); if (c) void loadGroup(c); }, []);
   if (!group) {
     return (
-      <button type="button" onClick={() => goTab("/gruppe")} data-testid="group-card"
-        className="glass flex w-full shrink-0 items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left outline-none transition active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring">
-        <Users className="size-4.5 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1 truncate font-semibold">Gruppe erstellen oder beitreten</span>
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-      </button>
+      <NavRow icon={Users} onClick={() => goTab("/gruppe")} data-testid="group-card" className="shrink-0" title="Gruppe erstellen oder beitreten" />
     );
   }
   const top = leaderboard(group, null).filter((r) => r.played > 0).slice(0, 3);

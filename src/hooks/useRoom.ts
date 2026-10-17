@@ -4,7 +4,7 @@ import { dev, diag, netDown, netDownUntil, onNetChange } from "@/lib/dev";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { PING, PONG, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
 import type { KnockView } from "@shared/platform/directory";
-import { credsKey, readJSON, remove, writeJSON, type RoomCreds } from "@/lib/storage";
+import { credsKey, readJSON, remove, writeJSON, wsUrl, type RoomCreds } from "@/lib/storage";
 import { myAvatar, myProfile } from "@/lib/profile";
 import { activeGroupCode } from "@/lib/group";
 
@@ -113,9 +113,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       // Entwickler-Modus: künstliches Funkloch – erst danach wieder verbinden
       if (netDown()) { setStatus((s) => (s === "ready" ? "connecting" : s)); timer = setTimeout(connect, netDownUntil() - Date.now() + 100); return; }
       setStatus((s) => (s === "ready" || s === "checking" ? "connecting" : s));
-      const proto = location.protocol === "https:" ? "wss" : "ws";
       let ws: WebSocket;
-      try { ws = new WebSocket(`${proto}://${location.host}/api/rooms/${code}/ws`); }
+      try { ws = new WebSocket(wsUrl(`/api/rooms/${code}/ws`)); }
       catch { timer = setTimeout(connect, 1500); return; }
       wsRef.current = ws;
       opening = Date.now();

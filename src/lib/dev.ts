@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
 import { isAdminDevice } from "./admin";
+import { readJSON, writeJSON } from "./storage";
+import { createStore } from "./store";
 
 /**
  * Entwickler-Modus – je Admin-Gerät einschaltbar. Hält Diagnose-Anzeige, Netz-Simulation und Vorschau-Schalter.
@@ -17,31 +18,23 @@ export interface DevSettings {
 
 export const DEV_KEY = "spieltisch:dev";
 const OFF: DevSettings = { on: false, overlay: false, delay: 0, previews: [] };
-let current: DevSettings = load();
-const listeners = new Set<() => void>();
 
 function load(): DevSettings {
-  try { return { ...OFF, ...(JSON.parse(localStorage.getItem(DEV_KEY) ?? "{}") as Partial<DevSettings>) }; } catch { return OFF; }
+  return { ...OFF, ...readJSON<Partial<DevSettings>>(DEV_KEY) };
 }
 
+const store = createStore<DevSettings>(load());
 /** Gilt nur auf Admin-Geräten */
-export const dev = (): DevSettings => (current.on && isAdminDevice() ? current : OFF);
+const effective = (s: DevSettings) => (s.on && isAdminDevice() ? s : OFF);
+export const dev = (): DevSettings => effective(store.get());
 
 export function setDev(patch: Partial<DevSettings>) {
-  current = { ...current, ...patch };
-  try { localStorage.setItem(DEV_KEY, JSON.stringify(current)); } catch { /* egal */ }
-  listeners.forEach((l) => l());
+  const next = { ...store.get(), ...patch };
+  writeJSON(DEV_KEY, next);
+  store.set(next);
 }
 
-export function useDev(): DevSettings {
-  const [s, set] = useState(dev);
-  useEffect(() => {
-    const l = () => set(dev());
-    listeners.add(l);
-    return () => { listeners.delete(l); };
-  }, []);
-  return s;
-}
+export const useDev = (): DevSettings => effective(store.use());
 
 /**
  * Vorschau-Funktionen: noch nicht für alle freigegeben, nur auf Admin-Geräten zuschaltbar.
