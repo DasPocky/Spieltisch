@@ -99,9 +99,17 @@ export function OnlineRoom({ code }: { code: string }) {
   );
 }
 
+/** PIN aus dem Link des Großen Tischs (/r/CODE#pin=1234) – danach gleich wieder aus der Adresse nehmen */
+function pinFromLink(): string {
+  const m = location.hash.match(/pin=(\d{4,8})/);
+  if (!m) return "";
+  history.replaceState(history.state, "", location.pathname + location.search);
+  return m[1];
+}
+
 function JoinForm({ code, gameId, info, error, onSubmit }: { code: string; gameId: string | null; info: RoomInfo | null; error: string | null; onSubmit: (j: JoinData) => void }) {
   const [name, setName] = useState(() => { try { return localStorage.getItem(NAME_KEY) ?? ""; } catch { return ""; } });
-  const [pin, setPin] = useState("");
+  const [pin, setPin] = useState(pinFromLink);
   const ok = cleanName(name).length > 0 && PIN_RE.test(pin);
   return (
     <Center>

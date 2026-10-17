@@ -16,6 +16,8 @@ import { Games } from "@/pages/Games";
 import { DevOverlay } from "@/platform/DevOverlay";
 
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp").then((m) => ({ default: m.AdminApp })));
+const TableSetup = lazy(() => import("@/pages/Table").then((m) => ({ default: m.TableSetup })));
+const TableRoom = lazy(() => import("@/pages/Table").then((m) => ({ default: m.TableRoom })));
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
 
 export default function App() {
@@ -37,6 +39,8 @@ export default function App() {
       {route.name === "games" && <AccessGate><AppShell tab="spiele"><Games /></AppShell></AccessGate>}
       {route.name === "local" && <LocalGame />}
       {route.name === "room" && <AccessGate><OnlineRoom key={route.code} code={route.code} /></AccessGate>}
+      {route.name === "tableSetup" && <AccessGate><TableSetup /></AccessGate>}
+      {route.name === "table" && <AccessGate><TableRoom key={route.code} code={route.code} /></AccessGate>}
       </Fragment>
       <Intro onProfile={() => setGen((g) => g + 1)} />
       <OfflineBar />

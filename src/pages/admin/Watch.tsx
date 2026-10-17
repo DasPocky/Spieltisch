@@ -1,66 +1,17 @@
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Eye, Loader2, X } from "lucide-react";
-import { PING, PONG, WATCH_ID, type ChatMsg, type ServerMessage } from "@shared/platform/protocol";
-import type { RoomState } from "@shared/platform/room";
+import { WATCH_ID } from "@shared/platform/protocol";
 import { Button } from "@/components/ui/button";
 import { RoomScreen } from "@/platform/RoomScreen";
+import { Boundary } from "@/platform/Boundary";
 import { adminToken } from "@/lib/admin";
-import { wsUrl } from "@/lib/storage";
+import { useWatch } from "@/hooks/useWatch";
 import { gameName } from "./shared";
-
-type WatchStatus = "connecting" | "live" | "closed";
-
-/** Unsichtbar zuschauen: eigene Verbindung, die nur liest – im Raum taucht niemand auf */
-function useWatch(code: string) {
-  const [state, setState] = useState<RoomState | null>(null);
-  const [online, setOnline] = useState<Set<string>>(new Set());
-  const [chat, setChat] = useState<ChatMsg[]>([]);
-  const [status, setStatus] = useState<WatchStatus>("connecting");
-  const tries = useRef(0);
-
-  useEffect(() => {
-    let ws: WebSocket | null = null;
-    let ping: ReturnType<typeof setInterval> | undefined;
-    let retry: ReturnType<typeof setTimeout> | undefined;
-    let done = false;
-    const connect = () => {
-      ws = new WebSocket(wsUrl(`/api/admin/rooms/${code}/watch?t=${encodeURIComponent(adminToken() ?? "")}`));
-      ws.onopen = () => {
-        tries.current = 0;
-        ping = setInterval(() => { try { ws?.send(PING); } catch { /* egal */ } }, 4000);
-      };
-      ws.onmessage = (ev) => {
-        if (typeof ev.data !== "string" || ev.data === PONG) return;
-        let msg: ServerMessage;
-        try { msg = JSON.parse(ev.data) as ServerMessage; } catch { return; }
-        if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setStatus("live"); }
-        else if (msg.type === "chat") setChat((prev) => (msg.append ? [...prev, ...msg.messages].slice(-100) : msg.messages));
-        else if (msg.type === "error" && msg.fatal) { done = true; setStatus("closed"); }
-      };
-      ws.onclose = (ev) => {
-        clearInterval(ping);
-        if (done || ev.code === 4410 || ev.code === 4404) { setStatus("closed"); return; }
-        // Funkloch oder Neustart: ruhig neu verbinden, nach ein paar Fehlschlägen aufgeben
-        if (++tries.current > 6) { setStatus("closed"); return; }
-        setStatus("connecting");
-        retry = setTimeout(connect, Math.min(8000, 800 * 2 ** tries.current));
-      };
-    };
-    connect();
-    return () => {
-      done = true;
-      clearInterval(ping); clearTimeout(retry);
-      if (ws) { ws.onclose = null; try { ws.close(); } catch { /* egal */ } }
-    };
-  }, [code]);
-
-  return { state, online, chat, status };
-}
 
 /** Vollbild über der Verwaltung: der Raum so, wie ihn ein Gast sieht – nichts lässt sich bedienen */
 export function WatchView({ code, onClose }: { code: string; onClose: () => void }) {
-  const { state, online, chat, status } = useWatch(code);
+  const { state, online, chat, status } = useWatch(`/api/admin/rooms/${code}/watch?t=${encodeURIComponent(adminToken() ?? "")}`);
   // Über die ganze Seite (auch über die Tab-Leiste) – deshalb direkt in <body>
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="admin-watch">
@@ -86,10 +37,4 @@ export function WatchView({ code, onClose }: { code: string; onClose: () => void
 
 function Center({ children }: { children: ReactNode }) {
   return <div className="grid flex-1 place-items-center p-6 text-center text-muted-foreground">{children}</div>;
-}
-
-class Boundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }

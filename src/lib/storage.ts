@@ -46,6 +46,8 @@ export function remove(key: string, session = false) {
 export interface RoomCreds { playerId: string; token: string }
 export const CREDS_PREFIX = `${KEY_PREFIX}room:`;
 export const credsKey = (code: string) => `${CREDS_PREFIX}${code}`;
+/** Großer Tisch: PIN des Raums, damit der Bildschirm nach einem Neuladen wieder verbindet */
+export const tableKey = (code: string) => `${KEY_PREFIX}table:${code}`;
 export const NAME_KEY = "spieltisch:name";
 /** Zuletzt online gewähltes Spiel – damit ist ein neuer Raum gleich richtig vorbelegt */
 export const LAST_GAME_KEY = "spieltisch:lastGame";

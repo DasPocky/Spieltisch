@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, DoorOpen, LogIn, Plus, Smartphone, Users } from "lucide-react";
+import { ChevronRight, DoorOpen, LogIn, Plus, Smartphone, Tv, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
 import { useGames } from "@/hooks/useGames";
@@ -19,6 +19,7 @@ import { CreateRoomSheet, JoinSheet, type RoomPlan } from "@/platform/shell/Room
 import { RoomRow } from "@/platform/shell/RoomCards";
 import { NavRow } from "@/platform/NavRow";
 import { useRooms } from "@/lib/rooms";
+import { navigate } from "@/hooks/useRoute";
 
 /** Läuft auf diesem Handy noch eine lokale Partie? Dann steht das auf der Startseite. */
 function runningLocal(): string | null {
@@ -32,6 +33,7 @@ function runningLocal(): string | null {
  * Start-Tab: Begrüßung, eigene und offene Räume, Schnellstart und Gruppe – unten fest die Hauptaktionen
  * „Raum öffnen“ und „Beitreten“ (und „Ein Handy für alle“, wenn der Admin es eingeschaltet hat).
  * Name und PIN fragt ein Blatt von unten, das Spiel wählt ihr in der Lobby.
+ * Auf großen Bildschirmen stehen die Hauptaktionen oben als zwei Karten: „Großer Tisch“ und „Selbst mitspielen“.
  */
 export function Home() {
   const { config, ids, locked, features, onlineOff, online, localOn } = useGames();
@@ -46,9 +48,10 @@ export function Home() {
   const newRoom = (gameId?: string) => setPlan(gameId ? { gameId, pickGame: false } : { gameId: defaultGame(ids, locked), pickGame: false, meet: true });
 
   return (
-    <main className={cn("mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3", anyRooms && "has-rooms")}>
-      <header className="flex shrink-0 items-center gap-3">
-        <span className="relative shrink-0">
+    <main className={cn("mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3 lg:max-w-6xl lg:px-10 lg:pt-10", anyRooms && "has-rooms")}>
+      {/* Am großen Bildschirm steht das Logo schon in der Seitenleiste – ohne Namen ist der Kopf dort überflüssig */}
+      <header className={cn("flex shrink-0 items-center gap-3", !name && "lg:hidden")}>
+        <span className="relative shrink-0 lg:hidden">
           <Logo className="size-11 -rotate-6 rounded-xl" />
           {features?.profiles !== false && name && <Avatar avatar={avatar} className="absolute -right-1.5 -bottom-1.5 size-6 text-sm ring-2 ring-background" />}
         </span>
@@ -58,7 +61,10 @@ export function Home() {
         </div>
       </header>
 
-      <div className="mt-4 grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2.5">
+      <DesktopHero top={!name} online={online} onlineOff={onlineOff} localOn={localOn} running={running}
+        onRoom={() => newRoom()} onJoin={() => setJoining(true)} onLocal={() => playLocal(ids, locked)} />
+
+      <div className="mt-4 grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2.5 lg:mt-6 lg:gap-4">
         {config?.banner && <p className="text-in rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
         {online && <RoomRow title="Deine Räume" cards={rooms.mine} mine testId="my-rooms" />}
         {online && <RoomRow title="Offene Räume" cards={rooms.open} testId="open-rooms" />}
@@ -73,9 +79,9 @@ export function Home() {
         <InstallHint />
       </div>
 
-      <div className="min-h-3 flex-1" />
+      <div className="min-h-3 flex-1 lg:hidden" />
 
-      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2" data-testid="home-actions">
+      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2 lg:hidden" data-testid="home-actions">
         {localOn && (
           <NavRow icon={Smartphone} tile onClick={() => playLocal(ids, locked)} title="Ein Handy für alle"
             sub={running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"} />
@@ -94,6 +100,51 @@ export function Home() {
       <JoinSheet open={joining} onClose={() => setJoining(false)} online={online} />
       <InstallInvite />
     </main>
+  );
+}
+
+/** Großer Bildschirm: Tisch für alle aufbauen oder selbst mitspielen */
+function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin, onLocal }: {
+  top: boolean; online: boolean; onlineOff: boolean; localOn: boolean; running: string | null; onRoom: () => void; onJoin: () => void; onLocal: () => void;
+}) {
+  return (
+    <div className={cn("mt-6 hidden shrink-0 grid-cols-[1.3fr_1fr] gap-5 lg:grid", top && "lg:mt-0")} data-testid="desktop-hero">
+      <section className="glass flex items-center gap-6 rounded-3xl p-7">
+        <div className="min-w-0 flex-1">
+          <span className="rounded-full bg-primary/12 px-2.5 py-1 text-xs font-bold text-primary">Großer Tisch</span>
+          <h2 className="mt-3 text-[1.75rem] font-bold leading-tight">Dieser Bildschirm ist der Tisch</h2>
+          <p className="mt-2 text-muted-foreground">Alle sehen Karten und Punkte groß in der Mitte. Eure Handys sind die Hände – geheim, wie am echten Tisch.</p>
+          <Button size="lg" className="mt-5 h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={() => navigate("/tisch")} data-testid="table-open">
+            <Tv className="size-5" />{onlineOff ? "Online abgeschaltet" : "Tisch aufbauen"}
+          </Button>
+        </div>
+        <TableArt />
+      </section>
+      <section className="glass flex flex-col rounded-3xl p-7">
+        <span className="self-start rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">Am Rechner</span>
+        <h2 className="mt-3 text-2xl font-bold leading-tight">Selbst mitspielen</h2>
+        <p className="mt-2 text-muted-foreground">Raum öffnen oder mit Code beitreten – wie am Handy, nur größer.</p>
+        <div className="min-h-4 flex-1" />
+        <div className="flex flex-wrap gap-2.5">
+          <Button size="lg" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onRoom}><Plus className="size-5" />Raum öffnen</Button>
+          <Button size="lg" variant="secondary" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onJoin}><LogIn className="size-5" />Beitreten</Button>
+          {localOn && <Button size="lg" variant="ghost" className="h-12 rounded-2xl px-4 text-base" onClick={onLocal}><Smartphone className="size-5" />{running ? `${running} weiter` : "Ein Gerät für alle"}</Button>}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/** Kleines Bild: Tisch von oben, drei Handys davor */
+function TableArt() {
+  return (
+    <svg viewBox="0 0 220 150" className="w-52 shrink-0" aria-hidden="true">
+      <rect x="14" y="18" width="192" height="98" rx="18" fill="#8a5a36" />
+      <rect x="26" y="28" width="168" height="78" rx="10" fill="#2f7f7a" />
+      <rect x="92" y="48" width="24" height="34" rx="3" fill="#fffdf8" transform="rotate(-8 104 65)" />
+      <rect x="104" y="46" width="24" height="34" rx="3" fill="#fffdf8" transform="rotate(10 116 63)" />
+      {[30, 98, 166].map((x, i) => <rect key={x} x={x} y={i === 1 ? 104 : 98} width="26" height="44" rx="6" fill="#23343a" stroke="#fff" strokeWidth="3" />)}
+    </svg>
   );
 }
 
@@ -139,28 +190,28 @@ function QuickGames({ games, featured, order, onPick, onAll, local }: { games: s
   const last = readStr(LOCAL_GAME_KEY);
   const ids = orderGames(games, order);
   const first = [...featured.filter((id) => ids.includes(id)), ...(last && ids.includes(last) ? [last] : []), ...ids];
-  const shown = [...new Set(first)].slice(0, 7);
+  const shown = [...new Set(first)].slice(0, 11);
   if (!shown.length) return null;
   return (
     <section className="quick-section shrink-0" aria-label="Schnellstart">
-      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground">Schnellstart <span className="text-xs font-normal">{local ? "ein Handy" : "neuer Raum"}</span></h2>
-      <div className="grid grid-cols-4 gap-2">
+      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground lg:mb-3 lg:text-lg lg:text-foreground">Schnellstart <span className="text-xs font-normal">{local ? <><span className="lg:hidden">ein Handy</span><span className="hidden lg:inline">ein Gerät</span></> : "neuer Raum"}</span></h2>
+      <div className="grid grid-cols-4 gap-2 lg:grid-cols-6 lg:gap-4">
         {shown.map((id, i) => {
           const g = GAME_LIST.find((x) => x.id === id)!;
           return (
             // Kleine Handys: nur eine Reihe (drei Spiele und „Alle“), damit nichts scrollt
             <button key={id} type="button" onClick={() => onPick(id)} data-testid={`quick-${id}`}
-              className={cn(i >= 3 && "quick-extra", "glass relative flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring")}>
+              className={cn(i >= 3 && "quick-extra", "glass relative lg:gap-2 lg:py-5 flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring", i >= 7 && "hidden lg:flex")}>
               {featured.includes(id) && <span className="absolute top-1 right-1 rounded-full bg-primary px-1 text-[0.55rem] font-bold leading-tight text-primary-foreground">NEU</span>}
-              <IconTile className="size-10 rounded-xl"><g.Icon className="size-6.5" /></IconTile>
-              <span className="w-full truncate text-center text-[0.7rem] font-semibold">{g.info.name}</span>
+              <IconTile className="size-10 rounded-xl lg:size-14 lg:rounded-2xl"><g.Icon className="size-6.5 lg:size-9" /></IconTile>
+              <span className="w-full truncate text-center text-[0.7rem] font-semibold lg:text-base">{g.info.name}</span>
             </button>
           );
         })}
         <button type="button" onClick={onAll} data-testid="quick-all"
           className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 text-muted-foreground ring-1 ring-inset ring-border ring-dashed outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
-          <span className="grid size-10 place-items-center text-lg font-bold">{games.length}</span>
-          <span className="w-full truncate text-center text-[0.7rem] font-semibold">Alle Spiele</span>
+          <span className="grid size-10 place-items-center text-lg font-bold lg:size-14 lg:text-3xl">{games.length}</span>
+          <span className="w-full truncate text-center text-[0.7rem] font-semibold lg:text-base">Alle Spiele</span>
         </button>
       </div>
     </section>

@@ -15,7 +15,10 @@ export type Route =
   | { name: "transfer"; code: string }
   | { name: "groups" }
   | { name: "group"; code: string }
-  | { name: "gallery" };
+  | { name: "gallery" }
+  /** Großer Tisch: aufbauen bzw. ein Raum auf dem großen Bildschirm */
+  | { name: "tableSetup" }
+  | { name: "table"; code: string };
 
 function parse(path: string): Route {
   const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|leute|einstellungen|entwickler))?\/?$/);
@@ -30,6 +33,9 @@ function parse(path: string): Route {
   if (import.meta.env.DEV && path === "/dev/karten") return { name: "gallery" };
   const room = path.match(/^\/r\/([A-Za-z0-9]{5})\/?$/);
   if (room) return { name: "room", code: room[1].toUpperCase() };
+  if (/^\/tisch\/?$/.test(path)) return { name: "tableSetup" };
+  const table = path.match(/^\/tisch\/([A-Za-z0-9]{5})\/?$/);
+  if (table) return { name: "table", code: table[1].toUpperCase() };
   if (/^\/lokal\/?$/.test(path)) return { name: "local" };
   const game = path.match(/^\/spiel\/([a-z0-9-]+)(\/lokal)?\/?$/);
   // Alte Spielseite und alter Link zur lokalen Partie: Spiel vormerken, weiter zur lokalen Lobby

@@ -21,8 +21,8 @@ export interface NewRoom {
   replace?: boolean;
 }
 
-/** Legt einen Online-Raum an und geht hinein. Wirft mit einer lesbaren Meldung, wenn es nicht klappt. */
-export async function createRoom({ name, pin, gameId, pickGame = false, meet = false, room, replace = false }: NewRoom): Promise<void> {
+/** Raum auf dem Server anlegen und den Code zurückgeben. Wirft mit einer lesbaren Meldung, wenn es nicht klappt. */
+export async function postRoom({ pin, gameId, meet = false, room }: Pick<NewRoom, "pin" | "gameId" | "meet" | "room">): Promise<string> {
   const res = await fetch("/api/rooms", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -33,8 +33,14 @@ export async function createRoom({ name, pin, gameId, pickGame = false, meet = f
   // Zugangscode inzwischen geändert: vergessen, damit er neu abgefragt wird
   if (res.status === 403 && data.code === "access") forgetAccess();
   if (!res.ok || !data.code) throw new Error(data.error ?? "Raum konnte nicht erstellt werden.");
+  return data.code;
+}
+
+/** Legt einen Online-Raum an und geht hinein. Wirft mit einer lesbaren Meldung, wenn es nicht klappt. */
+export async function createRoom({ name, pin, gameId, pickGame = false, meet = false, room, replace = false }: NewRoom): Promise<void> {
+  const code = await postRoom({ pin, gameId, meet, room });
   try { localStorage.setItem(NAME_KEY, cleanName(name)); } catch { /* egal */ }
-  setPendingJoin(data.code, { name: cleanName(name), pin });
-  if (pickGame && !meet) try { sessionStorage.setItem(pickGameKey(data.code), "1"); } catch { /* egal */ }
-  navigate(`/r/${data.code}`, replace);
+  setPendingJoin(code, { name: cleanName(name), pin });
+  if (pickGame && !meet) try { sessionStorage.setItem(pickGameKey(code), "1"); } catch { /* egal */ }
+  navigate(`/r/${code}`, replace);
 }
