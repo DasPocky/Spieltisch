@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GAMES, isGameId } from "@shared/games";
-import { countFeature, countStat, emptySiteStats, slotOf, isoWeek, sanitizeConfig, orderGames, sanitizeDefaults, STAT_WEEKS, sumStats, withDefaults } from "@shared/platform/access";
+import { sanitizeConfig, orderGames, sanitizeDefaults, withDefaults } from "@shared/platform/access";
+import { countFeature, countStat, emptySiteStats, slotOf, isoWeek, STAT_WEEKS, sumStats } from "@shared/platform/admin";
 import { createRoom } from "@shared/platform/room";
 
 const defs = (id: string) => (isGameId(id) ? GAMES[id].settings : undefined);

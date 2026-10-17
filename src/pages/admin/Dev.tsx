@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { navigate } from "@/hooks/useRoute";
-import { PREVIEWS, setDev, simulateGap, useDev } from "@/lib/dev";
+import { DEVICE_KEY, TOKEN_KEY } from "@/lib/admin";
+import { DEV_KEY, PREVIEWS, setDev, simulateGap, useDev } from "@/lib/dev";
 import { myName } from "@/lib/profile";
 import { DICE_HQ_KEY, readStr, setPendingJoin, wipeLocal, writeStr } from "@/lib/storage";
 import { InstallSheet } from "@/platform/InstallHint";
@@ -17,7 +18,7 @@ import { AuthError } from "./shared";
 
 const DELAYS = [{ value: "0", label: "normal" }, { value: "300", label: "+0,3 s" }, { value: "1000", label: "+1 s" }, { value: "3000", label: "+3 s" }];
 /** Diese Daten bleiben beim Zurücksetzen – sonst wäre die Verwaltung auf dem Gerät weg */
-const KEEP = ["spieltisch:admin", "spieltisch:admin-device", "spieltisch:dev"];
+const KEEP = [TOKEN_KEY, DEVICE_KEY, DEV_KEY];
 
 /** Entwickler: Testräume mit Bots, Diagnose, Netz simulieren, Abläufe erneut zeigen, Vorschau-Schalter */
 export function DevSection() {

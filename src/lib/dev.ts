@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isAdminDevice } from "@/pages/admin/context";
+import { isAdminDevice } from "./admin";
 
 /**
  * Entwickler-Modus – je Admin-Gerät einschaltbar. Hält Diagnose-Anzeige, Netz-Simulation und Vorschau-Schalter.
@@ -15,13 +15,13 @@ export interface DevSettings {
   previews: string[];
 }
 
-const KEY = "spieltisch:dev";
+export const DEV_KEY = "spieltisch:dev";
 const OFF: DevSettings = { on: false, overlay: false, delay: 0, previews: [] };
 let current: DevSettings = load();
 const listeners = new Set<() => void>();
 
 function load(): DevSettings {
-  try { return { ...OFF, ...(JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<DevSettings>) }; } catch { return OFF; }
+  try { return { ...OFF, ...(JSON.parse(localStorage.getItem(DEV_KEY) ?? "{}") as Partial<DevSettings>) }; } catch { return OFF; }
 }
 
 /** Gilt nur auf Admin-Geräten */
@@ -29,7 +29,7 @@ export const dev = (): DevSettings => (current.on && isAdminDevice() ? current :
 
 export function setDev(patch: Partial<DevSettings>) {
   current = { ...current, ...patch };
-  try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* egal */ }
+  try { localStorage.setItem(DEV_KEY, JSON.stringify(current)); } catch { /* egal */ }
   listeners.forEach((l) => l());
 }
 

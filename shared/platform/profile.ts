@@ -3,7 +3,7 @@
  * Damit führt der Server eine kleine Statistik pro Spiel. Wer die ID kennt, kann das Profil auf ein
  * anderes Gerät übernehmen – deshalb wird sie nur dem Besitzer gezeigt.
  */
-import type { Avatar } from "./group";
+import type { Avatar } from "./avatar";
 import { randomCode } from "./random";
 
 export const PROFILE_ID_LENGTH = 16;

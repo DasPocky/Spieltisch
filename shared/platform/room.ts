@@ -4,7 +4,7 @@
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
-import { sanitizeAvatar, type Avatar } from "./group";
+import { sanitizeAvatar, type Avatar } from "./avatar";
 import { sanitizeAccess, type RoomAccess } from "./directory";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
 

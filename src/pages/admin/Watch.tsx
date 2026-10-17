@@ -5,7 +5,7 @@ import { PING, WATCH_ID, type ChatMsg, type ServerMessage } from "@shared/platfo
 import type { RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { RoomScreen } from "@/platform/RoomScreen";
-import { adminToken } from "./context";
+import { adminToken } from "@/lib/admin";
 import { gameName } from "./shared";
 
 type WatchStatus = "connecting" | "live" | "closed";

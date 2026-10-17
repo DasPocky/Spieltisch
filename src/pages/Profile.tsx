@@ -21,7 +21,7 @@ import { QrCode } from "@/platform/QrCode";
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
 import { InstallCard } from "@/platform/InstallHint";
 import { goTab } from "@/platform/shell/AppShell";
-import { useAdminDevice } from "@/pages/admin/context";
+import { useAdminDevice } from "@/lib/admin";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";

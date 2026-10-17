@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Info } from "lucide-react";
-import { sumStats, type AdminRoom, type SiteStats } from "@shared/platform/access";
+import { sumStats, type AdminRoom, type SiteStats } from "@shared/platform/admin";
 import { LOOKS } from "@shared/platform/looks";
 import { GAMES } from "@shared/games";
 import { Button } from "@/components/ui/button";

@@ -2,7 +2,7 @@
  * Raumverzeichnis: wer einen Raum sehen darf, wie man hineinkommt, wie lange er leer bestehen bleibt –
  * und die Kurzinfo („Raumkarte“), die Start-Tab und Admin-Übersicht davon zeigen.
  */
-import { sanitizeAvatar, type Avatar } from "./group";
+import { sanitizeAvatar, type Avatar } from "./avatar";
 
 /** Wer den Raum in „Offene Räume“ sieht */
 export type Visibility = "all" | "group" | "none";
