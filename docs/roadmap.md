@@ -34,7 +34,11 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
 2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.
 3. **Grafik-Stufen** hoch/mittel/einfach nach Gerät **und gemessener Bildrate**, im Profil wählbar; WebGL-Ausfall → 2D ohne Raumverlust; reduzierte Bewegung beachten.
-4. **Desktop-Gerüst:** 3D-Tisch aus eigener Sicht oder 2D, automatisch, umschaltbar; Klicken, Ziehen, Tastatur (mit Hilfe), Hover-Hinweise; Video an den Plätzen, Chat rechts. 2D und 3D sind nur Ansichten desselben Spielstands.
+4. **Der Tisch ist die Desktop-Version** – keine eigene Desktop-Oberfläche. Drei Arten zu spielen, frei mischbar im selben Raum:
+   - **nur am Rechner:** der Tisch aus eigener Sicht, eigene Hand vorne, Mitspieler mit Video an den Plätzen; Klicken, Ziehen, Tastatur (mit Hilfe), Hover-Hinweise, Chat rechts,
+   - **Tisch + Handy:** der Rechner/Fernseher ist der Tisch für alle (heutiger Großer Tisch), gespielt wird am Handy – auch der Host kann zusätzlich am Rechner eine Hand haben,
+   - **nur am Handy** wie bisher.
+   Ohne 3D (schwacher Rechner, WebGL-Ausfall) ein **einfacher flacher Tisch** mit gleicher Anordnung. 2D und 3D sind nur Ansichten desselben Spielstands.
 5. **Gemeinsame Bausteine** statt Einzellösungen: `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
 6. **Handy als Begleiter:** Kamera + Mikro, Chat + Reaktionen, private Hand, Fernbedienung.
 7. **Fernseher-Beitritt:** QR, Name + Bild/Selfie ohne Profil, Spieler ohne Handy am Fernseher; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
@@ -53,7 +57,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 ## Phase 3 – Spiel für Spiel komplett ⏳
 
-„Komplett“ = Desktop 2D + 3D · Tisch/TV (Bühne, wo es passt) · Moderator-Ansagen · Bots mit Spielstärke. Reihenfolge nach Beliebtheit (Statistik), Mau-Mau, Uno, Schamlos zuerst.
+„Komplett“ = am Tisch spielbar (nur Rechner · Tisch + Handy · nur Handy; 3D und einfacher Tisch) · Bühne, wo es passt · Moderator-Ansagen · Bots mit Spielstärke. Reihenfolge nach Beliebtheit (Statistik), Mau-Mau, Uno, Schamlos zuerst.
 
 **Abnahmeblatt je Spiel:** Regel-Tests inkl. Grenzfälle · Zufallspartien mit festen Startwerten · Geheimhaltung (Tisch/Zuschauer sehen nichts Privates) und Rechte · lokal, online, Wiederverbinden, Update mitten in der Partie · 2D/3D/TV/Bühne soweit vorgesehen · Tastatur/Touch/Maus, reduzierte Bewegung, kleine Displays · Bots ohne illegale Züge, Moderator-Rückfall · Doku, Screenshots, „Für Spieler“.
 
