@@ -21,7 +21,7 @@ import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { cardText, fillIn } from "@shared/games/schamlos/cards";
-import { createTableScene, webglOk, type TableScene } from "@/platform/table/scene";
+import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
 const newPin = () => String(randomInt(900000) + 100000);
@@ -150,9 +150,12 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   const game = GAME_LIST.find((g) => g.id === room.gameId) ?? null;
   const avatars = useMemo(() => roomAvatars(room), [room]);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
+  const [felt, setFelt] = useState<FeltRect | null>(null);
   // Nur bei echter Änderung neu setzen – sonst zeichnet sich die Seite endlos neu
-  const onSeats = useCallback((next: { x: number; y: number }[]) => {
-    setPoints((prev) => (prev.length === next.length && prev.every((p, i) => Math.abs(p.x - next[i].x) < 0.5 && Math.abs(p.y - next[i].y) < 0.5) ? prev : next));
+  const onSeats = useCallback((next: { x: number; y: number }[], f: FeltRect) => {
+    const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
+    setPoints((prev) => (prev.length === next.length && prev.every((p, i) => near(p.x, next[i].x) && near(p.y, next[i].y)) ? prev : next));
+    setFelt((prev) => (prev && near(prev.x, f.x) && near(prev.y, f.y) && near(prev.w, f.w) && near(prev.h, f.h) ? prev : f));
   }, []);
   const seats = room.players.map((p) => p.id);
   // Schamlos hat keine Karten auf dem Tisch, sondern Sätze: eigene Mitte, Plätze zeigen Punkte und Zar
@@ -181,9 +184,9 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         </header>
         {model?.log.length ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
 
-        {!playing && <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} />}
+        {!playing && <OnFelt rect={felt}><Lobby code={code} pin={pin} count={room.players.length} host={host?.name} /></OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
-        {sham && <SchamlosCenter s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
+        {sham && <SchamlosCenter s={sham} felt={felt} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
       </main>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-white/10 bg-black/25 p-5">
@@ -200,7 +203,7 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
 }
 
 /** Die 3D-Szene in voller Größe – ohne WebGL bleibt der Platz leer (die Plätze stehen trotzdem am Rand) */
-function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[]) => void }) {
+function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const scene = useRef<TableScene | null>(null);
   const seatKey = seats.join();
@@ -211,7 +214,7 @@ function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seat
     let s: TableScene;
     try { s = createTableScene(canvas); } catch { return; }
     scene.current = s;
-    const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); onSeats(s.seatPoints()); });
+    const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); onSeats(s.seatPoints(), s.feltRect()); });
     ro.observe(canvas);
     return () => { ro.disconnect(); s.dispose(); scene.current = null; };
   }, [onSeats]);
@@ -220,7 +223,7 @@ function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seat
     const s = scene.current;
     if (!s) return;
     s.update(model, seatKey ? seatKey.split(",") : []);
-    onSeats(s.seatPoints());
+    onSeats(s.seatPoints(), s.feltRect());
   }, [model, seatKey, onSeats]);
 
   return <canvas ref={ref} className="absolute inset-0 size-full" aria-hidden="true" />;
@@ -262,65 +265,79 @@ function ShCard({ black, children, className, style }: { black?: boolean; childr
 }
 
 /** Schamlos in der Tischmitte: schwarze Karte, verdeckte Antworten, beim Wählen aufgedeckt, danach die Gewinnerkarte */
-function SchamlosCenter({ s, name, count }: { s: SchamlosState; name: (id: string) => string; count: number }) {
+function SchamlosCenter({ s, felt, name, count }: { s: SchamlosState; felt: FeltRect | null; name: (id: string) => string; count: number }) {
   const prompt = fillIn(s.prompt, []).map((p, i) => <span key={i}>{p.fill ? <span className="tracking-[0.1em] text-white/60">______</span> : p.text}</span>);
   const waiting = count - 1 - Object.keys(s.played).length;
   const tilt = (i: number) => `${((i * 37) % 7) - 3}deg`;
   const win = s.phase === "result" && s.pick !== null ? s.pick : null;
+  // Viele Antworten: zwei Reihen, kleinere Karten – alles bleibt auf dem Filz
+  const many = s.subs.length > 3 || s.subs.some((x) => x.cards.length > 1) && s.subs.length > 2;
+  const white = many ? "h-[40cqh]" : "h-[62cqh]";
   return (
-    <div className="pointer-events-none absolute inset-x-[8%] inset-y-[14%] flex flex-col items-center justify-center gap-6" data-testid="table-schamlos">
-      <div className="flex max-h-full min-h-0 items-center justify-center gap-10">
-        <ShCard black className="w-[min(15vw,28vh)] -rotate-2">{prompt}</ShCard>
-        {s.phase === "pick" && (
-          <div className="flex items-center">
-            {Object.keys(s.played).map((id, i) => <ShCard key={id} className="-ml-[6vw] w-[min(11vw,20vh)] first:ml-0" style={{ rotate: tilt(i) }} />)}
-          </div>
-        )}
-        {s.phase !== "pick" && (
-          <div className="flex max-w-[60vw] flex-wrap items-center justify-center gap-x-6 gap-y-4">
-            {s.subs.map((x, i) => (
-              <div key={i} className={cn("relative flex transition", win !== null && win !== i && "opacity-35", win === i && "-translate-y-3 scale-110")} style={{ rotate: tilt(i) }}>
-                {x.cards.map((c, k) => (
-                  <ShCard key={c} className={cn("w-[min(10vw,19vh)]", k > 0 && "-ml-[5vw] mt-[2vh]", win === i && "ring-4 ring-[#ff7a59]")}>{cardText(c)}</ShCard>
-                ))}
-                {win === i && <span className="plate plate-turn absolute -bottom-4 left-1/2 -translate-x-1/2 text-lg whitespace-nowrap">{name(x.by)}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <p className="table-banner" data-testid="table-schamlos-status">
+    <>
+      <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-schamlos-status">
         {s.phase === "pick" && (waiting > 0 ? `${count - 1 - waiting} von ${count - 1} haben gelegt · ${name(s.czar)} ist Zar` : "Alle haben gelegt")}
         {s.phase === "judge" && `${name(s.czar)} liest vor und wählt am Handy`}
         {win !== null && s.subs[win] && `Punkt für ${name(s.subs[win].by)}!`}
       </p>
-    </div>
+      <OnFelt rect={felt} className="gap-[3cqw]">
+        <div className="contents" data-testid="table-schamlos">
+          <ShCard black className={cn("-rotate-2", s.phase === "pick" ? "h-[84cqh]" : "h-[70cqh]")}>{prompt}</ShCard>
+          {s.phase === "pick" && (
+            <div className="flex items-center">
+              {Object.keys(s.played).map((id, i) => <ShCard key={id} className="-ml-[5cqw] h-[50cqh] first:ml-0" style={{ rotate: tilt(i) }} />)}
+            </div>
+          )}
+          {s.phase !== "pick" && (
+            <div className="flex max-h-full min-w-0 flex-wrap content-center items-center justify-center gap-x-[2.5cqw] gap-y-[3cqh]">
+              {s.subs.map((x, i) => (
+                <div key={i} className={cn("relative flex transition", win !== null && win !== i && "opacity-35", win === i && "-translate-y-[2cqh] scale-105")} style={{ rotate: tilt(i) }}>
+                  {x.cards.map((c, k) => (
+                    <ShCard key={c} className={cn(white, k > 0 && "-ml-[4cqw] mt-[4cqh]", win === i && "ring-4 ring-[#ff7a59]")}>{cardText(c)}</ShCard>
+                  ))}
+                  {win === i && <span className="plate plate-turn absolute -bottom-[2cqh] left-1/2 -translate-x-1/2 text-[3.2cqh] whitespace-nowrap">{name(x.by)}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </OnFelt>
+    </>
   );
 }
 
-/** Lobby: großer QR-Code in der Mitte des Tischs */
+/**
+ * Inhalt, der auf dem Filz liegt: bleibt innerhalb der Tischfläche und wächst mit ihr (Maße in cqh/cqw).
+ * Ohne 3D (kein WebGL) ein fester Bereich in der Mitte.
+ */
+function OnFelt({ rect, children, className }: { rect: FeltRect | null; children: React.ReactNode; className?: string }) {
+  const style: React.CSSProperties = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h } : { left: "15%", top: "20%", width: "70%", height: "55%" };
+  return <div className={cn("pointer-events-none absolute flex items-center justify-center", className)} style={{ ...style, containerType: "size" }}>{children}</div>;
+}
+
+/** Lobby: Karte mit QR-Code liegt auf dem Tisch – Code, PIN und drei Schritte */
 function Lobby({ code, pin, count, host }: { code: string; pin: string; count: number; host?: string }) {
   const steps = ["Handy-Kamera auf den Code halten", "Namen eingeben und beitreten", count === 0 ? "Wer zuerst da ist, wählt das Spiel" : `${host ?? "Der Host"} wählt das Spiel und startet`];
   return (
-    <div className="absolute inset-0 grid place-items-center p-8">
-      <div className="paper-note flex items-stretch gap-8 p-8" data-testid="table-lobby">
-        <div className="grid place-items-center rounded-2xl bg-white p-4 shadow-inner ring-1 ring-black/5">
-          <QrCode value={joinLink(code, pin)} className="size-[min(16rem,30vh)]" label="QR-Code zum Mitspielen" />
+    <div className="paper-note pointer-events-auto flex max-h-[92cqh] max-w-[96cqw] items-center gap-[4cqw] p-[4cqh]" data-testid="table-lobby">
+      <div className="grid shrink-0 place-items-center rounded-[2cqh] bg-white p-[2.5cqh] ring-1 ring-black/5">
+        <QrCode value={joinLink(code, pin)} className="size-[min(62cqh,34cqw)]" label="QR-Code zum Mitspielen" />
+      </div>
+      <div className="flex min-w-0 flex-col gap-[2.6cqh]">
+        <div>
+          <div className="text-[2.6cqh] font-bold uppercase tracking-[0.2em] text-[#8a6f4e]">Mitspielen</div>
+          <h2 className="text-[6.5cqh] font-bold leading-tight">Setzt euch an den Tisch</h2>
         </div>
-        <div className="flex max-w-sm flex-col">
-          <div className="text-sm font-bold uppercase tracking-[0.2em] text-[#8a6f4e]">Mitspielen</div>
-          <h2 className="mt-1 text-3xl font-bold leading-tight">Setzt euch an den Tisch</h2>
-          <ol className="mt-5 grid gap-3">
-            {steps.map((s, i) => (
-              <li key={s} className="flex items-center gap-3 text-lg">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#ff7a59] font-bold text-white">{i + 1}</span>{s}
-              </li>
-            ))}
-          </ol>
-          <div className="mt-auto flex items-end gap-6 border-t border-dashed border-[#d9c4a0] pt-4">
-            <div><div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">Raum</div><div className="text-4xl font-bold tracking-[0.15em]" data-testid="table-code">{code}</div></div>
-            <div><div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">PIN</div><div className="text-2xl font-bold tracking-[0.12em]">{pin}</div></div>
-          </div>
+        <ol className="grid gap-[1.6cqh]">
+          {steps.map((s, i) => (
+            <li key={s} className="flex items-center gap-[1.4cqw] text-[3.6cqh] leading-snug">
+              <span className="grid size-[5.4cqh] shrink-0 place-items-center rounded-full bg-[#ff7a59] text-[3cqh] font-bold text-white">{i + 1}</span>{s}
+            </li>
+          ))}
+        </ol>
+        <div className="flex items-end gap-[3cqw] rounded-[1.6cqh] bg-[#efe3cc] px-[2cqw] py-[1.6cqh]">
+          <div><div className="text-[2.2cqh] font-bold uppercase tracking-wider text-[#8a6f4e]">Raum</div><div className="text-[7cqh] font-bold leading-none tracking-[0.12em]" data-testid="table-code">{code}</div></div>
+          <div><div className="text-[2.2cqh] font-bold uppercase tracking-wider text-[#8a6f4e]">PIN</div><div className="text-[4.6cqh] font-bold leading-none tracking-[0.1em]">{pin}</div></div>
         </div>
       </div>
     </div>
@@ -342,12 +359,12 @@ function Fallback({ room, code, online }: { room: RoomState; code: string; onlin
 
 function JoinNote({ code, pin }: { code: string; pin: string }) {
   return (
-    <div className="paper-note flex rotate-1 items-center gap-3.5 p-4">
-      <div className="shrink-0 rounded-lg bg-white p-1.5"><QrCode value={joinLink(code, pin)} className="size-20" label="QR-Code zum Mitspielen" /></div>
+    <div className="paper-note flex items-center gap-4 p-4">
+      <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-black/5"><QrCode value={joinLink(code, pin)} className="size-24" label="QR-Code zum Mitspielen" /></div>
       <div className="min-w-0">
-        <div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">Mitspielen</div>
-        <div className="text-2xl font-bold tracking-[0.12em]">{code}</div>
-        <div className="text-xs text-[#8a6f4e]">PIN {pin}</div>
+        <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a6f4e]">Mitspielen</div>
+        <div className="mt-0.5 text-3xl font-bold leading-none tracking-[0.1em]">{code}</div>
+        <div className="mt-1.5 inline-block rounded-md bg-[#efe3cc] px-2 py-0.5 text-sm font-bold tracking-wider">PIN {pin}</div>
       </div>
     </div>
   );

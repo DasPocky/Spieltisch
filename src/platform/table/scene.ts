@@ -11,12 +11,16 @@ import {
 import { CARD_RATIO, drawBack, drawFace } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 
+export interface FeltRect { x: number; y: number; w: number; h: number }
+
 export interface TableScene {
   /** Partie zeigen (null: leerer Tisch, z. B. in der Lobby). `seats`: Spieler in Tischreihenfolge. */
   update(model: TableModel | null, seats: string[]): void;
   resize(width: number, height: number): void;
   /** Bildschirmpunkte (CSS-Pixel) der Plätze am Tischrand – dort stehen Name, Bild und Video */
   seatPoints(): { x: number; y: number }[];
+  /** Größtes Rechteck (CSS-Pixel), das ganz auf dem Filz liegt – dort liegen Karten und Schilder in HTML */
+  feltRect(): FeltRect;
   dispose(): void;
 }
 
@@ -268,8 +272,16 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
     });
   }
 
+  function feltRect(): FeltRect {
+    // Von schräg vorn ist der Filz ein Trapez: hinten schmaler. Das Rechteck nimmt die hintere Breite.
+    const p = (x: number, z: number) => { const v = new Vector3(x, SURFACE, z).project(camera); return { x: ((v.x + 1) / 2) * width, y: ((1 - v.y) / 2) * height }; };
+    const inset = 0.12;
+    const tl = p(-FELT_W / 2 + inset, -FELT_D / 2 + inset), tr = p(FELT_W / 2 - inset, -FELT_D / 2 + inset), bl = p(-FELT_W / 2 + inset, FELT_D / 2 - inset);
+    return { x: tl.x, y: tl.y, w: tr.x - tl.x, h: bl.y - tl.y };
+  }
+
   return {
-    update, resize, seatPoints,
+    update, resize, seatPoints, feltRect,
     dispose() {
       cancelAnimationFrame(raf);
       for (const t of textures.values()) t.dispose();
