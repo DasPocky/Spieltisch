@@ -7,9 +7,12 @@ import type { ClientMessage } from "./protocol";
 
 type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => !!x && typeof x === "object" && !Array.isArray(x);
+/** Markiert ein ungültiges Feld (eigenes Zeichen – `false` ist ein gültiger Wert) */
+const BAD: unique symbol = Symbol("ungültig");
+type Bad = typeof BAD;
 /** optionaler Text bis `max` Zeichen (sonst ungültig) */
-const str = (x: unknown, max: number): string | undefined | false => (x === undefined || x === null ? undefined : typeof x === "string" && x.length <= max ? x : false);
-const bool = (x: unknown): boolean | undefined | false => (x === undefined ? undefined : typeof x === "boolean" ? x : false);
+const str = (x: unknown, max: number): string | undefined | Bad => (x === undefined || x === null ? undefined : typeof x === "string" && x.length <= max ? x : BAD);
+const bool = (x: unknown): boolean | undefined | Bad => (x === undefined ? undefined : typeof x === "boolean" ? x : BAD);
 
 /** Größte erlaubte Tiefe und Feldanzahl einer Spielaktion (sie wird vom Spiel selbst noch genau geprüft) */
 const MAX_DEPTH = 6;
@@ -27,10 +30,10 @@ function plain(x: unknown, depth = 0): boolean {
 }
 
 /** Felder einsammeln; ein ungültiges Feld macht die ganze Nachricht ungültig */
-function pick<T extends Obj>(fields: { [K in keyof T]: T[K] | undefined | false }): T | null {
+function pick<T extends Obj>(fields: { [K in keyof T]: T[K] | undefined | Bad }): T | null {
   const out: Obj = {};
   for (const [k, v] of Object.entries(fields)) {
-    if (v === false) return null;
+    if (v === BAD) return null;
     if (v !== undefined) out[k] = v;
   }
   return out as T;
@@ -41,7 +44,7 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
   const m = raw;
   switch (m.type) {
     case "join": {
-      const avatar = m.avatar === undefined ? undefined : isObj(m.avatar) && plain(m.avatar) ? m.avatar : false;
+      const avatar = m.avatar === undefined ? undefined : isObj(m.avatar) && plain(m.avatar) ? m.avatar : BAD;
       const p = pick({
         name: str(m.name, 64), pin: str(m.pin, 16), playerId: str(m.playerId, 64), token: str(m.token, 128),
         profile: str(m.profile, 32), profileKey: str(m.profileKey, 64), avatar, group: str(m.group, 16), nonce: str(m.nonce, 64),
@@ -51,7 +54,7 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
     case "action": {
       if (!isObj(m.action) || typeof m.action.type !== "string" || m.action.type.length > 40 || !plain(m.action)) return null;
       const id = str(m.id, 64);
-      if (id === false) return null;
+      if (id === BAD) return null;
       return { type: "action", action: m.action as never, ...(id ? { id } : {}) };
     }
     case "presence":

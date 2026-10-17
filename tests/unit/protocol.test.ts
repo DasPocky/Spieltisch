@@ -7,6 +7,8 @@ describe("Nachrichten ans Server prüfen", () => {
     expect(parseClientMessage({ type: "action", action: { type: "play", card: "h7" }, id: "abcdef" })).toEqual({ type: "action", action: { type: "play", card: "h7" }, id: "abcdef" });
     expect(parseClientMessage({ type: "presence", foo: 1 })).toEqual({ type: "presence" });
     expect(parseClientMessage({ type: "call", session: null })).toEqual({ type: "call", session: null });
+    // „aus“ ist ein gültiger Wert
+    expect(parseClientMessage({ type: "call", session: "s1", audio: "a-1", mic: false, cam: false })).toEqual({ type: "call", session: "s1", audio: "a-1", mic: false, cam: false });
     expect(parseClientMessage({ type: "knock", id: "k1", decision: "admit" })).toEqual({ type: "knock", id: "k1", decision: "admit" });
     expect(parseClientMessage({ type: "table", pin: "1234" })).toEqual({ type: "table", pin: "1234" });
   });
