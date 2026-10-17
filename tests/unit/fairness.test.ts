@@ -51,9 +51,9 @@ describe("Fairer Zufall", () => {
       const g = getGame(id);
       const starts = new Set<string>();
       for (let round = 0; round < 4; round++) {
-        // Startkarten wie „Aussetzen“ verschieben den Ersten – daher je Partie der häufigste Anfänger aus 15 Versuchen
+        // Startkarten wie „Aussetzen“ verschieben den Ersten – daher je Partie der häufigste Anfänger aus 41 Versuchen (bei 15 lag Uno in ~1 % der Läufe daneben)
         const tally = new Map<string, number>();
-        for (let k = 0; k < 15; k++) {
+        for (let k = 0; k < 41; k++) {
           const s = g.setup({ players, hostId: "a", actorId: null, options: defaultOptions(g.settings), now: 0, round }) as Record<string, unknown>;
           const who = String(s.dealerId ?? s.dealer ?? s.curId);
           tally.set(who, (tally.get(who) ?? 0) + 1);
