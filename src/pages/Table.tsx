@@ -20,7 +20,6 @@ import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
-import { cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
@@ -170,7 +169,7 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
 
         {/* Plätze am Tischrand: Bild (später Video), Name, Karten */}
         {!fallback && room.players.map((p, i) => points[i] && (
-          <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={model?.counts[p.id]}
+          <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
             turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
             note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : undefined} />
         ))}
@@ -182,11 +181,11 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
             <div className="text-sm opacity-80">Raum {code}{model?.color ? ` · gilt: ${model.color.label}` : ""}</div>
           </div>
         </header>
-        {model?.log.length ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
+        {model?.log.length && !sham ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
 
         {!playing && <OnFelt rect={felt}><Lobby code={code} pin={pin} count={room.players.length} host={host?.name} /></OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
-        {sham && <SchamlosCenter s={sham} felt={felt} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
+        {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
       </main>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-white/10 bg-black/25 p-5">
@@ -248,61 +247,15 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note }: {
   );
 }
 
-/** Eine Schamlos-Karte im echten Kartenformat (5:7), Schrift wächst mit der Karte */
-function ShCard({ black, children, className, style }: { black?: boolean; children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+function SchamlosStatus({ s, name, count }: { s: SchamlosState; name: (id: string) => string; count: number }) {
+  const done = Object.keys(s.played).length;
+  const win = s.phase === "result" && s.pick !== null ? s.subs[s.pick] : null;
   return (
-    <div className={cn("@container relative aspect-[5/7] shrink-0 rounded-[6%] shadow-[0_14px_30px_-10px_rgb(0_0_0/0.7)]", black ? "bg-[#16171b] text-white ring-1 ring-white/10" : "bg-[#fdfdfb] text-[#16171b] ring-1 ring-black/10", className)} style={style}>
-      {/* Ohne Text: Rückseite einer verdeckt gelegten Karte */}
-      {children === undefined && <div className="absolute inset-0 grid place-items-center text-[13cqw] font-bold -rotate-12 text-black/25">Schamlos</div>}
-      <div className="absolute inset-[8%] flex flex-col">
-        <div className="min-h-0 flex-1 text-[9cqw] font-bold leading-[1.18]">{children}</div>
-        <div className={cn("flex items-center gap-[2cqw] text-[5cqw] font-bold", black ? "text-white/45" : "text-black/35")}>
-          <span className={cn("inline-block size-[6cqw] rotate-[-8deg] rounded-[1cqw]", black ? "bg-white/45" : "bg-black/35")} />Schamlos
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Schamlos in der Tischmitte: schwarze Karte, verdeckte Antworten, beim Wählen aufgedeckt, danach die Gewinnerkarte */
-function SchamlosCenter({ s, felt, name, count }: { s: SchamlosState; felt: FeltRect | null; name: (id: string) => string; count: number }) {
-  const prompt = fillIn(s.prompt, []).map((p, i) => <span key={i}>{p.fill ? <span className="tracking-[0.1em] text-white/60">______</span> : p.text}</span>);
-  const waiting = count - 1 - Object.keys(s.played).length;
-  const tilt = (i: number) => `${((i * 37) % 7) - 3}deg`;
-  const win = s.phase === "result" && s.pick !== null ? s.pick : null;
-  // Viele Antworten: zwei Reihen, kleinere Karten – alles bleibt auf dem Filz
-  const many = s.subs.length > 3 || s.subs.some((x) => x.cards.length > 1) && s.subs.length > 2;
-  const white = many ? "h-[40cqh]" : "h-[62cqh]";
-  return (
-    <>
-      <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-schamlos-status">
-        {s.phase === "pick" && (waiting > 0 ? `${count - 1 - waiting} von ${count - 1} haben gelegt · ${name(s.czar)} ist Zar` : "Alle haben gelegt")}
-        {s.phase === "judge" && `${name(s.czar)} liest vor und wählt am Handy`}
-        {win !== null && s.subs[win] && `Punkt für ${name(s.subs[win].by)}!`}
-      </p>
-      <OnFelt rect={felt} className="gap-[3cqw]">
-        <div className="contents" data-testid="table-schamlos">
-          <ShCard black className={cn("-rotate-2", s.phase === "pick" ? "h-[84cqh]" : "h-[70cqh]")}>{prompt}</ShCard>
-          {s.phase === "pick" && (
-            <div className="flex items-center">
-              {Object.keys(s.played).map((id, i) => <ShCard key={id} className="-ml-[5cqw] h-[50cqh] first:ml-0" style={{ rotate: tilt(i) }} />)}
-            </div>
-          )}
-          {s.phase !== "pick" && (
-            <div className="flex max-h-full min-w-0 flex-wrap content-center items-center justify-center gap-x-[2.5cqw] gap-y-[3cqh]">
-              {s.subs.map((x, i) => (
-                <div key={i} className={cn("relative flex transition", win !== null && win !== i && "opacity-35", win === i && "-translate-y-[2cqh] scale-105")} style={{ rotate: tilt(i) }}>
-                  {x.cards.map((c, k) => (
-                    <ShCard key={c} className={cn(white, k > 0 && "-ml-[4cqw] mt-[4cqh]", win === i && "ring-4 ring-[#ff7a59]")}>{cardText(c)}</ShCard>
-                  ))}
-                  {win === i && <span className="plate plate-turn absolute -bottom-[2cqh] left-1/2 -translate-x-1/2 text-[3.2cqh] whitespace-nowrap">{name(x.by)}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </OnFelt>
-    </>
+    <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-schamlos-status">
+      {s.phase === "pick" && (done < count - 1 ? `${done} von ${count - 1} haben gelegt · ${name(s.czar)} ist Zar` : "Alle haben gelegt")}
+      {s.phase === "judge" && `${name(s.czar)} liest vor und wählt am Handy`}
+      {win && `Punkt für ${name(win.by)}!`}
+    </p>
   );
 }
 
