@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { FEATURE_KINDS, isoWeek, STAT_KINDS, sumStats, type FeatureCounts, type FeatureKind, type SiteStats, type StatCounts } from "@shared/platform/access";
 import { Card } from "@/components/ui/card";
+import { readStr, writeStr } from "@/lib/storage";
 import { fmt } from "@/lib/utils";
 import { Segmented } from "@/platform/Segmented";
+import { dayKey } from "@/lib/time";
 import { useAdmin } from "./context";
 import { AuthError, gameName, Tile } from "./shared";
 
@@ -12,7 +14,8 @@ const RANGES: { value: Range; label: string }[] = [
   { value: "7", label: "7 Tage" }, { value: "30", label: "30 Tage" }, { value: "60", label: "60 Tage" }, { value: "all", label: "Gesamt" },
 ];
 const DAY = 86_400_000;
-const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** Gewählter Zeitraum, solange der Tab offen ist */
+const RANGE_KEY = "spieltisch:admin-range";
 const WD = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const WD_LONG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 const FEATURE_LABEL: Record<FeatureKind, string> = {
@@ -32,8 +35,8 @@ export function StatsSection() {
   const { api } = useAdmin();
   const [stats, setStats] = useState<SiteStats | null>(null);
   const [error, setError] = useState("");
-  const [range, setRange] = useState<Range>(() => { try { return (sessionStorage.getItem("spieltisch:admin-range") as Range) || "30"; } catch { return "30"; } });
-  useEffect(() => { try { sessionStorage.setItem("spieltisch:admin-range", range); } catch { /* egal */ } }, [range]);
+  const [range, setRange] = useState<Range>(() => (readStr(RANGE_KEY, true) as Range) || "30");
+  useEffect(() => writeStr(RANGE_KEY, range, true), [range]);
   useEffect(() => {
     api<SiteStats>("/api/admin/stats").then(setStats).catch((e) => { if (!(e instanceof AuthError)) setError((e as Error).message); });
   }, [api]);

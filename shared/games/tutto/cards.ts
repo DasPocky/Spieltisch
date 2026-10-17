@@ -61,6 +61,5 @@ export const DICE_RULES = [
 ] as const;
 
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c])) as Record<CardId, CardType>;
-export const DECK_SIZE = CARDS.reduce((s, c) => s + (c.promo || c.house ? 0 : c.count), 0); // 56
 /** Würfelpunkte, die man mit echten Würfeln eintippen kann (Kartenboni rechnet die App selbst) */
 export const POINT_STEPS = [50, 100, 200, 300, 400, 500, 600, 1000, -50] as const;

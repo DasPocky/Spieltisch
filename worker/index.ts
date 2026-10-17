@@ -16,12 +16,13 @@ import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, vi
 import { GameError } from "../shared/platform/types";
 import { BUILD, type ServerStatus } from "../shared/build";
 import { BOT_PREFIX, botMove } from "../shared/platform/bots";
+import { shuffle } from "../shared/platform/random";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
 } from "../shared/platform/directory";
 import {
-  ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, ROOM_CODE_RE,
+  ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_LENGTH, ROOM_CODE_RE,
   ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID,
   type AdminRoomAction, type AdminRoomDetail, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage,
 } from "../shared/platform/protocol";
@@ -119,18 +120,8 @@ async function hashPin(salt: string, pin: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function shuffleIds(xs: string[]): string[] {
-  const a = [...xs];
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
-}
-
 /** Raumcode aus 32 Zeichen – 256 ist durch 32 teilbar, also keine Modulo-Verzerrung. */
-function makeCode(): string {
-  const bytes = new Uint8Array(ROOM_CODE_LENGTH);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => ROOM_CODE_ALPHABET[b % ROOM_CODE_ALPHABET.length]).join("");
-}
+const makeCode = (): string => randomCode(ROOM_CODE_LENGTH);
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -996,7 +987,7 @@ export class GameRoom extends DurableObject<Env> {
     this.botTimer = setTimeout(() => {
       this.botTimer = null;
       void (async () => {
-        for (const id of shuffleIds(this.room?.state.bots ?? [])) if (await this.botStep(id)) return;
+        for (const id of shuffle(this.room?.state.bots ?? [])) if (await this.botStep(id)) return;
       })();
     }, 900 + Math.floor(Math.random() * 900));
   }
@@ -1113,7 +1104,7 @@ const INDEX_STALE_MS = ROOM_TTL_MS + 60 * 60 * 1000;
 const settingsDefs = (id: string) => (isGameId(id) ? GAMES[id].settings : undefined);
 
 /** Anmeldung im Admin-Bereich: Sitzungs-Token oder Passwort */
-export interface AdminCred { token?: string; password?: string }
+interface AdminCred { token?: string; password?: string }
 type AdminResult = { ok: boolean; error?: string; status?: number };
 
 /**
@@ -1605,14 +1596,17 @@ function allowed(bucket: string, ip: string, max: number, ms = 10 * 60 * 1000): 
   return true;
 }
 
-async function readBody(request: Request): Promise<Record<string, unknown> | null> {
+/** JSON-Objekt aus der Anfrage – null bei Unsinn, Listen oder zu großem Inhalt */
+async function readBody(request: Request, max = 8000): Promise<Record<string, unknown> | null> {
   const text = await request.text();
-  if (text.length > 8000) return null;
+  if (text.length > max) return null;
   try {
     const body = text ? JSON.parse(text) : {};
     return body && typeof body === "object" && !Array.isArray(body) ? body : null;
   } catch { return null; }
 }
+
+const badRequest = () => json({ error: "Ungültige Anfrage." }, 400);
 
 const answer = (r: GroupAnswer | { ok: true; gone: true }) =>
   r.ok ? json("gone" in r ? { ok: true, gone: true } : { ok: true, group: r.group }) : json({ error: r.error }, r.status);
@@ -1694,9 +1688,10 @@ async function handleAdmin(request: Request, env: Env, path: string): Promise<Re
   const settings = settingsOf(env);
   let body: Record<string, unknown> = {};
   if (request.method === "POST") {
-    const text = await request.text();
-    try { body = text ? JSON.parse(text) ?? {} : {}; } catch { return json({ error: "Ungültige Anfrage." }, 400); }
-    if (typeof body !== "object") return json({ error: "Ungültige Anfrage." }, 400);
+    // Einstellungen mit Standards aller Spiele können größer werden als normale Anfragen
+    const parsed = await readBody(request, 64_000);
+    if (!parsed) return badRequest();
+    body = parsed;
   }
   const cred = adminCred(request, body.password);
 
@@ -1867,17 +1862,6 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 /** Lokale Statistik: höchstens 20 Meldungen je Adresse in 10 Minuten (pro Worker-Instanz, grob reicht) */
-const statHits = new Map<string, number[]>();
-function statsAllowed(ip: string): boolean {
-  const now = Date.now();
-  const recent = (statHits.get(ip) ?? []).filter((t) => now - t < 10 * 60 * 1000);
-  if (recent.length >= 20) return false;
-  recent.push(now);
-  statHits.set(ip, recent);
-  if (statHits.size > 5000) statHits.clear();
-  return true;
-}
-
 const REALTIME_API = "https://rtc.live.cloudflare.com/v1/apps";
 const MAX_CALL_BODY = 64_000;
 
@@ -1966,8 +1950,8 @@ export default {
 
     // Zugangscode prüfen
     if (url.pathname === "/api/access" && request.method === "POST") {
-      let body: { code?: unknown };
-      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const body = (await readBody(request)) as { code?: unknown } | null;
+      if (!body) return badRequest();
       const ok = typeof body.code === "string" && await settingsOf(env).checkCode(body.code);
       return json({ ok }, ok ? 200 : 403);
     }
@@ -1997,16 +1981,16 @@ export default {
       if (!PROFILE_ID_RE.test(id)) return json({ error: "Ungültiges Profil." }, 400);
       const store = profileOf(env, id);
       if (prof[2] && request.method === "POST") {
-        let body: unknown;
-        try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+        const body = (await readBody(request)) as Record<string, unknown> | null;
+        if (!body) return badRequest();
         const entry = sanitizeResult(body, GAME_IDS, Date.now());
         if (!entry) return json({ error: "Ungültiges Ergebnis." }, 400);
         return json(await store.record(entry, id));
       }
       if (!prof[2] && request.method === "GET") return json(await store.get());
       if (!prof[2] && request.method === "PUT") {
-        let body: { name?: unknown; avatar?: unknown };
-        try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+        const body = (await readBody(request)) as { name?: unknown; avatar?: unknown } | null;
+        if (!body) return badRequest();
         return json(await store.update(body.name === undefined ? undefined : String(body.name ?? ""), body.avatar));
       }
       if (!prof[2] && request.method === "DELETE") { await store.remove(); return json({ ok: true }); }
@@ -2014,10 +1998,10 @@ export default {
 
     // Lokale Partie gestartet (Statistik) – ohne Antwortinhalt, je Adresse gedrosselt
     if (url.pathname === "/api/stats" && request.method === "POST") {
-      let body: { game?: unknown };
-      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const body = (await readBody(request)) as { game?: unknown } | null;
+      if (!body) return badRequest();
       if (!isGameId(body.game)) return json({ error: "Unbekanntes Spiel." }, 400);
-      if (!statsAllowed(request.headers.get("cf-connecting-ip") ?? "local")) return json({ ok: false }, 429);
+      if (!allowed("stats", request.headers.get("cf-connecting-ip") ?? "local", 20)) return json({ ok: false }, 429);
       await settingsOf(env).count(body.game, "local");
       return json({ ok: true });
     }
@@ -2027,8 +2011,8 @@ export default {
 
     // Raum anlegen
     if (url.pathname === "/api/rooms" && request.method === "POST") {
-      let body: { pin?: unknown; game?: unknown; access?: unknown; room?: unknown; meet?: unknown };
-      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const body = (await readBody(request)) as { pin?: unknown; game?: unknown; access?: unknown; room?: unknown; meet?: unknown } | null;
+      if (!body) return badRequest();
       const pin = String(body.pin ?? "");
       if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
       if (!isGameId(body.game)) return json({ error: "Unbekanntes Spiel." }, 400);
@@ -2061,8 +2045,8 @@ export default {
 
     // Deine Räume: das Handy nennt seine gespeicherten Zugänge, jeder Raum prüft sie selbst
     if (url.pathname === "/api/rooms/mine" && request.method === "POST") {
-      let body: { rooms?: unknown };
-      try { body = await request.json(); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
+      const body = (await readBody(request)) as { rooms?: unknown } | null;
+      if (!body) return badRequest();
       const list = (Array.isArray(body.rooms) ? body.rooms : []).slice(0, 20) as { code?: unknown; playerId?: unknown; token?: unknown }[];
       const rooms: RoomCard[] = [];
       const gone: string[] = [];

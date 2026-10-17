@@ -4,7 +4,7 @@
  */
 import { makeProfileId, PROFILE_ID_RE, type ProfileStats, type RecentGame } from "@shared/platform/profile";
 import { defaultAvatar, sanitizeAvatar, type Avatar } from "@shared/platform/group";
-import { NAME_KEY, readJSON, remove, writeJSON } from "./storage";
+import { KEY_PREFIX, NAME_KEY, readJSON, remove, wipeLocal, writeJSON } from "./storage";
 
 const KEY = "spieltisch:profile";
 
@@ -30,7 +30,7 @@ export function resetProfile() {
   return myProfile();
 }
 
-const AVATAR_KEY = "spieltisch:avatar";
+export const AVATAR_KEY = "spieltisch:avatar";
 
 /** Eigener Avatar – ohne Auswahl ein fester aus der Profil-ID */
 export function myAvatar(): Avatar {
@@ -87,7 +87,7 @@ export async function redeemTransfer(code: string): Promise<{ id?: string; error
 export function exportData(): string {
   const data: Record<string, string> = {};
   try {
-    for (const k of Object.keys(localStorage)) if (k.startsWith("spieltisch:")) data[k] = localStorage.getItem(k) ?? "";
+    for (const k of Object.keys(localStorage)) if (k.startsWith(KEY_PREFIX)) data[k] = localStorage.getItem(k) ?? "";
   } catch { /* egal */ }
   return JSON.stringify({ app: "spieltisch", v: 1, at: Date.now(), data }, null, 1);
 }
@@ -98,11 +98,11 @@ export function importData(text: string): boolean {
   try { parsed = JSON.parse(text); } catch { return false; }
   const data = parsed?.data;
   if (parsed?.app !== "spieltisch" || !data || typeof data !== "object") return false;
-  const entries = Object.entries(data as Record<string, unknown>).filter(([k, v]) => k.startsWith("spieltisch:") && typeof v === "string" && v.length < 500_000);
+  const entries = Object.entries(data as Record<string, unknown>).filter(([k, v]) => k.startsWith(KEY_PREFIX) && typeof v === "string" && v.length < 500_000);
   const profile = entries.find(([k]) => k === KEY);
   try {
     if (!profile || !PROFILE_ID_RE.test((JSON.parse(profile[1] as string) as Partial<LocalProfile>)?.id ?? "")) return false;
-    for (const k of Object.keys(localStorage)) if (k.startsWith("spieltisch:")) localStorage.removeItem(k);
+    for (const k of Object.keys(localStorage)) if (k.startsWith(KEY_PREFIX)) localStorage.removeItem(k);
     for (const [k, v] of entries) localStorage.setItem(k, v as string);
   } catch { return false; }
   return true;
@@ -118,8 +118,5 @@ export async function reportLocal(result: Omit<RecentGame, "at" | "online">) {
 /** Alles auf diesem Gerät löschen: Profil (auch auf dem Server), Namen, Spielstände, Einstellungen */
 export async function wipeAllData() {
   await deleteProfile();
-  try {
-    for (const k of Object.keys(localStorage)) if (k.startsWith("spieltisch")) localStorage.removeItem(k);
-    sessionStorage.clear();
-  } catch { /* egal */ }
+  wipeLocal();
 }

@@ -19,15 +19,3 @@ export function ThemeSwitch({ className }: { className?: string }) {
     </div>
   );
 }
-
-/** Kleiner Knopf (Startseite): wechselt zwischen hell und dunkel */
-export function ThemeToggle({ className }: { className?: string }) {
-  const choice = useTheme();
-  const dark = choice === "dark" || (choice === "system" && typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches);
-  return (
-    <button type="button" onClick={() => setTheme(dark ? "light" : "dark")} aria-label={dark ? "Helle Darstellung" : "Dunkle Darstellung"}
-      className={cn("grid size-11 shrink-0 place-items-center rounded-full bg-secondary ring-1 ring-inset ring-border outline-none focus-visible:ring-2 focus-visible:ring-ring", className)}>
-      {dark ? <Sun className="size-5" /> : <Moon className="size-5" />}
-    </button>
-  );
-}

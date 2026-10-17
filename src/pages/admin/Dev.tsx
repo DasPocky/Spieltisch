@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { navigate } from "@/hooks/useRoute";
 import { PREVIEWS, setDev, simulateGap, useDev } from "@/lib/dev";
 import { myName } from "@/lib/profile";
-import { setPendingJoin } from "@/lib/storage";
+import { DICE_HQ_KEY, readStr, setPendingJoin, wipeLocal, writeStr } from "@/lib/storage";
 import { InstallSheet } from "@/platform/InstallHint";
 import { replayIntro } from "@/platform/intro/intro";
 import { Segmented } from "@/platform/Segmented";
@@ -23,7 +23,7 @@ const KEEP = ["spieltisch:admin", "spieltisch:admin-device", "spieltisch:dev"];
 export function DevSection() {
   const d = useDev();
   const [install, setInstall] = useState(false);
-  const [hq, setHq] = useState(() => { try { return localStorage.getItem("spieltisch:diceHQ") === "1"; } catch { return false; } });
+  const [hq, setHq] = useState(() => readStr(DICE_HQ_KEY) === "1");
 
   return (
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start" data-testid="admin-dev">
@@ -59,17 +59,14 @@ export function DevSection() {
         <label className="flex items-center gap-3">
           <Checkbox checked={hq} aria-label="Würfel in voller Qualität" onCheckedChange={(c) => {
             const on = c === true;
-            try { if (on) localStorage.setItem("spieltisch:diceHQ", "1"); else localStorage.removeItem("spieltisch:diceHQ"); } catch { /* egal */ }
+            writeStr(DICE_HQ_KEY, on ? "1" : null);
             setHq(on);
           }} />
           <span><span className="block font-semibold">Würfel in voller Qualität</span><span className="block text-xs text-muted-foreground">auch ohne Grafikchip (für Screenshots)</span></span>
         </label>
         <Confirm title="Lokale Daten zurücksetzen?" description="Name, Spielstände, Einstellungen und Gruppen auf diesem Gerät sind weg. Die Verwaltung bleibt angemeldet, das Profil auf dem Server bleibt." confirmLabel="Zurücksetzen"
           onConfirm={() => {
-            try {
-              for (const k of Object.keys(localStorage)) if (k.startsWith("spieltisch") && !KEEP.includes(k)) localStorage.removeItem(k);
-              sessionStorage.clear();
-            } catch { /* egal */ }
+            wipeLocal(KEEP);
             location.href = "/";
           }}>
           <Button variant="ghost" size="sm" className="justify-self-start text-destructive">Lokale Daten zurücksetzen</Button>

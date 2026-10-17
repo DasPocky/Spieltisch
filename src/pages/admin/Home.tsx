@@ -5,6 +5,7 @@ import { LOOKS } from "@shared/platform/looks";
 import { GAMES } from "@shared/games";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { dayKey } from "@/lib/time";
 import { useAdmin } from "./context";
 import { goSection, SectionTile } from "./nav";
 import { useDev } from "@/lib/dev";
@@ -28,7 +29,6 @@ export function useAdminRooms() {
   return { rooms, loading, load };
 }
 
-const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** Admin-Start: drei Zahlen live, Hinweise mit Ein-Tipp-Lösung, darunter die Bereiche */
 export function AdminHome() {

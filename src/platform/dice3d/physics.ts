@@ -191,16 +191,3 @@ export function topValue(p: Pose, faces: { n: [number, number, number]; value: n
   for (const f of faces) { const y = q.vmult(new Vec3(...f.n)).y; if (y > best) { best = y; v = f.value; } }
   return v;
 }
-
-/** Normale einer Seite in Weltkoordinaten (für Licht) */
-export function worldNormal(p: Pose, n: [number, number, number]): [number, number, number] {
-  const v = quat(p).vmult(new Vec3(...n));
-  return [v.x, v.y, v.z];
-}
-
-/** Drehmatrix der Lage (Spalten = Bilder der Körperachsen) */
-export function axes(p: Pose): number[] {
-  const q = quat(p);
-  const X = q.vmult(new Vec3(1, 0, 0)), Y = q.vmult(new Vec3(0, 1, 0)), Z = q.vmult(new Vec3(0, 0, 1));
-  return [X.x, X.y, X.z, Y.x, Y.y, Y.z, Z.x, Z.y, Z.z];
-}

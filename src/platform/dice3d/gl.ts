@@ -10,6 +10,7 @@ import {
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { DICE_HQ_KEY } from "@/lib/storage";
 
 export type Quat = [number, number, number, number];
 export type Vec = [number, number, number];
@@ -120,7 +121,7 @@ const primary = () => getComputedStyle(document.documentElement).getPropertyValu
 function isSoftware(r: WebGLRenderer): boolean {
   try {
     // Für Vorschaubilder: volle Qualität erzwingen
-    if (localStorage.getItem("spieltisch:diceHQ") === "1") return false;
+    if (localStorage.getItem(DICE_HQ_KEY) === "1") return false;
     const gl = r.getContext();
     const ext = gl.getExtension("WEBGL_debug_renderer_info");
     const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));

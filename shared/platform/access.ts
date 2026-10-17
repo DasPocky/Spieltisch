@@ -69,7 +69,6 @@ export const DEFAULT_CONFIG: SiteConfig = {
   site: "on", games: {}, message: "", hasCode: false, defaults: {},
   banner: "", featured: [], order: [], limits: DEFAULT_LIMITS, features: DEFAULT_FEATURES, archiveDays: DEFAULT_ARCHIVE_DAYS, look: DEFAULT_LOOK,
 };
-export const ACCESS_LEVELS: readonly Access[] = ["on", "code", "off"];
 export const MAX_MESSAGE = 200;
 export const ACCESS_CODE_RE = /^.{4,32}$/;
 

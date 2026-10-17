@@ -5,10 +5,10 @@
 import { whenSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup } from "@/lib/group";
 import { myName } from "@/lib/profile";
-import { readJSON, writeJSON } from "@/lib/storage";
+import { ONBOARDED_KEY, readJSON, writeJSON } from "@/lib/storage";
 import { loadRooms } from "@/lib/rooms";
 
-export const ONBOARDED_KEY = "spieltisch:onboarded";
+export { ONBOARDED_KEY };
 const SEEN_KEY = "spieltisch:seen";
 /** Für Tests: Begrüßung und Willkommen auch im automatisierten Browser zeigen */
 export const TEST_INTRO_KEY = "spieltisch:test-intro";

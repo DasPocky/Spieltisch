@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import { ArrowDown, ArrowUp, Bot, Plus, Shuffle, X } from "lucide-react";
 import { getGame } from "@shared/games";
+import { shuffle } from "@shared/platform/random";
 import type { Avatar as AvatarData } from "@shared/platform/group";
 import { MAX_NAME, MAX_PLAYERS, type RoomAction, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -31,11 +32,8 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
   const editing = room.players.find((p) => p.id === edit) ?? null;
   // Ab 5 Spielern zwei Spalten – so passen auch 8 ohne Scrollen auf den Schirm
   const two = room.players.length > 4;
-  const shuffle = () => {
-    const ids = room.players.map((p) => p.id);
-    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-    dispatch({ type: "orderPlayers", ids });
-  };
+  // Reihenfolge auslosen – mit dem fairen Zufall wie beim Würfeln und Mischen
+  const shuffleOrder = () => dispatch({ type: "orderPlayers", ids: shuffle(room.players.map((p) => p.id)) });
   const devOn = useDev().on;
   const add = () => { if (!name.trim() || !onAddLocal) return; onAddLocal(name); setName(""); };
   const max = Math.min(MAX_PLAYERS, getGame(room.gameId).info.maxPlayers);
@@ -50,7 +48,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
     <div>
       {editable && room.players.length > 2 && room.phase === "lobby" && (
         <div className="mb-1.5 flex justify-end">
-          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={shuffle}><Shuffle className="size-3.5" />Mischen</Button>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={shuffleOrder}><Shuffle className="size-3.5" />Mischen</Button>
         </div>
       )}
       <ol className={cn("grid gap-1.5", two && "grid-cols-2")} data-testid="players">

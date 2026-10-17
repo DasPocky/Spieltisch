@@ -64,7 +64,6 @@ export const rankOf = (c: Card) => c.slice(c.indexOf("-") + 1) as Rank;
 export const cardName = (c: Card) => `${SUIT_NAME[suitOf(c)]}-${RANK_NAME[rankOf(c)]}`;
 /** Der „Wünscher“: Unter im deutschen, Bube im französischen Blatt */
 export const isJack = (c: Card) => rankOf(c) === "U" || rankOf(c) === "B";
-export const isFrench = (suit: Suit) => (FR_SUITS as readonly string[]).includes(suit);
 
 export function isCardOf(deck: Deck, x: unknown): x is Card {
   if (typeof x !== "string") return false;

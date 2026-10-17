@@ -73,8 +73,6 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
 };
 
 const loaded = new Map<string, GameUI>();
-/** schon geladen? (für Vorab-Prüfungen ohne Warten) */
-export const isGameUILoaded = (id: string) => loaded.has(idOf(id));
 const loading = new Map<string, Promise<GameUI>>();
 const idOf = (id: string): GameId => (isGameId(id) ? id : "tutto");
 
