@@ -24,7 +24,9 @@ export type ClientMessage =
   /** Text-Chat: Nachricht oder schnelle Reaktion (Emoji). `id` macht doppeltes Senden harmlos. */
   | { type: "chat"; id: string; text?: string; emoji?: string }
   /** Anklopfen beantworten: einlassen, ablehnen oder „Moment“ (nur der Host; dann vertritt ihn niemand) */
-  | { type: "knock"; id: string; decision: "admit" | "deny" | "wait" };
+  | { type: "knock"; id: string; decision: "admit" | "deny" | "wait" }
+  /** Großer Tisch: Bildschirm für alle meldet sich mit der Raum-PIN an und liest danach nur mit */
+  | { type: "table"; pin: string };
 
 /** Eine Chat-Nachricht im Raum */
 export interface ChatMsg {

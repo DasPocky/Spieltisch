@@ -74,8 +74,10 @@ export interface Attachment {
   playerId: string | null;
   /** wartet vor der Tür (Anklopfen) */
   knock?: string;
-  /** Verwaltung schaut unsichtbar zu (nur lesen) */
+  /** Verwaltung oder Großer Tisch schaut zu (nur lesen) */
   watch?: boolean;
+  /** Großer Tisch (mit PIN angemeldet) */
+  table?: boolean;
 }
 /** Innerer Pfad, über den der Worker eine geprüfte Zuschauer-Verbindung der Verwaltung weiterreicht */
 export const WATCH_PATH = "/__admin-watch";
@@ -392,6 +394,10 @@ export class GameRoom extends DurableObject<Env> {
       await this.handleJoin(ws, msg);
       return;
     }
+    if (msg.type === "table") {
+      await this.handleTable(ws, msg);
+      return;
+    }
 
     const att = ws.deserializeAttachment() as Attachment | null;
     const playerId = att?.playerId;
@@ -644,6 +650,34 @@ export class GameRoom extends DurableObject<Env> {
     if (code) try { await settingsOf(this.env).roomGone(code); } catch { /* Übersicht räumt beim Anzeigen selbst auf */ }
   }
 
+  /** PIN prüfen – nach zu vielen Fehlversuchen ist der Raum eine Weile gesperrt. Meldet den Fehler selbst. */
+  private async checkPin(ws: WebSocket, raw: unknown): Promise<boolean> {
+    const room = this.room!;
+    if (Date.now() < room.lockUntil) {
+      this.send(ws, { type: "error", code: "locked", fatal: true, message: "Zu viele falsche PINs. Versuch es in ein paar Minuten nochmal." });
+      return false;
+    }
+    const pin = String(raw ?? "");
+    if (!PIN_RE.test(pin) || (await hashPin(room.salt, pin)) !== room.pinHash) {
+      room.fails++;
+      const locked = room.fails >= MAX_PIN_FAILS;
+      if (locked) { room.lockUntil = Date.now() + LOCK_MS; room.fails = 0; }
+      await this.persist(locked);
+      this.send(ws, { type: "error", code: "bad_pin", fatal: true, message: "Die PIN stimmt nicht." });
+      return false;
+    }
+    room.fails = 0;
+    return true;
+  }
+
+  /** Großer Tisch: ein Bildschirm für alle meldet sich mit der PIN an und liest danach nur mit – wie die Verwaltung beim Zuschauen */
+  private async handleTable(ws: WebSocket, msg: Extract<ClientMessage, { type: "table" }>): Promise<void> {
+    if (!(await this.checkPin(ws, msg.pin))) return;
+    ws.serializeAttachment({ playerId: null, watch: true, table: true } satisfies Attachment);
+    this.send(ws, { type: "chat", messages: this.room!.chat ?? [] });
+    this.sendWatch(ws);
+  }
+
   private async handleJoin(ws: WebSocket, msg: Extract<ClientMessage, { type: "join" }>): Promise<void> {
     const room = this.room!;
 
@@ -685,21 +719,7 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
-    if (Date.now() < room.lockUntil) {
-      this.send(ws, { type: "error", code: "locked", fatal: true, message: "Zu viele falsche PINs. Versuch es in ein paar Minuten nochmal." });
-      return;
-    }
-
-    const pin = String(msg.pin ?? "");
-    if (!PIN_RE.test(pin) || (await hashPin(room.salt, pin)) !== room.pinHash) {
-      room.fails++;
-      const locked = room.fails >= MAX_PIN_FAILS;
-      if (locked) { room.lockUntil = Date.now() + LOCK_MS; room.fails = 0; }
-      await this.persist(locked);
-      this.send(ws, { type: "error", code: "bad_pin", fatal: true, message: "Die PIN stimmt nicht." });
-      return;
-    }
-    room.fails = 0;
+    if (!(await this.checkPin(ws, msg.pin))) return;
 
     // Grenze aus den Admin-Einstellungen
     try {

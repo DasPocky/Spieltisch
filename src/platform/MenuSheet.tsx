@@ -123,6 +123,12 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
                 <Collapsible title="Raum & Zugang" badge={<span className="truncate text-xs font-normal text-muted-foreground">{accessSummary(room.access ?? DEFAULT_ACCESS)}</span>} testId="room-settings">
                   <RoomSettings room={room} isHost={isHost} dispatch={dispatch} />
                 </Collapsible>
+                <Collapsible title="Großer Tisch" badge={<span className="truncate text-xs font-normal text-muted-foreground">Fernseher als Tisch</span>} testId="big-table">
+                  <p className="px-1 text-sm text-muted-foreground" data-testid="big-table-help">
+                    Auf dem großen Bildschirm <b className="text-foreground">{location.host}/tisch</b> öffnen, „Laufenden Raum zeigen“ wählen und
+                    Raumcode <b className="tracking-wider text-foreground">{code}</b> mit eurer PIN eingeben. Dort sehen alle Stapel, Ablage und wer dran ist – eure Karten bleiben auf den Handys.
+                  </p>
+                </Collapsible>
               </Section>
             )}
 

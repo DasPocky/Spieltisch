@@ -90,6 +90,12 @@ Das Spielbrett muss **ohne Scrollen** auf einen Handy-Bildschirm passen: Platz i
 
 Lobby, Einstellungen, Rechte, Online-Räume, Menü und Siegerehrung funktionieren dann automatisch.
 
+### Großer Tisch (Laptop/Fernseher)
+
+Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen laufenden mit Code + PIN). Er meldet sich mit `{ type: "table", pin }` an und liest danach nur mit – wie die Verwaltung beim Zuschauen, mit der Sicht `WATCH_ID` ohne eigene Karten. Die Handys treten über den QR-Link `/r/CODE#pin=…` bei.
+
+Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
+
 ## Tests
 
 | Was | Wo |

@@ -24,6 +24,9 @@
     { "tag": "v4", "new_sqlite_classes": ["GroupStore"] }
   ],
   "observability": { "enabled": true },
+  // Nicht geheim und deshalb hier statt im Dashboard: dort gesetzte Variablen löscht jeder Deploy.
+  // Das Gegenstück REALTIME_APP_TOKEN bleibt ein Secret (wrangler secret put).
+  "vars": { "REALTIME_APP_ID": "6a2b13fa601e8f01bf6a94ccf63620bf" },
   // Vorschau je Zweig (Cloudflare Worker Previews, nur für Nicht-main-Zweige):
   // Jede Vorschau bekommt eigene, leere Durable Objects – Räume, Einstellungen, Profile und Gruppen von live bleiben unberührt.
   // Secrets erbt sie nicht: ohne ADMIN_PASSWORD ist die Verwaltung dort aus, ohne Realtime-Token auch Audio und Video.

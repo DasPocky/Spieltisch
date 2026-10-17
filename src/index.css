@@ -103,6 +103,10 @@
   box-shadow: 0 -1px 0 var(--border), 0 -8px 24px rgb(0 0 0 / 0.06);
   backdrop-filter: blur(12px);
 }
+/* Großer Bildschirm: die Leiste steht links */
+@media (min-width: 1024px) {
+  .tabbar { box-shadow: 1px 0 0 var(--border), 8px 0 24px rgb(0 0 0 / 0.04); }
+}
 @keyframes tab-in { from { opacity: 0; transform: translateY(8px); } }
 .tab-in { animation: tab-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .tab-in { animation: none; } }
@@ -263,6 +267,17 @@
 @media (max-height: 700px) { .has-rooms .quick-section { display: none; } }
 /* Sehr niedrig (kleines Handy im Browser): Schnellstart ganz weg – die Wege oben reichen */
 @media (max-height: 600px) { .quick-section { display: none; } }
+/* Niedriger großer Bildschirm (z. B. 1280 × 720): Startseite dichter, damit nichts scrollt */
+@media (min-width: 1024px) and (max-height: 820px) {
+  .desk-hero { padding: 1.25rem 1.5rem; }
+  .desk-hero h2 { font-size: 1.3rem; margin-top: 0.5rem; }
+  .desk-hero p { margin-top: 0.25rem; font-size: 0.9rem; }
+  .desk-art { width: 8rem; }
+  .quick-tile { padding-top: 0.6rem !important; padding-bottom: 0.6rem !important; }
+}
+@media (min-width: 1024px) and (max-height: 700px) { .quick-section .quick-desk-more { display: none !important; } }
+/* Großer Bildschirm: Platz genug – Schnellstart immer ganz */
+@media (min-width: 1024px) { .quick-section { display: block; } .quick-section .quick-extra { display: flex; } }
 
 /*
  * Niedrige Bildschirme (kleines Handy, Browser mit Adress- und Werkzeugleiste, Querformat):
@@ -304,3 +319,31 @@
 
 /* Kopfzeile: Knöpfe (Chat, Anruf, Menü) etwas kleiner, damit Titel und Rundenanzeige Platz haben */
 .room-tools [data-slot="button"][data-size="icon"] { width: 2.5rem; height: 2.5rem; }
+
+/* Großer Tisch: dunkles Holz unter warmer Lampe, Zettel aus Papier, Namensschilder */
+.table-room {
+  color: #f7ecd6;
+  background:
+    radial-gradient(ellipse 55% 50% at 42% 42%, rgb(255 220 160 / 0.16), transparent 65%),
+    radial-gradient(ellipse 70% 70% at 42% 40%, #5a3a24, #2e1c10 70%, #170d06);
+}
+.paper-note {
+  color: #3b2a1a;
+  background: linear-gradient(180deg, #fffaf0, #f6ecd9);
+  border-radius: 1rem;
+  box-shadow: 0 2px 0 #c9b08a, 0 18px 30px -10px rgb(0 0 0 / 0.6);
+}
+.plate {
+  color: #3b2a1a;
+  background: linear-gradient(180deg, #f7ecd6, #e8d6b3);
+  padding: 0.2rem 0.85rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 0 #b89a6c, 0 6px 10px -4px rgb(0 0 0 / 0.5);
+}
+.plate-turn {
+  color: #fff;
+  background: linear-gradient(180deg, #ff9677, #ff7a59);
+  box-shadow: 0 2px 0 #c95637, 0 0 22px rgb(255 140 100 / 0.7);
+}
