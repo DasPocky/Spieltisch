@@ -23,37 +23,37 @@ export interface TableScene {
 // Maße in Metern (ungefähr): Platte 5,2 × 3,3, Filz 4,5 × 2,6
 const TOP_W = 5.2, TOP_D = 3.3, FELT_W = 4.5, FELT_D = 2.6;
 const SURFACE = 0.06;
-const CARD_W = 0.36;
+const CARD_W = 0.5;
 
 let seed = 11;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
 function texture(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, repeat = 1): CanvasTexture {
   const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d")!);
-  const t = new CanvasTexture(c); t.colorSpace = SRGBColorSpace; t.wrapS = t.wrapT = RepeatWrapping; t.repeat.set(repeat, repeat); t.anisotropy = 8;
+  const t = new CanvasTexture(c); t.colorSpace = SRGBColorSpace; t.wrapS = t.wrapT = RepeatWrapping; t.repeat.set(repeat, repeat); t.anisotropy = 16;
   return t;
 }
 
 /** Holzmaserung und Filzrauschen – aus Code, ohne Bilddateien */
 function woodTexture() {
-  return texture(1024, 1024, (g) => {
-    g.fillStyle = "#8a5a36"; g.fillRect(0, 0, 1024, 1024);
-    for (let i = 0; i < 260; i++) {
-      const y = rnd() * 1024;
+  return texture(2048, 2048, (g) => {
+    g.fillStyle = "#8a5a36"; g.fillRect(0, 0, 2048, 2048);
+    for (let i = 0; i < 520; i++) {
+      const y = rnd() * 2048;
       g.strokeStyle = `rgba(${rnd() < 0.5 ? "60,30,12" : "190,130,80"},${0.05 + rnd() * 0.12})`; g.lineWidth = 1 + rnd() * 5;
       g.beginPath(); g.moveTo(0, y);
-      for (let x = 0; x <= 1024; x += 32) g.lineTo(x, y + Math.sin(x / 140 + i) * 6 + (rnd() - 0.5) * 3);
+      for (let x = 0; x <= 2048; x += 32) g.lineTo(x, y + Math.sin(x / 280 + i) * 10 + (rnd() - 0.5) * 3);
       g.stroke();
     }
   }, 2);
 }
 function feltTexture() {
-  return texture(512, 512, (g) => {
-    g.fillStyle = "#2a7a72"; g.fillRect(0, 0, 512, 512);
-    const d = g.getImageData(0, 0, 512, 512);
-    for (let i = 0; i < d.data.length; i += 4) { const n = (rnd() - 0.5) * 22; d.data[i] += n; d.data[i + 1] += n; d.data[i + 2] += n; }
+  return texture(1024, 1024, (g) => {
+    g.fillStyle = "#2a7a72"; g.fillRect(0, 0, 1024, 1024);
+    const d = g.getImageData(0, 0, 1024, 1024);
+    for (let i = 0; i < d.data.length; i += 4) { const n = (rnd() - 0.5) * 14; d.data[i] += n; d.data[i + 1] += n; d.data[i + 2] += n; }
     g.putImageData(d, 0, 0);
-  }, 6);
+  }, 4);
 }
 
 function roundedShape(w: number, d: number, r: number) {
@@ -94,7 +94,9 @@ const hash = (s: string) => { let h = 0; for (const ch of s) h = (h * 31 + ch.ch
 
 export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  // Volle Pixeldichte bis 2-fach – auf 4K-Fernsehern und Retina-Bildschirmen scharf
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const aniso = renderer.capabilities.getMaxAnisotropy();
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.toneMapping = ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = SRGBColorSpace;
   const scene = new Scene();
@@ -111,7 +113,7 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
 
   scene.add(new HemisphereLight("#ffe9c9", "#3a2414", 0.7));
   const lamp = new SpotLight("#ffd9a0", 42, 16, 0.8, 0.6, 1.6);
-  lamp.position.set(-0.4, 6, 0.6); lamp.castShadow = true; lamp.shadow.mapSize.set(1024, 1024); lamp.shadow.bias = -0.0004;
+  lamp.position.set(-0.4, 6, 0.6); lamp.castShadow = true; lamp.shadow.mapSize.set(2048, 2048); lamp.shadow.bias = -0.0004;
   scene.add(lamp, lamp.target);
   const fill = new DirectionalLight("#9fc7ff", 0.25); fill.position.set(4, 3, 5); scene.add(fill);
 
@@ -125,7 +127,7 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   const backTex = (d: TableDeck) => {
     const key = `back:${d}`;
     let t = textures.get(key);
-    if (!t) { t = new CanvasTexture(drawBack(d)); t.colorSpace = SRGBColorSpace; t.anisotropy = 8; textures.set(key, t); }
+    if (!t) { t = new CanvasTexture(drawBack(d)); t.colorSpace = SRGBColorSpace; t.anisotropy = aniso; t.generateMipmaps = true; textures.set(key, t); }
     return t;
   };
   const faceMat = (d: TableDeck, card: string) => {
@@ -133,7 +135,7 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
     void drawFace(d, card).then((c) => {
       const key = `${d}:${card}`;
       let t = textures.get(key);
-      if (!t) { t = new CanvasTexture(c); t.colorSpace = SRGBColorSpace; t.anisotropy = 8; textures.set(key, t); }
+      if (!t) { t = new CanvasTexture(c); t.colorSpace = SRGBColorSpace; t.anisotropy = aniso; t.generateMipmaps = true; textures.set(key, t); }
       mat.map = t; mat.needsUpdate = true; render();
     });
     return mat;
@@ -155,7 +157,7 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   let last: { top: string | null; n: number; turn: string | null; seats: string[] } = { top: null, n: -1, turn: null, seats: [] };
   let flying: { mesh: Mesh; from: Vector3; to: Vector3; rot: number; start: number } | null = null;
 
-  const PILE_X = -0.55, DISCARD_X = 0.35;
+  const PILE_X = -0.75, DISCARD_X = 0.5;
   const discardPos = (i: number, card: string) => {
     const h = hash(card + i);
     return { pos: new Vector3(DISCARD_X + ((h % 7) - 3) * 0.012, SURFACE + 0.004 + i * 0.007, ((h >> 3) % 7 - 3) * 0.012), rot: ((h >> 6) % 41 - 20) / 100 };
@@ -194,7 +196,7 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
       for (let k = 0; k < shown; k++) {
         const off = (k - (shown - 1) / 2);
         const m = cardMesh(deck, null);
-        m.position.set(x * 0.92 + Math.cos(ang) * off * 0.07, SURFACE + 0.004 + k * 0.0065, z * 0.92 - Math.sin(ang) * off * 0.07);
+        m.position.set(x * 0.92 + Math.cos(ang) * off * 0.09, SURFACE + 0.004 + k * 0.0065, z * 0.92 - Math.sin(ang) * off * 0.09);
         m.rotation.y = ang + off * 0.05;
         live.add(m);
       }
@@ -229,15 +231,31 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   }
   function render() { if (!raf) raf = requestAnimationFrame(frame); }
 
+  /**
+   * Kamera so nah wie möglich: der Tisch samt Plätzen am Rand füllt die Fläche – auf breiten wie auf hohen Bildschirmen.
+   * Schräg von vorn (wie am Tisch sitzend), Abstand per Halbierung gesucht.
+   */
+  function fitCamera() {
+    const pitch = 0.92; // ~53° über dem Tisch
+    const mx = TOP_W / 2 + 0.55, mz = TOP_D / 2 + 0.75;
+    const corners = [[-mx, -mz], [mx, -mz], [-mx, mz], [mx, mz]].map(([x, z]) => new Vector3(x, 0.1, z));
+    const target = new Vector3(0, 0, 0.15);
+    const fits = (d: number) => {
+      camera.position.set(0, Math.sin(pitch) * d, Math.cos(pitch) * d + target.z);
+      camera.lookAt(target);
+      camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+      return corners.every((c) => { const v = c.clone().project(camera); return Math.abs(v.x) <= 0.97 && Math.abs(v.y) <= 0.95; });
+    };
+    let lo = 2, hi = 30;
+    for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+    fits(hi);
+  }
+
   function resize(w: number, h: number) {
     width = Math.max(1, w); height = Math.max(1, h);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    // Schmalere Fläche: Kamera weiter weg, damit der ganze Tisch drauf passt
-    const back = Math.max(1, 1.3 / camera.aspect);
-    camera.position.set(0, 6.0 * back, 5.6 * back);
-    camera.lookAt(0, -0.35, 0.3);
-    camera.updateProjectionMatrix();
+    fitCamera();
     render();
   }
 

@@ -12,7 +12,8 @@ import type { TableDeck } from "./model";
 
 /** Seitenverhältnis wie am Handy: Spielkarten 5:8, Uno 5:7 */
 export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, uno: 7 / 5 };
-const W = 320;
+/** Breite der Kartenbilder in Pixeln – scharf auch auf 4K-Fernsehern */
+const W = 768;
 
 const PAPER = "#fdfdfb";
 const FONT = `"Quicksand", "Nunito", system-ui, sans-serif`;
