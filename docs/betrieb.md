@@ -15,7 +15,7 @@ Im Cloudflare-Dashboard unter **Workers & Pages → spieltisch → Settings → 
 | Secret | Wofür | Ohne |
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | Zugang zu `/admin` | Admin-Bereich gesperrt |
-| `REALTIME_APP_ID`, `REALTIME_APP_TOKEN` | Sprach- und Videochat (Cloudflare **Realtime → Serverless SFU**, App ID und App Secret) | kein Anruf-Knopf |
+| `REALTIME_APP_TOKEN` | Sprach- und Videochat (Cloudflare **Realtime → Serverless SFU**, App Secret). Die App ID steht fest in `wrangler.jsonc` (`vars`) – im Dashboard gesetzte Variablen löscht jeder Deploy | kein Anruf-Knopf |
 
 Lokal stehen die Werte in `.dev.vars` (nicht eingecheckt). `scripts/test-env.mjs` legt die Datei für die Tests an, mit Admin-Passwort `test-admin` und simuliertem SFU (`REALTIME_FAKE=1`).
 
