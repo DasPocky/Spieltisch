@@ -1,25 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
 
 async function local(page: Page, names: string[], opts: { table?: boolean; noEven?: boolean; half?: boolean } = {}) {
-  await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.goto("/spiel/hellseher/lokal");
-  for (const n of names) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-  if (opts.table || opts.noEven || opts.half) {
-    await openSettings(page);
-    if (opts.table) await page.getByRole("radio", { name: /Echte Karten/ }).click();
-    if (opts.half) await page.getByRole("radio", { name: /Halbe Partie/ }).click();
+  await startLocal(page, "hellseher", names, { settings: opts.table || opts.noEven || opts.half ? async (p) => {
+    if (opts.table) await p.getByRole("radio", { name: /Echte Karten/ }).click();
+    if (opts.half) await p.getByRole("radio", { name: /Halbe Partie/ }).click();
     if (opts.noEven) {
-      await page.getByRole("button", { name: /Hausregeln/ }).click();
-      await page.getByText("Ansagen dürfen nicht aufgehen").click();
+      await p.getByRole("button", { name: /Hausregeln/ }).click();
+      await p.getByText("Ansagen dürfen nicht aufgehen").click();
     }
-    await closeSettings(page);
-  }
-  await page.getByRole("button", { name: "Spiel starten" }).click();
+  } : undefined });
 }
 
 /** Ein Schritt auf diesem Handy: Sichtschutz weg, Trumpf wählen, ansagen oder eine erlaubte Karte spielen. true, wenn etwas getan wurde. */

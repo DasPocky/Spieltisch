@@ -1,19 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openLocal, openSettings, shot } from "./util";
+import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
 
-async function startLocal(page: Page) {
-  await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await openLocal(page, "muehle");
-  for (const n of ["Anna", "Ben"]) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-}
+const startDuel = (page: Page) => startLocal(page, "muehle", ["Anna", "Ben"], { start: false });
 const pt = (p: Page, name: string) => p.getByRole("button", { name: new RegExp(`^Punkt ${name}( |$)`) });
 
 test("Mühle lokal: setzen, Mühle schließen, Stein nehmen, aufgeben", async ({ page }) => {
-  await startLocal(page);
+  await startDuel(page);
   await openSettings(page);
   await shot(page, "muehle-01-settings");
   await closeSettings(page);
@@ -48,7 +40,7 @@ test("Mühle lokal: setzen, Mühle schließen, Stein nehmen, aufgeben", async ({
 
 test("Mühle auf kleinem Handy (320×568) mit gedrehtem Brett", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await startLocal(page);
+  await startDuel(page);
   await openSettings(page);
   await page.getByRole("checkbox", { name: /Brett für Schwarz drehen/ }).click();
   await closeSettings(page);

@@ -1,20 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
-import { createRoom, joinRoom, newPhone, shot } from "./util";
-
-const PW = "test-admin";
-
-async function adminPhone(page: Page) {
-  await page.goto("/admin");
-  await page.getByLabel("Admin-Passwort").fill(PW);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page.getByTestId("admin-tile-live")).toBeVisible();
-}
+import { expect, test } from "@playwright/test";
+import { ADMIN_PW, adminLogin, createRoom, joinRoom, newPhone, shot } from "./util";
 
 test("Verwaltung: Tab erscheint nach der Anmeldung, Abmelden nimmt ihn wieder weg", async ({ page }) => {
   await page.goto("/profil");
   await expect(page.getByTestId("tabbar-verwaltung")).toHaveCount(0);
   await page.getByTestId("admin-link").click();
-  await page.getByLabel("Admin-Passwort").fill(PW);
+  await page.getByLabel("Admin-Passwort").fill(ADMIN_PW);
   await page.getByRole("button", { name: "Anmelden" }).click();
   await expect(page.getByTestId("tabbar-verwaltung")).toBeVisible();
   // Profil-Link braucht es auf Admin-Geräten nicht mehr
@@ -34,7 +25,7 @@ test("Verwaltung Live: Nachricht, Host, Einstellungen, Partie beenden, PIN, Entf
   await expect(anna.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
 
   const admin = await newPhone(browser);
-  await adminPhone(admin);
+  await adminLogin(admin);
   await admin.getByTestId("admin-tile-live").click();
   await admin.getByTestId(`room-${code}`).click();
   const sheet = admin.getByTestId("room-sheet");
@@ -102,12 +93,12 @@ test("Verwaltung Live: Nachricht, Host, Einstellungen, Partie beenden, PIN, Entf
 });
 
 test("Verwaltung Status: Version, Dienste und Anfragen; Details zum Aufklappen", async ({ page, request }) => {
-  const s = await (await request.get("/api/admin/status", { headers: { "x-admin-password": PW } })).json();
+  const s = await (await request.get("/api/admin/status", { headers: { "x-admin-password": ADMIN_PW } })).json();
   expect(s.build.sha).toMatch(/^([0-9a-f]{40}|dev)$/);
   expect(s.services).toMatchObject({ password: true, realtime: true });
   expect(typeof s.requests.count).toBe("number");
   expect((await request.get("/api/admin/status")).status()).toBe(403);
-  await adminPhone(page);
+  await adminLogin(page);
   await expect(page.getByTestId("status-version")).not.toHaveText(/…/);
   await page.getByTestId("admin-status").getByRole("button").first().click();
   await expect(page.getByTestId("status-details")).toContainText("Anfragen heute");
@@ -116,7 +107,7 @@ test("Verwaltung Status: Version, Dienste und Anfragen; Details zum Aufklappen",
 
 test("Entwickler-Modus: Testraum mit Bots – Bots ziehen selbst, Raum ist unsichtbar, Bot lässt sich übernehmen", async ({ page, browser }) => {
   test.setTimeout(120_000);
-  await adminPhone(page);
+  await adminLogin(page);
   await page.goto("/admin/einstellungen");
   await page.getByRole("checkbox", { name: "Entwickler-Modus" }).click();
   await page.goto("/admin");
@@ -153,7 +144,7 @@ test("Entwickler-Modus: Testraum mit Bots – Bots ziehen selbst, Raum ist unsic
 
 test("Entwickler-Modus: Bots in „Ein Handy für alle“ ziehen, wenn sie dran sind", async ({ page }) => {
   test.setTimeout(120_000);
-  await adminPhone(page);
+  await adminLogin(page);
   await page.evaluate(() => localStorage.setItem("spieltisch:dev", JSON.stringify({ on: true })));
   await page.goto("/spiel/tutto/lokal");
   await page.getByRole("button", { name: /Bot dazu/ }).click();
@@ -167,7 +158,7 @@ test("Entwickler-Modus: Diagnose-Anzeige und künstliches Funkloch – der Raum 
   test.setTimeout(90_000);
   const host = await newPhone(browser);
   const code = await createRoom(host, "tutto", "Hanna", "4321");
-  await adminPhone(page);
+  await adminLogin(page);
   await page.evaluate(() => localStorage.setItem("spieltisch:dev", JSON.stringify({ on: true, overlay: true })));
   await joinRoom(page, code, "Admin", "4321");
   await expect(page.getByTestId("dev-overlay")).toContainText(`Raum ${code}: verbunden`);

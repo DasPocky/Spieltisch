@@ -1,4 +1,23 @@
-import { expect, type Browser, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Browser, type Page } from "@playwright/test";
+
+/** Admin-Passwort der Testumgebung (scripts/test-env.mjs) */
+export const ADMIN_PW = "test-admin";
+/** Alles eingeschaltet – so erwarten es die Spiel-Tests */
+export const ALL_ON = { site: "on", games: {}, message: "", features: { online: true, call: true, groups: true, profiles: true, local: true, offline: false } };
+
+/** Freigaben setzen (und optional den Zugangscode) */
+export async function setConfig(request: APIRequestContext, config: object, code?: string | null) {
+  const res = await request.post("/api/admin", { data: { password: ADMIN_PW, config, code } });
+  expect(res.ok()).toBe(true);
+}
+
+/** Am Handy in der Verwaltung anmelden */
+export async function adminLogin(page: Page) {
+  await page.goto("/admin");
+  await page.getByLabel("Admin-Passwort").fill(ADMIN_PW);
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByTestId("admin-tile-live")).toBeVisible();
+}
 
 /** Eigener Ordner – Playwright leert test-results bei jedem Lauf */
 export const SHOTS = "screenshots";
@@ -35,6 +54,29 @@ export async function openLocal(page: Page, gameId: string) {
   await expect(page).toHaveURL(/\/lokal$/);
   await expect(page.getByTestId("game-card")).toContainText("Gespielt wird");
 }
+
+/** Lokale Partie vorbereiten: Spieler eintragen, optional Einstellungen ändern und starten.
+ * `fresh` leert vorher den Speicher (kein Profil, keine Vorlieben). */
+export async function startLocal(page: Page, gameId: string, names: string[], opts: { fresh?: boolean; settings?: (p: Page) => Promise<void>; start?: boolean } = {}) {
+  if (opts.fresh !== false) {
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+  }
+  await openLocal(page, gameId);
+  for (const n of names) {
+    await page.getByLabel("Name des Spielers").fill(n);
+    await page.getByRole("button", { name: "Hinzufügen" }).click();
+  }
+  if (opts.settings) {
+    await openSettings(page);
+    await opts.settings(page);
+    await closeSettings(page);
+  }
+  if (opts.start !== false) await page.getByRole("button", { name: "Spiel starten" }).click();
+}
+
+/** Einstellung „Echte Karten“ bzw. andere Auswahl per Name */
+export const pick = (...names: RegExp[]) => async (p: Page) => { for (const n of names) await p.getByRole("radio", { name: n }).click(); };
 
 /** Lokales Tutto mit Spielern starten */
 export async function startLocalTutto(page: Page, names: string[]) {

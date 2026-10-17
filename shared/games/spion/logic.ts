@@ -9,6 +9,7 @@
 import { randomInt, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
 import { PACKS, PLACE_BY_ID, PLACES, placeName, type Pack } from "./places";
+import { playerName } from "../../platform/turns";
 
 export type Phase = "look" | "talk" | "vote" | "guess" | "reveal" | "over";
 
@@ -98,7 +99,7 @@ export const POINTS = { spyTime: 2, spyBig: 4, group: 1, accuser: 2 } as const;
 
 const MAX_LOG = 40;
 const ids = (s: SpionState) => Object.keys(s.scores);
-const nameOf = (ctx: GameContext, id: string | null) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 const addLog = (s: SpionState, line: string) => { s.log.push(line); if (s.log.length > MAX_LOG) s.log.shift(); };
 
 export const scoringOf = (o: Options) => (o.scoring === "rounds" ? "rounds" : "points");

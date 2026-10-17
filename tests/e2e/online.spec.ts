@@ -116,8 +116,12 @@ test("Host entfernt einen Spieler", async ({ browser }) => {
   const code = await createRoom(host, "Anna", "123456");
   await joinRoom(guest, code, "Ben", "123456");
   await expect(host.getByText("Ben")).toBeVisible();
-  await host.getByRole("button", { name: "Ben entfernen" }).click();
-  await host.getByRole("button", { name: "Entfernen", exact: true }).click();
+  // Unter Last kann die Lobby neu zeichnen, während der Dialog aufgeht – dann einfach nochmal öffnen
+  await expect(async () => {
+    const dialog = host.getByRole("alertdialog", { name: "Ben entfernen?" });
+    if (!(await dialog.isVisible())) await host.getByRole("button", { name: "Ben entfernen" }).click();
+    await dialog.getByRole("button", { name: "Entfernen", exact: true }).click({ timeout: 3000 });
+  }).toPass({ timeout: 20_000 });
   await expect(guest.getByText("Du wurdest aus dem Raum entfernt.")).toBeVisible();
 });
 

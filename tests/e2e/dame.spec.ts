@@ -1,22 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openLocal, openSettings, shot } from "./util";
+import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
 
-async function startLocal(page: Page) {
-  await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await openLocal(page, "dame");
-  for (const n of ["Anna", "Ben"]) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-}
+const startDuel = (page: Page) => startLocal(page, "dame", ["Anna", "Ben"], { start: false });
 const sq = (p: Page, name: string) => p.getByRole("button", { name: new RegExp(`^Feld ${name}( |$)`) });
 async function move(p: Page, ...squares: string[]) {
   for (const s of squares) await sq(p, s).click();
 }
 
 test("Dame lokal: ziehen, Schlagzwang, schlagen, Ergebnis", async ({ page }) => {
-  await startLocal(page);
+  await startDuel(page);
   await openSettings(page);
   await shot(page, "dame-01-settings");
   await closeSettings(page);
@@ -54,7 +46,7 @@ test("Dame lokal: ziehen, Schlagzwang, schlagen, Ergebnis", async ({ page }) => 
 
 test("Dame auf kleinem Handy (320×568), 10×10, Brett gedreht", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await startLocal(page);
+  await startDuel(page);
   await openSettings(page);
   await page.getByRole("radio", { name: /10 × 10/ }).click();
   await page.getByRole("checkbox", { name: /Brett für Schwarz drehen/ }).click();

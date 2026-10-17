@@ -14,6 +14,7 @@
 import { randomInt, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options, type SettingDef } from "../../platform/types";
 import { tempoSettings } from "./tempo";
+import { playerName } from "../../platform/turns";
 
 export type Role =
   | "werwolf" | "urwolf" | "grosserwolf"
@@ -336,7 +337,7 @@ function setup(ctx: GameContext): WerwolfState {
   };
 }
 
-const nameOf = (ctx: GameContext, id: string) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 
 function startNight(s: WerwolfState) {
   s.phase = "night";

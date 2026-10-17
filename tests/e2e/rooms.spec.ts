@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { expectNoScroll, newPhone, shot } from "./util";
+import { ADMIN_PW, expectNoScroll, newPhone, shot } from "./util";
 
 /** Raum über „Raum öffnen“ mit eingeklappten Extras anlegen; gibt den Code zurück */
 async function openRoom(page: Page, name: string, pin: string, extras?: (p: Page) => Promise<void>): Promise<string> {
@@ -90,7 +90,7 @@ test("Raum & Zugang im Menü: Host ändert, alle sehen es", async ({ browser }) 
 });
 
 test("Dauerraum vom Admin: erster Gast wird Host, Raum bleibt nach dem Verlassen", async ({ browser, request }) => {
-  const res = await request.post("/api/admin/rooms/create", { data: { password: "test-admin", pin: "9999", room: { name: "Stammtisch", admission: "knock" } } });
+  const res = await request.post("/api/admin/rooms/create", { data: { password: ADMIN_PW, pin: "9999", room: { name: "Stammtisch", admission: "knock" } } });
   expect(res.status()).toBe(201);
   const { code } = await res.json();
   // Niemand da, der öffnen könnte: die PIN reicht, wer zuerst kommt, ist Host

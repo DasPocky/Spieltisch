@@ -1,24 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, expectNoScroll, openSettings, shot } from "./util";
+import { expectNoScroll, shot, startLocal, pick } from "./util";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
 });
 
-async function startLocal(page: Page, names: string[], real = false) {
-  await page.goto("/spiel/kniffel/lokal");
-  for (const n of names) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-  if (real) {
-    await openSettings(page);
-    await page.getByRole("radio", { name: /Echte Würfel/ }).click();
-    await closeSettings(page);
-  }
-  await page.getByRole("button", { name: "Spiel starten" }).click();
-}
+const startKniffel = (page: Page, names: string[], real = false) =>
+  startLocal(page, "kniffel", names, { fresh: false, settings: real ? pick(/Echte Würfel/) : undefined });
 
 test("Kniffel: alter Link führt in die lokale Lobby, Regeln im Menü", async ({ page }) => {
   await page.goto("/spiel/kniffel");
@@ -32,7 +21,7 @@ test("Kniffel: alter Link führt in die lokale Lobby, Regeln im Menü", async ({
 });
 
 test("Kniffel lokal mit App-Würfel", async ({ page }) => {
-  await startLocal(page, ["Anna", "Ben"]);
+  await startKniffel(page, ["Anna", "Ben"]);
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   await expectNoScroll(page);
   await shot(page, "31-kniffel-start");
@@ -59,7 +48,7 @@ test("Kniffel lokal mit App-Würfel", async ({ page }) => {
 });
 
 test("Kniffel Spielhilfe: Stern am besten freien Feld, nur mit Spielhilfen", async ({ page }) => {
-  await startLocal(page, ["Anna", "Ben"]);
+  await startKniffel(page, ["Anna", "Ben"]);
   await expect(page.getByTestId("best")).toHaveCount(0);
   await page.getByRole("button", { name: /Würfeln/ }).click();
   await expect(page.getByTestId("best").first()).toBeVisible();
@@ -72,7 +61,7 @@ test("Kniffel Spielhilfe: Stern am besten freien Feld, nur mit Spielhilfen", asy
 
 test("Kniffel lokal mit echten Würfeln (Block) auf kleinem Handy", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
-  await startLocal(page, ["Anna", "Ben", "Cem"], true);
+  await startKniffel(page, ["Anna", "Ben", "Cem"], true);
   await expectNoScroll(page);
   await page.getByRole("button", { name: "Vierer", exact: true }).click();
   await page.getByRole("button", { name: "3×" }).click();

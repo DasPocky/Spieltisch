@@ -6,7 +6,7 @@
  *  - „table“: Ihr spielt mit echten Karten, die App ist der Punkteblock (Verdopplung, Ziel 100).
  */
 import { shuffle } from "../../platform/random";
-import { nextPlayerId } from "../../platform/turns";
+import { nextPlayerId, playerName } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 export type Mode = "app" | "table";
@@ -73,7 +73,7 @@ export function buildDeck(): number[] {
 }
 
 const log = (s: SkState, line: string) => { s.log.push(line); if (s.log.length > MAX_LOG) s.log.shift(); };
-const nameOf = (ctx: GameContext, id: string | null) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 
 /** Summe der offenen Karten (für den Start und die Anzeige) */
 export const visibleSum = (grid: (Cell | null)[]) => grid.reduce((t, c) => t + (c?.up && c.v !== null ? c.v : 0), 0);

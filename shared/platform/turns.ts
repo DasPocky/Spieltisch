@@ -21,3 +21,7 @@ export function nextPlayerId(players: Player[], id: string | null): string | nul
   const i = players.findIndex((p) => p.id === id);
   return players[(i + 1) % players.length].id;
 }
+
+/** Name eines Spielers für Protokoll und Ansagen („?“, wenn er nicht mehr da ist) */
+export const playerName = (ctx: { players: Player[] }, id: string | null | undefined): string =>
+  ctx.players.find((p) => p.id === id)?.name ?? "?";
