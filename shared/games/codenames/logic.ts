@@ -8,6 +8,7 @@
 import { randomInt, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
 import { WORDS } from "./words";
+import { playerName } from "../../platform/turns";
 
 export type Team = "rot" | "blau";
 /** Farbe einer Karte: Team, Passant (neutral) oder Attentäter */
@@ -91,7 +92,7 @@ function setup(ctx: GameContext): CNState {
 }
 
 const log = (s: CNState, line: string) => { s.log.push(line); if (s.log.length > MAX_LOG) s.log.shift(); };
-const nameOf = (ctx: GameContext, id: string) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 
 /** Fehlt noch etwas, damit es losgehen kann? (null = alles bereit) */
 export function notReady(s: CNState): string | null {

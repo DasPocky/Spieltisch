@@ -9,7 +9,7 @@
  *  - „table“: echte Karten, die App ist der Block (Ansagen und Stiche eintippen, sie rechnet).
  */
 import { randomInt, shuffle } from "../../platform/random";
-import { dealerBefore, nextPlayerId } from "../../platform/turns";
+import { dealerBefore, nextPlayerId, playerName } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 export type Suit = "r" | "b" | "g" | "y";
@@ -113,7 +113,7 @@ export function roundsFor(n: number, o: Options): number {
 }
 
 const MAX_LOG = 60;
-const nameOf = (ctx: GameContext | { players: Player[] }, id: string | null | undefined) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 
 /** Reihenfolge ab links vom Geber (wer ansagt und den ersten Stich spielt) */
 export function orderFrom(players: Player[], dealerId: string | null): string[] {

@@ -4,7 +4,7 @@
  * Eine doppelte Zahl heißt: raus ohne Punkte. Sieben verschiedene Zahlen: +15 und die Runde endet sofort.
  */
 import { shuffle } from "../../platform/random";
-import { dealerBefore, nextPlayerId } from "../../platform/turns";
+import { dealerBefore, nextPlayerId, playerName } from "../../platform/turns";
 import { applyPad, isPadAction, newPad, padLeaders, padRemove, type Pad, type PadAction } from "../../platform/pad";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
@@ -156,7 +156,7 @@ export function handChoices(variant: Variant): F7Card[] {
     .sort((a, b) => (isMod(a) === isMod(b) ? (isMod(a) ? 0 : numValue(a) - numValue(b)) : isMod(a) ? 1 : -1));
 }
 
-const nameOf = (ctx: GameContext, id: string) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 const log = (s: F7State, msg: string) => { s.log.push(msg); if (s.log.length > MAX_LOG) s.log.shift(); };
 const activeIds = (s: F7State, players: Player[]) => players.map((p) => p.id).filter((id) => s.lines[id]?.status === "active");
 

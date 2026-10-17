@@ -6,7 +6,7 @@
  * Geheim: fremde Hände und der Nachziehstapel. Ausgelegte Gruppen sehen alle.
  */
 import { shuffle } from "../../platform/random";
-import { dealerBefore, nextPlayerId } from "../../platform/turns";
+import { dealerBefore, nextPlayerId, playerName } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Player } from "../../platform/types";
 
 export type P10Color = "r" | "b" | "g" | "y";
@@ -175,7 +175,7 @@ function candidates(hand: P10Card[], need: Need): P10Card[][] {
   return out.sort((a, b) => a.filter(isWild).length - b.filter(isWild).length);
 }
 
-const nameOf = (ctx: GameContext, id: string | null) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 
 function sync(s: P10State) {
   s.counts = Object.fromEntries(Object.entries(s.hands).map(([id, h]) => [id, h.length]));

@@ -4,7 +4,7 @@
  */
 import { cardName, deckOf, deckSetting, DECKS, drawCards, isCardOf, isJack, rankOf, SUIT_NAME, shuffledDeck, sortHand, suitOf, type Card, type DeckId, type Suit } from "../../cards/deck";
 import { shuffle } from "../../platform/random";
-import { firstPlayerId, nextPlayerId } from "../../platform/turns";
+import { firstPlayerId, nextPlayerId, playerName } from "../../platform/turns";
 import { applyPad, isPadAction, newPad, padRemove, type Pad, type PadAction } from "../../platform/pad";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
@@ -114,7 +114,7 @@ function setup(ctx: GameContext): MauMauState {
 }
 
 const APP = (o: Options) => o.mode !== "table";
-const nameOf = (ctx: GameContext, id: string | null) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+const nameOf = playerName;
 
 function apply(prev: MauMauState, a: MauMauAction, ctx: GameContext): MauMauState {
   const s = structuredClone(prev);

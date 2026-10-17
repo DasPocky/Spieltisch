@@ -5,6 +5,7 @@
  */
 import { randomInt } from "../../platform/random";
 import { GameError, type GameContext, type GameInfo, type GameLogic, type Options, type SettingDef } from "../../platform/types";
+import { playerName } from "../../platform/turns";
 
 export type Side = 0 | 1;
 
@@ -40,7 +41,7 @@ export function pushLog(s: DuelBase, line: string) {
   if (s.log.length > MAX_LOG) s.log.splice(0, s.log.length - MAX_LOG);
 }
 
-export const nameOf = (ctx: GameContext, id: string | undefined) => ctx.players.find((p) => p.id === id)?.name ?? "?";
+export const nameOf = playerName;
 export const sideOf = (s: DuelBase, id: string | null): Side | null => (id === s.colors[0] ? 0 : id === s.colors[1] ? 1 : null);
 export const isOver = (s: DuelBase) => s.winner !== null || s.draw;
 
