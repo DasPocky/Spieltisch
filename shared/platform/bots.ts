@@ -16,6 +16,7 @@ import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../game
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
 import type { MuehleState } from "../games/muehle/logic";
 import type { VierState } from "../games/vier/logic";
+import type { SchamlosState } from "../games/schamlos/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -182,6 +183,18 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       ["tBidsDone", "tFinish"].forEach((type) => add({ type }));
       if (Math.random() < 0.02) add({ type: "tBack" });
+      break;
+    }
+    case "schamlos": {
+      const s = r.game as SchamlosState;
+      // Jeder legt zufällige Karten aus der eigenen Hand; Zar (bzw. Host) wählt; weiter
+      for (const id of ids) {
+        const hand = shuffleInPlace([...(s.hands[id] ?? [])]);
+        const play = { type: "play", cards: hand.slice(0, s.blanks), player: id };
+        moves.push(online ? { action: g(play), actor: id } : { action: g(play), actor: null });
+      }
+      for (let i = 0; i < s.subs.length; i++) add({ type: "choose", index: i });
+      add({ type: "next" });
       break;
     }
     case "spion": {

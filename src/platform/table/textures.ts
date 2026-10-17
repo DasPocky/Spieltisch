@@ -8,10 +8,11 @@ import { rankOf, RANK_NAME, suitOf, type Card } from "@shared/cards/deck";
 import type { UnoCard } from "@shared/games/uno/logic";
 import { SuitIcon, SUIT_COLOR } from "@/platform/cards/PlayingCard";
 import { UnoCardView } from "@/games/uno/Board";
+import { cardText } from "@shared/games/schamlos/cards";
 import type { TableDeck } from "./model";
 
 /** Seitenverhältnis wie am Handy: Spielkarten 5:8, Uno 5:7 */
-export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, uno: 7 / 5 };
+export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, uno: 7 / 5, schamlos: 7 / 5 };
 /** Breite der Kartenbilder in Pixeln – scharf auch auf 4K-Fernsehern */
 const W = 768;
 
@@ -89,11 +90,57 @@ async function drawUno(card: UnoCard): Promise<HTMLCanvasElement> {
   return c;
 }
 
-/** Rückseiten: Spielkarten im Marine-Muster, Uno schwarz mit rotem Oval */
+/** Kleines Zeichen und Name unten auf einer Textkarte */
+function brand(g: CanvasRenderingContext2D, u: number, h: number, color: string) {
+  g.save(); g.fillStyle = color; g.translate(11 * u, h - 11 * u); g.rotate(-0.14);
+  rounded(g, -2.5 * u, -2.5 * u, 5 * u, 5 * u, 1 * u); g.fill(); g.restore();
+  g.fillStyle = color; g.font = `700 ${4.6 * u}px ${FONT}`; g.textAlign = "left"; g.textBaseline = "middle";
+  g.fillText("Schamlos", 16 * u, h - 11 * u);
+}
+
+/** Text in Zeilen umbrechen; Schrift so groß wie möglich, damit er in den Kasten passt */
+function wrapText(g: CanvasRenderingContext2D, text: string, maxW: number, maxH: number, start: number): { lines: string[]; size: number } {
+  for (let size = start; size > 20; size -= 2) {
+    g.font = `700 ${size}px ${FONT}`;
+    const lines: string[] = [];
+    let line = "";
+    for (const word of text.split(" ")) {
+      const next = line ? `${line} ${word}` : word;
+      if (g.measureText(next).width > maxW && line) { lines.push(line); line = word; } else line = next;
+    }
+    if (line) lines.push(line);
+    if (lines.length * size * 1.18 <= maxH && lines.every((l) => g.measureText(l).width <= maxW)) return { lines, size };
+  }
+  return { lines: [text], size: 20 };
+}
+
+/** Schamlos-Karte: schwarz mit Lücken bzw. weiß mit Antwort, große Schrift – lesbar aus der Entfernung */
+async function drawWords(id: string): Promise<HTMLCanvasElement> {
+  await document.fonts?.ready;
+  const c = canvas("schamlos");
+  const g = c.getContext("2d")!;
+  const w = c.width, h = c.height, u = w / 100;
+  const black = id.includes("-b-");
+  g.fillStyle = black ? "#16171b" : "#fdfdfb"; rounded(g, 0, 0, w, h, 6 * u); g.fill();
+  const text = cardText(id).replaceAll("___", "______");
+  const { lines, size } = wrapText(g, text, w - 18 * u, h - 34 * u, 15 * u);
+  g.fillStyle = black ? "#ffffff" : "#16171b"; g.textAlign = "left"; g.textBaseline = "top";
+  lines.forEach((l, i) => g.fillText(l, 9 * u, 9 * u + i * size * 1.18));
+  brand(g, u, h, black ? "rgba(255,255,255,.45)" : "rgba(0,0,0,.35)");
+  return c;
+}
+
+/** Rückseiten: Spielkarten im Marine-Muster, Uno schwarz mit rotem Oval, Textkarten weiß mit Schriftzug */
 export function drawBack(deck: TableDeck): HTMLCanvasElement {
   const c = canvas(deck);
   const g = c.getContext("2d")!;
   const w = c.width, h = c.height, u = w / 100;
+  if (deck === "schamlos") {
+    g.fillStyle = "#fdfdfb"; rounded(g, 0, 0, w, h, 6 * u); g.fill();
+    g.save(); g.translate(w / 2, h / 2); g.rotate(-0.35); g.fillStyle = "rgba(22,23,27,.85)"; g.font = `700 ${17 * u}px ${FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("Schamlos", 0, 0); g.restore();
+    return c;
+  }
   if (deck === "uno") {
     g.fillStyle = "#ffffff"; rounded(g, 0, 0, w, h, 12 * u); g.fill();
     g.fillStyle = "#161616"; rounded(g, 5 * u, 5 * u, w - 10 * u, h - 10 * u, 9 * u); g.fill();
@@ -118,6 +165,6 @@ const faces = new Map<string, Promise<HTMLCanvasElement>>();
 export function drawFace(deck: TableDeck, card: string): Promise<HTMLCanvasElement> {
   const key = `${deck}:${card}`;
   let p = faces.get(key);
-  if (!p) faces.set(key, (p = deck === "uno" ? drawUno(card as UnoCard) : drawPlaying(card as Card)));
+  if (!p) faces.set(key, (p = deck === "uno" ? drawUno(card as UnoCard) : deck === "schamlos" ? drawWords(card) : drawPlaying(card as Card)));
   return p;
 }

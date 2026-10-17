@@ -11,12 +11,16 @@ import {
 import { CARD_RATIO, drawBack, drawFace } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 
+export interface FeltRect { x: number; y: number; w: number; h: number }
+
 export interface TableScene {
   /** Partie zeigen (null: leerer Tisch, z. B. in der Lobby). `seats`: Spieler in Tischreihenfolge. */
   update(model: TableModel | null, seats: string[]): void;
   resize(width: number, height: number): void;
   /** Bildschirmpunkte (CSS-Pixel) der Plätze am Tischrand – dort stehen Name, Bild und Video */
   seatPoints(): { x: number; y: number }[];
+  /** Größtes Rechteck (CSS-Pixel), das ganz auf dem Filz liegt – dort liegen Karten und Schilder in HTML */
+  feltRect(): FeltRect;
   dispose(): void;
 }
 
@@ -154,8 +158,15 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   glow.rotation.x = -Math.PI / 2; glow.visible = false; scene.add(glow);
 
   let anchors: [number, number][] = [];
-  let last: { top: string | null; n: number; turn: string | null; seats: string[] } = { top: null, n: -1, turn: null, seats: [] };
-  let flying: { mesh: Mesh; from: Vector3; to: Vector3; rot: number; start: number } | null = null;
+  let last: { top: string | null; n: number; turn: string | null; seats: string[]; played: string[]; shown: number } = { top: null, n: -1, turn: null, seats: [], played: [], shown: 0 };
+  /** Laufende Bewegungen: Karte fliegt (von → nach, mit Bogen) und dreht sich dabei ggf. um */
+  type Anim = { mesh: Mesh; from: Vector3; to: Vector3; rot: number; flip: boolean; start: number; ms: number };
+  let anims: Anim[] = [];
+  const fly = (mesh: Mesh, from: Vector3, delay = 0, flip = false, ms = 520) => {
+    anims.push({ mesh, from, to: mesh.position.clone(), rot: mesh.rotation.y, flip, start: performance.now() + delay, ms });
+    mesh.position.copy(from);
+    if (flip) mesh.rotation.z = Math.PI;
+  };
 
   const PILE_X = -0.75, DISCARD_X = 0.5;
   const discardPos = (i: number, card: string) => {
@@ -165,10 +176,12 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
 
   function update(model: TableModel | null, seats: string[]) {
     live.clear();
+    anims = [];
     anchors = seatAnchors(seats.length);
     glow.visible = false;
-    if (!model) { last = { top: null, n: -1, turn: null, seats }; render(); return; }
+    if (!model) { last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
     deck = model.deck;
+    if (model.words) { updateWords(model, seats); return; }
 
     // Stapel: ein Block, so hoch wie die Karten
     if (model.pile > 0) {
@@ -189,28 +202,95 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
 
     // Verdeckte Hände vor den Plätzen, zur Mitte gedreht
     seats.forEach((id, i) => {
-      const count = model.counts[id] ?? 0;
+      hand(i, model.counts[id] ?? 0, deck);
       const [x, z] = anchors[i];
-      const ang = Math.atan2(x, z);
-      const shown = Math.min(count, 10);
-      for (let k = 0; k < shown; k++) {
-        const off = (k - (shown - 1) / 2);
-        const m = cardMesh(deck, null);
-        m.position.set(x * 0.92 + Math.cos(ang) * off * 0.09, SURFACE + 0.004 + k * 0.0065, z * 0.92 - Math.sin(ang) * off * 0.09);
-        m.rotation.y = ang + off * 0.05;
-        live.add(m);
-      }
-      if (id === model.turn) { glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.visible = true; }
+      if (id === model.turn) { glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
     });
 
     // Neue Karte auf der Ablage: fliegt vom Platz dessen, der eben dran war
     const from = last.turn ? seats.indexOf(last.turn) : -1;
     if (newest && topCard && topCard !== last.top && model.n > last.n && last.n >= 0 && from >= 0) {
       const [fx, fz] = anchors[from];
-      const mesh: Mesh = newest;
-      flying = { mesh, from: new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92), to: mesh.position.clone(), rot: mesh.rotation.y, start: performance.now() };
+      fly(newest, new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92));
     }
-    last = { top: topCard, n: model.n, turn: model.turn, seats };
+    last = { top: topCard, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
+    render();
+  }
+
+  /** Verdeckte Hand vor einem Platz */
+  function hand(i: number, count: number, d: TableDeck, scale = 1) {
+    const [x, z] = anchors[i];
+    const ang = Math.atan2(x, z);
+    const shown = Math.min(count, 10);
+    for (let k = 0; k < shown; k++) {
+      const off = k - (shown - 1) / 2;
+      const m = cardMesh(d, null);
+      m.scale.setScalar(scale);
+      m.position.set(x * 0.92 + Math.cos(ang) * off * 0.09 * scale, SURFACE + 0.004 + k * 0.0065, z * 0.92 - Math.sin(ang) * off * 0.09 * scale);
+      m.rotation.y = ang + off * 0.05;
+      live.add(m);
+    }
+  }
+
+  /**
+   * Lückensatz-Spiel: schwarze Karte groß links, verdeckte Antworten fliegen von den Plätzen herein,
+   * beim Aufdecken drehen sie sich der Reihe nach um; die gewählte Antwort hebt sich mit Lichtschein ab.
+   */
+  function updateWords(model: TableModel, seats: string[]) {
+    const w = model.words!;
+    const d: TableDeck = "schamlos";
+    const black = cardMesh(d, w.prompt);
+    black.scale.setScalar(1.9);
+    black.position.set(-1.3, SURFACE + 0.006, 0.15); black.rotation.y = 0.05;
+    live.add(black);
+    seats.forEach((id, i) => hand(i, model.counts[id] ?? 0, d, 0.8));
+    const czar = seats.indexOf(model.turn ?? "");
+    if (czar >= 0) { const [x, z] = anchors[czar]; glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.visible = true; }
+
+    const W = CARD_W * 1.5;
+    if (!w.subs.length) {
+      // Verdeckt gelegt: locker übereinander rechts neben der schwarzen Karte
+      w.playedBy.forEach((id, i) => {
+        const m = cardMesh(d, null);
+        m.scale.setScalar(1.4);
+        const h = hash(id);
+        m.position.set(0.0 + (i % 4) * 0.5, SURFACE + 0.004 + i * 0.007, -0.15 + Math.floor(i / 4) * 0.5 + ((h % 5) - 2) * 0.02);
+        m.rotation.y = ((h % 21) - 10) / 60;
+        live.add(m);
+        if (!last.played.includes(id) && last.n === model.n) {
+          const from = seats.indexOf(id);
+          if (from >= 0) { const [fx, fz] = anchors[from]; fly(m, new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92)); }
+        }
+      });
+      last = { top: null, n: model.n, turn: model.turn, seats, played: [...w.playedBy], shown: 0 };
+      render();
+      return;
+    }
+
+    // Aufgedeckt: Antworten in Reihen rechts, mehrteilige leicht überlappend
+    const n = w.subs.length;
+    const cols = n <= 4 ? n : Math.ceil(n / 2);
+    const rows = Math.ceil(n / cols);
+    const multi = w.subs.some((s) => s.length > 1);
+    const step = (multi ? W * 1.55 : W) + 0.08;
+    const scale = Math.min(1.5, 2.6 / (cols * step / 1.5));
+    w.subs.forEach((cards, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const x0 = -0.15 + col * step * scale / 1.5;
+      const z0 = (row - (rows - 1) / 2) * (CARD_W * CARD_RATIO[d] * scale + 0.08);
+      const win = w.pick === i;
+      cards.forEach((c, k) => {
+        const m = cardMesh(d, c);
+        m.scale.setScalar(scale);
+        m.position.set(x0 + k * W * 0.55 * scale / 1.5, SURFACE + 0.006 + k * 0.007 + (win ? 0.05 : 0), z0 + k * 0.06);
+        m.rotation.y = ((hash(c) % 11) - 5) / 100;
+        live.add(m);
+        // Erstes Aufdecken dieser Runde: eine Karte nach der anderen umdrehen
+        if (last.shown === 0) fly(m, m.position.clone().setY(SURFACE + 0.006), (i * cards.length + k) * 260, true, 420);
+      });
+      if (win) { glow.position.set(x0 + (cards.length - 1) * W * 0.28 * scale, SURFACE + 0.002, z0); glow.scale.setScalar(1.3); glow.visible = true; }
+    });
+    last = { top: null, n: model.n, turn: model.turn, seats, played: [...w.playedBy], shown: n };
     render();
   }
 
@@ -218,16 +298,18 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   let raf = 0;
   function frame() {
     raf = 0;
-    if (flying) {
-      const t = Math.min(1, (performance.now() - flying.start) / 520);
+    const now = performance.now();
+    for (const a of anims) {
+      const t = Math.max(0, Math.min(1, (now - a.start) / a.ms));
       const e = 1 - (1 - t) ** 3;
-      flying.mesh.position.lerpVectors(flying.from, flying.to, e);
-      flying.mesh.position.y += Math.sin(Math.PI * t) * 0.35;
-      flying.mesh.rotation.y = flying.rot + (1 - e) * 1.2;
-      if (t >= 1) { flying.mesh.position.copy(flying.to); flying.mesh.rotation.y = flying.rot; flying = null; }
+      a.mesh.position.lerpVectors(a.from, a.to, e);
+      a.mesh.position.y += Math.sin(Math.PI * t) * (a.flip ? 0.25 : 0.35);
+      a.mesh.rotation.y = a.rot + (a.flip ? 0 : (1 - e) * 1.2);
+      if (a.flip) a.mesh.rotation.z = Math.PI * (1 - e);
     }
+    anims = anims.filter((a) => now - a.start < a.ms);
     renderer.render(scene, camera);
-    if (flying) raf = requestAnimationFrame(frame);
+    if (anims.length) raf = requestAnimationFrame(frame);
   }
   function render() { if (!raf) raf = requestAnimationFrame(frame); }
 
@@ -268,8 +350,16 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
     });
   }
 
+  function feltRect(): FeltRect {
+    // Von schräg vorn ist der Filz ein Trapez: hinten schmaler. Das Rechteck nimmt die hintere Breite.
+    const p = (x: number, z: number) => { const v = new Vector3(x, SURFACE, z).project(camera); return { x: ((v.x + 1) / 2) * width, y: ((1 - v.y) / 2) * height }; };
+    const inset = 0.12;
+    const tl = p(-FELT_W / 2 + inset, -FELT_D / 2 + inset), tr = p(FELT_W / 2 - inset, -FELT_D / 2 + inset), bl = p(-FELT_W / 2 + inset, FELT_D / 2 - inset);
+    return { x: tl.x, y: tl.y, w: tr.x - tl.x, h: bl.y - tl.y };
+  }
+
   return {
-    update, resize, seatPoints,
+    update, resize, seatPoints, feltRect,
     dispose() {
       cancelAnimationFrame(raf);
       for (const t of textures.values()) t.dispose();

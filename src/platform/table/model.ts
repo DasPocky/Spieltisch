@@ -6,9 +6,10 @@
 import type { RoomState } from "@shared/platform/room";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import type { UnoState } from "@shared/games/uno/logic";
+import { HAND, type SchamlosState } from "@shared/games/schamlos/logic";
 
-/** Kartenart: französisch/deutsch („cards“) oder Uno */
-export type TableDeck = "cards" | "uno";
+/** Kartenart: französisch/deutsch („cards“), Uno oder Textkarten (Schamlos) */
+export type TableDeck = "cards" | "uno" | "schamlos";
 
 export interface TableModel {
   deck: TableDeck;
@@ -28,6 +29,17 @@ export interface TableModel {
   scores?: Record<string, number>;
   /** letzte Ereignisse, das neueste zuletzt */
   log: string[];
+  /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */
+  words?: {
+    prompt: string;
+    /** wer schon verdeckt gelegt hat (in dieser Reihenfolge) */
+    playedBy: string[];
+    /** aufgedeckte Antworten (ab dem Wählen), je Antwort eine oder zwei Karten */
+    subs: string[][];
+    /** gewählte Antwort und von wem (nach dem Wählen) */
+    pick: number | null;
+    pickBy: string | null;
+  };
 }
 
 const SUIT_LABEL: Record<string, { label: string; hex: string }> = {
@@ -39,7 +51,7 @@ const UNO_COLOR: Record<string, { label: string; hex: string }> = {
 };
 
 /** Spiele mit eigenem Tischmodell */
-export const TABLE_GAMES = ["maumau", "uno"] as const;
+export const TABLE_GAMES = ["maumau", "uno", "schamlos"] as const;
 
 export function tableModel(room: RoomState): TableModel | null {
   if (room.phase !== "playing" || !room.game) return null;
@@ -54,6 +66,15 @@ export function tableModel(room: RoomState): TableModel | null {
     if (s.mode === "table" || s.phase !== "play") return null;
     return { deck: "uno", pile: s.pileCount, discard: s.discard.slice(-4), counts: s.counts, turn: s.curId, n: s.n, log: s.log.slice(-6),
       color: UNO_COLOR[s.color], scores: s.scores };
+  }
+  if (room.gameId === "schamlos") {
+    const s = room.game as SchamlosState;
+    if (s.phase === "over") return null;
+    const counts = Object.fromEntries(room.players.map((p) => [p.id, s.played[p.id] ? HAND - s.blanks : HAND]));
+    const subs = s.phase === "pick" ? [] : s.subs.map((x) => x.cards);
+    const pick = s.phase === "result" ? s.pick : null;
+    return { deck: "schamlos", pile: 0, discard: [], counts, turn: s.czar, n: s.round, log: s.log.slice(-6), scores: s.scores,
+      words: { prompt: s.prompt, playedBy: Object.keys(s.played), subs, pick, pickBy: pick !== null ? s.subs[pick]?.by ?? null : null } };
   }
   return null;
 }

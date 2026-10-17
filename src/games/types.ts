@@ -58,6 +58,8 @@ export interface GameUI<S = unknown, A = { type: string }> {
   SettingsExtra?: ComponentType<{ room: RoomState; editable: boolean; online: boolean; dispatch: (action: RoomAction) => void }>;
   /** Kleine Info rechts in der Kopfzeile (z. B. Karten im Stapel) */
   HeaderExtra?: ComponentType<BoardProps<S, A>>;
+  /** Am Rechner die ganze Breite nutzen – für Spiele, die auch ohne Handy gut am Desktop laufen */
+  wide?: boolean;
   /** Für alle sichtbarer Verlauf (älteste zuerst) – erscheint als Leiste „Letzter Zug“ über dem Spiel und unter „Spieler & Verlauf“ */
   log?: (game: S) => string[];
   /** Spielerübersicht für „Spieler & Verlauf“ */

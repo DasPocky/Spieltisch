@@ -26,12 +26,12 @@ test("Großer Tisch: Bildschirm baut auf, Handys treten per QR-Link bei, Mau-Mau
   const code = screen.url().split("/").pop()!;
   const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
   await expect(screen.getByTestId("table-lobby")).toContainText(code);
-  await expect(screen.getByTestId("table-lobby")).toContainText("Wer zuerst beitritt");
+  await expect(screen.getByTestId("table-lobby")).toContainText("Wer zuerst da ist, wählt das Spiel");
 
   const anna = await joinByLink(browser, code, pin, "Anna");
   const ben = await joinByLink(browser, code, pin, "Ben");
   await expect(screen.getByTestId("table-seat")).toHaveCount(2);
-  await expect(screen.getByTestId("table-lobby")).toContainText("Anna wählt am Handy das Spiel");
+  await expect(screen.getByTestId("table-lobby")).toContainText("Anna wählt das Spiel und startet");
   await shot(screen, "90-table-lobby");
 
   // Wer zuerst kam, ist Host: Spiel wählen und starten
