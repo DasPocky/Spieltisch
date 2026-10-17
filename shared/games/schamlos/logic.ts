@@ -7,13 +7,16 @@
 import { GameError, type GameContext, type GameLogic, type Options, type PlayerResult } from "../../platform/types";
 import { shuffle } from "../../platform/random";
 import { playerName } from "../../platform/turns";
-import { blanksOf, deckFor, SETS } from "./cards";
+import { blanksOf, deckFor, DEFAULT_SET, LANGS, SETS, type Lang } from "./cards";
 
 export const HAND = 7;
-/** Gewählte Kartensets (Einstellung „set_<id>“); ohne Auswahl „Frech“ */
+export const langOf = (o: Options): Lang => (o.lang === "en" ? "en" : "de");
+
+/** Gewählte Kartensets der gewählten Sprache (Einstellung „set_<id>“); ohne Auswahl das erste Set der Sprache */
 export function setsOf(o: Options): string[] {
-  const on = SETS.filter((s) => (o[`set_${s.id}`] ?? s.id === "frech") === true).map((s) => s.id);
-  return on.length ? on : ["frech"];
+  const lang = langOf(o);
+  const on = SETS.filter((s) => s.lang === lang && (o[`set_${s.id}`] ?? s.id === DEFAULT_SET[lang]) === true).map((s) => s.id);
+  return on.length ? on : [DEFAULT_SET[lang]];
 }
 
 export interface Submission {
@@ -110,7 +113,10 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
   info: { id: "schamlos", name: "Schamlos", tagline: "Lückensätze frech füllen – der Zar kürt die beste Antwort", category: "Party", minPlayers: 3, maxPlayers: 12, duration: "30 Min." },
   version: 1,
   settings: [
-    ...SETS.map((s) => ({ key: `set_${s.id}`, label: s.name, hint: s.hint, type: "toggle" as const, default: s.id === "frech", group: "Kartensets" })),
+    { key: "lang", label: "Sprache", type: "choice", default: "de", choices: LANGS },
+    // Sets nur der gewählten Sprache – Deutsch und Englisch werden nicht gemischt
+    ...SETS.map((s) => ({ key: `set_${s.id}`, label: s.name, hint: s.hint, type: "toggle" as const, default: s.id === DEFAULT_SET[s.lang], group: "Kartensets",
+      showIf: (o: Options) => langOf(o) === s.lang })),
     { key: "goal", label: "Punkte zum Sieg", type: "number", default: 7, min: 3, max: 15, step: 1 },
   ],
   turnBased: false,

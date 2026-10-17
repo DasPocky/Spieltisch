@@ -40,7 +40,11 @@ describe("Schamlos", () => {
     expect(mix.white.length).toBe(deckFor(["frech"]).white.length + deckFor(["schwarz"]).white.length);
     expect(deckFor(["frech", "plus"]).white.length).toBeLessThan(deckFor(["frech"]).white.length + deckFor(["plus"]).white.length);
     expect(deckFor(["frech"]).black.every((id) => id.startsWith("frech-"))).toBe(true);
-    expect(schamlos.setup(ctx(null, { set_frech: false, set_en: true })).blackPile.every((id) => id.startsWith("en-"))).toBe(true);
+    // Sprache: nur Sets dieser Sprache, Deutsch und Englisch werden nicht gemischt
+    expect(setsOf({ lang: "en" })).toEqual(["cheeky"]);
+    expect(setsOf({ lang: "en", set_frech: true, set_dark: true })).toEqual(["cheeky", "dark"]);
+    expect(setsOf({ lang: "de", set_dark: true })).toEqual(["frech"]);
+    expect(schamlos.setup(ctx(null, { lang: "en" })).blackPile.every((id) => id.startsWith("cheeky-"))).toBe(true);
   });
 
   it("Lückentext: Antworten an der richtigen Stelle, am Satzanfang groß", () => {
