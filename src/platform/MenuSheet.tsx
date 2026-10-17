@@ -11,7 +11,7 @@ import { getGameUI } from "@/games";
 import type { BoardProps } from "@/games/types";
 import { navigate } from "@/hooks/useRoute";
 import { setViewMode, useViewMode } from "@/hooks/useViewMode";
-import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
+import { setPref, usePrefs, type SwitchPref } from "@/lib/prefs";
 import { RETURN_KEY } from "@/lib/storage";
 import { wantGamePick } from "@/lib/pickGame";
 import { cn } from "@/lib/utils";
@@ -224,7 +224,7 @@ function useStalled(game: unknown) {
   return stalled;
 }
 
-const QUICK: [keyof Prefs, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"], ["diceMarks", "Würfel markieren"]];
+const QUICK: [SwitchPref, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"], ["diceMarks", "Würfel markieren"]];
 /** Spiele, in denen wertbare Würfel markiert werden können */
 const DICE_MARK_GAMES = new Set(["tutto"]);
 

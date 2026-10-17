@@ -94,3 +94,36 @@ test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ab
   await screen.waitForTimeout(600);
   await shot(screen, "93-table-flach");
 });
+
+test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, ausschaltbar – ohne Fehler", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  const errors: string[] = [];
+  screen.on("pageerror", (e) => errors.push(e.message));
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen.getByTestId("table-lobby")).toBeVisible();
+  // Der Klick auf „Tisch aufbauen“ hat den Ton freigeschaltet
+  await expect(screen.getByTestId("sound-panel")).toBeVisible();
+  await screen.getByTestId("sound-more").click();
+  const music = screen.getByRole("slider", { name: "Musik" });
+  await music.fill("0");
+  await screen.getByRole("slider", { name: "Publikum" }).fill("80");
+  await shot(screen, "94-table-ton");
+  const prefs = await screen.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:prefs") ?? "{}"));
+  expect(prefs.volMusic).toBe(0);
+  expect(prefs.volCrowd).toBe(0.8);
+  await screen.getByTestId("sound-toggle").click();
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "false");
+  await expect(screen.getByRole("slider", { name: "Musik" })).toHaveCount(0);
+
+  // Neu geladen (ohne Klick): Ton wieder an → „Ton einschalten“, bis jemand klickt
+  await screen.getByTestId("sound-toggle").click();
+  await screen.reload();
+  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible();
+  if (await screen.getByTestId("sound-unlock").isVisible()) {
+    await screen.getByTestId("sound-unlock").click();
+    await expect(screen.getByTestId("sound-panel")).toBeVisible();
+  }
+  await screen.waitForTimeout(1500);
+  expect(errors).toEqual([]);
+});

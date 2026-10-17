@@ -26,6 +26,7 @@ import { useQuality } from "@/lib/quality";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
+import { SoundPanel, useTableSound } from "@/platform/table/sound";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
 const newPin = () => String(randomInt(900000) + 100000);
@@ -161,6 +162,7 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
   const [felt, setFelt] = useState<FeltRect | null>(null);
+  useTableSound(room, model);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
@@ -183,7 +185,9 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         {playing && <JoinNote code={code} pin={pin} />}
         <Scores room={room} model={model} avatars={avatars} points={sham?.scores} />
         {model && <Log lines={model.log} />}
-        <div className="mt-auto flex gap-2">
+        <div className="mt-auto" />
+        <SoundPanel />
+        <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={() => { remove(tableKey(code)); navigate("/"); }}><LogOut className="size-4" />Verlassen</Button>
         </div>
