@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
 import { LOCAL_GAME_KEY } from "@/lib/storage";
-import type { AdminSection } from "@/pages/admin/nav";
+
+/** Bereiche der Verwaltung: /admin, /admin/live … */
+export type AdminSection = "start" | "live" | "statistik" | "spiele" | "leute" | "einstellungen" | "entwickler";
 
 export type Route =
   | { name: "home" }

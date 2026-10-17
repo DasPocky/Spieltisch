@@ -5,7 +5,7 @@ import { useActiveGroup } from "@/lib/group";
 import { myAvatar } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/platform/Avatar";
-import { useAdminAttention, useAdminDevice } from "@/pages/admin/context";
+import { useAdminAttention, useAdminDevice } from "@/lib/admin";
 
 export type Tab = "start" | "spiele" | "gruppe" | "profil" | "verwaltung";
 

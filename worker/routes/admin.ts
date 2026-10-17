@@ -1,0 +1,192 @@
+/** HTTP: /api/admin/… – Anmeldung, Einstellungen, Räume, Statistik, Verlauf, Daten, Zuschauen */
+import { isGameId } from "../../shared/games";
+import { PROFILE_ID_RE } from "../../shared/platform/profile";
+import { GROUP_CODE_RE } from "../../shared/platform/group";
+import { WIPE_KINDS, type WipeKind } from "../../shared/platform/admin";
+import { BUILD, type ServerStatus } from "../../shared/build";
+import { sanitizeAccess, type RoomAccess } from "../../shared/platform/directory";
+import { PIN_RE, ROOM_CODE_RE } from "../../shared/platform/protocol";
+import { type AdminRoomAction } from "../../shared/platform/admin";
+import { Env, settingsOf, profileOf, groupOf } from "../env";
+import { readBody, badRequest, json, withTimeout, makeCode } from "../http";
+import { WATCH_PATH } from "../rooms";
+import { AdminCred } from "../settings";
+
+/** Admin-Anmeldung aus der Anfrage: `authorization: Bearer <token>` oder Passwort (Kopfzeile oder Body) */
+export function adminCred(request: Request, password?: unknown): AdminCred {
+  const token = (request.headers.get("authorization") ?? "").match(/^Bearer\s+(\S+)$/i)?.[1];
+  const pw = typeof password === "string" && password ? password : request.headers.get("x-admin-password") ?? undefined;
+  return { token, password: pw || undefined };
+}
+export async function handleAdmin(request: Request, env: Env, path: string): Promise<Response> {
+  const settings = settingsOf(env);
+  let body: Record<string, unknown> = {};
+  if (request.method === "POST") {
+    // Einstellungen mit Standards aller Spiele können größer werden als normale Anfragen
+    const parsed = await readBody(request, 64_000);
+    if (!parsed) return badRequest();
+    body = parsed;
+  }
+  const cred = adminCred(request, body.password);
+
+  // Zuschauen: WebSocket kann keine Kopfzeilen setzen – das Sitzungs-Token kommt deshalb in der Adresse
+  const watch = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/watch$/);
+  if (watch && request.headers.get("Upgrade") === "websocket") {
+    const token = new URL(request.url).searchParams.get("t");
+    // Ohne Token gar nicht erst prüfen (sonst zählte es als falsches Passwort)
+    const ok = token ? await settings.auth({ token }) : { ok: false, status: 401, error: "Bitte melde dich neu an." };
+    if (!ok.ok || !ROOM_CODE_RE.test(watch[1])) return json({ ok: false, error: ok.error }, ok.status ?? 403);
+    const inner = new Request(new URL(WATCH_PATH, request.url), request);
+    return env.ROOMS.get(env.ROOMS.idFromName(watch[1])).fetch(inner);
+  }
+
+  // Anmelden (gibt ein Sitzungs-Token zurück) oder Freigaben/Standards speichern
+  if (path === "/api/admin" && request.method === "POST") {
+    const update = body.config === undefined && body.defaults === undefined ? undefined : {
+      config: body.config,
+      code: body.code === null ? null : typeof body.code === "string" ? body.code : undefined,
+      defaults: body.defaults,
+    };
+    const { status, ...res } = await settings.admin(cred, update);
+    return json(res, res.ok ? 200 : status ?? 403);
+  }
+
+  if (path === "/api/admin/logout" && request.method === "POST") {
+    if (cred.token) await settings.logout(cred.token);
+    return json({ ok: true });
+  }
+
+  const auth = await settings.auth(cred);
+  if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status ?? 403);
+
+  if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
+  if (path === "/api/admin/status" && request.method === "GET") {
+    const status: ServerStatus = {
+      ...(await settings.status()),
+      build: BUILD,
+      services: { realtime: !!(env.REALTIME_APP_ID && env.REALTIME_APP_TOKEN), realtimeFake: !!env.REALTIME_FAKE, password: !!env.ADMIN_PASSWORD },
+    };
+    return json(status);
+  }
+
+  // Offene Räume: jeder Raum wird selbst gefragt – was nicht mehr existiert, fliegt aus der Übersicht
+  if (path === "/api/admin/rooms" && request.method === "GET") {
+    const known = await settings.roomList();
+    const rooms = await Promise.all(known.map(async (r) => {
+      try {
+        const live = await withTimeout(env.ROOMS.get(env.ROOMS.idFromName(r.code)).summary(), 3000);
+        if (live) return live;
+        await settings.roomGone(r.code);
+        return null;
+      } catch { return r; }
+    }));
+    return json({ rooms: rooms.filter((r) => r !== null).sort((a, b) => b.activeAt - a.activeAt), now: Date.now() });
+  }
+
+  if (path === "/api/admin/archive" && request.method === "GET") return json({ rooms: await settings.archiveList(), now: Date.now() });
+  if (path === "/api/admin/archive/delete" && request.method === "POST") {
+    const code = String(body.code ?? "");
+    const createdAt = Number(body.createdAt);
+    if (!ROOM_CODE_RE.test(code) || !Number.isFinite(createdAt)) return json({ error: "Ungültige Anfrage." }, 400);
+    await settings.archiveDelete(code, createdAt);
+    return json({ ok: true });
+  }
+  if (path === "/api/admin/directory" && request.method === "GET") return json(await settings.directory());
+
+  const del = path.match(/^\/api\/admin\/(groups|profiles)\/([A-Za-z0-9_-]+)\/delete$/);
+  if (del && request.method === "POST") {
+    const [, kind, id] = del;
+    if (kind === "groups") {
+      if (!GROUP_CODE_RE.test(id)) return json({ error: "Ungültiger Gruppencode." }, 400);
+      await groupOf(env, id).wipe();
+      await settings.directoryRemove("grp", id);
+    } else {
+      if (!PROFILE_ID_RE.test(id)) return json({ error: "Ungültiges Profil." }, 400);
+      await profileOf(env, id).wipe();
+      await settings.directoryRemove("prf", id);
+    }
+    return json({ ok: true });
+  }
+
+  // Daten löschen – zur Sicherheit muss „LÖSCHEN“ mitkommen
+  if (path === "/api/admin/wipe" && request.method === "POST") {
+    if (body.confirm !== "LÖSCHEN") return json({ error: "Bitte zur Bestätigung LÖSCHEN eintippen." }, 400);
+    const kinds = Array.isArray(body.what) ? body.what.filter((k): k is WipeKind => WIPE_KINDS.includes(k as WipeKind)) : [];
+    if (!kinds.length) return json({ error: "Nichts ausgewählt." }, 400);
+    // Offene Räume vorher merken – sie werden geschlossen (alle fliegen raus)
+    const open = kinds.includes("rooms") ? (await settings.roomList()).map((r) => r.code) : [];
+    const { groups, profiles } = await settings.wipe(kinds);
+    await Promise.all([
+      ...open.map((c) => env.ROOMS.get(env.ROOMS.idFromName(c)).adminClose().catch(() => false)),
+      ...groups.map((c) => groupOf(env, c).wipe().catch(() => undefined)),
+      ...profiles.map((id) => profileOf(env, id).wipe().catch(() => undefined)),
+    ]);
+    // Schließen meldet Räume im Verlauf als beendet – wurde der Verlauf mit gelöscht, dort auch weg
+    if (kinds.includes("archive") && open.length) await settings.wipe(["archive"]);
+    return json({ ok: true, rooms: open.length, groups: groups.length, profiles: profiles.length, config: kinds.includes("settings") ? await settings.config() : undefined });
+  }
+
+  // Alles zum Herunterladen
+  if (path === "/api/admin/export" && request.method === "GET") {
+    return json({ exportedAt: new Date().toISOString(), config: await settings.config(), stats: await settings.statsGet(), archive: await settings.archiveList(), ...(await settings.directory()) });
+  }
+
+  // Dauerraum anlegen: bleibt bestehen, auch wenn er leer ist; der erste, der hineinkommt, ist Host
+  if (path === "/api/admin/rooms/create" && request.method === "POST") {
+    const pin = String(body.pin ?? "");
+    if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
+    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const config = await settings.config();
+    const access = sanitizeAccess({ ...(body.room && typeof body.room === "object" ? body.room : {}), life: "forever" }, undefined, true);
+    if (!access.name) return json({ error: "Bitte gib dem Raum einen Namen." }, 400);
+    for (let i = 0; i < 6; i++) {
+      const code = makeCode();
+      if (await env.ROOMS.get(env.ROOMS.idFromName(code)).init(pin, gameId, true, code, config.defaults, access, true)) return json({ code }, 201);
+    }
+    return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
+  // Entwickler-Modus: Testraum mit Bots – unsichtbar, zählt nicht; der Admin tritt als Erster bei und ist Host
+  if (path === "/api/admin/test-room" && request.method === "POST") {
+    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const n = Math.max(1, Math.min(10, Math.floor(Number(body.bots) || 3)));
+    const pin = String(1000 + Math.floor(Math.random() * 9000));
+    const config = await settings.config();
+    const access: RoomAccess = { name: "Testraum", visibility: "none", admission: "pin", life: "hour" };
+    for (let i = 0; i < 6; i++) {
+      const code = makeCode();
+      const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
+      if (!(await stub.init(pin, gameId, true, code, config.defaults, access, false, true))) continue;
+      const res = await stub.adminAct({ type: "addBots", n });
+      if (!res.ok) return json(res, 400);
+      return json({ code, pin }, 201);
+    }
+    return json({ error: "Gerade ist kein Raumcode frei." }, 503);
+  }
+
+  // Einzelheiten und Eingriffe in einen Raum
+  const r = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)(?:\/(act))?$/);
+  if (r && ROOM_CODE_RE.test(r[1])) {
+    const stub = env.ROOMS.get(env.ROOMS.idFromName(r[1]));
+    if (!r[2] && request.method === "GET") {
+      const detail = await stub.adminDetail();
+      if (!detail) await settings.roomGone(r[1]);
+      return detail ? json({ room: detail }) : json({ ok: false, error: "Den Raum gibt es nicht mehr." }, 404);
+    }
+    if (r[2] && request.method === "POST") {
+      const res = await stub.adminAct(body.action as AdminRoomAction);
+      return json(res, res.ok ? 200 : 400);
+    }
+  }
+
+  const m = path.match(/^\/api\/admin\/rooms\/([A-Z0-9]+)\/(close|unlock)$/);
+  if (m && request.method === "POST") {
+    if (!ROOM_CODE_RE.test(m[1])) return json({ error: "Ungültiger Raumcode." }, 400);
+    const stub = env.ROOMS.get(env.ROOMS.idFromName(m[1]));
+    const ok = m[2] === "close" ? await stub.adminClose() : await stub.adminUnlock();
+    if (!ok) await settings.roomGone(m[1]);
+    return json({ ok }, ok ? 200 : 404);
+  }
+
+  return json({ error: "Nicht gefunden." }, 404);
+}

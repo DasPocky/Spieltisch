@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Activity, BarChart3, ChevronRight, Dices, Settings2, Users, Wrench, type LucideIcon } from "lucide-react";
-import { navigate } from "@/hooks/useRoute";
+import { navigate, type AdminSection } from "@/hooks/useRoute";
 import { useDev } from "@/lib/dev";
 
-export type AdminSection = "start" | "live" | "statistik" | "spiele" | "leute" | "einstellungen" | "entwickler";
+export type { AdminSection };
 
 export const SECTIONS: { id: Exclude<AdminSection, "start">; title: string; icon: LucideIcon; desc: string }[] = [
   { id: "live", title: "Live", icon: Activity, desc: "Offene Räume, Dauerräume, wer gerade da ist" },

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Download, Loader2, Trash2 } from "lucide-react";
-import { WIPE_KINDS, type ArchivedRoom, type SiteConfig, type WipeKind } from "@shared/platform/access";
+import { type SiteConfig } from "@shared/platform/access";
+import { WIPE_KINDS, type ArchivedRoom, type WipeKind } from "@shared/platform/admin";
 import { setSiteConfig } from "@/hooks/useSiteConfig";
 import { rememberEpoch } from "@/lib/freshStart";
 import { Button } from "@/components/ui/button";

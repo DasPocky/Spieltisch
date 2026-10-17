@@ -2,34 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { toast } from "sonner";
 import type { AccessConfig, GameDefaults, SiteConfig } from "@shared/platform/access";
 import { setSiteConfig } from "@/hooks/useSiteConfig";
+import { adminToken, isAdminDevice, setAdminDevice, TOKEN_KEY } from "@/lib/admin";
+import { writeStr } from "@/lib/storage";
 import { AuthError, toAccess, type Api } from "./shared";
-
-/** Sitzungs-Token des Admins – so bleibt man auch nach dem Neuladen angemeldet */
-const TOKEN_KEY = "spieltisch:admin";
-/** Dieses Gerät gehört einem Admin: Der Tab „Verwaltung“ bleibt, auch wenn die Sitzung abläuft */
-const DEVICE_KEY = "spieltisch:admin-device";
-
-const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-const write = (k: string, v: string | null) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch { /* egal */ } };
-
-export const adminToken = () => read(TOKEN_KEY);
-export const isAdminDevice = () => read(DEVICE_KEY) === "1";
-
-const deviceListeners = new Set<() => void>();
-function setAdminDevice(on: boolean) {
-  write(DEVICE_KEY, on ? "1" : null);
-  deviceListeners.forEach((l) => l());
-}
-/** Für die Tab-Leiste: ist dieses Gerät ein Admin-Gerät? (ändert sich beim An- und Abmelden) */
-export function useAdminDevice(): boolean {
-  const [on, setOn] = useState(isAdminDevice);
-  useEffect(() => {
-    const l = () => setOn(isAdminDevice());
-    deviceListeners.add(l);
-    return () => { deviceListeners.delete(l); };
-  }, []);
-  return on;
-}
 
 interface AdminState {
   config: SiteConfig;
@@ -60,7 +35,7 @@ export function AdminProvider({ children, login }: { children: ReactNode; login:
   const setConfig = useCallback((c: SiteConfig) => { setConfigState(c); setSiteConfig(c); }, []);
 
   const signOut = useCallback((text?: string) => {
-    write(TOKEN_KEY, null); setToken(null); setConfigState(null);
+    writeStr(TOKEN_KEY, null); setToken(null); setConfigState(null);
     if (text) setMessage(text);
   }, []);
 
@@ -91,7 +66,7 @@ export function AdminProvider({ children, login }: { children: ReactNode; login:
       const res = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) });
       const r = (await res.json()) as { ok: boolean; error?: string; config?: SiteConfig; token?: string };
       if (!r.ok || !r.config) return r.error ?? "Anmeldung fehlgeschlagen.";
-      if (r.token) { write(TOKEN_KEY, r.token); setToken(r.token); }
+      if (r.token) { writeStr(TOKEN_KEY, r.token); setToken(r.token); }
       setAdminDevice(true);
       setMessage(null);
       setConfigState(r.config);
@@ -138,25 +113,4 @@ export function AdminProvider({ children, login }: { children: ReactNode; login:
 
   if (!config) return <>{login({ onLogin, checking, message })}</>;
   return <Ctx.Provider value={{ config, api, save, saveDefaults, setConfig, logout }}>{children}</Ctx.Provider>;
-}
-
-/**
- * Hinweis-Punkt am Tab „Verwaltung“: zählt, was Aufmerksamkeit braucht (z. B. Räume mit PIN-Sperre).
- * Nur auf Admin-Geräten mit gültiger Sitzung, gelegentlich neu geladen.
- */
-export function useAdminAttention(on: boolean): number {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    const token = adminToken();
-    if (!on || !token) { setN(0); return; }
-    let alive = true;
-    const load = () => fetch("/api/admin/rooms", { headers: { authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { rooms?: { locked?: boolean }[] } | null) => { if (alive && d?.rooms) setN(d.rooms.filter((r) => r.locked).length); })
-      .catch(() => { /* still – beim nächsten Mal */ });
-    void load();
-    const t = setInterval(load, 60_000);
-    return () => { alive = false; clearInterval(t); };
-  }, [on]);
-  return n;
 }

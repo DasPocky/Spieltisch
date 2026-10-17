@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
-import type { DirGroup, DirProfile } from "@shared/platform/access";
+import type { DirGroup, DirProfile } from "@shared/platform/admin";
 import { Confirm } from "@/components/Confirm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

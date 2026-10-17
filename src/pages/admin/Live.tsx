@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Bot, ChevronRight, Crown, Eye, Lock, Play, RefreshCw, Send, UserX } from "lucide-react";
-import type { AdminRoom } from "@shared/platform/access";
+import type { AdminRoom } from "@shared/platform/admin";
 import {
   ADMISSION_LABEL, ADMISSIONS, cleanRoomName, LIFE_LABEL, MAX_ROOM_NAME, VISIBILITIES, VISIBILITY_LABEL,
   type Admission, type RoomAccess, type RoomLife, type Visibility,
 } from "@shared/platform/directory";
-import { MAX_NOTICE, type AdminRoomAction, type AdminRoomDetail } from "@shared/platform/protocol";
+import { MAX_NOTICE } from "@shared/platform/protocol";
+import { type AdminRoomAction, type AdminRoomDetail } from "@shared/platform/admin";
 import { Confirm } from "@/components/Confirm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

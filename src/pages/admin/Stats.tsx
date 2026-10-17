@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
-import { FEATURE_KINDS, isoWeek, STAT_KINDS, sumStats, type FeatureCounts, type FeatureKind, type SiteStats, type StatCounts } from "@shared/platform/access";
+import { FEATURE_KINDS, isoWeek, STAT_KINDS, sumStats, type FeatureCounts, type FeatureKind, type SiteStats, type StatCounts } from "@shared/platform/admin";
 import { Card } from "@/components/ui/card";
 import { readStr, writeStr } from "@/lib/storage";
 import { fmt } from "@/lib/utils";

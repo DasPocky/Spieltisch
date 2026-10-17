@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Search, Trash2 } from "lucide-react";
-import type { ArchivedRoom } from "@shared/platform/access";
+import type { ArchivedRoom } from "@shared/platform/admin";
 import { Confirm } from "@/components/Confirm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
