@@ -39,6 +39,8 @@ Willkommen (neues Gerät) und Begrüßung mit Laden (bekanntes Gerät) |
 - **Versteckte Informationen** filtert jedes Spiel über `view(state, viewerId)` – z. B. die Reihenfolge des Kartenstapels oder die Rollen im Werwolf.
 - **Fairer Zufall** nur über `shared/platform/random.ts` (Krypto-Zufall ohne Verzerrung). Online würfelt und mischt nur der Server. Startspieler und Geber wandern jede Partie weiter.
 - **Nichts bleibt hängen:** Ist der Host offline, kann ein anderer übernehmen. Wartet das Spiel auf jemanden, der offline ist oder nicht reagiert, löst der Host über `skipTurn` auf.
+- **Namen:** Code (Variablen, Funktionen, Dateien, Test-IDs) auf Englisch, alles Sichtbare auf Deutsch – Texte, Ansagen, URLs (`/spiel/…/lokal`, `/admin/statistik`), Kommentare und Testnamen.
+- **Gemeinsame Bausteine zuerst:** Zufall und Codes (`shared/platform/random.ts`), Spielernamen (`playerName` in `turns.ts`), Speicher-Schlüssel (`src/lib/storage.ts`), Zeitangaben (`src/lib/time.ts`), kleine Stores (`src/lib/store.ts`), Auswahl (`Segmented`), Listenzeilen (`NavRow`). In Tests: `startLocal`, `createRoom`, `joinRoom`, `adminLogin`, `setConfig` aus `tests/e2e/util.ts`.
 
 ## Ein neues Spiel hinzufügen
 

@@ -1,23 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
+import { createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.clear());
 });
 
-async function startLocal(page: Page, names: string[], settings?: (p: Page) => Promise<void>) {
-  await page.goto("/spiel/ludo/lokal");
-  for (const n of names) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-  if (settings) {
-    await openSettings(page);
-    await settings(page);
-    await closeSettings(page);
-  }
-  await page.getByRole("button", { name: "Spiel starten" }).click();
+async function startLudo(page: Page, names: string[], settings?: (p: Page) => Promise<void>) {
+  await startLocal(page, "ludo", names, { fresh: false, settings });
   await expect(page.getByTestId("board")).toBeVisible();
 }
 
@@ -40,7 +30,7 @@ async function appTurn(page: Page) {
 }
 
 test("Ludo lokal mit App-Würfel: Brett, Würfeln, Figur ziehen", async ({ page }) => {
-  await startLocal(page, ["Anna", "Ben", "Cem", "Dora"]);
+  await startLudo(page, ["Anna", "Ben", "Cem", "Dora"]);
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   await expectNoScroll(page);
   await shot(page, "ludo-01-start");
@@ -76,7 +66,7 @@ test("Ludo Einstellungen in der Lobby", async ({ page }) => {
 test("Ludo mit echtem Würfel auf kleinem Handy bis zum Sieg", async ({ page }) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 320, height: 568 });
-  await startLocal(page, ["Anna", "Ben"], async (p) => { await p.getByRole("radio", { name: /Echter Würfel/ }).click(); });
+  await startLudo(page, ["Anna", "Ben"], async (p) => { await p.getByRole("radio", { name: /Echter Würfel/ }).click(); });
   await expectNoScroll(page);
   await shot(page, "ludo-06-small-real");
   // Anna zieht gezielt, Ben würfelt immer eine 1
@@ -111,7 +101,7 @@ test("Ludo mit echtem Würfel auf kleinem Handy bis zum Sieg", async ({ page }) 
 
 test("Ludo mit sechs Farben auf kleinem Handy", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await startLocal(page, ["Anna", "Ben", "Cem", "Dora", "Emil", "Fiona"], async (p) => { await p.getByRole("radio", { name: /6 Farben/ }).click(); });
+  await startLudo(page, ["Anna", "Ben", "Cem", "Dora", "Emil", "Fiona"], async (p) => { await p.getByRole("radio", { name: /6 Farben/ }).click(); });
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   for (let i = 0; i < 4; i++) await appTurn(page);
   await expectNoScroll(page);

@@ -1,16 +1,8 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { createRoom, newPhone, openSettings, shot } from "./util";
-
-const PW = "test-admin";
-const allOn = { site: "on", games: {}, message: "", features: { online: true, call: true, groups: true, profiles: true, local: true, offline: false } };
-
-async function setConfig(request: APIRequestContext, config: object, code?: string | null) {
-  const res = await request.post("/api/admin", { data: { password: PW, config, code } });
-  expect(res.ok()).toBe(true);
-}
+import { ADMIN_PW, adminLogin, ALL_ON, createRoom, newPhone, openSettings, setConfig, shot } from "./util";
 
 async function setDefaults(request: APIRequestContext, defaults: object) {
-  const res = await request.post("/api/admin", { data: { password: PW, defaults } });
+  const res = await request.post("/api/admin", { data: { password: ADMIN_PW, defaults } });
   expect(res.ok()).toBe(true);
 }
 
@@ -22,13 +14,6 @@ async function adminShot(page: Page, name: string) {
   await page.screenshot({ path: `${ADMIN_SHOTS}/${name}.png`, fullPage: true });
 }
 
-async function login(page: Page) {
-  await page.goto("/admin");
-  await page.getByLabel("Admin-Passwort").fill(PW);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page.getByTestId("admin-tile-live")).toBeVisible();
-}
-
 /** Bereich der Verwaltung öffnen (über die Kachel auf dem Admin-Start) */
 async function section(page: Page, id: "live" | "statistik" | "spiele" | "leute" | "einstellungen") {
   if (!/\/admin\/?$/.test(new URL(page.url()).pathname)) await page.goto("/admin");
@@ -38,11 +23,11 @@ async function section(page: Page, id: "live" | "statistik" | "spiele" | "leute"
 
 // Läuft in der CI auf einem eigenen Server ohne Einrichtungsschritt – deshalb hier selbst alles einschalten
 test.beforeAll(async ({ request }) => {
-  await setConfig(request, allOn, null);
+  await setConfig(request, ALL_ON, null);
 });
 
 test.afterEach(async ({ request }) => {
-  await setConfig(request, allOn, null);
+  await setConfig(request, ALL_ON, null);
   await setDefaults(request, {});
 });
 
@@ -54,8 +39,8 @@ test("Admin: falsches Passwort wird abgelehnt", async ({ page }) => {
 });
 
 test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, request }) => {
-  await setConfig(request, allOn, null);
-  await login(page);
+  await setConfig(request, ALL_ON, null);
+  await adminLogin(page);
   await section(page, "spiele");
   await page.getByRole("radiogroup", { name: "Freigabe Kniffel" }).getByRole("radio", { name: "Aus" }).click();
   await expect(page.getByText("Kniffel: Aus")).toBeVisible();
@@ -107,11 +92,11 @@ test("Admin: ganzer Spieltisch aus mit Hinweis", async ({ page, request }) => {
   await expect(page.getByText("Heute ab 20 Uhr wieder offen")).toBeVisible();
   await shot(page, "99-admin-closed");
   // Admin-Seite bleibt erreichbar
-  await login(page);
+  await adminLogin(page);
 });
 
 test("Admin: bleibt nach dem Neuladen angemeldet, Abmelden beendet die Sitzung", async ({ page, request }) => {
-  await login(page);
+  await adminLogin(page);
   const token = await page.evaluate(() => localStorage.getItem("spieltisch:admin"));
   expect(token).toMatch(/^[0-9a-f]{64}$/);
   // Token gilt für die Admin-API
@@ -147,7 +132,7 @@ test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ pa
     ws.close();
   }, code);
 
-  await login(page);
+  await adminLogin(page);
   // Admin-Start meldet die Sperre und löst sie mit einem Tipp; der Tab trägt einen Punkt
   await expect(page.getByTestId("admin-notes")).toContainText(code);
   await expect(page.getByTestId("admin-dot")).toBeVisible();
@@ -177,7 +162,7 @@ test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ pa
 });
 
 test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({ page, browser }) => {
-  await login(page);
+  await adminLogin(page);
   await section(page, "spiele");
   await page.getByRole("button", { name: "Standards Kniffel" }).click();
   const sheet = page.getByTestId("defaults-sheet");
@@ -206,7 +191,7 @@ test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({
 });
 
 test("Admin: Übersicht zählt Räume und Partien", async ({ page, request, browser }) => {
-  const before = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
+  const before = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": ADMIN_PW } })).json();
   const rooms = (before.totals.kniffel?.rooms ?? 0) as number;
 
   // Online-Raum anlegen und eine Partie starten
@@ -216,12 +201,12 @@ test("Admin: Übersicht zählt Räume und Partien", async ({ page, request, brow
   await expect(host.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
   await host.context().close();
 
-  const after = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
+  const after = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": ADMIN_PW } })).json();
   expect(after.totals.kniffel.rooms).toBeGreaterThanOrEqual(rooms + 1);
   // Spitzenzeit gezählt
   expect(Object.values(after.days[0].slots ?? {}).reduce((a: number, b) => a + (b as number), 0)).toBeGreaterThanOrEqual(1);
 
-  await login(page);
+  await adminLogin(page);
   await section(page, "statistik");
   await page.getByRole("radio", { name: "Gesamt" }).click();
   const row = page.getByTestId("stat-game-kniffel");
@@ -237,7 +222,7 @@ test("Admin: Übersicht zählt Räume und Partien", async ({ page, request, brow
 
 test("Admin: Screenshot Freigaben", async ({ page }) => {
   test.skip(!ADMIN_SHOTS);
-  await login(page);
+  await adminLogin(page);
   await adminShot(page, "1-freigaben");
 });
 
@@ -245,7 +230,7 @@ test("Admin: Screenshot schmales Handy", async ({ browser }) => {
   test.skip(!ADMIN_SHOTS);
   const ctx = await browser.newContext({ viewport: { width: 320, height: 640 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "de-DE" });
   const page = await ctx.newPage();
-  await login(page);
+  await adminLogin(page);
   await section(page, "statistik");
   await expect(page.getByRole("heading", { name: "Partien pro Tag" })).toBeVisible();
   await adminShot(page, "5-statistik-320");
@@ -267,7 +252,7 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(host.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
 
-  await login(page);
+  await adminLogin(page);
   // Admin-Start: gerade offen
   await expect(page.getByTestId("live-rooms")).not.toContainText(/^Räume offen0/);
   await adminShot(page, "6-uebersicht");
@@ -319,7 +304,7 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(host.getByText(/geschlossen|beendet/i).first()).toBeVisible();
   await page.goto("/admin/leute");
   await expect(page.getByTestId("history")).toContainText("Noch keine Räume im Verlauf");
-  const stats = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": PW } })).json();
+  const stats = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": ADMIN_PW } })).json();
   expect(Object.keys(stats.totals)).toHaveLength(0);
   // Einstellungen auf Auslieferungszustand: kein Banner, alle Spiele frei, „Ein Handy für alle“ aus, Obergrenze 1 Woche
   const fresh = await (await request.get("/api/config")).json();
@@ -352,7 +337,7 @@ test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich lösc
   const g = await (await request.post("/api/groups", { data: { profile, member: "Ida", name: "Testrunde" } })).json();
   const code = g.group.code as string;
 
-  await login(page);
+  await adminLogin(page);
   await section(page, "leute");
   await page.getByRole("radio", { name: /Gruppen & Profile/ }).click();
   await expect(page.getByTestId(`group-${code}`)).toContainText("Testrunde");

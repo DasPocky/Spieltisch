@@ -1,19 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openLocal, openSettings, shot } from "./util";
+import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
 
-async function startLocal(page: Page, gameId: string) {
-  await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await openLocal(page, gameId);
-  for (const n of ["Anna", "Ben"]) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-}
+const startDuel = (page: Page, gameId: string) => startLocal(page, gameId, ["Anna", "Ben"], { start: false });
 const col = (p: Page, c: number) => p.getByRole("button", { name: `Spalte ${c}`, exact: true });
 
 test("Vier in einer Reihe lokal: Steine fallen, Reihe gewinnt, Nochmal tauscht die Farben", async ({ page }) => {
-  await startLocal(page, "vier");
+  await startDuel(page, "vier");
   await openSettings(page);
   await shot(page, "vier-01-settings");
   await closeSettings(page);
@@ -41,7 +33,7 @@ test("Vier in einer Reihe lokal: Steine fallen, Reihe gewinnt, Nochmal tauscht d
 
 test("Vier in einer Reihe auf kleinem Handy (320×568), großes Brett", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await startLocal(page, "vier");
+  await startDuel(page, "vier");
   await openSettings(page);
   await page.getByRole("radio", { name: /9 × 7/ }).click();
   await closeSettings(page);

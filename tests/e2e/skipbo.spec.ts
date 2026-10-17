@@ -1,20 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
+import { createRoom, expectNoScroll, joinRoom, newPhone, shot, startLocal, pick } from "./util";
 
 async function local(page: Page, names: string[], table = false) {
-  await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.goto("/spiel/skipbo/lokal");
-  for (const n of names) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-  if (table) {
-    await openSettings(page);
-    await page.getByRole("radio", { name: /Echte Karten/ }).click();
-    await closeSettings(page);
-  }
-  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await startLocal(page, "skipbo", names, { settings: table ? pick(/Echte Karten/) : undefined });
 }
 
 /** Zug beenden: erste Handkarte auf Ablage 1 */

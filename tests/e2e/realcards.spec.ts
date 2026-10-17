@@ -1,20 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal, pick } from "./util";
 
 /** Lokales Spiel mit Namen anlegen, Einstellungs-Radio wählen und starten */
 async function local(page: Page, gameId: string, names: string[], radios: RegExp[]) {
   await page.setViewportSize({ width: 360, height: 640 });
-  await page.goto("/");
-  await page.evaluate(() => localStorage.clear());
-  await page.goto(`/spiel/${gameId}/lokal`);
-  for (const n of names) {
-    await page.getByLabel("Name des Spielers").fill(n);
-    await page.getByRole("button", { name: "Hinzufügen" }).click();
-  }
-  await openSettings(page);
-  for (const r of radios) await page.getByRole("radio", { name: r }).click();
-  await closeSettings(page);
-  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await startLocal(page, gameId, names, { settings: pick(...radios) });
 }
 
 test("Flip 7 mit echten Karten: Karten antippen, die App rechnet", async ({ page }) => {
