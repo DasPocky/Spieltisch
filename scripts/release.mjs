@@ -7,7 +7,7 @@
  * so bleibt nie ein Update liegen. Geht das Hochladen allein nicht (z. B. neue Durable-Object-Klassen), wird klassisch deployt.
  *
  * Umgebung im Build: RELEASE_SECRET (gleicher Wert wie das Worker-Secret), LIVE_URL (optional, Standard: workers.dev-Adresse),
- * WORKERS_CI_COMMIT_SHA (setzt Cloudflare selbst).
+ * WORKERS_CI_COMMIT_SHA und WORKERS_CI_BRANCH (setzt Cloudflare selbst). Nur auf main – andere Zweige laden nur eine Vorschau hoch.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -48,6 +48,14 @@ const sha = process.env.WORKERS_CI_COMMIT_SHA || execFileSync("git", ["rev-parse
 const time = new Date().toISOString();
 const run = (args) => execFileSync("npx", ["wrangler", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
 const deployNow = (why) => { console.log(`Sofort live: ${why}`); console.log(run(["deploy"])); };
+
+// Nur main geht live. Andere Zweige (Vorschau): nur hochladen – nie den Live-Worker fragen, nie freischalten.
+const branch = process.env.WORKERS_CI_BRANCH || execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"]).toString().trim();
+if (branch !== "main") {
+  console.log(`Zweig ${branch}: nur Vorschau hochladen.`);
+  console.log(run(["versions", "upload", "--message", `Vorschau ${branch} ${sha.slice(0, 7)}`]));
+  process.exit(0);
+}
 
 await keepPreviousAssets();
 
