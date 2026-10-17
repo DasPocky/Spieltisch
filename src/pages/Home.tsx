@@ -69,7 +69,7 @@ export function Home() {
         {online && <RoomRow title="Deine Räume" cards={rooms.mine} mine testId="my-rooms" />}
         {online && <RoomRow title="Offene Räume" cards={rooms.open} testId="open-rooms" />}
         {online && rooms.loaded && !anyRooms && (
-          <p className="text-in flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-border ring-dashed" data-testid="no-rooms">
+          <p className="text-in flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-border ring-dashed lg:hidden" data-testid="no-rooms">
             <DoorOpen className="size-4.5 shrink-0" />Gerade ist kein Raum offen – öffne einen oder tritt mit Code bei.
           </p>
         )}
@@ -112,8 +112,8 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
       <section className="glass flex items-center gap-6 rounded-3xl p-7">
         <div className="min-w-0 flex-1">
           <span className="rounded-full bg-primary/12 px-2.5 py-1 text-xs font-bold text-primary">Großer Tisch</span>
-          <h2 className="mt-3 text-[1.75rem] font-bold leading-tight">Dieser Bildschirm ist der Tisch</h2>
-          <p className="mt-2 text-muted-foreground">Alle sehen Karten und Punkte groß in der Mitte. Eure Handys sind die Hände – geheim, wie am echten Tisch.</p>
+          <h2 className="mt-3 text-2xl font-bold leading-tight">Laptop oder Fernseher als Spieltisch</h2>
+          <p className="mt-2 text-muted-foreground">Karten, Würfel und Punkte liegen groß in der Mitte. Jeder spielt mit dem eigenen Handy – was geheim ist, bleibt geheim.</p>
           <Button size="lg" className="mt-5 h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={() => navigate("/tisch")} data-testid="table-open">
             <Tv className="size-5" />{onlineOff ? "Online abgeschaltet" : "Tisch aufbauen"}
           </Button>
@@ -122,13 +122,13 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
       </section>
       <section className="glass flex flex-col rounded-3xl p-7">
         <span className="self-start rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">Am Rechner</span>
-        <h2 className="mt-3 text-2xl font-bold leading-tight">Selbst mitspielen</h2>
-        <p className="mt-2 text-muted-foreground">Raum öffnen oder mit Code beitreten – wie am Handy, nur größer.</p>
+        <h2 className="mt-3 text-2xl font-bold leading-tight">Hier selbst mitspielen</h2>
+        <p className="mt-2 text-muted-foreground">Öffne einen Raum oder tritt mit Code bei. Die anderen kommen mit Handy oder Rechner dazu.</p>
         <div className="min-h-4 flex-1" />
         <div className="flex flex-wrap gap-2.5">
           <Button size="lg" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onRoom}><Plus className="size-5" />Raum öffnen</Button>
           <Button size="lg" variant="secondary" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onJoin}><LogIn className="size-5" />Beitreten</Button>
-          {localOn && <Button size="lg" variant="ghost" className="h-12 rounded-2xl px-4 text-base" onClick={onLocal}><Smartphone className="size-5" />{running ? `${running} weiter` : "Ein Gerät für alle"}</Button>}
+          {localOn && <Button size="lg" variant="ghost" className="h-12 rounded-2xl px-4 text-base" onClick={onLocal}><Smartphone className="size-5" />{running ? `${running} weiterspielen` : "Reihum an einem Gerät"}</Button>}
         </div>
       </section>
     </div>
@@ -138,7 +138,7 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
 /** Kleines Bild: Tisch von oben, drei Handys davor */
 function TableArt() {
   return (
-    <svg viewBox="0 0 220 150" className="w-52 shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 220 150" className="w-44 shrink-0" aria-hidden="true">
       <rect x="14" y="18" width="192" height="98" rx="18" fill="#8a5a36" />
       <rect x="26" y="28" width="168" height="78" rx="10" fill="#2f7f7a" />
       <rect x="92" y="48" width="24" height="34" rx="3" fill="#fffdf8" transform="rotate(-8 104 65)" />
@@ -194,7 +194,8 @@ function QuickGames({ games, featured, order, onPick, onAll, local }: { games: s
   if (!shown.length) return null;
   return (
     <section className="quick-section shrink-0" aria-label="Schnellstart">
-      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground lg:mb-3 lg:text-lg lg:text-foreground">Schnellstart <span className="text-xs font-normal">{local ? <><span className="lg:hidden">ein Handy</span><span className="hidden lg:inline">ein Gerät</span></> : "neuer Raum"}</span></h2>
+      <h2 className="mb-2 flex items-baseline justify-between px-1 text-sm font-semibold text-muted-foreground lg:mb-3 lg:text-lg lg:text-foreground"><span><span className="lg:hidden">Schnellstart</span><span className="hidden lg:inline">Gleich eine Runde</span></span>
+        <span className="text-xs font-normal lg:text-sm lg:text-muted-foreground">{local ? <><span className="lg:hidden">ein Handy</span><span className="hidden lg:inline">an diesem Gerät</span></> : "neuer Raum"}</span></h2>
       <div className="grid grid-cols-4 gap-2 lg:grid-cols-6 lg:gap-4">
         {shown.map((id, i) => {
           const g = GAME_LIST.find((x) => x.id === id)!;

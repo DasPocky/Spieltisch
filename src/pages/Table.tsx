@@ -180,7 +180,7 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         {fallback && <Fallback room={room} code={code} online={online} />}
       </main>
 
-      <aside className="flex w-80 shrink-0 flex-col gap-4 p-5 pl-0">
+      <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-white/10 bg-black/25 p-5">
         {playing && <JoinNote code={code} pin={pin} />}
         <Scores room={room} model={model} avatars={avatars} />
         {model && <Log lines={model.log} />}
@@ -304,7 +304,7 @@ function Scores({ room, model, avatars }: { room: RoomState; model: TableModel |
 
 function Log({ lines }: { lines: string[] }) {
   return (
-    <div className="paper-note min-h-0 flex-1 rotate-[0.6deg] overflow-hidden p-4">
+    <div className="paper-note min-h-0 shrink rotate-[0.6deg] overflow-hidden p-4">
       <div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">Verlauf</div>
       <ul className="mt-1">
         {[...lines].reverse().map((l, i) => <li key={`${i}-${l}`} className={cn("border-b border-dashed border-[#e3d2b3] py-2 text-sm", i === 0 && "font-semibold")}>{l}</li>)}
