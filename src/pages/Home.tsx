@@ -109,7 +109,7 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
 }) {
   return (
     <div className={cn("mt-6 hidden shrink-0 grid-cols-[1.3fr_1fr] gap-5 lg:grid", top && "lg:mt-0")} data-testid="desktop-hero">
-      <section className="glass flex items-center gap-6 rounded-3xl p-7">
+      <section className="desk-hero glass flex items-center gap-6 rounded-3xl p-7">
         <div className="min-w-0 flex-1">
           <span className="rounded-full bg-primary/12 px-2.5 py-1 text-xs font-bold text-primary">Großer Tisch</span>
           <h2 className="mt-3 text-2xl font-bold leading-tight">Laptop oder Fernseher als Spieltisch</h2>
@@ -120,7 +120,7 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
         </div>
         <TableArt />
       </section>
-      <section className="glass flex flex-col rounded-3xl p-7">
+      <section className="desk-hero glass flex flex-col rounded-3xl p-7">
         <span className="self-start rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">Am Rechner</span>
         <h2 className="mt-3 text-2xl font-bold leading-tight">Hier selbst mitspielen</h2>
         <p className="mt-2 text-muted-foreground">Öffne einen Raum oder tritt mit Code bei. Die anderen kommen mit Handy oder Rechner dazu.</p>
@@ -138,7 +138,7 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
 /** Kleines Bild: Tisch von oben, drei Handys davor */
 function TableArt() {
   return (
-    <svg viewBox="0 0 220 150" className="w-44 shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 220 150" className="desk-art w-44 shrink-0" aria-hidden="true">
       <rect x="14" y="18" width="192" height="98" rx="18" fill="#8a5a36" />
       <rect x="26" y="28" width="168" height="78" rx="10" fill="#2f7f7a" />
       <rect x="92" y="48" width="24" height="34" rx="3" fill="#fffdf8" transform="rotate(-8 104 65)" />
@@ -202,7 +202,7 @@ function QuickGames({ games, featured, order, onPick, onAll, local }: { games: s
           return (
             // Kleine Handys: nur eine Reihe (drei Spiele und „Alle“), damit nichts scrollt
             <button key={id} type="button" onClick={() => onPick(id)} data-testid={`quick-${id}`}
-              className={cn(i >= 3 && "quick-extra", "glass relative lg:gap-2 lg:py-5 flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring", i >= 7 && "hidden lg:flex")}>
+              className={cn(i >= 3 && "quick-extra", "quick-tile glass relative lg:gap-2 lg:py-5 flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring", i >= 7 && "hidden lg:flex", i >= 5 && "quick-desk-more")}>
               {featured.includes(id) && <span className="absolute top-1 right-1 rounded-full bg-primary px-1 text-[0.55rem] font-bold leading-tight text-primary-foreground">NEU</span>}
               <IconTile className="size-10 rounded-xl lg:size-14 lg:rounded-2xl"><g.Icon className="size-6.5 lg:size-9" /></IconTile>
               <span className="w-full truncate text-center text-[0.7rem] font-semibold lg:text-base">{g.info.name}</span>
