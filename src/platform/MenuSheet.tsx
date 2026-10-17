@@ -50,7 +50,7 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
 }) {
   const [open, setOpen] = useState(false);
   const [players, setPlayers] = useState(false);
-  const ui = getGameUI(room.gameId);
+  const ui = getGameUI(room.gameId, room.phase === "playing" ? room.gameVersion : undefined);
   const name = getGame(room.gameId).info.name;
   const Extras = ui.MenuExtras;
   const host = room.players.find((p) => p.id === room.hostId);
@@ -176,7 +176,7 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
 
 /** Host: Nochmal, anderes Spiel, ein Rückgängig-Knopf und – nur wenn etwas hängt – Überspringen */
 function HostActions({ room, board, online, dispatch }: { room: RoomState; board: BoardProps; online: Set<string> | null; dispatch: BoardProps["dispatch"] }) {
-  const ui = getGameUI(room.gameId);
+  const ui = getGameUI(room.gameId, room.phase === "playing" ? room.gameVersion : undefined);
   const skip = skipLabel(room);
   const [showSkip, setShowSkip] = useState(false);
   const stalled = useStalled(room.game);

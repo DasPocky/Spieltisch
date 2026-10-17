@@ -1,11 +1,11 @@
 /** Ein Durable Object pro Spielraum: Spieler, Spielstand, Chat, Anruf, Anklopfen, Bots und die Eingriffe der Verwaltung */
 import { DurableObject } from "cloudflare:workers";
 import { isGameId } from "../shared/games";
-import { PROFILE_ID_RE, type RecentGame } from "../shared/platform/profile";
+import { PROFILE_ID_RE } from "../shared/platform/profile";
 import { GROUP_CODE_RE, sanitizeAvatar } from "../shared/platform/group";
 import { accessFor, withDefaults, type GameDefaults, type SiteConfig } from "../shared/platform/access";
-import { type AdminRoom, type FeatureKind, type StatKind } from "../shared/platform/admin";
-import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, viewRoom, type RoomState } from "../shared/platform/room";
+import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type StatKind } from "../shared/platform/admin";
+import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import { BOT_PREFIX, botMove } from "../shared/platform/bots";
 import { shuffle } from "../shared/platform/random";
@@ -13,72 +13,19 @@ import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
 } from "../shared/platform/directory";
-import { ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_EMOJIS, CHAT_KEEP, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_RE, ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "../shared/platform/protocol";
+import { PROTOCOL, ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_RE, ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "../shared/platform/protocol";
 import { type AdminRoomAction, type AdminRoomDetail } from "../shared/platform/admin";
 import { Env, settingsOf, groupOf } from "./env";
 import { hashPin } from "./http";
+import { BUILD } from "../shared/build";
+import { parseClientMessage } from "../shared/platform/parse";
 
-export interface RoomData {
-  pinHash: string;
-  salt: string;
-  /** Raum mit Spielern, Einstellungen und Spielstand */
-  state: RoomState;
-  /** playerId → geheimer Token zum Wiederverbinden */
-  tokens: Record<string, string>;
-  fails: number;
-  lockUntil: number;
-  createdAt: number;
-  /** Beim Anlegen wurde der Zugangscode genannt – dann dürfen auch Spiele hinter dem Code gewählt werden */
-  unlocked?: boolean;
-  /** playerId → Profil-ID (nur auf dem Server, nie an andere Spieler) */
-  profiles?: Record<string, string>;
-  /** playerId → aktive Gruppe (nur auf dem Server) – bekommt das Ergebnis der Partie */
-  groups?: Record<string, string>;
-  /** Zuletzt ausgeführte Aktions-IDs je Spieler – doppelt geschickte Aktionen werden nur einmal ausgeführt */
-  seen?: Record<string, string[]>;
-  /** Beitritts-Nonce → Spieler, damit ein wiederholter Beitritt keinen zweiten Spieler anlegt */
-  joins?: Record<string, string>;
-  /** Vom Host entfernte Spieler (die letzten) – ihr Handy darf nicht still per Name + PIN wieder hinein */
-  kicked?: string[];
-  /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
-  call?: Record<string, CallPeer>;
-  callSessions?: Record<string, string>;
-  /** Text-Chat: die letzten Nachrichten */
-  chat?: ChatMsg[];
-  /** Eigener Raumcode (für die Admin-Übersicht) und letzte Änderung */
-  code?: string;
-  updatedAt?: number;
-  /** Wer gerade anklopft (Einlass „PIN und Anklopfen“) */
-  knocks?: Knock[];
-  /** Abgelehnt: Profil-ID bzw. Name → darf erst ab dann wieder anklopfen */
-  denied?: Record<string, number>;
-  /** Testraum (Bots): unsichtbar unter „Offene Räume“, zählt nicht in der Statistik */
-  test?: boolean;
-}
-/** Ein Gast mit richtiger PIN, der auf Einlass wartet – mit allem, was der Beitritt danach braucht */
-export interface Knock {
-  id: string;
-  name: string;
-  at: number;
-  snoozed?: boolean;
-  avatar?: unknown;
-  profile?: string;
-  group?: string;
-  nonce?: string;
-  /** Verbindung des Gasts weg seit – nach einem kurzen Funkloch geht es einfach weiter */
-  goneAt?: number;
-  /** Eingelassen, während der Gast kurz weg war – beim Wiederverbinden kommt er direkt hinein */
-  admitted?: boolean;
-}
-export interface Attachment {
-  playerId: string | null;
-  /** wartet vor der Tür (Anklopfen) */
-  knock?: string;
-  /** Verwaltung oder Großer Tisch schaut zu (nur lesen) */
-  watch?: boolean;
-  /** Großer Tisch (mit PIN angemeldet) */
-  table?: boolean;
-}
+export type { RoomData, Knock, Attachment, ResultJob } from "./room/types";
+import type { RoomData, Knock, Attachment, ResultJob } from "./room/types";
+export { JOIN_RETRY_MS } from "./room/join";
+import { joinedAs, rememberJoin, retryJoin } from "./room/join";
+import { appendChat, chatMessage, getsChat } from "./room/chat";
+import { resultJobs } from "./room/results";
 /** Innerer Pfad, über den der Worker eine geprüfte Zuschauer-Verbindung der Verwaltung weiterreicht */
 export const WATCH_PATH = "/__admin-watch";
 /** Räume ohne Aktivität werden nach 48 Stunden gelöscht. */
@@ -97,6 +44,10 @@ export class GameRoom extends DurableObject<Env> {
   /** Zeitpunkte der letzten Chat-Nachrichten je Spieler (Spam-Bremse, nur im Speicher) */
   private chatTimes: Record<string, number[]> = {};
 
+  /** Betriebskennzahlen seit der letzten Meldung */
+  private healthDelta: HealthDelta = emptyHealth();
+  /** Zuletzt gespeicherter Raumzustand (für die Revision) */
+  private savedState: RoomState | null = null;
   /** Letzte Meldung an die Admin-Übersicht (gedrosselt) */
   private lastReport = 0;
 
@@ -106,6 +57,17 @@ export class GameRoom extends DurableObject<Env> {
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
     ctx.blockConcurrencyWhile(async () => {
       this.room = (await ctx.storage.get<RoomData>("room")) ?? null;
+      // Nach einem Update: laufende Partie mit ihrer alten Version weiterspielen, umrechnen oder sanft beenden
+      if (this.room) {
+        // Raum-Format prüfen und ggf. übernehmen (geht das nicht, bleibt der gespeicherte Stand unverändert)
+        try { this.room.state = migrateRoomState(this.room.state); } catch { /* unverändert lassen */ }
+        const up = upgradeRoom(this.room.state);
+        if (up.room !== this.room.state) {
+          this.room.state = up.room;
+          await ctx.storage.put("room", this.room);
+        }
+        this.savedState = this.room.state;
+      }
     });
   }
 
@@ -246,15 +208,13 @@ export class GameRoom extends DurableObject<Env> {
           const text = String(a.text ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NOTICE);
           if (!text) return { ok: false, error: "Die Nachricht ist leer." };
           const m: ChatMsg = { id: crypto.randomUUID().replace(/-/g, "").slice(0, 20), from: ADMIN_CHAT_ID, at: Date.now(), text: text.slice(0, CHAT_MAX) };
-          const chat = (room.chat ??= []);
-          chat.push(m);
-          if (chat.length > CHAT_KEEP) chat.splice(0, chat.length - CHAT_KEEP);
+          appendChat((room.chat ??= []), m);
           await this.persist();
           for (const ws of this.ctx.getWebSockets()) {
             const att = ws.deserializeAttachment() as Attachment | null;
-            if (att?.playerId || att?.watch) {
+            if (getsChat(att)) {
               this.send(ws, { type: "chat", messages: [m], append: true });
-              if (att.playerId) this.send(ws, { type: "notice", text });
+              if (att?.playerId) this.send(ws, { type: "notice", text });
             }
           }
           return { ok: true };
@@ -359,6 +319,8 @@ export class GameRoom extends DurableObject<Env> {
     // Zuschauen der Verwaltung: nur über den inneren Pfad, den der Worker nach der Anmeldeprüfung nutzt
     const watch = new URL(request.url).pathname === WATCH_PATH;
     server.serializeAttachment({ playerId: null, ...(watch ? { watch: true } : {}) } satisfies Attachment);
+    // Version des Servers: ist das Gerät älter, lädt es an einem ruhigen Moment neu
+    this.send(server, { type: "hello", build: BUILD, protocol: PROTOCOL });
     if (watch) {
       this.send(server, { type: "chat", messages: this.room.chat ?? [] });
       this.sendWatch(server);
@@ -377,10 +339,11 @@ export class GameRoom extends DurableObject<Env> {
     // Falls die automatische Antwort nicht greift (lokal), selbst antworten
     if (text === PING) { try { ws.send(PONG); } catch { /* weg */ } return; }
 
-    let msg: ClientMessage;
-    try {
-      msg = JSON.parse(text) as ClientMessage;
-    } catch {
+    // Zentral prüfen: Typen, Längen, erlaubte Werte (shared/platform/parse.ts)
+    let msg: ClientMessage | null = null;
+    try { msg = parseClientMessage(JSON.parse(text)); } catch { msg = null; }
+    if (!msg) {
+      this.healthDelta.bad++;
       this.send(ws, { type: "error", message: "Ungültige Nachricht." });
       return;
     }
@@ -438,21 +401,15 @@ export class GameRoom extends DurableObject<Env> {
       // Bremse gegen Spam: höchstens 6 Nachrichten in 8 Sekunden je Spieler
       const times = (this.chatTimes[playerId] ??= []).filter((t) => now - t < 8000);
       if (times.length >= 6) { this.send(ws, { type: "error", message: "Nicht so schnell – kurz warten." }); return; }
-      const id = typeof msg.id === "string" && ACTION_ID_RE.test(msg.id) ? msg.id : null;
       const chat = (this.room.chat ??= []);
-      if (!id || chat.some((m) => m.id === id)) return;
-      const text = typeof msg.text === "string" ? msg.text.replace(/\s+/g, " ").trim().slice(0, CHAT_MAX) : "";
-      const emoji = typeof msg.emoji === "string" && (CHAT_EMOJIS as readonly string[]).includes(msg.emoji) ? msg.emoji : undefined;
-      if (!text && !emoji) return;
+      const m = chatMessage(msg, playerId, now, chat);
+      if (!m) return;
       times.push(now);
       this.chatTimes[playerId] = times;
-      const m: ChatMsg = { id, from: playerId, at: now, ...(text ? { text } : { emoji }) };
-      chat.push(m);
-      if (chat.length > CHAT_KEEP) chat.splice(0, chat.length - CHAT_KEEP);
+      appendChat(chat, m);
       await this.persist();
       for (const s of this.ctx.getWebSockets()) {
-        const att = s.deserializeAttachment() as Attachment | null;
-        if (att?.playerId || att?.watch) this.send(s, { type: "chat", messages: [m], append: true });
+        if (getsChat(s.deserializeAttachment() as Attachment | null)) this.send(s, { type: "chat", messages: [m], append: true });
       }
       await this.feature("chat");
       return;
@@ -489,7 +446,7 @@ export class GameRoom extends DurableObject<Env> {
       const seen = (this.room.seen ??= {});
       if (id && seen[playerId]?.includes(id)) {
         // Schon ausgeführt, nur die Bestätigung ging verloren
-        this.send(ws, { type: "ack", id });
+        this.send(ws, { type: "ack", id, rev: this.room.rev ?? 0 });
         this.sendState(ws, playerId);
         return;
       }
@@ -510,6 +467,10 @@ export class GameRoom extends DurableObject<Env> {
         const now = this.room.state;
         if (config && now.gameId !== before.gameId) now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[now.gameId]);
       } catch (e) {
+        // Kennzahl: welche Art von Zug abgelehnt wurde (Spielaktion mit ihrem Typ)
+        const a = msg.action as { type: string; action?: { type?: unknown } };
+        const kind = a.type === "game" && typeof a.action?.type === "string" ? `${this.room.state.gameId}:${a.action.type}` : a.type;
+        this.healthDelta.rejected[kind.slice(0, 40)] = (this.healthDelta.rejected[kind.slice(0, 40)] ?? 0) + 1;
         this.send(ws, { type: "error", message: e instanceof GameError ? e.message : "Das ging gerade nicht.", id: id ?? undefined });
         return;
       }
@@ -517,9 +478,11 @@ export class GameRoom extends DurableObject<Env> {
       if (msg.action.type === "removePlayer") this.kick(msg.action.id);
       const kind = msg.action.type;
       await this.persist(["start", "restart", "toLobby", "selectGame", "removePlayer"].includes(kind));
-      if (id) this.send(ws, { type: "ack", id });
+      if (id) this.send(ws, { type: "ack", id, rev: this.room.rev ?? 0 });
       this.broadcast();
       if (kind === "start" || kind === "restart") await this.count("started");
+      // Früher nicht angekommene Ergebnisse nachreichen
+      if (this.room.results?.length) await this.flushResults();
       await this.recordIfFinished(before);
     }
   }
@@ -536,20 +499,29 @@ export class GameRoom extends DurableObject<Env> {
     // Testräume schreiben nichts in Profile und Gruppen
     if (room.test || !logic.results || !room.profiles) return;
     const ctx = { players: now.players, hostId: now.hostId, actorId: null, options: now.options, now: Date.now() };
-    const results = logic.results(now.game, ctx);
-    const players = results.length;
-    await Promise.all(results.map(async (r) => {
-      const pid = room.profiles?.[r.id];
-      if (!pid) return;
-      const entry: RecentGame = { gameId: now.gameId, at: Date.now(), won: r.won, score: r.score, players, online: true };
-      try { await this.env.PROFILES.get(this.env.PROFILES.idFromName(pid)).record(entry, pid); } catch { /* Statistik ist nur ein Extra */ }
-    }));
-    // Gruppen der Mitspieler: jede bekommt das Ergebnis aller, die dort Mitglied sind
-    const entries = results.flatMap((r) => (room.profiles?.[r.id] ? [{ profile: room.profiles[r.id], won: r.won }] : []));
-    const codes = new Set(Object.entries(room.groups ?? {}).filter(([id]) => results.some((r) => r.id === id)).map(([, c]) => c));
-    await Promise.all([...codes].map(async (c) => {
-      try { await groupOf(this.env, c).recordOnline(now.gameId, entries); } catch { /* nur ein Extra */ }
-    }));
+    const jobs = resultJobs(room, now.gameId, now.round, logic.results(now.game, ctx), Date.now());
+    // Erst merken, dann schreiben – was schiefgeht, versucht der Raum später nochmal
+    room.results = [...(room.results ?? []), ...jobs].slice(-60);
+    await this.ctx.storage.put("room", room);
+    await this.flushResults();
+  }
+
+  /** Offene Ergebnisse an Profile und Gruppen schicken; was nicht ankommt, bleibt für den nächsten Versuch */
+  private async flushResults(): Promise<void> {
+    const room = this.room;
+    if (!room?.results?.length) return;
+    const left: ResultJob[] = [];
+    for (const j of room.results) {
+      try {
+        if (j.kind === "profile") await this.env.PROFILES.get(this.env.PROFILES.idFromName(j.target)).record(j.entry, j.target, j.event);
+        else await groupOf(this.env, j.target).recordOnline(j.gameId, j.entries, j.event);
+      } catch {
+        // höchstens einen Tag lang wiederholen – Statistik ist nur ein Extra
+        if (Date.now() - j.since < 86_400_000) left.push(j);
+      }
+    }
+    room.results = left.length ? left : undefined;
+    await this.ctx.storage.put("room", room);
   }
 
   /** Avatar und Gruppe beim (Wieder-)Beitritt übernehmen. true, wenn sich etwas geändert hat. */
@@ -627,6 +599,7 @@ export class GameRoom extends DurableObject<Env> {
   /** Lebensdauer abgelaufen: Ist jemand da, verlängern – sonst den Raum löschen (Dauerräume bleiben). */
   async alarm(): Promise<void> {
     if (!this.room) return;
+    if (this.room.results?.length) await this.flushResults();
     const ms = await this.lifeMs();
     if (ms === null) return;
     if (this.onlineIds().size > 0) { await this.ctx.storage.setAlarm(Date.now() + ms); return; }
@@ -674,16 +647,23 @@ export class GameRoom extends DurableObject<Env> {
   private async handleTable(ws: WebSocket, msg: Extract<ClientMessage, { type: "table" }>): Promise<void> {
     if (!(await this.checkPin(ws, msg.pin))) return;
     ws.serializeAttachment({ playerId: null, watch: true, table: true } satisfies Attachment);
-    this.send(ws, { type: "chat", messages: this.room!.chat ?? [] });
+    // Kein Chatverlauf: der Tisch zeigt keinen Chat, und den Bildschirm sieht jeder im Raum
     this.sendWatch(ws);
   }
 
-  private async handleJoin(ws: WebSocket, msg: Extract<ClientMessage, { type: "join" }>): Promise<void> {
+  private async handleJoin(ws: WebSocket, raw: Extract<ClientMessage, { type: "join" }>): Promise<void> {
     const room = this.room!;
+    // Profil nur mit passendem Geräteschlüssel übernehmen (sonst könnte jeder fremde Statistiken füllen)
+    let msg = raw;
+    if (typeof msg.profile === "string" && !(msg.playerId && room.profiles?.[msg.playerId] === msg.profile)) {
+      const ok = PROFILE_ID_RE.test(msg.profile) && typeof msg.profileKey === "string"
+        && await this.env.PROFILES.get(this.env.PROFILES.idFromName(msg.profile)).owns(msg.profileKey).catch(() => false);
+      if (!ok) msg = { ...msg, profile: undefined };
+    }
 
     // Entfernt: Auch ein Wiederverbinden (oder derselbe Beitritt nochmal) bringt niemanden zurück –
     // sonst kommt ein Handy, das gerade neu verbindet, mit Name + PIN einfach wieder herein
-    const nonceId = typeof msg.nonce === "string" ? room.joins?.[msg.nonce] : undefined;
+    const nonceId = joinedAs(typeof msg.nonce === "string" ? room.joins?.[msg.nonce] : undefined);
     if ((msg.playerId && room.kicked?.includes(msg.playerId)) || (nonceId && room.kicked?.includes(nonceId))) {
       this.send(ws, { type: "error", code: "kicked", fatal: true, message: "Du wurdest aus dem Raum entfernt." });
       return;
@@ -692,6 +672,7 @@ export class GameRoom extends DurableObject<Env> {
     // Wiederverbinden mit Token (ohne PIN)
     if (msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token
         && inRoom(room.state, msg.playerId)) {
+      this.healthDelta.reconnects++;
       ws.serializeAttachment({ playerId: msg.playerId } satisfies Attachment);
       this.dropOldSockets(msg.playerId, ws);
       let changed = false;
@@ -707,9 +688,12 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
-    // Derselbe Beitritt nochmal (Antwort ging unterwegs verloren): keinen zweiten Spieler anlegen
+    if (!(await this.checkPin(ws, msg.pin))) return;
+
+    // Derselbe Beitritt nochmal (Antwort ging unterwegs verloren): keinen zweiten Spieler anlegen.
+    // Nur kurz danach und nur mit richtiger PIN – eine bekannt gewordene Nonce ist kein Zugang.
     const nonce = typeof msg.nonce === "string" && ACTION_ID_RE.test(msg.nonce) ? msg.nonce : null;
-    const again = nonce ? room.joins?.[nonce] : undefined;
+    const again = retryJoin(room.joins, nonce, Date.now());
     if (again && room.tokens[again] && inRoom(room.state, again)) {
       ws.serializeAttachment({ playerId: again } satisfies Attachment);
       this.dropOldSockets(again, ws);
@@ -718,8 +702,6 @@ export class GameRoom extends DurableObject<Env> {
       this.broadcast();
       return;
     }
-
-    if (!(await this.checkPin(ws, msg.pin))) return;
 
     // Grenze aus den Admin-Einstellungen
     try {
@@ -785,11 +767,12 @@ export class GameRoom extends DurableObject<Env> {
     }
     room.tokens[playerId] = token;
     await this.count("players");
-    if (data.nonce) room.joins = Object.fromEntries([...Object.entries(room.joins ?? {}), [data.nonce, playerId]].slice(-40));
+    if (data.nonce) room.joins = rememberJoin(room.joins, data.nonce, playerId, Date.now());
     if (typeof data.profile === "string" && PROFILE_ID_RE.test(data.profile)) (room.profiles ??= {})[playerId] = data.profile;
     await this.applyExtras(playerId, { type: "join", avatar: data.avatar as never, group: data.group as never });
     ws.serializeAttachment({ playerId } satisfies Attachment);
     await this.persist(true);
+    this.healthDelta.joins++;
     this.send(ws, { type: "joined", playerId, token });
     this.send(ws, { type: "chat", messages: room.chat ?? [] });
     this.broadcast();
@@ -937,7 +920,7 @@ export class GameRoom extends DurableObject<Env> {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews() });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
     }
   }
 
@@ -950,7 +933,7 @@ export class GameRoom extends DurableObject<Env> {
 
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews() });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
   }
 
   /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */
@@ -985,7 +968,7 @@ export class GameRoom extends DurableObject<Env> {
   /** Für die Verwaltung: Sicht eines Gasts ohne eigene Karten, dazu wer online ist und wer klopft */
   private sendWatch(ws: WebSocket, online = [...this.onlineIds(), ...(this.room?.state.bots ?? [])]): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, WATCH_ID), you: WATCH_ID, online, call: this.room.call ?? {}, knocks: this.knockViews() });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, WATCH_ID), you: WATCH_ID, online, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
   }
 
   private send(ws: WebSocket, msg: ServerMessage): void {
@@ -996,6 +979,8 @@ export class GameRoom extends DurableObject<Env> {
   private async persist(important = false): Promise<void> {
     if (!this.room) return;
     this.room.updatedAt = Date.now();
+    // Neuer Raumzustand (Spielzug, Beitritt, Einstellung …): Revision hochzählen
+    if (this.room.state !== this.savedState) { this.room.rev = (this.room.rev ?? 0) + 1; this.savedState = this.room.state; }
     await this.ctx.storage.put("room", this.room);
     await this.scheduleEnd();
     await this.report(important);
@@ -1013,6 +998,12 @@ export class GameRoom extends DurableObject<Env> {
   private async report(force: boolean): Promise<void> {
     const info = await this.summary();
     if (!info) return;
+    // Kennzahlen gebündelt mitschicken (nicht jede einzeln)
+    const h = this.healthDelta;
+    if ((h.reconnects || h.joins || h.bad || Object.keys(h.rejected).length) && (force || Date.now() - this.lastReport >= REPORT_MS)) {
+      this.healthDelta = emptyHealth();
+      if (!this.room?.test) try { await settingsOf(this.env).health(h); } catch { /* nur ein Extra */ }
+    }
     const count = info.card?.online ?? 0;
     const flipped = (count === 0) !== (this.lastCount === 0);
     if (!force && !flipped && Date.now() - this.lastReport < REPORT_MS) return;

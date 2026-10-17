@@ -332,9 +332,10 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
 test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich löschen", async ({ page, request }) => {
   const AB = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const profile = Array.from({ length: 16 }, () => AB[Math.floor(Math.random() * AB.length)]).join("");
-  // Profil spielt eine Partie, Gruppe wird angelegt
-  expect((await request.post(`/api/profile/${profile}/result`, { data: { gameId: "kniffel", won: true, score: 210, players: 2 } })).ok()).toBe(true);
-  const g = await (await request.post("/api/groups", { data: { profile, member: "Ida", name: "Testrunde" } })).json();
+  // Profil spielt eine Partie, Gruppe wird angelegt (das Gerät weist sich mit dem Profil-Schlüssel aus)
+  const headers = { "x-profile-key": "ab".repeat(24) };
+  expect((await request.post(`/api/profile/${profile}/result`, { headers, data: { gameId: "kniffel", won: true, score: 210, players: 2 } })).ok()).toBe(true);
+  const g = await (await request.post("/api/groups", { headers, data: { profile, member: "Ida", name: "Testrunde" } })).json();
   const code = g.group.code as string;
 
   await adminLogin(page);
@@ -350,4 +351,37 @@ test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich lösc
   await page.getByTestId(`profile-${profile}`).getByRole("button").click();
   await page.getByRole("button", { name: "Löschen", exact: true }).click();
   await expect(page.getByTestId(`profile-${profile}`)).toHaveCount(0);
+});
+
+test("Admin: Update-Zeitpunkt, Neuigkeiten bearbeiten, Betrieb und Protokoll", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/einstellungen");
+  const modes = page.getByTestId("update-modes");
+  await expect(modes.getByRole("radio", { name: /^Sofort/ })).toHaveAttribute("aria-checked", "true");
+  await modes.getByRole("radio", { name: /Wenn keine Partie läuft/ }).click();
+  await expect(modes.getByRole("radio", { name: /Wenn keine Partie läuft/ })).toHaveAttribute("aria-checked", "true");
+  // Lokal fehlen die Schlüssel zum Warten – das steht deutlich da
+  await expect(page.getByTestId("update-missing")).toBeVisible();
+  await expect(page.getByLabel("Höchstens warten Stunden")).toHaveValue("3");
+  await shot(page, "a20-updates");
+  await modes.getByRole("radio", { name: /^Sofort/ }).click();
+  await expect(modes.getByRole("radio", { name: /^Sofort/ })).toHaveAttribute("aria-checked", "true");
+
+  // Neuigkeit umschreiben, dann wieder Original
+  const news = page.getByTestId("news-admin").locator("[data-testid^='news-']").first();
+  await news.getByRole("button", { name: "Bearbeiten" }).click();
+  await news.getByLabel("Titel").fill("Neu: leise Updates");
+  await news.getByRole("button", { name: "Speichern" }).click();
+  await expect(news).toContainText("Neu: leise Updates");
+  await expect(news).toContainText("geändert");
+  const config = await (await page.request.get("/api/config")).json();
+  expect(Object.values(config.news.edits)[0]).toMatchObject({ title: "Neu: leise Updates" });
+  await news.getByRole("button", { name: "Originaltext" }).click();
+  await expect(news).not.toContainText("geändert");
+
+  // Protokoll kennt die Änderungen (ohne Inhalte)
+  await page.reload();
+  await page.getByTestId("audit").locator("summary").click();
+  await expect(page.getByTestId("audit")).toContainText("Einstellungen gespeichert");
+  await shot(page, "a21-betrieb-protokoll");
 });

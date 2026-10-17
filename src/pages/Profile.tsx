@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Copy, Download, Loader2, Smartphone, Trophy, Upload, Users, Volume2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { parseProfileId, PROFILE_ID_RE, TRANSFER_CODE_RE, type ProfileStats } from "@shared/platform/profile";
 import type { Avatar as AvatarData } from "@shared/platform/group";
@@ -14,11 +14,13 @@ import { Confirm } from "@/components/Confirm";
 import { gameIcon } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { NAME_KEY, remove, RETURN_KEY } from "@/lib/storage";
-import { createTransfer, deleteProfile, exportData, fetchStats, importData, myAvatar, myName, myProfile, redeemTransfer, saveAvatar, saveName, wipeAllData } from "@/lib/profile";
+import { createTransfer, deleteProfile, exportData, fetchStats, importData, myAvatar, myName, myProfile, canUseProfile, redeemTransfer, saveAvatar, saveName, wipeAllData } from "@/lib/profile";
 import { adoptAndSync, syncMe, useMyGroups } from "@/lib/group";
 import { Avatar, AvatarPicker } from "@/platform/Avatar";
 import { QrCode } from "@/platform/QrCode";
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
+import { NavRow } from "@/platform/NavRow";
+import { NewsSheet } from "@/platform/WhatsNew";
 import { InstallCard } from "@/platform/InstallHint";
 import { goTab } from "@/platform/shell/AppShell";
 import { useAdminDevice } from "@/lib/admin";
@@ -37,6 +39,7 @@ const date = (t: number) => new Date(t).toLocaleDateString("de-DE", { day: "2-di
 /** Eigenes Profil: Name, Statistik je Spiel, letzte Partien, Profil auf ein anderes Gerät mitnehmen. */
 export function Profile() {
   const [id, setId] = useState(() => myProfile().id);
+  const [news, setNews] = useState(false);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState(myName);
@@ -76,12 +79,19 @@ export function Profile() {
   const adopt = async () => {
     setBusy(true);
     let pid: string | undefined = otherCode;
+    let key: string | undefined;
     if (TRANSFER_CODE_RE.test(otherCode)) {
       const res = await redeemTransfer(otherCode);
       if (!res.id) { setBusy(false); toast(res.error ?? "Das hat nicht geklappt."); return; }
       pid = res.id;
+      key = res.key;
+    } else if (!(await canUseProfile(pid))) {
+      // Früherer Profil-Code: geht nur, solange das Profil noch keinem Gerät gehört
+      setBusy(false);
+      toast("Dieses Profil gehört schon zu einem Handy – nimm dort „Code zum Übertragen anzeigen“.");
+      return;
     }
-    await adoptAndSync(pid);
+    await adoptAndSync(pid, key);
     setBusy(false);
     setId(pid); setName(myName()); setAvatar(myAvatar()); setOther(""); setTransfer(null);
     toast("Profil übernommen");
@@ -254,6 +264,8 @@ export function Profile() {
           <Button variant="ghost" className="text-destructive">Alle Daten auf diesem Gerät löschen</Button>
         </Confirm>
       </Card>
+      <NavRow icon={Sparkles} title="Neuigkeiten" sub="Was sich am Spieltisch zuletzt getan hat" onClick={() => setNews(true)} data-testid="news-link" />
+      <NewsSheet open={news} onOpenChange={setNews} />
       {!admin && (
         <button type="button" onClick={() => navigate("/admin")} data-testid="admin-link"
           className="mx-auto -mt-1 rounded-full px-3 py-1 text-xs text-muted-foreground/70 outline-none focus-visible:ring-2 focus-visible:ring-ring">Verwaltung</button>
@@ -301,7 +313,7 @@ export function ProfileTransfer({ code }: { code: string }) {
     setBusy(true);
     const res = await redeemTransfer(code);
     if (!res.id) { setBusy(false); setError(res.error ?? "Das hat nicht geklappt."); return; }
-    await adoptAndSync(res.id);
+    await adoptAndSync(res.id, res.key);
     toast("Profil übernommen");
     navigate("/profil", true);
   };

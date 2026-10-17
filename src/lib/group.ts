@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { GROUP_CODE_RE, type GroupPreview, type GroupView } from "@shared/platform/group";
-import { fetchStats, myAvatar, myName, myProfile, setLocalAvatar, adoptProfile } from "./profile";
+import { fetchStats, myAvatar, myName, myProfile, setLocalAvatar, adoptProfile, profileHeaders } from "./profile";
 import { NAME_KEY, readJSON, writeJSON } from "./storage";
 
 const KEY = "spieltisch:groups";
@@ -72,7 +72,7 @@ async function call(path: string, method = "GET", body?: Record<string, unknown>
     const res = await fetch(path, {
       method,
       cache: "no-store",
-      headers: body ? { "content-type": "application/json" } : { "x-profile": myProfile().id },
+      headers: { ...(body ? { "content-type": "application/json" } : { "x-profile": myProfile().id }), ...profileHeaders() },
       body: body ? JSON.stringify({ ...body, profile: myProfile().id }) : undefined,
     });
     const data = (await res.json().catch(() => ({}))) as Answer;
@@ -139,8 +139,8 @@ export async function syncMe() {
 }
 
 /** Profil übernehmen (Übertragungs-Code oder Profil-Code): Name, Avatar und Gruppen kommen mit */
-export async function adoptAndSync(id: string) {
-  adoptProfile(id);
+export async function adoptAndSync(id: string, key?: string) {
+  adoptProfile(id, key);
   set({ codes: [], active: null, cache: {} });
   const stats = await fetchStats(id);
   if (stats?.name) saveMyName(stats.name);

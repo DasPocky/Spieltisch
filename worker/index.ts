@@ -5,11 +5,12 @@ import { accessFor } from "../shared/platform/access";
 import { sanitizeAccess, type RoomCard } from "../shared/platform/directory";
 import { PIN_RE, ROOM_CODE_RE } from "../shared/platform/protocol";
 import { Env, settingsOf, profileOf, transferOf } from "./env";
-import { allowed, readBody, badRequest, json, withTimeout, makeCode } from "./http";
+import { allowed, countFail, limited, readBody, badRequest, json, withTimeout, makeCode, sameSecret } from "./http";
 import { GAME_IDS } from "./settings";
 import { handleGroups } from "./routes/groups";
 import { handleAdmin } from "./routes/admin";
 import { handleCall } from "./routes/call";
+import { ownsProfile } from "./auth";
 
 /** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
 let pendingRequests = 0;
@@ -22,6 +23,8 @@ function countRequest(env: Env, ctx: ExecutionContext): void {
   lastFlush = Date.now();
   ctx.waitUntil(settingsOf(env).addRequests(n).catch(() => undefined));
 }
+const notOwner = () => json({ error: "Dieses Profil gehört zu einem anderen Gerät. Übertrage es dort mit „Code zum Übertragen anzeigen“." }, 403);
+
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
@@ -29,6 +32,19 @@ export default {
 
     // Freigaben für alle (ohne Geheimnisse)
     if (url.pathname === "/api/config" && request.method === "GET") return json(await settingsOf(env).config());
+
+    // Welche Version läuft, wartet ein Update? (Geräte laden danach neu bzw. zeigen einen Hinweis)
+    if (url.pathname === "/api/version" && request.method === "GET") return json(await settingsOf(env).version());
+
+    // Der Build meldet eine hochgeladene Version: sofort live oder warten (scripts/release.mjs)
+    if (url.pathname === "/api/release" && request.method === "POST") {
+      const key = request.headers.get("x-release-key") ?? "";
+      if (!env.RELEASE_SECRET || !(await sameSecret(key, env.RELEASE_SECRET))) return json({ deploy: "now", note: "Ohne RELEASE_SECRET geht jede Version sofort live." }, 403);
+      const body = (await readBody(request)) as { versionId?: unknown; sha?: unknown; time?: unknown } | null;
+      const v = { versionId: String(body?.versionId ?? ""), sha: String(body?.sha ?? ""), time: String(body?.time ?? "") };
+      if (!/^[0-9a-f-]{36}$/.test(v.versionId) || !/^[0-9a-f]{7,40}$/.test(v.sha)) return badRequest();
+      return json({ deploy: await settingsOf(env).releaseOffer(v) });
+    }
 
     // Zugangscode prüfen
     if (url.pathname === "/api/access" && request.method === "POST") {
@@ -43,16 +59,20 @@ export default {
     const transfer = url.pathname.match(/^\/api\/profile\/([A-Z0-9]+)\/transfer$/);
     if (transfer && request.method === "POST") {
       if (!PROFILE_ID_RE.test(transfer[1])) return json({ error: "Ungültiges Profil." }, 400);
+      if (!(await ownsProfile(env, transfer[1], request))) return notOwner();
       const code = randomCode(8);
       const until = await transferOf(env, code).offer(transfer[1]);
       return json({ code, until });
     }
     const take = url.pathname.match(/^\/api\/transfer\/([A-Z0-9]+)$/);
     if (take && request.method === "POST") {
-      if (!allowed("transfer", request.headers.get("cf-connecting-ip") ?? "local", 20)) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);
+      const ip = request.headers.get("cf-connecting-ip") ?? "local";
+      if (!allowed("transfer", ip, 20) || !(await limited(env.SENSITIVE, "transfer", ip, 10))) return json({ error: "Zu viele Versuche. Bitte später nochmal." }, 429);
       if (!TRANSFER_CODE_RE.test(take[1])) return json({ error: "Ungültiger Code." }, 400);
       const id = await transferOf(env, take[1]).take();
-      return id ? json({ id }) : json({ error: "Der Code ist abgelaufen oder schon benutzt." }, 404);
+      if (!id) countFail("transfer", ip);
+      // Das neue Gerät bekommt einen eigenen Schlüssel für das Profil
+      return id ? json({ id, key: await profileOf(env, id).addKey() }) : json({ error: "Der Code ist abgelaufen oder schon benutzt." }, 404);
     }
 
     if (url.pathname === "/api/groups" || url.pathname.startsWith("/api/groups/")) return handleGroups(request, env, url.pathname);
@@ -61,6 +81,8 @@ export default {
     if (prof) {
       const id = prof[1];
       if (!PROFILE_ID_RE.test(id)) return json({ error: "Ungültiges Profil." }, 400);
+      // Nur das Gerät mit dem Schlüssel des Profils (die ID allein reicht nicht)
+      if (!(await ownsProfile(env, id, request))) return notOwner();
       const store = profileOf(env, id);
       if (prof[2] && request.method === "POST") {
         const body = (await readBody(request)) as Record<string, unknown> | null;
@@ -164,6 +186,11 @@ export default {
     }
 
     return json({ error: "Nicht gefunden." }, 404);
+  },
+
+  // Alle 5 Minuten: wartendes Update freischalten, wenn es dran ist
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(settingsOf(env).releaseTick().then(() => undefined, () => undefined));
   },
 } satisfies ExportedHandler<Env>;
 

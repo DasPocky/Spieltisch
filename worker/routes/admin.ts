@@ -18,6 +18,14 @@ export function adminCred(request: Request, password?: unknown): AdminCred {
   const pw = typeof password === "string" && password ? password : request.headers.get("x-admin-password") ?? undefined;
   return { token, password: pw || undefined };
 }
+/** Kurzbeschreibung eines Eingriffs fürs Protokoll */
+function auditLabel(path: string, body: Record<string, unknown>): string {
+  const room = path.match(/\/rooms\/([A-Z0-9]+)/)?.[1];
+  const action = body.action && typeof body.action === "object" ? String((body.action as { type?: unknown }).type ?? "") : "";
+  const what = path.replace(/^\/api\/admin\/?/, "").replace(/\/[A-Z0-9]{5}(\/|$)/, "/…$1") || "einstellungen";
+  return `${room ? `Raum ${room}: ` : ""}${what}${action ? ` (${action})` : ""}`;
+}
+
 export async function handleAdmin(request: Request, env: Env, path: string): Promise<Response> {
   const settings = settingsOf(env);
   let body: Record<string, unknown> = {};
@@ -36,6 +44,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
     // Ohne Token gar nicht erst prüfen (sonst zählte es als falsches Passwort)
     const ok = token ? await settings.auth({ token }) : { ok: false, status: 401, error: "Bitte melde dich neu an." };
     if (!ok.ok || !ROOM_CODE_RE.test(watch[1])) return json({ ok: false, error: ok.error }, ok.status ?? 403);
+    await settings.audit(`Raum ${watch[1]}: zugeschaut`);
     const inner = new Request(new URL(WATCH_PATH, request.url), request);
     return env.ROOMS.get(env.ROOMS.idFromName(watch[1])).fetch(inner);
   }
@@ -48,6 +57,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
       defaults: body.defaults,
     };
     const { status, ...res } = await settings.admin(cred, update);
+    if (res.ok && (update || res.token)) await settings.audit(update ? "Einstellungen gespeichert" : "Angemeldet");
     return json(res, res.ok ? 200 : status ?? 403);
   }
 
@@ -59,7 +69,18 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
   const auth = await settings.auth(cred);
   if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status ?? 403);
 
+  // Jeder Eingriff landet im Protokoll – nur was und wann, keine Inhalte
+  if (request.method !== "GET") await settings.audit(auditLabel(path, body));
+  if (path === "/api/admin/audit" && request.method === "GET") return json(await settings.auditList());
+  if (path === "/api/admin/health" && request.method === "GET") return json(await settings.healthList());
+
   if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
+  // Updates: Stand (Modus, wartende Version, Verlauf) und „Jetzt live schalten“
+  if (path === "/api/admin/release" && request.method === "GET") return json(await settings.releaseStatus());
+  if (path === "/api/admin/release" && request.method === "POST") {
+    const r = await settings.releaseTick(true);
+    return json(r, r.ok ? 200 : 502);
+  }
   if (path === "/api/admin/status" && request.method === "GET") {
     const status: ServerStatus = {
       ...(await settings.status()),

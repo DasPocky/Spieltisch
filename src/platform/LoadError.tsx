@@ -2,6 +2,7 @@ import { Component, type ReactNode } from "react";
 import { RotateCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { navigate } from "@/hooks/useRoute";
+import { isChunkError, reloadForMissingFile } from "@/lib/update";
 
 /**
  * Fängt ab, wenn ein Spiel nicht geladen werden kann (z. B. ohne Netz, bevor es je gespeichert wurde) –
@@ -10,6 +11,8 @@ import { navigate } from "@/hooks/useRoute";
 export class LoadError extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
+  // Nach einem Update gibt es alte Programmteile nicht mehr: mit Netz einfach einmal neu laden (die neue Version hat sie)
+  componentDidCatch(error: unknown) { if (isChunkError(error)) reloadForMissingFile(); }
   render() {
     if (!this.state.failed) return this.props.children;
     return (

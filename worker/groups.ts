@@ -100,9 +100,15 @@ export class GroupStore extends DurableObject<Env> {
   }
 
   /** Online-Partie (vom Raum): nur Mitglieder zählen */
-  async recordOnline(gameId: string, entries: { profile: string; won: boolean }[]): Promise<void> {
+  /** `event`: Kennung der Partie – eine Wiederholung (nach einem Fehler) zählt nicht doppelt */
+  async recordOnline(gameId: string, entries: { profile: string; won: boolean }[], event?: string): Promise<void> {
     const g = this.group;
     if (!g || !isGameId(gameId)) return;
+    if (event) {
+      const done = (await this.ctx.storage.get<string[]>("events")) ?? [];
+      if (done.includes(event)) return;
+      await this.ctx.storage.put("events", [...done, event].slice(-50));
+    }
     const players = entries.flatMap((e) => (g.keys[e.profile] ? [{ id: g.keys[e.profile], won: e.won }] : []));
     if (!players.length) return;
     addGroupResult(g, { gameId, players });

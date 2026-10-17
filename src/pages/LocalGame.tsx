@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { botMove } from "@shared/platform/bots";
-import { addPlayer, applyRoomAction, createRoom, currentPlayerId, defaultOptions, roomGame, type RoomAction, type RoomState } from "@shared/platform/room";
+import { addPlayer, applyRoomAction, createRoom, currentPlayerId, defaultOptions, roomGame, migrateRoomState, upgradeRoom, type RoomAction, type RoomState } from "@shared/platform/room";
 import { withDefaults, type GameDefaults } from "@shared/platform/access";
-import { GAME_IDS, getGame, isGameId } from "@shared/games";
+import { GAME_IDS, isGameId } from "@shared/games";
 import { GameError } from "@shared/platform/types";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Button } from "@/components/ui/button";
@@ -49,10 +49,12 @@ function useLocalStats(room: RoomState) {
 const applyDefaults = (r: RoomState, defaults: GameDefaults | undefined): RoomState =>
   ({ ...r, options: withDefaults(roomGame(r).settings, r.options, defaults?.[r.gameId]) });
 
-/** Ist ein gespeicherter Spielstand noch mit dem aktuellen Code verträglich? */
+/** Gespeicherten Spielstand fortsetzen – nach einem Update mit der alten Version zu Ende, umgerechnet oder sanft neu */
 function load(gameId: string): RoomState {
-  const saved = readJSON<RoomState & { gameVersion?: number }>(localKey(gameId));
-  if (saved?.v === 1 && saved.gameId === gameId && saved.gameVersion === getGame(gameId).version) return saved;
+  const saved = readJSON<RoomState>(localKey(gameId));
+  if (saved?.gameId === gameId) {
+    try { return upgradeRoom(migrateRoomState(saved)).room; } catch { /* unbrauchbar – neu anfangen */ }
+  }
   return applyDefaults(createRoom(gameId), siteConfigNow()?.defaults);
 }
 
@@ -86,7 +88,7 @@ export function LocalGame() {
   const [room, setRoom] = useState<RoomState>(() => load(localGameId()));
 
   useEffect(() => {
-    writeJSON(localKey(room.gameId), { ...room, gameVersion: getGame(room.gameId).version });
+    writeJSON(localKey(room.gameId), room);
     try { localStorage.setItem(LOCAL_GAME_KEY, room.gameId); } catch { /* egal */ }
   }, [room]);
   useLocalStats(room);

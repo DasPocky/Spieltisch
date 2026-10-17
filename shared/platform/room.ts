@@ -4,6 +4,7 @@
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
+import { legacyGame } from "../legacy";
 import { sanitizeAvatar, type Avatar } from "./avatar";
 import { sanitizeAccess, type RoomAccess } from "./directory";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
@@ -26,6 +27,13 @@ export interface RoomState {
   phase: "lobby" | "playing";
   /** Spielstand des gewählten Spiels, null in der Lobby */
   game: unknown;
+  /**
+   * Version des Spiels, mit der die laufende Partie begann (fehlt bei alten Räumen: aktuelle Version).
+   * Nach einem Update läuft eine Partie mit ihrer gesicherten Version weiter (`shared/legacy`).
+   */
+  gameVersion?: number;
+  /** Ein Update hat die laufende Partie beendet (nicht übertragbar) – die Lobby sagt es einmal an */
+  updated?: { gameId: string; at: number };
   /** zählt gestartete Partien */
   round: number;
   /** Spielstände vor den letzten Zügen – zum Zurücknehmen. Bleibt auf Server bzw. Gerät, geht nie an Mitspieler. */
@@ -158,8 +166,66 @@ export function createRoom(gameId: string = DEFAULT_GAME): RoomState {
   };
 }
 
+/** Logik der laufenden Partie – nach einem Update ggf. die gesicherte ältere Version */
 export function roomGame(room: RoomState): GameLogic<unknown, { type: string }> {
-  return getGame(room.gameId);
+  const logic = getGame(room.gameId);
+  if (room.phase !== "playing" || room.gameVersion === undefined || room.gameVersion === logic.version) return logic;
+  return legacyGame(room.gameId, room.gameVersion) ?? logic;
+}
+
+/** Version des Raum-Formats (`RoomState.v`). Beim Erhöhen eine Übernahme in ROOM_MIGRATIONS eintragen und eine Fixture ablegen. */
+export const ROOM_SCHEMA = 1;
+/** Übernahmen alter Raum-Formate: von Version n auf n+1 */
+const ROOM_MIGRATIONS: Record<number, (s: Record<string, unknown>) => Record<string, unknown>> = {};
+
+/**
+ * Gespeicherten Raum laden: alte Formate schrittweise übernehmen, Grundform sichern (fehlende Listen ergänzen).
+ * Wirft, wenn das gar kein Raum ist – dann bleibt der gespeicherte Stand unangetastet.
+ */
+export function migrateRoomState(raw: unknown): RoomState {
+  if (!raw || typeof raw !== "object" || typeof (raw as RoomState).gameId !== "string") throw new Error("Kein Raumzustand");
+  let s = raw as Record<string, unknown>;
+  let v = typeof s.v === "number" ? s.v : 1;
+  while (v < ROOM_SCHEMA) {
+    const step = ROOM_MIGRATIONS[v];
+    if (!step) throw new Error(`Keine Übernahme für Raum-Version ${v}`);
+    s = step(s);
+    v++;
+  }
+  const r = s as unknown as RoomState;
+  return {
+    ...r,
+    v: 1,
+    gameId: isGameId(r.gameId) ? r.gameId : DEFAULT_GAME,
+    players: Array.isArray(r.players) ? r.players : [],
+    options: r.options && typeof r.options === "object" ? r.options : defaultOptions(getGame(r.gameId).settings),
+    phase: r.phase === "playing" && r.game ? "playing" : "lobby",
+    game: r.phase === "playing" ? r.game ?? null : null,
+    round: typeof r.round === "number" ? r.round : 0,
+  };
+}
+
+/** Was ein Update mit einer laufenden Partie gemacht hat */
+export type UpgradeResult = "same" | "legacy" | "migrated" | "reset";
+
+/**
+ * Raum nach einem Update an die aktuelle Spielversion anpassen (Server beim Laden, Gerät beim Fortsetzen):
+ * gleiche Version – nichts tun; ältere Version gesichert – damit zu Ende spielen; sonst umrechnen (`migrate`);
+ * geht auch das nicht, endet die Partie sanft: zurück in die Lobby, Gruppe, Spielabend und Einstellungen bleiben.
+ */
+export function upgradeRoom(room: RoomState): { room: RoomState; result: UpgradeResult } {
+  const logic = getGame(room.gameId);
+  if (room.phase !== "playing" || !room.game) return { room, result: "same" };
+  // Räume von vor der Versionsprüfung: Partie gilt als aktuell
+  if (room.gameVersion === undefined) return { room: { ...room, gameVersion: logic.version }, result: "same" };
+  if (room.gameVersion === logic.version) return { room, result: "same" };
+  if (legacyGame(room.gameId, room.gameVersion)) return { room, result: "legacy" };
+  let game: unknown = null;
+  try { game = logic.migrate?.(room.game, room.gameVersion) ?? null; } catch { game = null; }
+  if (game) return { room: { ...room, game, gameVersion: logic.version, undo: [] }, result: "migrated" };
+  const s: RoomState = { ...room, phase: "lobby", game: null, undo: [], gameVersion: undefined, updated: { gameId: room.gameId, at: Date.now() } };
+  seatBench(s);
+  return { room: s, result: "reset" };
 }
 
 /** Erlaubte Spielerzahl für das gewählte Spiel mit den aktuellen Einstellungen */
@@ -227,10 +293,14 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (a.type === "start" && prev.phase !== "lobby") throw new GameError("Die Partie läuft schon.");
       if (a.type === "restart" && prev.phase !== "playing") throw new GameError("Es läuft keine Partie.");
       const s = structuredClone(prev);
+      // Neue Partien immer mit der aktuellen Version (auch nach einer Partie, die noch mit einer älteren lief)
+      const current = getGame(prev.gameId);
+      s.gameVersion = current.version;
+      delete s.updated;
       seatBench(s);
-      assertPlayerCount(s, logic);
-      s.game = logic.setup(context(s, actorId));
       s.phase = "playing";
+      assertPlayerCount(s, current);
+      s.game = current.setup(context(s, actorId));
       s.round++;
       s.undo = [];
       return s;

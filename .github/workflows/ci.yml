@@ -20,6 +20,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Bekannte Sicherheitslücken in Abhängigkeiten melden (bricht den Lauf nicht ab – Hinweis in der Ausgabe)
+      - run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
       - run: npm run build
       # Zufallspartien: im PR eine kurze Runde, auf main die übliche, nachts gründlich
       - run: npm test
@@ -41,6 +44,7 @@ jobs:
           - { name: "Spiele 3/4", args: "--project=spiele --no-deps --shard=3/4", setup: true }
           - { name: "Spiele 4/4", args: "--project=spiele --no-deps --shard=4/4", setup: true }
           - { name: "Verwaltung", args: "--project=admin --no-deps", setup: false }
+          - { name: "Desktop & Fernseher", args: "--project=geraete --no-deps", setup: false }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

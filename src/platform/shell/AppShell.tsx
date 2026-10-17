@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Dices, House, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { WhatsNew } from "@/platform/WhatsNew";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useActiveGroup } from "@/lib/group";
 import { myAvatar } from "@/lib/profile";
@@ -38,6 +39,7 @@ export function AppShell({ tab, children }: { tab: Tab; children: ReactNode }) {
     <div className="flex h-dvh-safe flex-col overflow-clip lg:flex-row">
       <div key={tab} className="tab-in flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-testid={`tab-${tab}`}>{children}</div>
       <TabBar tab={tab} />
+      <WhatsNew />
     </div>
   );
 }

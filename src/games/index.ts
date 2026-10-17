@@ -6,6 +6,7 @@
 import { use, type ComponentType } from "react";
 import { GAME_IDS, getGame, isGameId, type GameId } from "@shared/games";
 import type { GameUI } from "./types";
+import { legacyLoader } from "@/legacy";
 import { Icon as CodenamesIcon } from "./codenames/Icon";
 import { Icon as DameIcon } from "./dame/Icon";
 import { Icon as EinenachtIcon } from "./einenacht/Icon";
@@ -79,20 +80,25 @@ const loaded = new Map<string, GameUI>();
 const loading = new Map<string, Promise<GameUI>>();
 const idOf = (id: string): GameId => (isGameId(id) ? id : "tutto");
 
-/** Spiel laden (einmal) – für Vorladen, z. B. wenn es in der Lobby gewählt wird */
-export function loadGameUI(id: string): Promise<GameUI> {
+/**
+ * Spiel laden (einmal) – für Vorladen, z. B. wenn es in der Lobby gewählt wird.
+ * `version`: läuft eine Partie nach einem Update noch mit einer älteren Version, deren Oberfläche.
+ */
+export function loadGameUI(id: string, version?: number): Promise<GameUI> {
   const key = idOf(id);
-  let p = loading.get(key);
+  const old = version !== undefined && version !== getGame(key).version ? legacyLoader(key, version) : null;
+  const cacheKey = old ? `${key}@${version}` : key;
+  let p = loading.get(cacheKey);
   if (!p) {
-    p = LOADERS[key]().then((ui) => {
-      loaded.set(key, ui);
+    p = (old ?? LOADERS[key])().then((ui) => {
+      loaded.set(cacheKey, ui);
       // React liest ein fertiges Versprechen so direkt aus, ohne erneut zu warten
       Object.assign(p!, { status: "fulfilled", value: ui });
       return ui;
     });
-    // Fehlgeschlagen (z. B. kein Netz beim ersten Mal): beim nächsten Versuch neu laden
-    p.catch(() => loading.delete(key));
-    loading.set(key, p);
+    // Fehlgeschlagen (z. B. kein Netz beim ersten Mal oder Datei nach einem Update weg): beim nächsten Versuch neu laden
+    p.catch(() => loading.delete(cacheKey));
+    loading.set(cacheKey, p);
   }
   return p;
 }
@@ -101,9 +107,9 @@ export function loadGameUI(id: string): Promise<GameUI> {
  * Oberfläche eines Spiels. Nur während des Renderns aufrufen: Ist das Spiel noch nicht geladen,
  * wartet die nächste <Suspense>-Grenze (Ladeanzeige), bis es da ist.
  */
-export function getGameUI(id: string): GameUI {
+export function getGameUI(id: string, version?: number): GameUI {
   // Immer use() – React verlangt, dass es bei jedem Rendern gleich aufgerufen wird
-  return use(loadGameUI(id));
+  return use(loadGameUI(id, version));
 }
 
 /** Symbol eines Spiels – sofort verfügbar */

@@ -4,7 +4,8 @@ import { defineConfig } from "@playwright/test";
 const PORT = Number(process.env.PW_PORT ?? 5199);
 
 /**
- * Ende-zu-Ende-Tests im Handy-Format gegen den echten Dev-Server (inkl. Worker und Durable Objects).
+ * Ende-zu-Ende-Tests im Handy-Format gegen den echten Dev-Server (inkl. Worker und Durable Objects),
+ * dazu eine kleine Reihe für Desktop und Fernseher (Projekt „geraete“).
  * Lokal mit vorinstalliertem Chromium: PW_CHROMIUM_PATH=/pfad/zu/chromium npm run test:e2e
  */
 export default defineConfig({
@@ -28,7 +29,9 @@ export default defineConfig({
   // In der CI läuft er auf einem eigenen Rechner (mit eigenem Server), die Spiele-Tests verteilt auf vier (siehe .github/workflows/ci.yml).
   projects: [
     { name: "setup", testMatch: /\.setup\.ts$/ },
-    { name: "spiele", testIgnore: [/admin\.spec\.ts/, /\.setup\.ts$/], dependencies: ["setup"] },
+    { name: "spiele", testIgnore: [/admin\.spec\.ts/, /geraete\.spec\.ts/, /\.setup\.ts$/], dependencies: ["setup"] },
+    // Desktop und Fernseher: kleine eigene Reihe (Viewport je Test)
+    { name: "geraete", testMatch: /geraete\.spec\.ts/, use: { isMobile: false, hasTouch: false, deviceScaleFactor: 1 } },
     { name: "admin", testMatch: /admin\.spec\.ts/, dependencies: ["spiele"] },
   ],
   webServer: {
