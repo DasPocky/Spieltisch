@@ -42,6 +42,7 @@ test("App-Hülle: Tabs wechseln, Zurück führt zum Start, alles ohne Scrollen",
 
 test("Kleines Handy: Start und Spiele passen ohne Scrollen", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
+  await expect(page.getByTestId("greeting")).toBeVisible();
   await expectTabFits(page);
   await page.getByTestId("tabbar-spiele").click();
   await expect(page.getByTestId("game-grid")).toBeVisible();
