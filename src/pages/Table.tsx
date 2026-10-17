@@ -20,8 +20,7 @@ import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
-import { BlackCard } from "@/games/schamlos/Board";
-import { fillIn } from "@shared/games/schamlos/cards";
+import { cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type TableScene } from "@/platform/table/scene";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
@@ -180,7 +179,7 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
             <div className="text-sm opacity-80">Raum {code}{model?.color ? ` · gilt: ${model.color.label}` : ""}</div>
           </div>
         </header>
-        {model?.log.length ? <p className="paper-note absolute top-6 left-1/2 max-w-md -translate-x-1/2 -rotate-1 px-5 py-2.5 text-xl font-bold" data-testid="table-news">{model.log.at(-1)}</p> : null}
+        {model?.log.length ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
 
         {!playing && <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} />}
         {fallback && <Fallback room={room} code={code} online={online} />}
@@ -246,53 +245,82 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note }: {
   );
 }
 
-/** Schamlos in der Tischmitte: schwarze Karte groß, beim Wählen alle Sätze, danach der Gewinnersatz */
-function SchamlosCenter({ s, name, count }: { s: SchamlosState; name: (id: string) => string; count: number }) {
-  const sentence = (cards: string[], big = false) => (
-    <span className={big ? "text-4xl leading-tight" : "text-2xl leading-snug"}>
-      {fillIn(s.prompt, cards).map((p, i) => <span key={i} className={p.fill ? "font-bold text-[#ffb59c]" : undefined}>{p.text}</span>)}
-    </span>
-  );
-  const played = Object.keys(s.played).length;
+/** Eine Schamlos-Karte im echten Kartenformat (5:7), Schrift wächst mit der Karte */
+function ShCard({ black, children, className, style }: { black?: boolean; children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className="pointer-events-none absolute inset-x-[12%] inset-y-[18%] flex flex-col items-center justify-center gap-5" data-testid="table-schamlos">
-      {s.phase === "pick" && (
-        <>
-          <BlackCard prompt={s.prompt} className="max-w-3xl -rotate-1 p-8 text-4xl leading-tight shadow-2xl" />
-          <p className="paper-note px-5 py-2 text-xl font-bold">{played} von {count - 1} haben gelegt · {name(s.czar)} ist Zar</p>
-        </>
-      )}
-      {s.phase === "judge" && (
-        <>
-          <p className="paper-note px-5 py-2 text-xl font-bold">{name(s.czar)} liest vor und wählt am Handy</p>
-          <div className="grid w-full max-w-5xl grid-cols-2 gap-4">
-            {s.subs.map((x, i) => <div key={i} className="rounded-2xl bg-[#1b1e25] p-5 font-semibold text-white shadow-xl" style={{ rotate: `${(i % 3) - 1}deg` }}>{sentence(x.cards)}</div>)}
+    <div className={cn("@container relative aspect-[5/7] shrink-0 rounded-[6%] shadow-[0_14px_30px_-10px_rgb(0_0_0/0.7)]", black ? "bg-[#16171b] text-white ring-1 ring-white/10" : "bg-[#fdfdfb] text-[#16171b] ring-1 ring-black/10", className)} style={style}>
+      {/* Ohne Text: Rückseite einer verdeckt gelegten Karte */}
+      {children === undefined && <div className="absolute inset-0 grid place-items-center text-[13cqw] font-bold -rotate-12 text-black/25">Schamlos</div>}
+      <div className="absolute inset-[8%] flex flex-col">
+        <div className="min-h-0 flex-1 text-[9cqw] font-bold leading-[1.18]">{children}</div>
+        <div className={cn("flex items-center gap-[2cqw] text-[5cqw] font-bold", black ? "text-white/45" : "text-black/35")}>
+          <span className={cn("inline-block size-[6cqw] rotate-[-8deg] rounded-[1cqw]", black ? "bg-white/45" : "bg-black/35")} />Schamlos
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Schamlos in der Tischmitte: schwarze Karte, verdeckte Antworten, beim Wählen aufgedeckt, danach die Gewinnerkarte */
+function SchamlosCenter({ s, name, count }: { s: SchamlosState; name: (id: string) => string; count: number }) {
+  const prompt = fillIn(s.prompt, []).map((p, i) => <span key={i}>{p.fill ? <span className="tracking-[0.1em] text-white/60">______</span> : p.text}</span>);
+  const waiting = count - 1 - Object.keys(s.played).length;
+  const tilt = (i: number) => `${((i * 37) % 7) - 3}deg`;
+  const win = s.phase === "result" && s.pick !== null ? s.pick : null;
+  return (
+    <div className="pointer-events-none absolute inset-x-[8%] inset-y-[14%] flex flex-col items-center justify-center gap-6" data-testid="table-schamlos">
+      <div className="flex max-h-full min-h-0 items-center justify-center gap-10">
+        <ShCard black className="w-[min(15vw,28vh)] -rotate-2">{prompt}</ShCard>
+        {s.phase === "pick" && (
+          <div className="flex items-center">
+            {Object.keys(s.played).map((id, i) => <ShCard key={id} className="-ml-[6vw] w-[min(11vw,20vh)] first:ml-0" style={{ rotate: tilt(i) }} />)}
           </div>
-        </>
-      )}
-      {s.phase === "result" && s.pick !== null && s.subs[s.pick] && (
-        <>
-          <div className="max-w-4xl rounded-3xl bg-[#1b1e25] p-9 font-semibold text-white shadow-2xl ring-4 ring-[#ff7a59]">{sentence(s.subs[s.pick].cards, true)}</div>
-          <p className="paper-note px-6 py-3 text-2xl font-bold">Punkt für {name(s.subs[s.pick].by)}!</p>
-        </>
-      )}
+        )}
+        {s.phase !== "pick" && (
+          <div className="flex max-w-[60vw] flex-wrap items-center justify-center gap-x-6 gap-y-4">
+            {s.subs.map((x, i) => (
+              <div key={i} className={cn("relative flex transition", win !== null && win !== i && "opacity-35", win === i && "-translate-y-3 scale-110")} style={{ rotate: tilt(i) }}>
+                {x.cards.map((c, k) => (
+                  <ShCard key={c} className={cn("w-[min(10vw,19vh)]", k > 0 && "-ml-[5vw] mt-[2vh]", win === i && "ring-4 ring-[#ff7a59]")}>{cardText(c)}</ShCard>
+                ))}
+                {win === i && <span className="plate plate-turn absolute -bottom-4 left-1/2 -translate-x-1/2 text-lg whitespace-nowrap">{name(x.by)}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="table-banner" data-testid="table-schamlos-status">
+        {s.phase === "pick" && (waiting > 0 ? `${count - 1 - waiting} von ${count - 1} haben gelegt · ${name(s.czar)} ist Zar` : "Alle haben gelegt")}
+        {s.phase === "judge" && `${name(s.czar)} liest vor und wählt am Handy`}
+        {win !== null && s.subs[win] && `Punkt für ${name(s.subs[win].by)}!`}
+      </p>
     </div>
   );
 }
 
 /** Lobby: großer QR-Code in der Mitte des Tischs */
 function Lobby({ code, pin, count, host }: { code: string; pin: string; count: number; host?: string }) {
+  const steps = ["Handy-Kamera auf den Code halten", "Namen eingeben und beitreten", count === 0 ? "Wer zuerst da ist, wählt das Spiel" : `${host ?? "Der Host"} wählt das Spiel und startet`];
   return (
-    <div className="absolute inset-x-0 top-[30%] flex justify-center">
-      <div className="paper-note flex -rotate-1 items-center gap-6 p-6" data-testid="table-lobby">
-        <div className="rounded-2xl bg-white p-2.5"><QrCode value={joinLink(code, pin)} className="size-44" label="QR-Code zum Mitspielen" /></div>
-        <div className="max-w-xs">
-          <div className="text-sm font-bold uppercase tracking-wider text-[#8a6f4e]">Mitspielen</div>
-          <p className="mt-1 text-xl font-bold">Handy-Kamera auf den Code halten</p>
-          <div className="mt-4 text-4xl font-bold tracking-[0.15em]" data-testid="table-code">{code}</div>
-          <div className="text-[#6b5640]">PIN {pin}</div>
-          <p className="mt-4 text-[#6b5640]">{count === 0 ? "Wer zuerst beitritt, wählt das Spiel und startet es am Handy."
-            : `${host ?? "Der Host"} wählt am Handy das Spiel und startet es.`}</p>
+    <div className="absolute inset-0 grid place-items-center p-8">
+      <div className="paper-note flex items-stretch gap-8 p-8" data-testid="table-lobby">
+        <div className="grid place-items-center rounded-2xl bg-white p-4 shadow-inner ring-1 ring-black/5">
+          <QrCode value={joinLink(code, pin)} className="size-[min(16rem,30vh)]" label="QR-Code zum Mitspielen" />
+        </div>
+        <div className="flex max-w-sm flex-col">
+          <div className="text-sm font-bold uppercase tracking-[0.2em] text-[#8a6f4e]">Mitspielen</div>
+          <h2 className="mt-1 text-3xl font-bold leading-tight">Setzt euch an den Tisch</h2>
+          <ol className="mt-5 grid gap-3">
+            {steps.map((s, i) => (
+              <li key={s} className="flex items-center gap-3 text-lg">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#ff7a59] font-bold text-white">{i + 1}</span>{s}
+              </li>
+            ))}
+          </ol>
+          <div className="mt-auto flex items-end gap-6 border-t border-dashed border-[#d9c4a0] pt-4">
+            <div><div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">Raum</div><div className="text-4xl font-bold tracking-[0.15em]" data-testid="table-code">{code}</div></div>
+            <div><div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">PIN</div><div className="text-2xl font-bold tracking-[0.12em]">{pin}</div></div>
+          </div>
         </div>
       </div>
     </div>
