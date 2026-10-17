@@ -21,7 +21,8 @@ export const MODE_STATES: { value: ModeState; label: string }[] = [
  * Neue Spielweisen starten als „beta“ und werden nach der Abnahme auf „on“ gesetzt.
  */
 export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = {
-  maumau: { table: "on" },
+  // Referenzspiel fürs Mitspielen am Rechner – Beta bis zur Abnahme
+  maumau: { table: "on", desk: "beta" },
   uno: { table: "on" },
   schamlos: { table: "on" },
 };

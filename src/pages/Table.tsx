@@ -157,31 +157,15 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   const playing = room.phase === "playing";
   const game = GAME_LIST.find((g) => g.id === room.gameId) ?? null;
   const avatars = useMemo(() => roomAvatars(room), [room]);
-  const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
-  const [felt, setFelt] = useState<FeltRect | null>(null);
-  // Nur bei echter Änderung neu setzen – sonst zeichnet sich die Seite endlos neu
-  const onSeats = useCallback((next: { x: number; y: number }[], f: FeltRect) => {
-    const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
-    setPoints((prev) => (prev.length === next.length && prev.every((p, i) => near(p.x, next[i].x) && near(p.y, next[i].y)) ? prev : next));
-    setFelt((prev) => (prev && near(prev.x, f.x) && near(prev.y, f.y) && near(prev.w, f.w) && near(prev.h, f.h) ? prev : f));
-  }, []);
-  const seats = room.players.map((p) => p.id);
-  // Schamlos hat keine Karten auf dem Tisch, sondern Sätze: eigene Mitte, Plätze zeigen Punkte und Zar
   const sham = playing && tableOn && room.gameId === "schamlos" ? (room.game as SchamlosState) : null;
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
+  const [felt, setFelt] = useState<FeltRect | null>(null);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
       <main className="relative min-w-0 flex-1">
-        <TableCanvas model={fallback ? null : model} seats={seats} onSeats={onSeats} />
-
-        {/* Plätze am Tischrand: Bild (später Video), Name, Karten */}
-        {!fallback && room.players.map((p, i) => points[i] && (
-          <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
-            turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
-            note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : undefined} />
-        ))}
+        <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} />
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#3e9a92] to-[#1f5f5b] shadow-lg">{game ? <game.Icon className="size-6 text-white" /> : <Tv className="size-5 text-white" />}</span>
@@ -190,11 +174,9 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
             <div className="text-sm opacity-80">Raum {code}{model?.color ? ` · gilt: ${model.color.label}` : ""}</div>
           </div>
         </header>
-        {model?.log.length && !sham ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
 
         {!playing && <OnFelt rect={felt}><Lobby code={code} pin={pin} count={room.players.length} host={host?.name} /></OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
-        {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
       </main>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-white/10 bg-black/25 p-5">
@@ -207,6 +189,44 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         </div>
       </aside>
     </div>
+  );
+}
+
+/**
+ * Die Tischfläche: Tisch (3D oder flach), Plätze am Rand mit Bild und Kartenzahl, Meldungen oben.
+ * Am Fernseher für alle (`me` fehlt) – oder am Rechner aus eigener Sicht: der eigene Platz ist vorn,
+ * die eigene Hand liegt nicht verdeckt auf dem Tisch (sie steht offen darunter).
+ */
+export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt }: {
+  room: RoomState; online: Set<string>; model: TableModel | null; sham?: SchamlosState | null; me?: string | null; showSeats?: boolean; onFelt?: (f: FeltRect) => void;
+}) {
+  const avatars = useMemo(() => roomAvatars(room), [room]);
+  const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
+  // Nur bei echter Änderung neu setzen – sonst zeichnet sich die Seite endlos neu
+  const onSeats = useCallback((next: { x: number; y: number }[], f: FeltRect) => {
+    const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
+    setPoints((prev) => (prev.length === next.length && prev.every((p, i) => near(p.x, next[i].x) && near(p.y, next[i].y)) ? prev : next));
+    onFelt?.(f);
+  }, [onFelt]);
+  // Eigene Sicht: der eigene Platz vorn in der Mitte, die anderen der Reihe nach
+  const players = useMemo(() => {
+    const i = me ? room.players.findIndex((p) => p.id === me) : -1;
+    return i > 0 ? [...room.players.slice(i), ...room.players.slice(0, i)] : room.players;
+  }, [room.players, me]);
+  const seats = players.map((p) => p.id);
+  const shown = useMemo(() => (model && me ? { ...model, counts: { ...model.counts, [me]: 0 } } : model), [model, me]);
+
+  return (
+    <>
+      <TableCanvas model={shown} seats={seats} onSeats={onSeats} />
+      {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
+        <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
+          turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
+          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : undefined} />
+      ))}
+      {model?.log.length && !sham ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
+      {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
+    </>
   );
 }
 

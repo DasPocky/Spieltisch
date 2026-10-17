@@ -64,9 +64,9 @@ export function createFlatScene(canvas: HTMLCanvasElement): TableScene {
     g.fillStyle = "#2a7a72"; g.beginPath(); g.roundRect(felt.x, felt.y, felt.w, felt.h, r); g.fill();
     if (!model) return;
     const d = model.deck;
-    const cw = Math.min(felt.w * 0.11, felt.h * 0.22);
+    const cw = Math.min(felt.w * 0.11, felt.h * 0.2);
     const cx = felt.x + felt.w / 2, cy = felt.y + felt.h / 2;
-    const anchors = seats.map((_, i) => onEdge(i / Math.max(seats.length, 1), felt.x + cw * 0.9, felt.y + cw * 0.9, felt.w - cw * 1.8, felt.h - cw * 1.8));
+    const anchors = seats.map((_, i) => onEdge(i / Math.max(seats.length, 1), felt.x + cw * 1.2, felt.y + felt.h * 0.13, felt.w - cw * 2.4, felt.h * 0.74));
 
     // Verdeckte Hände vor den Plätzen (höchstens 10 sichtbar)
     seats.forEach((id, i) => {
