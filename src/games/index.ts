@@ -18,6 +18,7 @@ import { Icon as MaexchenIcon } from "./maexchen/Icon";
 import { Icon as MaumauIcon } from "./maumau/Icon";
 import { Icon as MuehleIcon } from "./muehle/Icon";
 import { Icon as Phase10Icon } from "./phase10/Icon";
+import { Icon as SchamlosIcon } from "./schamlos/Icon";
 import { Icon as SkipboIcon } from "./skipbo/Icon";
 import { Icon as SkyjoIcon } from "./skyjo/Icon";
 import { Icon as SpionIcon } from "./spion/Icon";
@@ -41,6 +42,7 @@ const ICONS: Record<GameId, Icon> = {
   maumau: MaumauIcon,
   muehle: MuehleIcon,
   phase10: Phase10Icon,
+  schamlos: SchamlosIcon,
   skipbo: SkipboIcon,
   skyjo: SkyjoIcon,
   spion: SpionIcon,
@@ -63,6 +65,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   maumau: () => import("./maumau").then((m) => m.maumauUI as unknown as GameUI),
   muehle: () => import("./muehle").then((m) => m.muehleUI as unknown as GameUI),
   phase10: () => import("./phase10").then((m) => m.phase10UI as unknown as GameUI),
+  schamlos: () => import("./schamlos").then((m) => m.schamlosUI as unknown as GameUI),
   skipbo: () => import("./skipbo").then((m) => m.skipboUI as unknown as GameUI),
   skyjo: () => import("./skyjo").then((m) => m.skyjoUI as unknown as GameUI),
   spion: () => import("./spion").then((m) => m.spionUI as unknown as GameUI),

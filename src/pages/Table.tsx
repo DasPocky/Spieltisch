@@ -19,6 +19,9 @@ import { QrCode } from "@/platform/QrCode";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
+import type { SchamlosState } from "@shared/games/schamlos/logic";
+import { BlackCard } from "@/games/schamlos/Board";
+import { fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type TableScene } from "@/platform/table/scene";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
@@ -153,7 +156,9 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
     setPoints((prev) => (prev.length === next.length && prev.every((p, i) => Math.abs(p.x - next[i].x) < 0.5 && Math.abs(p.y - next[i].y) < 0.5) ? prev : next));
   }, []);
   const seats = room.players.map((p) => p.id);
-  const fallback = playing && !model;
+  // Schamlos hat keine Karten auf dem Tisch, sondern Sätze: eigene Mitte, Plätze zeigen Punkte und Zar
+  const sham = playing && room.gameId === "schamlos" ? (room.game as SchamlosState) : null;
+  const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
 
   return (
@@ -164,7 +169,8 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         {/* Plätze am Tischrand: Bild (später Video), Name, Karten */}
         {!fallback && room.players.map((p, i) => points[i] && (
           <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={model?.counts[p.id]}
-            turn={model?.turn === p.id} away={!online.has(p.id)} host={p.id === room.hostId} />
+            turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
+            note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : undefined} />
         ))}
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
@@ -178,11 +184,12 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
 
         {!playing && <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} />}
         {fallback && <Fallback room={room} code={code} online={online} />}
+        {sham && <SchamlosCenter s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
       </main>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-white/10 bg-black/25 p-5">
         {playing && <JoinNote code={code} pin={pin} />}
-        <Scores room={room} model={model} avatars={avatars} />
+        <Scores room={room} model={model} avatars={avatars} points={sham?.scores} />
         {model && <Log lines={model.log} />}
         <div className="mt-auto flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>
@@ -220,8 +227,8 @@ function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seat
   return <canvas ref={ref} className="absolute inset-0 size-full" aria-hidden="true" />;
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host }: {
-  x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean;
+function Seat({ x, y, name, avatar, count, turn, away, host, note }: {
+  x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
 }) {
   return (
     <div className={cn("seat-plate absolute flex w-36 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 transition-[left,top]", away && "opacity-55")}
@@ -233,7 +240,42 @@ function Seat({ x, y, name, avatar, count, turn, away, host }: {
       <span className={cn("plate max-w-full truncate", turn && "plate-turn")}>
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
+      {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
+    </div>
+  );
+}
+
+/** Schamlos in der Tischmitte: schwarze Karte groß, beim Wählen alle Sätze, danach der Gewinnersatz */
+function SchamlosCenter({ s, name, count }: { s: SchamlosState; name: (id: string) => string; count: number }) {
+  const sentence = (cards: string[], big = false) => (
+    <span className={big ? "text-4xl leading-tight" : "text-2xl leading-snug"}>
+      {fillIn(s.prompt, cards).map((p, i) => <span key={i} className={p.fill ? "font-bold text-[#ffb59c]" : undefined}>{p.text}</span>)}
+    </span>
+  );
+  const played = Object.keys(s.played).length;
+  return (
+    <div className="pointer-events-none absolute inset-x-[12%] inset-y-[18%] flex flex-col items-center justify-center gap-5" data-testid="table-schamlos">
+      {s.phase === "pick" && (
+        <>
+          <BlackCard prompt={s.prompt} className="max-w-3xl -rotate-1 p-8 text-4xl leading-tight shadow-2xl" />
+          <p className="paper-note px-5 py-2 text-xl font-bold">{played} von {count - 1} haben gelegt · {name(s.czar)} ist Zar</p>
+        </>
+      )}
+      {s.phase === "judge" && (
+        <>
+          <p className="paper-note px-5 py-2 text-xl font-bold">{name(s.czar)} liest vor und wählt am Handy</p>
+          <div className="grid w-full max-w-5xl grid-cols-2 gap-4">
+            {s.subs.map((x, i) => <div key={i} className="rounded-2xl bg-[#1b1e25] p-5 font-semibold text-white shadow-xl" style={{ rotate: `${(i % 3) - 1}deg` }}>{sentence(x.cards)}</div>)}
+          </div>
+        </>
+      )}
+      {s.phase === "result" && s.pick !== null && s.subs[s.pick] && (
+        <>
+          <div className="max-w-4xl rounded-3xl bg-[#1b1e25] p-9 font-semibold text-white shadow-2xl ring-4 ring-[#ff7a59]">{sentence(s.subs[s.pick].cards, true)}</div>
+          <p className="paper-note px-6 py-3 text-2xl font-bold">Punkt für {name(s.subs[s.pick].by)}!</p>
+        </>
+      )}
     </div>
   );
 }
@@ -283,8 +325,9 @@ function JoinNote({ code, pin }: { code: string; pin: string }) {
   );
 }
 
-function Scores({ room, model, avatars }: { room: RoomState; model: TableModel | null; avatars: ReturnType<typeof roomAvatars> }) {
+function Scores({ room, model, avatars, points }: { room: RoomState; model: TableModel | null; avatars: ReturnType<typeof roomAvatars>; points?: Record<string, number> }) {
   if (!room.players.length) return null;
+  if (points) model = { ...(model ?? { deck: "cards", pile: 0, discard: [], counts: {}, turn: null, n: 0, log: [] }), scores: points };
   const rows = [...room.players].sort((a, b) => (model?.scores ? (model.scores[b.id] ?? 0) - (model.scores[a.id] ?? 0) : 0));
   return (
     <div className="paper-note -rotate-1 p-4">
