@@ -4,7 +4,7 @@
  * anderes Gerät übernehmen – deshalb wird sie nur dem Besitzer gezeigt.
  */
 import type { Avatar } from "./group";
-import { ROOM_CODE_ALPHABET } from "./protocol";
+import { randomCode } from "./random";
 
 export const PROFILE_ID_LENGTH = 16;
 export const PROFILE_ID_RE = /^[A-HJ-NP-Z2-9]{16}$/;
@@ -50,11 +50,7 @@ export const MAX_PROFILE_GROUPS = 10;
 export const emptyStats = (now: number): ProfileStats => ({ name: "", createdAt: now, games: {}, recent: [] });
 
 /** Neue Profil-ID: 16 Zeichen aus 32 (80 Bit Zufall), ohne Verwechslungsgefahr 0/O/1/I */
-export function makeProfileId(): string {
-  const bytes = new Uint8Array(PROFILE_ID_LENGTH);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => ROOM_CODE_ALPHABET[b % ROOM_CODE_ALPHABET.length]).join("");
-}
+export const makeProfileId = (): string => randomCode(PROFILE_ID_LENGTH);
 
 /** Zum Anzeigen in Vierergruppen: ABCD-EFGH-JKLM-NPQR */
 export const formatProfileId = (id: string) => id.match(/.{1,4}/g)?.join("-") ?? id;

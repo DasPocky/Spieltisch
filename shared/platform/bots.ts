@@ -296,7 +296,6 @@ export function candidates(r: RoomState, online: boolean): Move[] {
 
 /** Kennung neuer Testspieler – so erkennt man sie auch ohne Liste */
 export const BOT_PREFIX = "bot-";
-export const isBot = (room: RoomState, id: string | null | undefined) => !!id && (room.bots?.includes(id) ?? false);
 
 /**
  * Ein zufälliger erlaubter Zug für einen Testspieler. Online zieht er als er selbst (`actor` = seine ID);

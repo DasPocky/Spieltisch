@@ -3,7 +3,7 @@ import { ChevronRight, DoorOpen, LogIn, Plus, Smartphone, Users } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
 import { useGames } from "@/hooks/useGames";
-import { LOCAL_GAME_KEY, localKey, readJSON } from "@/lib/storage";
+import { LOCAL_GAME_KEY, localKey, readJSON, readStr } from "@/lib/storage";
 import { getGame, isGameId } from "@shared/games";
 import { myAvatar, myName } from "@/lib/profile";
 import { IconTile, Logo } from "@/platform/Logo";
@@ -19,10 +19,9 @@ import { CreateRoomSheet, JoinSheet, type RoomPlan } from "@/platform/shell/Room
 import { RoomRow } from "@/platform/shell/RoomCards";
 import { useRooms } from "@/lib/rooms";
 
-const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 /** Läuft auf diesem Handy noch eine lokale Partie? Dann steht das auf der Startseite. */
 function runningLocal(): string | null {
-  const id = read(LOCAL_GAME_KEY);
+  const id = readStr(LOCAL_GAME_KEY);
   if (!isGameId(id)) return null;
   const saved = readJSON<{ phase?: string; game?: unknown }>(localKey(id));
   return saved?.phase === "playing" && saved.game ? getGame(id).info.name : null;
@@ -145,7 +144,7 @@ function GroupCard() {
 
 /** Schnellstart: die wichtigsten Spiele als Kacheln – ein Tipp, und die Lobby (ein Handy) steht mit diesem Spiel bereit */
 function QuickGames({ games, featured, order, onPick, onAll, local }: { games: string[]; featured: string[]; order: string[]; onPick: (id: string) => void; onAll: () => void; local: boolean }) {
-  const last = read(LOCAL_GAME_KEY);
+  const last = readStr(LOCAL_GAME_KEY);
   const ids = orderGames(games, order);
   const first = [...featured.filter((id) => ids.includes(id)), ...(last && ids.includes(last) ? [last] : []), ...ids];
   const shown = [...new Set(first)].slice(0, 7);

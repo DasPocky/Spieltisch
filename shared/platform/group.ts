@@ -3,7 +3,7 @@
  * Beitritt mit Gruppencode bzw. Einladungslink – ohne Passwort, jedes Mitglied darf alles (einfaches Vertrauensmodell).
  * Mitglieder haben eine eigene, öffentliche Mitglieds-ID. Die Profil-ID bleibt auf dem Server.
  */
-import { ROOM_CODE_ALPHABET } from "./protocol";
+import { randomCode } from "./random";
 import { cleanName } from "./room";
 
 export const GROUP_CODE_LENGTH = 6;
@@ -87,11 +87,7 @@ export interface GroupData extends Omit<GroupView, "you"> {
 }
 
 /** Zufällige Zeichen aus dem Raumcode-Alphabet (32 Zeichen – ohne Modulo-Verzerrung) */
-export function randomCode(length: number): string {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => ROOM_CODE_ALPHABET[b % ROOM_CODE_ALPHABET.length]).join("");
-}
+export { randomCode };
 
 export const cleanGroupName = (x: unknown) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_GROUP_NAME);
 

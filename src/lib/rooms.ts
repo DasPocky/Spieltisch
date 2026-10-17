@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { sanitizeCard, type RoomCard } from "@shared/platform/directory";
 import { ROOM_CODE_RE } from "@shared/platform/protocol";
-import { credsKey, readJSON, remove, type RoomCreds } from "./storage";
+import { CREDS_PREFIX, credsKey, readJSON, remove, type RoomCreds } from "./storage";
 import { myGroups } from "./group";
 
 export interface RoomLists { mine: RoomCard[]; open: RoomCard[]; loaded: boolean }
@@ -19,7 +19,7 @@ function savedRooms(): (RoomCreds & { code: string })[] {
   const out: (RoomCreds & { code: string })[] = [];
   try {
     for (const k of Object.keys(localStorage)) {
-      const code = k.startsWith("spieltisch:room:") ? k.slice("spieltisch:room:".length) : "";
+      const code = k.startsWith(CREDS_PREFIX) ? k.slice(CREDS_PREFIX.length) : "";
       const c = ROOM_CODE_RE.test(code) ? readJSON<RoomCreds>(k) : null;
       if (c?.playerId && c.token) out.push({ code, playerId: c.playerId, token: c.token });
     }

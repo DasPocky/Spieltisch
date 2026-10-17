@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 import { AVATAR_COLORS, AVATAR_EMOJIS, defaultAvatar, type Avatar as AvatarData } from "@shared/platform/group";
 import type { RoomState } from "@shared/platform/room";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,6 @@ export function roomAvatars(room: Pick<RoomState, "players" | "bench" | "avatars
 
 /** Avatare der Spieler im Raum – die Punkteleiste der Spiele liest sie hier, ohne dass jedes Spiel sie durchreicht */
 export const AvatarContext = createContext<Record<string, AvatarData> | undefined>(undefined);
-export const useRoomAvatar = (playerId: string) => useContext(AvatarContext)?.[playerId];
 
 /** Rundes Profilbild: Emoji auf Farbe. Ohne Avatar der Anfangsbuchstabe auf Marineblau. */
 export function Avatar({ avatar, name, className }: { avatar?: AvatarData | null; name?: string; className?: string }) {

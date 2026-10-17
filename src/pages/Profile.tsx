@@ -26,10 +26,10 @@ import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";
 import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
+import { clock, dayKey } from "@/lib/time";
 import { cn, fmt } from "@/lib/utils";
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "–");
-const time = (t: number) => new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 /** Übertragungs-Code lesbar: ABCD-EFGH */
 const formatTransfer = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`;
 const date = (t: number) => new Date(t).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
@@ -94,7 +94,7 @@ export function Profile() {
     const url = URL.createObjectURL(new Blob([exportData()], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `spieltisch-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `spieltisch-${dayKey()}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -211,7 +211,7 @@ export function Profile() {
               <code className="flex-1 rounded-lg bg-navy-950/60 px-3 py-2 text-center font-mono text-xl tracking-[0.2em]" data-testid="transfer-code">{formatTransfer(transfer.code)}</code>
               <Button variant="secondary" size="icon" aria-label="Link kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/profil/uebernehmen/${transfer.code}`); toast("Link kopiert"); }}><Copy /></Button>
             </div>
-            <p className="text-center text-xs text-muted-foreground">Mit dem neuen Handy scannen oder dort im Profil eingeben · gültig bis {time(transfer.until)} Uhr</p>
+            <p className="text-center text-xs text-muted-foreground">Mit dem neuen Handy scannen oder dort im Profil eingeben · gültig bis {clock(transfer.until)} Uhr</p>
           </div>
         ) : <Button variant="secondary" onClick={showTransfer}>Code zum Übertragen anzeigen</Button>}
         <Label htmlFor="profile-adopt" className="mt-2">Code vom alten Handy eingeben</Label>

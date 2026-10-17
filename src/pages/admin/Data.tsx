@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { dayKey } from "@/lib/time";
 import { download, gameName, Status, useSave, type Api } from "./shared";
 
 const WHAT: Record<WipeKind, [string, string]> = {
@@ -28,7 +29,7 @@ export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) =
 
   const exportAll = () => exp.run(async () => {
     const data = await api<{ archive: ArchivedRoom[] }>("/api/admin/export");
-    const day = new Date().toISOString().slice(0, 10);
+    const day = dayKey();
     download(`spieltisch-${day}.json`, JSON.stringify(data, null, 2));
     // Verlauf zusätzlich als Tabelle (öffnet sich in Excel, Numbers, Google Tabellen)
     const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;

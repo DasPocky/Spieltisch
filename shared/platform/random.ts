@@ -1,4 +1,5 @@
 /** Fairer Zufall aus `crypto.getRandomValues` – im Browser und im Worker gleich. */
+import { ROOM_CODE_ALPHABET } from "./protocol";
 
 /** Gleichverteilte Zufallszahl 0..n-1, ohne Modulo-Verzerrung (Verwerfungsmethode). */
 export function randomInt(n: number): number {
@@ -22,4 +23,11 @@ export function shuffle<T>(items: readonly T[]): T[] {
     [a[i], a[r]] = [a[r], a[i]];
   }
   return a;
+}
+
+/** Zufälliger Code aus 32 gut lesbaren Zeichen (Raum, Gruppe, Profil, Übertragung) – 256 ist durch 32 teilbar, also unverzerrt */
+export function randomCode(length: number): string {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => ROOM_CODE_ALPHABET[b % ROOM_CODE_ALPHABET.length]).join("");
 }

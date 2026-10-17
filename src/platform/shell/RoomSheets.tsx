@@ -11,20 +11,19 @@ import { gameIcon } from "@/games";
 import { navigate } from "@/hooks/useRoute";
 import { useBackClose } from "@/hooks/useBackClose";
 import { createRoom } from "@/lib/createRoom";
-import { NAME_KEY } from "@/lib/storage";
+import { NAME_KEY, readStr } from "@/lib/storage";
 import { IconTile } from "@/platform/Logo";
 import { accessSummary, RoomAccessForm } from "@/platform/RoomAccessForm";
 import { DEFAULT_ACCESS, type RoomAccess } from "@shared/platform/directory";
 import { cn } from "@/lib/utils";
 
-const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 
 /** Was „Raum öffnen“ anlegt: Spiel (vorgewählt oder in der Lobby wählen) bzw. erst einmal nur Treffpunkt */
 export interface RoomPlan { gameId: string; pickGame: boolean; meet?: boolean }
 
 /** Name und PIN – mehr braucht ein neuer Raum nicht. Der Name ist aus dem Profil vorausgefüllt. */
 export function CreateRoomForm({ plan }: { plan: RoomPlan }) {
-  const [name, setName] = useState(() => read(NAME_KEY) ?? "");
+  const [name, setName] = useState(() => readStr(NAME_KEY) ?? "");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +75,7 @@ export function CreateRoomSheet({ plan, onClose }: { plan: RoomPlan | null; onCl
   return (
     <Sheet open={!!plan} onOpenChange={(o) => { if (!o) onClose(); }}>
       {/* Name steht schon da: gleich in die PIN */}
-      <SheetContent onOpenAutoFocus={(e) => { e.preventDefault(); document.getElementById(read(NAME_KEY) ? "pin" : "name")?.focus(); }}>
+      <SheetContent onOpenAutoFocus={(e) => { e.preventDefault(); document.getElementById(readStr(NAME_KEY) ? "pin" : "name")?.focus(); }}>
         <SheetHeader>
           <SheetTitle>Raum öffnen</SheetTitle>
           <SheetDescription>Reden, sehen, schreiben – und spielen, jeder am eigenen Handy</SheetDescription>

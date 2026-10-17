@@ -53,8 +53,6 @@ export function rulesOf(o: Options): Rules {
 
 const MAX_LOG = 50;
 export const top = (s: MauMauState): Card => s.discard[s.discard.length - 1];
-/** Farbe, die gerade bedient werden muss */
-export const activeSuit = (s: MauMauState): Suit => s.wish ?? suitOf(top(s));
 
 /** Darf diese Karte gerade gelegt werden? */
 export function canPlay(s: MauMauState, card: Card, o: Options): boolean {

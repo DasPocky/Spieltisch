@@ -5,6 +5,7 @@ import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { clock } from "@/lib/time";
 import { cn, vibrate } from "@/lib/utils";
 import { Avatar, AvatarContext } from "../Avatar";
 
@@ -112,7 +113,6 @@ export function ChatPanel({ chat, players, me, className }: { chat: ChatControls
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" }); }, [chat.messages.length]);
   const send = () => { const t = text.trim(); if (!t) return; chat.say({ text: t }); setText(""); };
   const nameOf = (id: string) => (id === ADMIN_CHAT_ID ? "Verwaltung" : players.find((p) => p.id === id)?.name ?? "Jemand");
-  const time = (at: number) => new Date(at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -128,7 +128,7 @@ export function ChatPanel({ chat, players, me, className }: { chat: ChatControls
                 {first && !mine && !m.emoji && <div className="text-[0.7rem] font-semibold opacity-70">{nameOf(m.from)}</div>}
                 {m.emoji ?? <span className="break-words whitespace-pre-wrap">{m.text}</span>}
               </div>
-              <span className="pb-1 text-[0.6rem] text-muted-foreground tabular-nums">{time(m.at)}</span>
+              <span className="pb-1 text-[0.6rem] text-muted-foreground tabular-nums">{clock(m.at)}</span>
             </div>
           );
         })}

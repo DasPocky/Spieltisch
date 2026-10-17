@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CallPeer, ClientMessage } from "@shared/platform/protocol";
-import { credsKey, readJSON, type RoomCreds } from "@/lib/storage";
+import { credsKey, readJSON, readStr, writeStr, type RoomCreds } from "@/lib/storage";
+
+/** Sprechen nur bei gedrückter Taste (Funkgerät) */
+const PTT_KEY = "spieltisch:ptt";
 
 /**
  * Sprach-/Videochat über Cloudflare Realtime (SFU). Jedes Handy hat genau eine Verbindung zum SFU:
@@ -60,9 +63,9 @@ export function useCall(code: string, me: string | null, peers: Record<string, C
   }, [code]);
 
   // Push-to-talk: Mikro nur, solange der Sprechknopf gedrückt ist
-  const [ptt, setPtt] = useState(() => { try { return localStorage.getItem("spieltisch:ptt") === "1"; } catch { return false; } });
+  const [ptt, setPtt] = useState(() => readStr(PTT_KEY) === "1");
   const [talking, setTalking] = useState(false);
-  const togglePtt = useCallback((on: boolean) => { setPtt(on); try { localStorage.setItem("spieltisch:ptt", on ? "1" : "0"); } catch { /* egal */ } }, []);
+  const togglePtt = useCallback((on: boolean) => { setPtt(on); writeStr(PTT_KEY, on ? "1" : "0"); }, []);
   const micOn = mic && !silent && (!ptt || talking);
   const say = useCallback((m: boolean, c: boolean) => {
     if (!session.current) return;

@@ -4,18 +4,18 @@
  * Ohne Neustart im Admin passiert nichts.
  */
 import type { SiteConfig } from "@shared/platform/access";
+import { AVATAR_KEY } from "./profile";
+import { NAME_KEY, ONBOARDED_KEY, readStr as get, wipeLocal, writeStr } from "./storage";
 
 const EPOCH_KEY = "spieltisch:epoch";
 /** Hinterlässt man diese, gilt das Gerät als benutzt (neue Geräte haben nichts zu löschen) */
-const USED_KEYS = ["spieltisch:name", "spieltisch:onboarded", "spieltisch:avatar"];
-
-const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const USED_KEYS = [NAME_KEY, ONBOARDED_KEY, AVATAR_KEY];
 /** Zustand beim Öffnen der App – was danach (z. B. im Willkommen) gespeichert wird, zählt nicht */
 const usedAtStart = typeof window !== "undefined" && USED_KEYS.some((k) => get(k) !== null);
 
 /** Kennung merken, ohne etwas zu löschen (neues Gerät, oder der Admin selbst nach dem Neustart) */
 export function rememberEpoch(epoch: string) {
-  try { localStorage.setItem(EPOCH_KEY, epoch); } catch { /* egal */ }
+  writeStr(EPOCH_KEY, epoch);
 }
 
 /** Nach dem Laden der Einstellungen vom Server: true, wenn gerade gelöscht wurde (die Seite lädt dann neu) */
@@ -27,10 +27,7 @@ export function checkFreshStart(c: SiteConfig): boolean {
   // Noch nie eine Kennung gesehen: nur löschen, wenn das Gerät schon benutzt wurde – neue Geräte merken sie sich nur
   const stale = seen === null ? usedAtStart : seen !== now;
   if (!stale) { if (seen !== now) rememberEpoch(now); return false; }
-  try {
-    for (const k of Object.keys(localStorage)) if (k.startsWith("spieltisch")) localStorage.removeItem(k);
-    sessionStorage.clear();
-  } catch { /* ohne Speicher gibt es nichts zu löschen */ }
+  wipeLocal();
   rememberEpoch(now);
   location.reload();
   return true;
