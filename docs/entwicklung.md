@@ -94,6 +94,12 @@ Lobby, Einstellungen, Rechte, Online-Räume, Menü und Siegerehrung funktioniere
 
 Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen laufenden mit Code + PIN). Er meldet sich mit `{ type: "table", pin }` an und liest danach nur mit – wie die Verwaltung beim Zuschauen, mit der Sicht `WATCH_ID` ohne eigene Karten. Die Handys treten über den QR-Link `/r/CODE#pin=…` bei.
 
+**Spielweisen** (`shared/platform/modes.ts`): Jedes Spiel meldet in `GAME_MODES`, ob es „Tisch“, „Am Rechner“ oder „Bühne“ kann – neu als `beta` (nur Geräte der Verwaltung), nach der Abnahme `on`. Die Verwaltung schaltet je Spiel um (`config.modes`).
+
+**Am Rechner mitspielen:** Auf großen Bildschirmen zeigt der Raum bei Spielen mit „Am Rechner“ den Tisch aus eigener Sicht (`platform/desk`); das Spiel bekommt `desk: true` in den Board-Props und zeigt dann nur die eigene Hand mit Knöpfen, Maus und Tastatur (Beispiel: `games/maumau/Board.tsx`, `DeskHand`). Umschaltbar auf die klassische Ansicht.
+
+**Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.
+
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
 
 ## Versionen und Updates

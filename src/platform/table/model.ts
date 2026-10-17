@@ -51,8 +51,7 @@ const UNO_COLOR: Record<string, { label: string; hex: string }> = {
   r: { label: "Rot", hex: "#d72600" }, g: { label: "Grün", hex: "#379711" }, b: { label: "Blau", hex: "#0956bf" }, y: { label: "Gelb", hex: "#ecd407" },
 };
 
-/** Spiele mit eigenem Tischmodell */
-export const TABLE_GAMES = ["maumau", "uno", "schamlos"] as const;
+export { TABLE_GAMES } from "@shared/platform/modes";
 
 export function tableModel(room: RoomState): TableModel | null {
   if (room.phase !== "playing" || !room.game) return null;

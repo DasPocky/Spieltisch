@@ -22,6 +22,11 @@ export interface BoardProps<S = unknown, A = { type: string }> {
   act: (action: A) => void;
   /** Plattform-Aktion (Neue Runde, Lobby, …) */
   dispatch: (action: RoomAction) => void;
+  /**
+   * Am Rechner am Tisch: Mitspieler, Stapel und Ablage zeigt der Tisch darüber – das Spiel zeigt nur noch
+   * die eigene Hand mit den Knöpfen (und darf Tastatur und Maus nutzen). Nur Spiele mit Spielweise „Am Rechner“.
+   */
+  desk?: boolean;
 }
 
 /** Spielerübersicht als kleine Tabelle: Spalten und je Spieler die Werte */

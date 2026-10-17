@@ -29,7 +29,9 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 | Analyse F-14: Betriebskennzahlen je Tag (Beitritte, Wiederverbindungen, abgelehnte Züge, kaputte Nachrichten) | ✅ |
 | CI: `npm audit` als Hinweis | ✅ · Branch-Schutz auf „Handy-Tests (Playwright)“ und „Build & Unit-Tests“ in GitHub einschalten ⏳ (Einstellung in GitHub) |
 
-## Phase 1 – Grundlage für alle Spielweisen ⏳
+## Phase 1 – Grundlage für alle Spielweisen 🔨
+
+Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅
 
 1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
 2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.

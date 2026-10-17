@@ -10,6 +10,7 @@ import {
 } from "three";
 import { CARD_RATIO, drawBack, drawFace } from "./textures";
 import type { TableDeck, TableModel } from "./model";
+import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
 export interface FeltRect { x: number; y: number; w: number; h: number }
 
@@ -96,12 +97,15 @@ function seatAnchors(n: number): [number, number][] {
 
 const hash = (s: string) => { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) | 0; return h; };
 
-export function createTableScene(canvas: HTMLCanvasElement): TableScene {
-  const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
-  // Volle Pixeldichte bis 2-fach – auf 4K-Fernsehern und Retina-Bildschirmen scharf
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "hoch"): TableScene {
+  const q = renderSettings(quality);
+  const renderer = new WebGLRenderer({ canvas, antialias: q.antialias, alpha: true });
+  // Stufe „hoch“: volle Pixeldichte bis 2-fach – auf 4K-Fernsehern und Retina-Bildschirmen scharf
+  renderer.setPixelRatio(q.pixelRatio);
   const aniso = renderer.capabilities.getMaxAnisotropy();
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = PCFSoftShadowMap;
+  renderer.shadowMap.enabled = q.shadows; renderer.shadowMap.type = PCFSoftShadowMap;
+  const meter = frameMeter();
+  const still = reducedMotion();
   renderer.toneMapping = ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = SRGBColorSpace;
   const scene = new Scene();
 
@@ -117,7 +121,7 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
 
   scene.add(new HemisphereLight("#ffe9c9", "#3a2414", 0.7));
   const lamp = new SpotLight("#ffd9a0", 42, 16, 0.8, 0.6, 1.6);
-  lamp.position.set(-0.4, 6, 0.6); lamp.castShadow = true; lamp.shadow.mapSize.set(2048, 2048); lamp.shadow.bias = -0.0004;
+  lamp.position.set(-0.4, 6, 0.6); lamp.castShadow = q.shadows; lamp.shadow.mapSize.set(q.shadowSize, q.shadowSize); lamp.shadow.bias = -0.0004;
   scene.add(lamp, lamp.target);
   const fill = new DirectionalLight("#9fc7ff", 0.25); fill.position.set(4, 3, 5); scene.add(fill);
 
@@ -163,6 +167,8 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   type Anim = { mesh: Mesh; from: Vector3; to: Vector3; rot: number; flip: boolean; start: number; ms: number };
   let anims: Anim[] = [];
   const fly = (mesh: Mesh, from: Vector3, delay = 0, flip = false, ms = 520) => {
+    // Reduzierte Bewegung: Karten liegen sofort da
+    if (still) return;
     anims.push({ mesh, from, to: mesh.position.clone(), rot: mesh.rotation.y, flip, start: performance.now() + delay, ms });
     mesh.position.copy(from);
     if (flip) mesh.rotation.z = Math.PI;
@@ -296,9 +302,13 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
 
   // ---------- Zeichnen ----------
   let raf = 0;
+  let lastFrame = 0;
   function frame() {
     raf = 0;
     const now = performance.now();
+    // Bildrate nur während Bewegungen messen (sonst steht die Szene)
+    if (lastFrame && anims.length) meter(now - lastFrame);
+    lastFrame = anims.length ? now : 0;
     for (const a of anims) {
       const t = Math.max(0, Math.min(1, (now - a.start) / a.ms));
       const e = 1 - (1 - t) ** 3;
@@ -368,7 +378,4 @@ export function createTableScene(canvas: HTMLCanvasElement): TableScene {
   };
 }
 
-/** Kann dieses Gerät WebGL? Sonst zeigt der Tisch die Partie wie am Handy. */
-export function webglOk(): boolean {
-  try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") ?? c.getContext("webgl")); } catch { return false; }
-}
+export { webglOk } from "@/lib/quality";

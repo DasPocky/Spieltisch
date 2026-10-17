@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { expectNoScroll, newPhone, shot } from "./util";
+import { ALL_ON, expectNoScroll, newPhone, setConfig, shot } from "./util";
 
 /**
  * Kleine Prüfreihe für Desktop und Fernseher (die vielen Handy-Tests laufen im Projekt „spiele“):
@@ -71,7 +71,58 @@ test("Fernseher (4K-Fläche): Tisch-Lobby passt, ohne 3D bleibt alles bedienbar,
   await tv.getByTestId("table-new").click();
   await expect(tv).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
   await expect(tv.getByTestId("table-lobby")).toBeVisible();
+  // ohne WebGL: der einfache flache Tisch
+  await expect(tv.getByTestId("table-flat")).toBeAttached();
   await expectNoScroll(tv);
   await expectNamedControls(tv);
   await shot(tv, "g3-tv-ohne-3d");
+});
+
+test("Am Rechner am Tisch mitspielen (Mau-Mau): Tisch aus eigener Sicht, Hand darunter, Tastatur, umschaltbar", async ({ browser, request }) => {
+  // Spielweise „Am Rechner“ für Mau-Mau einschalten (eingebaut: Beta)
+  await setConfig(request, { ...ALL_ON, modes: { maumau: { desk: "on" } } });
+  try {
+    const page = await desktop(browser);
+    await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
+    await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+    await page.getByLabel("Dein Name").fill("Anna");
+    await page.getByLabel(/PIN/).fill("7070");
+    await page.getByRole("button", { name: "Öffnen", exact: true }).click();
+    await page.getByTestId("meet-play").click();
+    await page.getByTestId("pick-maumau").click();
+    const code = (await page.getByTestId("room-code").textContent())!.trim();
+    const phone = await newPhone(browser);
+    await phone.goto(`/r/${code}`);
+    await phone.getByLabel("Dein Name").fill("Ben");
+    await phone.getByLabel("PIN").fill("7070");
+    await phone.getByRole("button", { name: "Beitreten" }).click();
+    await page.getByRole("button", { name: "Spiel starten" }).click();
+
+    await expect(page.getByTestId("desk-stage")).toBeVisible();
+    await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(5);
+    // Ben sitzt am Tisch gegenüber (eigener Platz ohne Schild)
+    await expect(page.getByTestId("table-seat")).toHaveCount(1);
+    await expect(page.getByTestId("table-seat")).toContainText("Ben");
+    await expectNoScroll(page);
+    await shot(page, "g4-desk-maumau");
+
+    // Anna fängt an: mit Z ziehen, dann P passen (sofern die Karte nicht passt) – Ben ist danach dran
+    const status = page.getByTestId("desk-hand").getByTestId("status");
+    await expect(status).not.toContainText("ist am Zug");
+    await page.keyboard.press("z");
+    // eine Karte – oder zwei, wenn eine Sieben oben liegt
+    await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(5);
+    await page.keyboard.press("p");
+    await expect.poll(async () => (await status.textContent()) ?? "").toMatch(/ist am Zug|Leg|Gezogene/);
+
+    // Klassische Ansicht und zurück
+    await page.getByTestId("desk-toggle").click();
+    await expect(page.getByTestId("desk-stage")).toHaveCount(0);
+    await page.getByTestId("desk-toggle").click();
+    await expect(page.getByTestId("desk-stage")).toBeVisible();
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
 });

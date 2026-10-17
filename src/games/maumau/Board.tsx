@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
 import { Seats } from "@/platform/Seats";
 import { DECKS, isJack, SUIT_NAME, type Card, type Suit } from "@shared/cards/deck";
@@ -16,7 +16,7 @@ import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
 
 /** Mau-Mau: Mitspieler oben, Stapel und Ablage in der Mitte, die eigene Hand unten. */
-export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<MauMauState, MauMauAction>) {
+export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch, desk }: BoardProps<MauMauState, MauMauAction>) {
   const players = room.players;
   const local = me === null;
   const [mau, setMau] = useState(false);
@@ -61,6 +61,11 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
     : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
     : s.pendingDraw ? `Leg eine Sieben oder zieh ${s.pendingDraw} Karten.`
     : hand.some(playable) ? "Leg eine passende Karte." : "Nichts passt – zieh eine Karte.";
+
+  // Am Rechner am Tisch: nur die eigene Hand, groß – Tisch, Mitspieler, Stapel und Ablage zeigt der Tisch darüber
+  if (desk) {
+    return <DeskHand {...{ s, hand, playable, myTurn, mau, setMau, mauRule, unter, setUnter, play, act, status, drawnFits, hints }} />;
+  }
 
   return (
     <>
@@ -147,5 +152,80 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Eigene Hand am Rechner: große Karten, Maus (Klick, Hover-Hinweis) und Tastatur –
+ * 1–9 legt die n-te Karte, Z zieht, P passt, M sagt „Mau“, Esc bricht den Farbwunsch ab.
+ */
+function DeskHand({ s, hand, playable, myTurn, mau, setMau, mauRule, unter, setUnter, play, act, status, drawnFits, hints }: {
+  s: MauMauState; hand: Card[]; playable: (c: Card) => boolean; myTurn: boolean; mau: boolean; setMau: (f: (m: boolean) => boolean) => void; mauRule: boolean;
+  unter: Card | null; setUnter: (c: Card | null) => void; play: (c: Card, wish?: Suit) => void; act: (a: MauMauAction) => void; status: string; drawnFits: boolean; hints: boolean;
+}) {
+  const pick = (c: Card) => (isJack(c) ? setUnter(c) : play(c));
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      if (unter) {
+        const i = Number(e.key) - 1;
+        if (e.key === "Escape") setUnter(null);
+        else if (i >= 0 && i < DECKS[s.deck].suits.length) play(unter, DECKS[s.deck].suits[i]);
+        return;
+      }
+      if (!myTurn) return;
+      const n = Number(e.key);
+      if (n >= 1 && n <= hand.length && playable(hand[n - 1])) pick(hand[n - 1]);
+      else if ((e.key === "z" || e.key === "Z") && !s.drawn) act({ type: "draw" });
+      else if ((e.key === "p" || e.key === "P") && s.drawn) act({ type: "pass" });
+      else if ((e.key === "m" || e.key === "M") && mauRule && hand.length === 2) setMau((m) => !m);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-center gap-3 text-base">
+        {drawnFits ? <span data-testid="status"><HintChip onClick={() => pick(s.drawn!)}>Passt – direkt legen?</HintChip></span>
+          : <span data-testid="status" className={cn(myTurn && "font-semibold")}><SmoothText>{status}</SmoothText></span>}
+        {s.wish && <span className="flex items-center gap-1 rounded-full bg-navy-950/80 px-2.5 py-1 text-sm font-bold ring-1 ring-border" data-testid="wish">Wunsch: <SuitIcon suit={s.wish} className="size-4" />{SUIT_NAME[s.wish]}</span>}
+      </div>
+      {unter ? (
+        <div className="glass mx-auto rounded-2xl p-4">
+          <p className="mb-2 text-center font-semibold">Welche Farbe wünschst du dir? <span className="font-normal text-muted-foreground">(1–4, Esc)</span></p>
+          <div className="grid grid-cols-4 gap-3">
+            {DECKS[s.deck].suits.map((suit, i) => (
+              <button key={suit} type="button" onClick={() => play(unter, suit)} aria-label={SUIT_NAME[suit]} title={`${i + 1}: ${SUIT_NAME[suit]}`}
+                className="flex w-24 flex-col items-center gap-1 rounded-xl bg-paper py-3 font-bold text-paper-ink outline-none transition hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-ring">
+                <SuitIcon suit={suit} className="size-10" />{SUIT_NAME[suit]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-end justify-center gap-2" data-testid="hand">
+          {hand.map((c, i) => {
+            const ok = playable(c);
+            return (
+              <button key={c} type="button" disabled={!ok} onClick={() => pick(c)} title={`${i + 1}: ${ok ? "legen" : myTurn ? "passt gerade nicht" : "warte, bis du dran bist"}`}
+                className={cn("card-in w-24 shrink-0 rounded-[10%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default xl:w-28",
+                  ok && "-translate-y-3 hover:-translate-y-6", c === s.drawn ? "ring-[3px] ring-ice" : ok && hints && "hint-glow")}>
+                <PlayingCard card={c} dim={myTurn && !ok} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="mx-auto grid w-full max-w-xl grid-cols-[1fr_auto_1fr] gap-2">
+        <Button variant="secondary" size="lg" disabled={!myTurn || !!s.drawn} onClick={() => act({ type: "draw" })} title="Z">
+          {s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"} <kbd className="ml-1 text-xs opacity-60">Z</kbd>
+        </Button>
+        {mauRule ? (
+          <Button size="lg" variant={mau ? "ice" : "secondary"} aria-pressed={mau} disabled={!myTurn || hand.length !== 2} onClick={() => setMau((m) => !m)} title="M">Mau! <kbd className="ml-1 text-xs opacity-60">M</kbd></Button>
+        ) : <span />}
+        <Button variant="secondary" size="lg" disabled={!myTurn || !s.drawn} onClick={() => act({ type: "pass" })} title="P">Passen <kbd className="ml-1 text-xs opacity-60">P</kbd></Button>
+      </div>
+      <p className="text-center text-xs text-muted-foreground">Tasten: 1–9 Karte legen · Z ziehen · P passen{mauRule ? " · M Mau" : ""}</p>
+    </div>
   );
 }

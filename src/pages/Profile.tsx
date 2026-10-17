@@ -19,6 +19,8 @@ import { adoptAndSync, syncMe, useMyGroups } from "@/lib/group";
 import { Avatar, AvatarPicker } from "@/platform/Avatar";
 import { QrCode } from "@/platform/QrCode";
 import { ThemeSwitch } from "@/platform/ThemeSwitch";
+import { Segmented } from "@/platform/Segmented";
+import { QUALITIES, quality, qualityPref, setQualityPref, useQuality, type QualityPref } from "@/lib/quality";
 import { NavRow } from "@/platform/NavRow";
 import { NewsSheet } from "@/platform/WhatsNew";
 import { InstallCard } from "@/platform/InstallHint";
@@ -234,6 +236,7 @@ export function Profile() {
       <Card className="grid gap-2.5">
         <h2 className="font-bold">Darstellung</h2>
         <ThemeSwitch />
+        <GraphicsSwitch />
         <InstallCard />
       </Card>
 
@@ -283,6 +286,19 @@ const PREFS: [keyof Prefs, string, string][] = [
 ];
 
 /** Rückmeldung während der Partie – gilt nur für dieses Gerät */
+/** Grafik-Stufe für 3D (Tisch, Würfel) – Automatisch passt sich Gerät und Bildrate an */
+function GraphicsSwitch() {
+  const [v, setV] = useState<QualityPref>(qualityPref);
+  useQuality();
+  const options = QUALITIES.map((q) => ({ value: q.value, label: q.value === "auto" ? "Auto" : q.label }));
+  return (
+    <div className="grid gap-1" data-testid="graphics">
+      <Segmented label="Grafik (3D)" value={v} options={options} small onChange={(x) => { setV(x); setQualityPref(x); }} />
+      <p className="text-xs text-muted-foreground">{QUALITIES.find((q) => q.value === v)?.hint}{v === "auto" ? ` – gerade: ${quality() === "flach" ? "ohne 3D" : quality()}` : ""}</p>
+    </div>
+  );
+}
+
 function PlayPrefs() {
   const p = usePrefs();
   return (

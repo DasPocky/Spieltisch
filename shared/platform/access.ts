@@ -7,6 +7,7 @@ import { sanitizeOption } from "./room";
 import type { Options, SettingDef } from "./types";
 import { DEFAULT_UPDATE, sanitizeUpdate, type UpdateConfig } from "./update";
 import { EMPTY_NEWS, sanitizeNews, type NewsOverrides } from "../news";
+import { sanitizeModes, type GameModes } from "./modes";
 
 export type Access = "on" | "code" | "off";
 
@@ -35,6 +36,8 @@ export interface SiteConfig {
   update: UpdateConfig;
   /** „Was ist neu?“: ausgeblendete und geänderte Einträge */
   news: NewsOverrides;
+  /** Spielweisen je Spiel (Tisch, am Rechner, Bühne): an, Beta, aus – nur Abweichungen vom eingebauten Stand */
+  modes: GameModes;
   /** Kennung des letzten kompletten Neustarts (Admin hat alles gelöscht) – Handys mit älterer Kennung starten einmal frisch */
   epoch?: string;
 }
@@ -68,12 +71,12 @@ export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
 
 /** Was der Admin unter „Einstellungen“ speichert */
-export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays" | "look" | "update" | "news">;
+export type AccessConfig = Pick<SiteConfig, "site" | "games" | "message" | "banner" | "featured" | "order" | "limits" | "features" | "archiveDays" | "look" | "update" | "news" | "modes">;
 
 export const DEFAULT_CONFIG: SiteConfig = {
   site: "on", games: {}, message: "", hasCode: false, defaults: {},
   banner: "", featured: [], order: [], limits: DEFAULT_LIMITS, features: DEFAULT_FEATURES, archiveDays: DEFAULT_ARCHIVE_DAYS, look: DEFAULT_LOOK,
-  update: DEFAULT_UPDATE, news: EMPTY_NEWS,
+  update: DEFAULT_UPDATE, news: EMPTY_NEWS, modes: {},
 };
 export const MAX_MESSAGE = 200;
 export const ACCESS_CODE_RE = /^.{4,32}$/;
@@ -110,6 +113,7 @@ export function sanitizeConfig(x: unknown, gameIds: readonly string[]): AccessCo
     look: isLook(o.look) ? o.look : DEFAULT_LOOK,
     update: sanitizeUpdate(o.update),
     news: sanitizeNews(o.news),
+    modes: sanitizeModes(o.modes),
   };
 }
 

@@ -71,3 +71,26 @@ test("Großer Tisch: falsche PIN wird abgelehnt, die richtige verbindet", async 
   await other.getByRole("button", { name: "Verbinden" }).click();
   await expect(other.getByTestId("table-lobby")).toContainText(code);
 });
+
+test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ablage – Partie läuft weiter", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  // Grafik „Ohne 3D“ (wie im Profil gewählt)
+  await screen.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  await expect(screen.getByTestId("table-flat")).toBeAttached();
+  await expect(screen.getByTestId("table-3d")).toHaveCount(0);
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  await joinByLink(browser, code, pin, "Ben");
+  await anna.getByTestId("meet-play").click();
+  await anna.getByTestId("pick-uno").click();
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(screen.getByTestId("table-view")).toContainText("Uno");
+  await expect(screen.getByTestId("table-seat")).toHaveCount(2);
+  await expect(screen.getByTestId("table-seat").first()).toContainText(/· \d/);
+  await screen.waitForTimeout(600);
+  await shot(screen, "93-table-flach");
+});

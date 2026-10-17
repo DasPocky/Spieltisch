@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
-import { canPlayTurn, currentPlayerId, playerLimits, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
+import { canPlayTurn, currentPlayerId, playerLimits, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
+import { tableModel } from "./table/model";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gameIcon, getGameUI, loadGameUI } from "@/games";
@@ -34,6 +35,10 @@ import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
 import { KnockBar, type KnockEntry } from "./KnockBar";
 import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
+import { setDeskView, useDesk } from "./desk/desk";
+
+/** Tisch am Rechner (3D) – erst laden, wenn er gebraucht wird */
+const DeskStage = lazy(() => import("./desk/DeskStage"));
 
 interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Lokal: Spieler hinzufügen – optional aus der aktiven Gruppe */
@@ -69,8 +74,12 @@ export function RoomScreen(props: Props) {
   const feedback = useGameFeedback(room, me);
   useRoomUpdateGate(room, me);
 
+  // Am Rechner: Partie am Tisch aus eigener Sicht (Spiele mit Spielweise „Am Rechner“, großer Bildschirm)
+  const desk = useDesk(room, me);
+  // Nur solange die Partie läuft und das Spiel ein Tischbild hat (z. B. nicht mit echten Karten); Ergebnis wieder klassisch
+  const atTable = desk.on && !benched && !!room.game && !roomGame(room).isOver(room.game) && tableModel(room) !== null;
   const board: BoardProps | null = playing && !benched
-    ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch }
+    ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch, desk: atTable }
     : null;
   const { Board, HeaderExtra, Icon } = ui;
   // Im Spiel: Spieler entfernen (z. B. wer gegangen ist) – lokal auch hinzufügen, wenn das Spiel das erlaubt
@@ -86,7 +95,7 @@ export function RoomScreen(props: Props) {
     <ChatContext.Provider value={props.chat ?? null}>
     <CallContext.Provider value={props.call ? { call: props.call, me } : null}>
     <EveningContext.Provider value={{ room, isHost, dispatch }}>
-    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing && ui.wide && "lg:max-w-6xl", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
+    <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing && ui.wide && "lg:max-w-6xl", atTable && "max-w-none lg:px-6", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="room-head flex h-14 shrink-0 items-center justify-between">
         {playing ? (
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -109,6 +118,11 @@ export function RoomScreen(props: Props) {
           </div>
         )}
         <div className="room-tools flex shrink-0 items-center gap-1.5">
+          {desk.possible && (
+            <Button variant="secondary" size="sm" className="hidden lg:inline-flex" data-testid="desk-toggle" onClick={() => setDeskView(desk.on ? "classic" : "table")}>
+              {desk.on ? "Klassische Ansicht" : "Am Tisch spielen"}
+            </Button>
+          )}
           {board && HeaderExtra && <HeaderExtra {...board} />}
           {props.chat && code && <ChatButton code={code} chat={props.chat} players={room.players} me={me} />}
           {props.call && <CallButton call={props.call} />}
@@ -125,7 +139,12 @@ export function RoomScreen(props: Props) {
           hostName={room.players.find((p) => p.id === room.hostId)?.name} onAnswer={props.onKnock} />
       )}
       {board && (ui.log || ui.overview) && <InfoBar ui={ui as GameUI} board={board} manage={manage} />}
-      <RoomHints.Provider value={!room.noHints}>{board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} chat={props.chat} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
+      <RoomHints.Provider value={!room.noHints}>{board && atTable && me ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-3 pb-3">
+          <Suspense fallback={<div className="table-room min-h-0 flex-1 rounded-3xl" />}><DeskStage room={room} online={online ?? new Set()} me={me} /></Suspense>
+          <div className="mx-auto flex w-full max-w-4xl shrink-0 flex-col" data-testid="desk-hand"><Board key={room.round} {...board} /></div>
+        </div>
+      ) : board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} chat={props.chat} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>
     </EveningContext.Provider>
     </CallContext.Provider>

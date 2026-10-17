@@ -1,0 +1,62 @@
+/**
+ * Spielweisen über das Handy hinaus: Großer Tisch (Fernseher/Laptop zeigt den Tisch), am Rechner am Tisch mitspielen,
+ * Bühne mit Moderator. Jedes Spiel meldet hier, was es kann; die Verwaltung schaltet je Spiel und Spielweise
+ * „an“, „Beta“ (nur Geräte der Verwaltung) oder „aus“. Handy und „Ein Handy für alle“ regeln weiter die Freigaben.
+ */
+export type PlayMode = "table" | "desk" | "stage";
+export type ModeState = "on" | "beta" | "off";
+
+export const PLAY_MODES: { value: PlayMode; label: string; hint: string }[] = [
+  { value: "table", label: "Tisch", hint: "Fernseher oder Laptop zeigt den Tisch, gespielt wird am Handy" },
+  { value: "desk", label: "Am Rechner", hint: "am Rechner am Tisch mitspielen – eigene Hand, Maus und Tastatur" },
+  { value: "stage", label: "Bühne", hint: "Fernseher als Showbühne mit Moderator" },
+];
+
+export const MODE_STATES: { value: ModeState; label: string }[] = [
+  { value: "on", label: "An" }, { value: "beta", label: "Beta" }, { value: "off", label: "Aus" },
+];
+
+/**
+ * Was ein Spiel kann – und wie es ausgeliefert wird, solange die Verwaltung nichts anderes sagt.
+ * Neue Spielweisen starten als „beta“ und werden nach der Abnahme auf „on“ gesetzt.
+ */
+export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = {
+  // Referenzspiel fürs Mitspielen am Rechner – Beta bis zur Abnahme
+  maumau: { table: "on", desk: "beta" },
+  uno: { table: "on" },
+  schamlos: { table: "on" },
+};
+
+/** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */
+export const TABLE_GAMES = Object.keys(GAME_MODES).filter((id) => GAME_MODES[id].table);
+
+/** Einstellungen der Verwaltung: Spiel → Spielweise → Zustand (nur Abweichungen) */
+export type GameModes = Record<string, Partial<Record<PlayMode, ModeState>>>;
+
+const isMode = (x: unknown): x is PlayMode => PLAY_MODES.some((m) => m.value === x);
+const isState = (x: unknown): x is ModeState => x === "on" || x === "beta" || x === "off";
+
+export function sanitizeModes(x: unknown): GameModes {
+  const out: GameModes = {};
+  if (!x || typeof x !== "object") return out;
+  for (const [id, raw] of Object.entries(x as Record<string, unknown>)) {
+    if (!GAME_MODES[id] || !raw || typeof raw !== "object") continue;
+    for (const [m, st] of Object.entries(raw as Record<string, unknown>)) {
+      if (isMode(m) && isState(st) && GAME_MODES[id][m] && GAME_MODES[id][m] !== st) (out[id] ??= {})[m] = st;
+    }
+  }
+  return out;
+}
+
+/** Zustand einer Spielweise für ein Spiel – „none“: kann das Spiel (noch) nicht */
+export function modeState(modes: GameModes | undefined, gameId: string, mode: PlayMode): ModeState | "none" {
+  const built = GAME_MODES[gameId]?.[mode];
+  if (!built) return "none";
+  return modes?.[gameId]?.[mode] ?? built;
+}
+
+/** Darf dieses Gerät die Spielweise nutzen? Beta nur für Geräte der Verwaltung. */
+export function modeAllowed(modes: GameModes | undefined, gameId: string, mode: PlayMode, admin: boolean): boolean {
+  const s = modeState(modes, gameId, mode);
+  return s === "on" || (s === "beta" && admin);
+}
