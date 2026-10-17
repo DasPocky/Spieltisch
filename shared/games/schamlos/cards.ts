@@ -28,8 +28,11 @@ type Deck = { black: string[]; white: string[] };
 
 const ids = (set: string, kind: "b" | "w") => (DATA[set]?.[kind === "b" ? "black" : "white"] ?? []).map((_, i) => `${set}-${kind}-${i}`);
 
-/** Sets für Erwachsene: sobald eins davon mitspielt, kommen Karten mit Kinder-Bezug aus allen Sets nicht in den Stapel */
-export const ADULT_SETS = ["ab18", "plus", "en"];
+/**
+ * Sex-Set: spielt es mit, kommen Karten mit Kinder-Bezug aus allen Sets nicht in den Stapel –
+ * schwarzer Humor über Kinder bleibt sonst drin (wie im Original), nur sexuelle Kombinationen sind ausgeschlossen.
+ */
+export const ADULT_SETS = ["plus"];
 /** Kinder, Schule, Jugend (deutsch und englisch) – „Schuld“/„Schulden“ ausgenommen */
 export const CHILD_RE = /(^|[^a-zäöüß])(kind|kinder|kita|baby|babys|schul(?!d)|schüler|teen|jugend|pubert|enkel|tochter|töchter|sohn|söhne|nichte|neffe|minderj)|\b(child\w*|kids?|school\w*|teen\w*|daughters?|sons?|boys?|girls?|nativity|pupils?|bab(y|ies)\w*)\b/i;
 

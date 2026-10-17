@@ -19,13 +19,14 @@ describe("Schamlos", () => {
     }
   });
 
-  it("Erwachsenen-Sets: keine Karte mit Kinder-Bezug im Stapel, auch nicht aus gemischten Sets", () => {
+  it("Sex-Set: keine Karte mit Kinder-Bezug im Stapel, auch nicht aus gemischten Sets", () => {
     for (const adult of ADULT_SETS) {
       const d = deckFor(["frech", "schwarz", adult]);
       for (const id of [...d.black, ...d.white]) expect(CHILD_RE.test(cardText(id)), cardText(id)).toBe(false);
     }
     // Ohne Erwachsenen-Set bleiben harmlose Kinder-Karten drin
-    expect(deckFor(["frech"]).white.length).toBeGreaterThan(deckFor(["frech", "ab18"]).white.length - deckFor(["ab18"]).white.length);
+    expect(deckFor(["frech", "ab18"]).white.length).toBe(deckFor(["frech"]).white.length + deckFor(["ab18"]).white.length);
+    expect(deckFor(["schwarz", "plus"]).white.length).toBeLessThan(deckFor(["schwarz"]).white.length + deckFor(["plus"]).white.length);
     expect(CHILD_RE.test("eine Erbschaft, die nur aus Schulden besteht")).toBe(false);
     expect(CHILD_RE.test("der Kindergeburtstag mit Punsch")).toBe(true);
     expect(CHILD_RE.test("Selling a kidney on a forum")).toBe(false);
