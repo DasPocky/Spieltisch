@@ -16,6 +16,8 @@ export type Route =
   | { name: "groups" }
   | { name: "group"; code: string }
   | { name: "gallery" }
+  /** Moderator-Vorschau (nur Verwaltung) */
+  | { name: "moderator" }
   /** Großer Tisch: aufbauen bzw. ein Raum auf dem großen Bildschirm */
   | { name: "tableSetup" }
   | { name: "table"; code: string };
@@ -31,6 +33,7 @@ function parse(path: string): Route {
   const group = path.match(/^\/g\/([A-Za-z0-9]{6})\/?$/);
   if (group) return { name: "group", code: group[1].toUpperCase() };
   if (import.meta.env.DEV && path === "/dev/karten") return { name: "gallery" };
+  if (/^\/moderator\/?$/.test(path)) return { name: "moderator" };
   const room = path.match(/^\/r\/([A-Za-z0-9]{5})\/?$/);
   if (room) return { name: "room", code: room[1].toUpperCase() };
   if (/^\/tisch\/?$/.test(path)) return { name: "tableSetup" };

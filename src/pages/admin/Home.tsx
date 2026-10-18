@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, Mic } from "lucide-react";
+import { navigate } from "@/hooks/useRoute";
 import { sumStats, type AdminRoom, type SiteStats } from "@shared/platform/admin";
 import { LOOKS } from "@shared/platform/looks";
 import { GAMES } from "@shared/games";
@@ -87,6 +88,12 @@ export function AdminHome() {
         <SectionTile id="einstellungen" info={`Look: ${LOOKS.find((l) => l.id === config.look)?.name ?? config.look}`} />
         {devOn && <SectionTile id="entwickler" />}
       </div>
+      {/* Vorschau für Entscheidungen, die noch anstehen */}
+      <button type="button" onClick={() => navigate("/moderator")} data-testid="moderator-link"
+        className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-left outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring">
+        <Mic className="size-5 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1"><b className="block">Moderator-Vorschau</b><span className="text-sm text-muted-foreground">Figuren ansehen und anhören – eine für die Bühne aussuchen</span></span>
+      </button>
     </div>
   );
 }

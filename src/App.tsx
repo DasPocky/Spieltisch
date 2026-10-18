@@ -18,6 +18,7 @@ import { DevOverlay } from "@/platform/DevOverlay";
 const AdminApp = lazy(() => import("@/pages/admin/AdminApp").then((m) => ({ default: m.AdminApp })));
 const TableSetup = lazy(() => import("@/pages/Table").then((m) => ({ default: m.TableSetup })));
 const TableRoom = lazy(() => import("@/pages/Table").then((m) => ({ default: m.TableRoom })));
+const ModeratorPreview = lazy(() => import("@/pages/ModeratorPreview").then((m) => ({ default: m.ModeratorPreview })));
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
       <Fragment key={gen}>
       {route.name === "admin" && <AppShell tab="verwaltung"><AdminApp section={route.section} /></AppShell>}
       {route.name === "gallery" && <Suspense><CardGallery /></Suspense>}
+      {route.name === "moderator" && <Suspense><ModeratorPreview /></Suspense>}
       {route.name === "profile" && <AccessGate><AppShell tab="profil"><Profile /></AppShell></AccessGate>}
       {route.name === "transfer" && <AccessGate><ProfileTransfer code={route.code} /></AccessGate>}
       {route.name === "groups" && <AccessGate><AppShell tab="gruppe"><Groups /></AppShell></AccessGate>}
