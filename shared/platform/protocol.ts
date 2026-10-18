@@ -45,6 +45,8 @@ export type ClientMessage =
   | { type: "table"; pin: string }
   /** Begleit-Handy koppeln: Server gibt einen kurzen Einmal-Code für diesen Spieler aus */
   | { type: "pair" }
+  /** Eigenes Foto setzen (Base64, vom Handy verkleinert) oder entfernen (null) */
+  | { type: "photo"; data: string | null }
   /** Host: den Fernseher fernsteuern */
   | { type: "remote"; cmd: RemoteCmd };
 

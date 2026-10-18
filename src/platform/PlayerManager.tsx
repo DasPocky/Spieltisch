@@ -12,19 +12,22 @@ import { useActiveGroup } from "@/lib/group";
 import { useDev } from "@/lib/dev";
 import { Avatar, AvatarContext, AvatarPicker } from "./Avatar";
 import { Bubble } from "./chat/Chat";
+import { PhotoRow } from "./Photo";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Spieler aus der aktiven Gruppe – damit das Ergebnis der Partie in der Bestenliste landet */
 export interface GroupPick { code: string; member: string; avatar: AvatarData }
 
 /** Spielerliste mit Reihenfolge und Entfernen. Nur der Host (oder lokal) kann bearbeiten. */
-export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal }: {
+export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal, onPhoto }: {
   room: RoomState;
   me: string | null;
   online: Set<string> | null;
   editable: boolean;
   dispatch: (a: RoomAction) => void;
   onAddLocal?: (name: string, from?: GroupPick, bot?: boolean) => void;
+  /** Online: eigenes Foto setzen (Base64) oder entfernen (null) */
+  onPhoto?: (data: string | null) => void;
 }) {
   const [name, setName] = useState("");
   const [edit, setEdit] = useState<string | null>(null);
@@ -98,6 +101,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
           </SheetHeader>
           {editing && (
             <div className="grid gap-4 px-4 pb-6">
+              {onPhoto && editing.id === me && <PhotoRow has={!!room.photos?.[editing.id]} onPhoto={onPhoto} />}
               <AvatarPicker value={avatars[editing.id]} onChange={(avatar) => dispatch({ type: "setAvatar", id: editing.id, avatar })} />
               {editable && room.phase === "lobby" && room.players.length > 1 && (
                 <div className="grid grid-cols-2 gap-2">
@@ -167,3 +171,4 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
     </div>
   );
 }
+

@@ -15,6 +15,8 @@ export interface Avatar {
   color: number;
   /** Index in AVATAR_EMOJIS */
   emoji: number;
+  /** Eigenes Foto (Speichername in R2) – nur im Raum, nie gespeichert oder übernommen */
+  photo?: string;
 }
 
 /** Avatar aus Eingaben prüfen – null, wenn es keiner ist */

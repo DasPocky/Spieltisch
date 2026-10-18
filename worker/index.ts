@@ -175,6 +175,19 @@ export default {
     const callMatch = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)\/call$/);
     if (callMatch && request.method === "POST") return handleCall(request, env, callMatch[1]);
 
+    // Fotos aus R2: nur mit dem genauen (nicht erratbaren) Namen, den Leute im Raum kennen
+    const photo = url.pathname.match(/^\/api\/photo\/(r\/[0-9a-f]{64}\/[A-Za-z0-9]{20})$/);
+    if (photo && request.method === "GET") {
+      const obj = env.FILES ? await env.FILES.get(photo[1]) : null;
+      if (!obj) return new Response("Nicht gefunden.", { status: 404 });
+      return new Response(obj.body, { headers: {
+        "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream",
+        "cache-control": "private, max-age=31536000, immutable",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'",
+      } });
+    }
+
     const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)(\/ws)?$/);
     if (match) {
       const code = match[1];

@@ -2,12 +2,13 @@ import { createContext } from "react";
 import { AVATAR_COLORS, AVATAR_EMOJIS, defaultAvatar, type Avatar as AvatarData } from "@shared/platform/group";
 import type { RoomState } from "@shared/platform/room";
 import { cn } from "@/lib/utils";
+import { photoUrl } from "@shared/platform/photo";
 
 /**
  * Jeder Spieler bekommt einen Avatar: den eigenen (Profil, Gruppe, selbst gewählt) oder einen festen aus dem Namen –
  * „Anna“ ist so immer dasselbe Tier. Doppelte Tiere im Raum werden weitergeschoben, damit man alle auseinanderhält.
  */
-export function roomAvatars(room: Pick<RoomState, "players" | "bench" | "avatars">): Record<string, AvatarData> {
+export function roomAvatars(room: Pick<RoomState, "players" | "bench" | "avatars" | "photos">): Record<string, AvatarData> {
   const out: Record<string, AvatarData> = {};
   const all = [...room.players, ...(room.bench ?? [])];
   const used = new Set<number>();
@@ -21,6 +22,8 @@ export function roomAvatars(room: Pick<RoomState, "players" | "bench" | "avatars
     used.add(emoji);
     out[p.id] = { color: (a.color + (emoji - a.emoji + AVATAR_EMOJIS.length)) % AVATAR_COLORS.length, emoji };
   }
+  // Eigenes Foto ersetzt das Tier (die Farbe bleibt als Rand)
+  for (const [id, key] of Object.entries(room.photos ?? {})) if (out[id]) out[id] = { ...out[id], photo: key };
   return out;
 }
 
@@ -34,7 +37,8 @@ export function Avatar({ avatar, name, className }: { avatar?: AvatarData | null
     <span aria-hidden="true" style={bg ? { backgroundColor: bg } : undefined}
       className={cn("inline-grid size-8 shrink-0 select-none place-items-center rounded-full leading-none",
         avatar ? "text-[1.05em]" : "bg-navy-700 text-[0.8em] font-bold text-navy-200", className)}>
-      {avatar ? AVATAR_EMOJIS[avatar.emoji] : (name?.trim()[0] ?? "?").toUpperCase()}
+      {avatar?.photo ? <img src={photoUrl(avatar.photo)} alt="" className="size-full rounded-full object-cover" loading="lazy" draggable={false} />
+        : avatar ? AVATAR_EMOJIS[avatar.emoji] : (name?.trim()[0] ?? "?").toUpperCase()}
     </span>
   );
 }

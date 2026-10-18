@@ -3,6 +3,7 @@
  * Jeder Nachrichtentyp hat hier seine Regeln (Pflichtfelder, Typen, Längen, erlaubte Werte); unbekannte Felder fallen weg.
  * Was nicht passt, wird als ganze Nachricht abgelehnt (null). Neue Nachrichtentypen brauchen hier einen Eintrag und einen Test.
  */
+import { PHOTO_MAX_B64 } from "./photo";
 import { REMOTE_CMDS, type ClientMessage, type RemoteCmd } from "./protocol";
 
 type Obj = Record<string, unknown>;
@@ -62,6 +63,8 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
     case "claimHost":
     case "pair":
       return { type: m.type };
+    case "photo":
+      return m.data === null ? { type: "photo", data: null } : typeof m.data === "string" && m.data.length <= PHOTO_MAX_B64 ? { type: "photo", data: m.data } : null;
     case "remote":
       return (REMOTE_CMDS as readonly unknown[]).includes(m.cmd) ? { type: "remote", cmd: m.cmd as RemoteCmd } : null;
     case "call": {

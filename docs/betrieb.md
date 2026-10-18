@@ -77,3 +77,7 @@ Alles läuft im kostenlosen Cloudflare-Tarif (100.000 Worker-Anfragen pro Tag; W
 ## Version prüfen
 
 Beim Bauen landen Commit, Zweig und Bauzeit im Code (in Cloudflare-Builds aus `WORKERS_CI_COMMIT_SHA` und `WORKERS_CI_BRANCH`, sonst aus git). Die Verwaltung vergleicht Gerät, Server (`/api/admin/status`) und den letzten Commit auf `main` des öffentlichen Repositorys. „Update offen“ heißt meist: Die Veröffentlichung läuft gerade.
+
+## R2-Speicher (Fotos)
+
+Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`, auch für Vorschauen). Jeder Raum legt seine Fotos unter `r/<Raum-Objekt-ID>/` ab und löscht sie, wenn er endet. Fehlt die Bindung, sind Fotos einfach aus.

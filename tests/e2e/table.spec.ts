@@ -208,3 +208,55 @@ test("Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts schaltet Ton und 
   const vol = await screen.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:prefs") ?? "{}").volMusic);
   expect(vol).toBeCloseTo(0.55, 2);
 });
+
+test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, Entfernen bringt das Tier zurück", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  const ben = await joinByLink(browser, code, pin, "Ben");
+
+  // Ein Bild (Farbverlauf) im Browser erzeugen und als Datei wählen – das Handy verkleinert es vor dem Hochladen
+  const png = await anna.evaluate(async () => {
+    const c = document.createElement("canvas"); c.width = 800; c.height = 600;
+    const g = c.getContext("2d")!; const grd = g.createLinearGradient(0, 0, 800, 600);
+    grd.addColorStop(0, "#ff7a59"); grd.addColorStop(1, "#3e9a92"); g.fillStyle = grd; g.fillRect(0, 0, 800, 600);
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(400, 300, 150, 0, Math.PI * 2); g.fill();
+    const b = await new Promise<Blob>((ok) => c.toBlob((x) => ok(x!), "image/png"));
+    return [...new Uint8Array(await b.arrayBuffer())];
+  });
+  // Im Treffpunkt: Kamera-Knopf auf der eigenen Kachel
+  await anna.getByLabel("Foto statt Tier").setInputFiles({ name: "selfie.png", mimeType: "image/png", buffer: Buffer.from(png) });
+  // Ben sieht Annas Foto
+  const img = ben.locator("img[src^='/api/photo/']").first();
+  await expect(img).toBeVisible();
+  const src = (await img.getAttribute("src"))!;
+  const res = await ben.request.get(src);
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toBe("image/jpeg");
+  expect((await res.body()).length).toBeLessThan(120_000);
+  // Der Fernseher auch (am Platz)
+  await expect(screen.locator(`[data-testid="table-seat"] img[src="${src}"]`)).toBeVisible();
+  await shot(anna, "99-foto");
+  await shot(screen, "99-foto-tisch");
+
+  // In der Spiel-Lobby: über den eigenen Avatar
+  await anna.getByTestId("meet-play").click();
+  await anna.getByTestId("pick-maumau").click();
+  await anna.getByRole("button", { name: "Avatar von Anna ändern" }).click();
+  await expect(anna.getByTestId("photo-row")).toBeVisible();
+  // Kein Bild: freundliche Meldung, nichts hochgeladen
+  await anna.getByTestId("photo-input").setInputFiles({ name: "notiz.txt", mimeType: "text/plain", buffer: Buffer.from("hallo") });
+  await expect(anna.getByText("Das ist kein Bild.")).toBeVisible();
+
+  // Entfernen: Tier wieder da, Datei weg
+  await anna.waitForTimeout(3100);
+  await anna.getByRole("button", { name: "Foto entfernen" }).click();
+  await expect(ben.locator("img[src^='/api/photo/']")).toHaveCount(0);
+  await expect.poll(async () => (await ben.request.get(src)).status()).toBe(404);
+  // Unbekannte oder krumme Namen gibt es nicht
+  expect((await ben.request.get("/api/photo/r/../../wrangler.jsonc")).status()).toBe(404);
+});

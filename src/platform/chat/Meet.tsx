@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { Dices, Mic, MicOff, Video } from "lucide-react";
 import type { RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Avatar } from "../Avatar";
+import { Avatar, AvatarContext, roomAvatars } from "../Avatar";
+import { PhotoButton } from "../Photo";
+import type { Avatar as AvatarData } from "@shared/platform/avatar";
 import type { CallControls } from "../call/CallBar";
 import { ChatPanel, type ChatControls } from "./Chat";
 
@@ -11,9 +13,12 @@ import { ChatPanel, type ChatControls } from "./Chat";
  * Treffpunkt: einfach zusammen sein, ohne zu spielen – großes Video-Raster, Sprache, Chat.
  * Ein Spiel lässt sich jederzeit dazu wählen (führt in die normale Lobby).
  */
-export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel wählen" }: {
+export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel wählen", onPhoto }: {
   room: RoomState; me: string | null; online: Set<string> | null; call?: CallControls; chat?: ChatControls; onPlay: () => void; playLabel?: string;
+  /** Eigenes Foto statt Tier (online) */
+  onPhoto?: (data: string) => void;
 }) {
+  const avatars = useContext(AvatarContext) ?? roomAvatars(room);
   const inCall = call?.phase === "on";
   const ids = room.players.map((p) => p.id);
   const n = ids.length;
@@ -24,7 +29,7 @@ export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel 
       <div className="grid shrink-0 gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {room.players.map((p) => (
           <MeetTile key={p.id} id={p.id} name={p.id === me ? `${p.name} (du)` : p.name} call={call} me={me}
-            online={!online || online.has(p.id)} avatar={room.avatars?.[p.id]} />
+            online={!online || online.has(p.id)} avatar={avatars[p.id]} onPhoto={p.id === me ? onPhoto : undefined} />
         ))}
       </div>
       {call && !inCall && (
@@ -40,7 +45,7 @@ export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel 
   );
 }
 
-function MeetTile({ id, name, call, me, online, avatar }: { id: string; name: string; call?: CallControls; me: string | null; online: boolean; avatar?: RoomState["avatars"] extends Record<string, infer A> | undefined ? A : never }) {
+function MeetTile({ id, name, call, me, online, avatar, onPhoto }: { id: string; name: string; call?: CallControls; me: string | null; online: boolean; avatar?: AvatarData; onPhoto?: (data: string) => void }) {
   const self = id === me;
   const on = call?.phase === "on";
   const stream = on ? (self ? call.local : call.streams[id]) : null;
@@ -54,6 +59,7 @@ function MeetTile({ id, name, call, me, online, avatar }: { id: string; name: st
     <div className={cn("relative aspect-[4/3] overflow-hidden rounded-2xl bg-navy-800 transition-shadow", talking && "speaking", !online && "opacity-50")}>
       {camOn ? <video ref={ref} autoPlay playsInline muted className={cn("size-full object-cover", self && "-scale-x-100")} />
         : <span className="grid size-full place-items-center"><Avatar avatar={avatar} name={name} className="size-14 text-3xl" /></span>}
+      {onPhoto && !camOn && <PhotoButton onPhoto={onPhoto} className="absolute top-1.5 right-1.5" />}
       <span className="absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-0.75rem)] items-center gap-1 truncate rounded-lg bg-black/55 px-1.5 py-0.5 text-xs font-semibold text-white">
         {(peer || (self && on)) && (mic ? <Mic className="size-3 shrink-0" /> : <MicOff className="size-3 shrink-0 text-red-300" />)}
         <span className="truncate">{name}</span>

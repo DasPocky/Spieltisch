@@ -104,6 +104,10 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Fernbedienung:** Am Fernseher springt der Fokus mit den Pfeiltasten von Knopf zu Knopf (`src/lib/spatialNav.ts`, Enter löst aus; in Eingabefeldern und Reglern bleiben die Pfeile beim Feld). Ist ein Tisch verbunden, bekommen die Handys `tv: true` im Spielstand; der Host sieht im Menü unter „Großer Tisch“ die Fernbedienung und schickt `{ type: "remote", cmd }` (`sound`, `louder`, `quieter`, `cover`). Der Raum reicht das nur an die Tische weiter.
 
+**Fotos (R2):** Spieler können im Treffpunkt (Kamera-Knopf auf der eigenen Kachel) oder über den eigenen Avatar ein Foto statt Tier setzen. Das Handy schneidet quadratisch zu und verkleinert (`src/lib/photo.ts`), geschickt wird es über die Raum-Verbindung (`{ type: "photo", data }`). Der Raum prüft Größe und Bildtyp an den ersten Bytes (`shared/platform/photo.ts`), legt es im Bucket `FILES` unter `r/<Raum-Objekt>/<Zufall>` ab und merkt den Namen in `RoomState.photos`; `roomAvatars` gibt ihn als `avatar.photo` weiter, `Avatar` zeigt dann das Bild. Ausgeliefert wird über `/api/photo/<Name>`. Endet der Raum, löscht er alle seine Fotos.
+
+**Bots mit Spielstärke** (`shared/platform/botSkill.ts`): „leicht“, „mittel“, „schwer“ bewerten Züge (Mau-Mau, Uno, Vier gewinnt) nur aus eigener Sicht, wiederholbar mit festem Startwert; andere Spiele und „zufall“ ziehen zufällig. Stufe je Bot in `RoomState.botLevels`.
+
 **Ton** (`src/platform/sound.ts`): alles mit WebAudio erzeugt, drei Kanäle mit eigener Lautstärke (`prefs.volFx/volMusic/volCrowd`) hinter einem Begrenzer – `playSound` (Effekte), `playCrowd` (Applaus, Jubel, „Oooh“, Lachen), `startMusic`/`stopMusic` (ruhige Akkordfolge, Lobby lebhafter). Der Tisch spielt Musik und Publikum (`table/sound.tsx`), die Handys nur Effekte.
 
 **Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.
