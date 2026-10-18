@@ -108,7 +108,7 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Bots mit Spielstärke** (`shared/platform/botSkill.ts`): „leicht“, „mittel“, „schwer“ bewerten Züge (Mau-Mau, Uno, Vier gewinnt) nur aus eigener Sicht, wiederholbar mit festem Startwert; andere Spiele und „zufall“ ziehen zufällig. Stufe je Bot in `RoomState.botLevels`.
 
-**Moderator** (`src/platform/moderator/`): die Leuchtkugel (`figures.tsx`) mit Mund, Blinzeln und Farbe je Charakter; feste Ansagen je Charakter in `lines.ts`. Vorschau unter `/moderator` (nur Verwaltung).
+**Moderator** (`src/platform/moderator/`): die Leuchtkugel (`figures.tsx`) mit Mund, Blinzeln und Farbe je Charakter; Ansagen je Charakter und Moment mit Namen in `lines.ts`. Am großen Tisch beobachtet `useTableHost` (`src/platform/table/host.tsx`) die Partie und sagt an: Beginn, wer dran ist, Kartenzar, Rundenpunkt, Sieg – reine Anzeige, der erste Stand nach dem Laden bleibt still; Werwolf und Eine Nacht haben ihren eigenen Spielleiter. Schalter am Tisch: Moderator an/aus, Charakter, Vorlesen (Gerät). Vorschau unter `/moderator` (nur Verwaltung).
 
 **Ton** (`src/platform/sound.ts`): alles mit WebAudio erzeugt, drei Kanäle mit eigener Lautstärke (`prefs.volFx/volMusic/volCrowd`) hinter einem Begrenzer – `playSound` (Effekte), `playCrowd` (Applaus, Jubel, „Oooh“, Lachen), `startMusic`/`stopMusic` (ruhige Akkordfolge, Lobby lebhafter). Der Tisch spielt Musik und Publikum (`table/sound.tsx`), die Handys nur Effekte.
 

@@ -29,6 +29,7 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
+import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
 import { FeltDice, FeltGrid } from "@/platform/table/blocks";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
@@ -195,6 +196,8 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
   const host = room.players.find((p) => p.id === room.hostId);
   const [felt, setFelt] = useState<FeltRect | null>(null);
   useTableSound(room, model);
+  const [mood, setMood] = useState(readMood);
+  const moderator = useTableHost(room, model, mood);
   const couch = useCouch(code);
   // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
   const [handOpen, setHandOpen] = useState(false);
@@ -213,6 +216,7 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
           </div>
         </header>
 
+        {moderator.on && <HostCorner say={moderator.say} mood={mood} />}
         {!playing && <OnFelt rect={felt}><Lobby code={code} pin={pin} count={room.players.length} host={host?.name} /></OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
       </main>
@@ -224,6 +228,7 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
         <div className="mt-auto" />
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
         <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
+        <HostPanel mood={mood} onMood={setMood} />
         <SoundPanel />
         <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>

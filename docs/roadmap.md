@@ -52,7 +52,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 
 1. **Referenzspiel vollständig** (Mau-Mau oder Uno): Desktop 2D/3D, Tisch/TV, private Hand, Tastatur/Touch, gemeinsame Bausteine herausgelöst, Abnahmeblatt (siehe unten) – danach erst die Spieleliste.
 2. **Moderator-Vorschau** (`/moderator`, nur Verwaltung) – Leuchtkugel mit Mund, Blinzeln und drei Charakteren ✅. 3D-Figuren (menschlich und Comic) ausprobiert und verworfen: menschliche wirken unecht, freie Comic-Pakete ließen sich nicht automatisch laden.
-3. **Moderator-MVP:** eine Bühne, ein Spiel (Schamlos), feste Ansagen, Gerätestimme, vollständiger Rückfall ohne Ton/Video/KI. Moderator ist Darstellung, keine Regelinstanz.
+3. **Moderator-MVP:** Leuchtkugel am großen Tisch für alle Tischspiele (Begrüßung, wer dran ist, Kartenzar, Rundenpunkt, Sieg), Gerätestimme, abschaltbar, Charakter wählbar ✅ – reine Darstellung, keine Regelinstanz.
 4. **3D-Showstudio** mit Pulten, Lichtern, Kamerafahrten; TV-Ansicht je Spiel (Tisch oder Bühne), beim Einrichten wählbar, im Raum umschaltbar.
 5. **KI-Sprüche** über Cloudflare Workers AI, mit Tages- und Raumlimit, Filter und Rückfall auf feste Texte; später KI-Stimme. Charakter je Runde (charmant/frech/böse) – „frech/böse“ nur mit Zustimmung der Runde und passendem Set.
 6. **Partyabend:** Reihenfolge planen, abstimmen, Mini-Runden, Gesamtwertung, Siegerehrung.

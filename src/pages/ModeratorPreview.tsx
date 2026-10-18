@@ -7,7 +7,7 @@ import { reducedMotion } from "@/lib/quality";
 import { Segmented } from "@/platform/Segmented";
 import { speak, speechSupported } from "@/platform/speech";
 import { OrbHost } from "@/platform/moderator/figures";
-import { LINES, MOMENTS, MOODS, type Mood, type Moment } from "@/platform/moderator/lines";
+import { lineFor, MOMENTS, MOODS, type Mood, type Moment } from "@/platform/moderator/lines";
 
 /**
  * Moderator-Vorschau (nur Verwaltung): die Leuchtkugel ansehen und anhören, Charakter wechseln, Ansagen abspielen.
@@ -50,8 +50,7 @@ export function ModeratorPreview() {
   }
 
   const play = async (moment: Moment) => {
-    const lines = LINES[mood][moment];
-    const text = lines[Math.floor(Math.random() * lines.length)];
+    const text = lineFor(mood, moment, ["Anna", "Ben", "Clara"][Math.floor(Math.random() * 3)]);
     const id = ++run.current;
     setLine(text);
     setSpeaking(true);
