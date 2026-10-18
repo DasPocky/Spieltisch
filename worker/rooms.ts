@@ -380,6 +380,16 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    // Fernbedienung: der Host steuert den Fernseher (Ton, Musik, Hand verdecken) – geht nur an die Tische
+    if (msg.type === "remote") {
+      if (playerId !== this.room.state.hostId) return;
+      const by = this.room.state.players.find((p) => p.id === playerId)?.name ?? "";
+      for (const w of this.ctx.getWebSockets()) {
+        if ((w.deserializeAttachment() as Attachment | null)?.table) this.send(w, { type: "remote", cmd: msg.cmd, by });
+      }
+      return;
+    }
+
     if (msg.type === "closeRoom") {
       if (playerId !== this.room.state.hostId) {
         this.send(ws, { type: "error", message: "Das darf nur der Host." });
@@ -572,7 +582,7 @@ export class GameRoom extends DurableObject<Env> {
       gone.goneAt = Date.now();
       await this.persist();
     }
-    this.broadcast();
+    this.broadcast(ws);
     // Raum ist leer geworden: ab jetzt läuft die Lebensdauer; Verzeichnis gleich Bescheid geben
     if (this.room && this.onlineIds().size === 0) {
       await this.scheduleEnd();
@@ -660,6 +670,8 @@ export class GameRoom extends DurableObject<Env> {
     ws.serializeAttachment({ playerId: null, watch: true, table: true } satisfies Attachment);
     // Kein Chatverlauf: der Tisch zeigt keinen Chat, und den Bildschirm sieht jeder im Raum
     this.sendWatch(ws);
+    // Die Handys erfahren, dass es jetzt einen Fernseher gibt (Fernbedienung)
+    this.broadcast();
   }
 
   private async handleJoin(ws: WebSocket, raw: Extract<ClientMessage, { type: "join" }>): Promise<void> {
@@ -943,9 +955,15 @@ export class GameRoom extends DurableObject<Env> {
     return Date.now() - this.hostSeenAt < HOST_AWAY_MS;
   }
 
-  private broadcast(): void {
+  /** Hängt gerade ein Großer Tisch (Fernseher) am Raum? Die Handys zeigen dann die Fernbedienung. */
+  private hasTable(gone?: WebSocket): boolean {
+    return this.ctx.getWebSockets().some((w) => w !== gone && (w.deserializeAttachment() as Attachment | null)?.table);
+  }
+
+  private broadcast(gone?: WebSocket): void {
     if (!this.room) return;
     const sockets = this.ctx.getWebSockets();
+    const tv = this.hasTable(gone) || undefined;
     // Bots sind immer „da“ (für die Anzeige; die Lebensdauer des Raums hängt nur an echten Verbindungen)
     const onlineList = [...this.onlineIds(), ...(this.room.state.bots ?? [])];
     this.scheduleBots();
@@ -955,7 +973,7 @@ export class GameRoom extends DurableObject<Env> {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv });
     }
   }
 
@@ -968,7 +986,7 @@ export class GameRoom extends DurableObject<Env> {
 
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv: this.hasTable() || undefined });
   }
 
   /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */

@@ -57,10 +57,11 @@ export function CouchAdd({ onAdd, full }: { onAdd: (name: string) => void; full:
  * Alle Couch-Spieler: je einer eine eigene Verbindung (unsichtbar). Liste in der Seitenleiste mit „Hand zeigen“;
  * die Hand erscheint als Handy-Ansicht links über dem Tisch.
  */
-export function CouchPlayers({ code, pin, room, couch, onOpen }: { code: string; pin: string; room: RoomState; couch: ReturnType<typeof useCouch>; onOpen?: (open: boolean) => void }) {
+export function CouchPlayers({ code, pin, room, couch, onOpen, cover }: { code: string; pin: string; room: RoomState; couch: ReturnType<typeof useCouch>; onOpen?: (open: boolean) => void; /** zählt hoch, wenn die Fernbedienung „Hand verdecken“ schickt */ cover?: number }) {
   const [ids, setIds] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
   useEffect(() => { onOpen?.(open !== null); }, [open, onOpen]);
+  useEffect(() => { if (cover) setOpen(null); }, [cover]);
   const [revealed, setRevealed] = useState(false);
   const cur = currentPlayerId(room);
   const curSlot = couch.list.find((c) => ids[c.slot] && ids[c.slot] === cur)?.slot ?? null;

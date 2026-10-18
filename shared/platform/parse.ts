@@ -3,7 +3,7 @@
  * Jeder Nachrichtentyp hat hier seine Regeln (Pflichtfelder, Typen, Längen, erlaubte Werte); unbekannte Felder fallen weg.
  * Was nicht passt, wird als ganze Nachricht abgelehnt (null). Neue Nachrichtentypen brauchen hier einen Eintrag und einen Test.
  */
-import type { ClientMessage } from "./protocol";
+import { REMOTE_CMDS, type ClientMessage, type RemoteCmd } from "./protocol";
 
 type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => !!x && typeof x === "object" && !Array.isArray(x);
@@ -62,6 +62,8 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
     case "claimHost":
     case "pair":
       return { type: m.type };
+    case "remote":
+      return (REMOTE_CMDS as readonly unknown[]).includes(m.cmd) ? { type: "remote", cmd: m.cmd as RemoteCmd } : null;
     case "call": {
       if (m.session !== null && typeof m.session !== "string") return null;
       const p = pick({ audio: str(m.audio, 128), video: str(m.video, 128), mic: bool(m.mic), cam: bool(m.cam) });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { PING, PONG, type ChatMsg, type ClientMessage, type ServerMessage } from "@shared/platform/protocol";
+import { PING, PONG, type RemoteCmd, type ChatMsg, type ClientMessage, type ServerMessage } from "@shared/platform/protocol";
 import type { RoomState } from "@shared/platform/room";
 import { wsUrl } from "@/lib/storage";
 import { noteServerBuild } from "@/lib/update";
@@ -16,6 +16,8 @@ export function useWatch(path: string, hello?: ClientMessage) {
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [status, setStatus] = useState<WatchStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
+  /** Letzter Befehl der Fernbedienung (Großer Tisch); `n` zählt, damit gleiche Befehle hintereinander ankommen */
+  const [remote, setRemote] = useState<{ cmd: RemoteCmd; by: string; n: number } | null>(null);
   const tries = useRef(0);
   const first = useRef(hello);
   first.current = hello;
@@ -39,6 +41,7 @@ export function useWatch(path: string, hello?: ClientMessage) {
         if (msg.type === "hello") noteServerBuild(msg.build, msg.protocol);
         else if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setStatus("live"); }
         else if (msg.type === "chat") setChat((prev) => (msg.append ? [...prev, ...msg.messages].slice(-100) : msg.messages));
+        else if (msg.type === "remote") setRemote((r) => ({ cmd: msg.cmd, by: msg.by, n: (r?.n ?? 0) + 1 }));
         else if (msg.type === "error" && msg.fatal) { done = true; setError(msg.message); setStatus("closed"); }
       };
       ws.onclose = (ev) => {
@@ -58,5 +61,5 @@ export function useWatch(path: string, hello?: ClientMessage) {
     };
   }, [path]);
 
-  return { state, online, chat, status, error };
+  return { state, online, chat, status, error, remote };
 }

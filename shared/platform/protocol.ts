@@ -44,7 +44,13 @@ export type ClientMessage =
   /** Großer Tisch: Bildschirm für alle meldet sich mit der Raum-PIN an und liest danach nur mit */
   | { type: "table"; pin: string }
   /** Begleit-Handy koppeln: Server gibt einen kurzen Einmal-Code für diesen Spieler aus */
-  | { type: "pair" };
+  | { type: "pair" }
+  /** Host: den Fernseher fernsteuern */
+  | { type: "remote"; cmd: RemoteCmd };
+
+/** Befehle der Fernbedienung (Handy des Hosts → Großer Tisch) */
+export const REMOTE_CMDS = ["sound", "louder", "quieter", "cover"] as const;
+export type RemoteCmd = (typeof REMOTE_CMDS)[number];
 
 /** Eine Chat-Nachricht im Raum */
 export interface ChatMsg {
@@ -79,7 +85,8 @@ export type ServerMessage =
   | { type: "hello"; build: BuildInfo; protocol: number }
   | { type: "joined"; playerId: string; token: string }
   | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer>; /** wer gerade anklopft */ knocks?: KnockView[];
-      /** Revision des Raums – ein Stand mit kleinerer Revision als der zuletzt gesehene ist veraltet */ rev?: number }
+      /** Revision des Raums – ein Stand mit kleinerer Revision als der zuletzt gesehene ist veraltet */ rev?: number;
+      /** ein Großer Tisch (Fernseher) ist verbunden – das Handy des Hosts zeigt die Fernbedienung */ tv?: boolean }
   /** An den Gast: PIN stimmt, jetzt wartet er auf Einlass (`wait`: so lange höchstens noch, ms) */
   | { type: "knocking"; wait: number }
   /** Aktion angekommen (oder schon früher ausgeführt) */
@@ -90,6 +97,8 @@ export type ServerMessage =
   | { type: "notice"; text: string }
   /** Kopplungs-Code fürs Begleit-Handy (gilt bis `until`, nur einmal) */
   | { type: "paired"; code: string; until: number }
+  /** an den Großen Tisch: Befehl der Fernbedienung und von wem */
+  | { type: "remote"; cmd: RemoteCmd; by: string }
   | { type: "error"; message: string; code?: ErrorCode; fatal?: boolean; /** gehört zu dieser Aktion */ id?: string };
 
 /** Herzschlag als reiner Text – der Server antwortet, ohne aufzuwachen */

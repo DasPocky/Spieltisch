@@ -174,3 +174,37 @@ test("Ohne Handy mitspielen: der Fernseher nimmt Opa auf, zeigt seine Hand nur h
   await screen.getByTestId("couch-close").click();
   await expect(screen.getByTestId("couch-hand")).toHaveCount(0);
 });
+
+test("Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts schaltet Ton und Lautstärke am Tisch", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  await screen.goto("/tisch");
+  // Pfeiltasten: von „Tisch aufbauen“ nach rechts ins Formular (das gesperrte „Verbinden“ wird übersprungen)
+  await screen.getByTestId("table-new").focus();
+  await screen.keyboard.press("ArrowRight");
+  await expect(screen.getByLabel("PIN")).toBeFocused();
+  // Im Eingabefeld gehören die Pfeiltasten dem Feld
+  await screen.keyboard.press("ArrowLeft");
+  await expect(screen.getByLabel("PIN")).toBeFocused();
+  // Von „Zur Startseite“ (unten) nach oben zu „Tisch aufbauen“ und mit Enter auslösen
+  await screen.getByRole("button", { name: "Zur Startseite" }).focus();
+  await screen.keyboard.press("ArrowUp");
+  await expect(screen.getByTestId("table-new")).toBeFocused();
+  await screen.keyboard.press("Enter");
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "true");
+
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  await anna.getByRole("button", { name: "Menü" }).click();
+  await anna.getByTestId("big-table").click();
+  await expect(anna.getByTestId("remote")).toBeVisible();
+  await shot(anna, "98-fernbedienung");
+  await anna.getByTestId("remote-sound").click();
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "false");
+  await expect(screen.getByText("Anna: Ton aus")).toBeVisible();
+  await anna.getByTestId("remote-louder").click();
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "true");
+  const vol = await screen.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:prefs") ?? "{}").volMusic);
+  expect(vol).toBeCloseTo(0.55, 2);
+});

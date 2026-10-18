@@ -102,6 +102,8 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Ohne Handy mitspielen** (`table/Couch.tsx`): Der Fernseher meldet Spieler als normale Mitspieler an – je Platz eine eigene Verbindung über `useRoom(…, { slot })` mit eigenem Zugang und ohne das Profil des Geräts. Ist so ein Spieler dran, öffnet sich links seine Handy-Ansicht hinter einem Sichtschutz (Enter deckt auf, Escape schließt); sonst über die Liste „Am Fernseher“.
 
+**Fernbedienung:** Am Fernseher springt der Fokus mit den Pfeiltasten von Knopf zu Knopf (`src/lib/spatialNav.ts`, Enter löst aus; in Eingabefeldern und Reglern bleiben die Pfeile beim Feld). Ist ein Tisch verbunden, bekommen die Handys `tv: true` im Spielstand; der Host sieht im Menü unter „Großer Tisch“ die Fernbedienung und schickt `{ type: "remote", cmd }` (`sound`, `louder`, `quieter`, `cover`). Der Raum reicht das nur an die Tische weiter.
+
 **Ton** (`src/platform/sound.ts`): alles mit WebAudio erzeugt, drei Kanäle mit eigener Lautstärke (`prefs.volFx/volMusic/volCrowd`) hinter einem Begrenzer – `playSound` (Effekte), `playCrowd` (Applaus, Jubel, „Oooh“, Lachen), `startMusic`/`stopMusic` (ruhige Akkordfolge, Lobby lebhafter). Der Tisch spielt Musik und Publikum (`table/sound.tsx`), die Handys nur Effekte.
 
 **Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { dev, diag, netDown, netDownUntil, onNetChange } from "@/lib/dev";
 import type { RoomAction, RoomState } from "@shared/platform/room";
-import { PING, PONG, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
+import { PING, PONG, type RemoteCmd, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
 import type { KnockView } from "@shared/platform/directory";
 import { credsKey, readJSON, remove, writeJSON, wsUrl, type RoomCreds } from "@/lib/storage";
 import { myAvatar, myProfile } from "@/lib/profile";
@@ -62,6 +62,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
   const [knockUntil, setKnockUntil] = useState(0);
   /** Kopplungs-Code fürs Begleit-Handy (vom Server, kurz gültig) */
   const [pairing, setPairing] = useState<{ code: string; until: number } | null>(null);
+  /** Ein Großer Tisch (Fernseher) ist verbunden */
+  const [tv, setTv] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const outbox = useRef<Pending[]>([]);
   const flushRef = useRef<() => void>(() => {});
@@ -181,6 +183,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
           setMe(msg.you);
           hostRef.current = msg.state.hostId === msg.you;
           setOnline(new Set(msg.online));
+          setTv(!!msg.tv);
           setCall(msg.call ?? {});
           const now = Date.now();
           setKnocks((msg.knocks ?? []).map((k) => ({ ...k, at: now - k.ago })));
@@ -337,9 +340,11 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
 
   /** Begleit-Handy koppeln: neuen Einmal-Code anfordern */
   const pair = useCallback(() => post({ type: "pair" }), [post]);
+  /** Fernbedienung: Befehl an den Fernseher (nur der Host) */
+  const remote = useCallback((cmd: RemoteCmd) => post({ type: "remote", cmd }), [post]);
 
   /** Chat-Nachricht oder Reaktion schicken */
   const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing, tv, remote };
 }

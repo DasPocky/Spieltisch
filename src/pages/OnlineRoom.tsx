@@ -98,6 +98,8 @@ export function OnlineRoom({ code }: { code: string }) {
       onKnock={room.answerKnock}
       onPair={room.pair}
       pairing={room.pairing}
+      tv={room.tv}
+      onRemote={room.remote}
     />
   );
 }
