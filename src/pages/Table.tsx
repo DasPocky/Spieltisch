@@ -29,6 +29,7 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
+import { FeltDice, FeltGrid } from "@/platform/table/blocks";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 
@@ -243,10 +244,12 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
 }) {
   const avatars = useMemo(() => roomAvatars(room), [room]);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
+  const [felt, setFelt] = useState<FeltRect | null>(null);
   // Nur bei echter Änderung neu setzen – sonst zeichnet sich die Seite endlos neu
   const onSeats = useCallback((next: { x: number; y: number }[], f: FeltRect) => {
     const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
     setPoints((prev) => (prev.length === next.length && prev.every((p, i) => near(p.x, next[i].x) && near(p.y, next[i].y)) ? prev : next));
+    setFelt((prev) => (prev && near(prev.x, f.x) && near(prev.y, f.y) && near(prev.w, f.w) && near(prev.h, f.h) ? prev : f));
     onFelt?.(f);
   }, [onFelt]);
   // Eigene Sicht: der eigene Platz vorn in der Mitte, die anderen der Reihe nach
@@ -263,8 +266,14 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
-          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : undefined} />
+          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]} />
       ))}
+      {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
+      {(model?.dice || model?.grid) && (
+        <OnFelt rect={felt}>
+          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice && <FeltDice dice={model.dice} />}
+        </OnFelt>
+      )}
       {model?.log.length && !sham ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
     </>
@@ -415,15 +424,17 @@ function Scores({ room, model, avatars, points }: { room: RoomState; model: Tabl
   if (!room.players.length) return null;
   if (points) model = { ...(model ?? { deck: "cards", pile: 0, discard: [], counts: {}, turn: null, n: 0, log: [] }), scores: points };
   const rows = [...room.players].sort((a, b) => (model?.scores ? (model.scores[b.id] ?? 0) - (model.scores[a.id] ?? 0) : 0));
+  // Spiele ohne Karten (Würfel, Spielfeld): statt Kartenzahl die Notiz des Platzes (z. B. die Farbe)
+  const cards = !!model && Object.keys(model.counts).length > 0;
   return (
     <div className="paper-note -rotate-1 p-4">
-      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">{model?.scores ? "Punkte" : model ? "Karten" : "Am Tisch"}</div>
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">{model?.scores ? "Punkte" : cards ? "Karten" : "Am Tisch"}</div>
       <ul className="grid gap-1.5">
         {rows.map((p) => (
           <li key={p.id} className="flex items-center gap-2">
             <Avatar avatar={avatars[p.id]} name={p.name} className="size-6 text-sm" />
             <span className="min-w-0 flex-1 truncate">{p.name}</span>
-            <b className="tabular-nums">{model?.scores ? model.scores[p.id] ?? 0 : model ? model.counts[p.id] ?? 0 : ""}</b>
+            <b className="tabular-nums">{model?.scores ? model.scores[p.id] ?? 0 : cards ? model!.counts[p.id] ?? 0 : model?.notes?.[p.id] ?? ""}</b>
           </li>
         ))}
       </ul>

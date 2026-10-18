@@ -10,7 +10,8 @@ describe("Spielweisen je Spiel", () => {
   it("Zustand: eingebaut, von der Verwaltung überschrieben, „none“ wenn das Spiel es nicht kann", () => {
     expect(modeState({}, "uno", "table")).toBe("on");
     expect(modeState({ uno: { table: "off" } }, "uno", "table")).toBe("off");
-    expect(modeState({}, "kniffel", "table")).toBe("none");
+    expect(modeState({}, "kniffel", "table")).toBe("beta");
+    expect(modeState({}, "tutto", "table")).toBe("none");
     expect(modeState({}, "uno", "stage")).toBe("none");
   });
   it("Beta nur für Geräte der Verwaltung", () => {
@@ -20,7 +21,7 @@ describe("Spielweisen je Spiel", () => {
     expect(modeAllowed({ uno: { table: "off" } }, "uno", "table", true)).toBe(false);
   });
   it("Tisch-Spiele sind echte Spiele", () => {
-    expect(TABLE_GAMES).toEqual(["maumau", "uno", "schamlos"]);
+    expect(TABLE_GAMES).toEqual(["maumau", "uno", "schamlos", "kniffel", "vier"]);
     for (const id of Object.keys(GAME_MODES)) expect(id in GAMES).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { newPhone, shot } from "./util";
+import { ALL_ON, newPhone, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
@@ -259,4 +259,49 @@ test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, 
   await expect.poll(async () => (await ben.request.get(src)).status()).toBe(404);
   // Unbekannte oder krumme Namen gibt es nicht
   expect((await ben.request.get("/api/photo/r/../../wrangler.jsonc")).status()).toBe(404);
+});
+
+test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz (Beta eingeschaltet)", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { kniffel: { table: "on" }, vier: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+
+    // Kniffel: wer dran ist, würfelt – fünf Würfel auf dem Filz, Punkte an den Plätzen
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-kniffel").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-dice")).toBeVisible();
+    const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
+    const mover = (await turn.textContent())?.includes("Anna") ? anna : ben;
+    await mover.getByRole("button", { name: /Würfeln/ }).click();
+    await expect(screen.getByTestId("table-dice").getByRole("img")).toHaveCount(5);
+    await expect(screen.getByTestId("table-dice")).toContainText(/noch 2 Würfe/);
+    await expect(screen.getByTestId("table-seat").first()).toContainText("0 Pkt.");
+    await screen.waitForTimeout(600);
+    await shot(screen, "9a-tisch-kniffel");
+
+    // Vier gewinnt: zurück in die Lobby, Spiel wechseln
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-vier").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-grid")).toBeVisible();
+    const t2 = screen.locator('[data-testid="table-seat"][data-turn="true"]');
+    const first = (await t2.textContent())?.includes("Anna") ? anna : ben;
+    await first.getByRole("button", { name: "Spalte 4", exact: true }).click();
+    await expect(screen.getByTestId("table-grid").locator("circle[fill='#d0453b']")).toHaveCount(1);
+    await expect(screen.getByTestId("table-seat").filter({ hasText: "Rot" })).toHaveCount(1);
+    await shot(screen, "9b-tisch-vier");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
 });

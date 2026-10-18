@@ -33,6 +33,14 @@ export function useTableSound(room: RoomState, model: TableModel | null) {
     else if (now.total > prev.total) playSound("draw");
   }, [model, quiet]);
 
+  // Würfel: neuer Wurf auf dem Tisch
+  const diceN = model?.dice?.values.length ? model.dice.n : null;
+  const lastDice = useRef(diceN);
+  useEffect(() => {
+    if (diceN !== null && lastDice.current !== null && diceN !== lastDice.current && !quiet) playSound("dice");
+    lastDice.current = diceN;
+  }, [diceN, quiet]);
+
   // Lückensatz: Antwort gewählt → Lachen und Applaus
   const pick = model?.words?.pick ?? null;
   const lastPick = useRef(pick);

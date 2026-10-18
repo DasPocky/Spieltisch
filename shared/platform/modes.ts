@@ -25,6 +25,9 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   maumau: { table: "on", desk: "beta" },
   uno: { table: "on" },
   schamlos: { table: "on" },
+  // Bausteine Würfel und Spielfeld – Beta bis zur Abnahme
+  kniffel: { table: "beta" },
+  vier: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */
