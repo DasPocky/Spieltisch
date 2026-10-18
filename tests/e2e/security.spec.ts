@@ -90,3 +90,8 @@ test("Dateien einspielen: ohne passenden Release-Schlüssel nimmt der Server nic
   expect((await request.put("/api/release/files/bilder/test.png", { data: png })).status()).toBe(403);
   expect((await request.put("/api/release/files/bilder/test.png", { data: png, headers: { "x-release-key": "falsch" } })).status()).toBe(403);
 });
+
+test("KI-Sprüche: ausgeschaltet oder ohne Anbindung gibt es keinen Spruch (der Tisch nimmt feste Texte)", async ({ request }) => {
+  const res = await request.post("/api/host/line", { data: { moment: "sieg", mood: "frech", name: "Anna", game: "Mau-Mau" } });
+  expect(res.status()).toBe(204);
+});

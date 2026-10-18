@@ -33,6 +33,7 @@
   "ratelimits": [{ "name": "SENSITIVE", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
   // Größere Dateien (Fotos der Spieler) – Namen sind nicht erratbar, Räume räumen ihre Fotos beim Ende selbst weg
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "spieltisch-dateien" }],
+  "ai": { "binding": "AI" },
   // Alle 5 Minuten prüfen, ob ein wartendes Update live gehen darf
   "triggers": { "crons": ["*/5 * * * *"] },
   // Vorschau je Zweig (Cloudflare Worker Previews, nur für Nicht-main-Zweige):

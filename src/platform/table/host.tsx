@@ -10,6 +10,8 @@ import { speak } from "@/platform/speech";
 import { OrbHost } from "@/platform/moderator/figures";
 import { lineFor, MOODS, type Mood, type Moment } from "@/platform/moderator/lines";
 import type { TableModel } from "./model";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
+import type { HostMoment } from "@shared/platform/hostline";
 
 /** Spiele mit eigenem Spielleiter bzw. geheimen Rollen: der Moderator hält sich raus */
 const OWN_LEADER = new Set(["werwolf", "einenacht"]);
@@ -22,20 +24,28 @@ interface Say { text: string; moment: Moment; at: number; ms: number }
  * Moderator am großen Tisch: beobachtet die Partie und sagt an – Beginn, wer dran ist, Kartenzar, Rundenpunkt, Sieg.
  * Reine Darstellung: ändert nichts am Spiel. Der erste Stand nach dem Laden bleibt still (kein Nachholen alter Ereignisse).
  */
-export function useTableHost(room: RoomState, model: TableModel | null, mood: Mood): { on: boolean; say: Say | null } {
+export function useTableHost(room: RoomState, model: TableModel | null, mood: Mood, game = ""): { on: boolean; say: Say | null } {
   const p = usePrefs();
+  const ai = useSiteConfig()?.features.ai === true;
   const [say, setSay] = useState<Say | null>(null);
   const on = p.host && !OWN_LEADER.has(room.gameId);
   const voice = p.hostVoice && p.sound;
   const playing = room.phase === "playing" && room.game !== null;
   const name = (id: string | null | undefined) => room.players.find((x) => x.id === id)?.name ?? "";
 
-  const announce = (moment: Moment, who = "") => {
-    if (!on) return;
-    const text = lineFor(mood, moment, who);
+  const show = (moment: Moment, text: string) => {
     const ms = 600 + text.length * 62;
     setSay({ text, moment, at: Date.now(), ms });
     if (voice) void speak(text, { force: true, pitch: 1.1 });
+  };
+  const announce = (moment: Moment, who = "") => {
+    if (!on) return;
+    // Seltene Momente mit frischem KI-Spruch (falls eingeschaltet) – sonst und bei jedem Problem die festen Texte
+    if (ai && moment !== "dran" && moment !== "pech") {
+      void aiLine({ moment: moment as HostMoment, mood, name: who, game }).then((t) => show(moment, t ?? lineFor(mood, moment, who)));
+      return;
+    }
+    show(moment, lineFor(mood, moment, who));
   };
 
   // Ereignisse vergleichen mit dem zuletzt gesehenen Stand
@@ -77,6 +87,16 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
   }, [say]);
 
   return { on, say: on ? say : null };
+}
+
+/** KI-Spruch vom Server holen – null bei Fehler, Zeitüberschreitung oder „kein Spruch“ (204) */
+async function aiLine(body: { moment: HostMoment; mood: Mood; name: string; game: string }): Promise<string | null> {
+  try {
+    const res = await fetch("/api/host/line", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(3000) });
+    if (res.status !== 200) return null;
+    const data = (await res.json()) as { text?: unknown };
+    return typeof data.text === "string" && data.text ? data.text : null;
+  } catch { return null; }
 }
 
 /** Der Smiley unten rechts am Tisch mit Sprechblase */

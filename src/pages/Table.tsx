@@ -199,7 +199,7 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
   const [felt, setFelt] = useState<FeltRect | null>(null);
   useTableSound(room, model);
   const [mood, setMood] = useState(readMood);
-  const moderator = useTableHost(room, model, mood);
+  const moderator = useTableHost(room, model, mood, game?.info.name);
   const couch = useCouch(code);
   // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
   const [handOpen, setHandOpen] = useState(false);

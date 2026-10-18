@@ -35,7 +35,7 @@ function buildInfo() {
 
 export default defineConfig({
   define: { __BUILD__: JSON.stringify(buildInfo()) },
-  plugins: [react(), tailwindcss(), cloudflare(), precacheList()],
+  plugins: [react(), tailwindcss(), cloudflare({ remoteBindings: false }), precacheList()],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
