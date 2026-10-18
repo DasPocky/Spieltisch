@@ -8,6 +8,7 @@ import { sanitizeAccess, type RoomAccess } from "../../shared/platform/directory
 import { PIN_RE, ROOM_CODE_RE } from "../../shared/platform/protocol";
 import { type AdminRoomAction } from "../../shared/platform/admin";
 import { isBotLevel } from "../../shared/platform/botSkill";
+import { ASSET_PREFIX, assetPath, FILE_MAX_BYTES, fileType } from "../../shared/platform/files";
 import { Env, settingsOf, profileOf, groupOf } from "../env";
 import { readBody, badRequest, json, withTimeout, makeCode } from "../http";
 import { WATCH_PATH } from "../rooms";
@@ -76,6 +77,27 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
   if (path === "/api/admin/health" && request.method === "GET") return json(await settings.healthList());
 
   if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
+
+  // Dateien der App in R2 (Ordner assets/): auflisten, hochladen (PUT, Rohdaten), löschen
+  if (path === "/api/admin/files" && request.method === "GET") {
+    if (!env.FILES) return json({ ok: false, error: "Der Dateispeicher ist nicht verbunden." }, 503);
+    const list = await env.FILES.list({ prefix: ASSET_PREFIX, limit: 500 });
+    return json({ files: list.objects.map((o) => ({ path: o.key.slice(ASSET_PREFIX.length), size: o.size, uploaded: o.uploaded.getTime() })) });
+  }
+  const file = path.match(/^\/api\/admin\/files\/(.+)$/);
+  if (file && (request.method === "PUT" || request.method === "DELETE")) {
+    if (!env.FILES) return json({ ok: false, error: "Der Dateispeicher ist nicht verbunden." }, 503);
+    const target = assetPath(decodeURIComponent(file[1]));
+    if (!target) return json({ ok: false, error: "Ordner, Name oder Endung passt nicht." }, 400);
+    if (request.method === "DELETE") { await env.FILES.delete(ASSET_PREFIX + target.path); return json({ ok: true }); }
+    if (Number(request.headers.get("content-length") ?? 0) > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (bytes.length > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
+    const type = fileType(bytes, target.path);
+    if (!type) return json({ ok: false, error: "Der Inhalt passt nicht zur Endung." }, 400);
+    await env.FILES.put(ASSET_PREFIX + target.path, bytes, { httpMetadata: { contentType: type } });
+    return json({ ok: true, path: target.path, size: bytes.length });
+  }
   // Updates: Stand (Modus, wartende Version, Verlauf) und „Jetzt live schalten“
   if (path === "/api/admin/release" && request.method === "GET") return json(await settings.releaseStatus());
   if (path === "/api/admin/release" && request.method === "POST") {

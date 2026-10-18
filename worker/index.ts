@@ -11,6 +11,7 @@ import { handleGroups } from "./routes/groups";
 import { handleAdmin } from "./routes/admin";
 import { handleCall } from "./routes/call";
 import { ownsProfile } from "./auth";
+import { ASSET_PREFIX, assetPath } from "../shared/platform/files";
 
 /** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
 let pendingRequests = 0;
@@ -186,6 +187,19 @@ export default {
         "x-content-type-options": "nosniff",
         "content-security-policy": "default-src 'none'",
       } });
+    }
+
+    // Dateien der App aus R2 (3D-Figuren, Bilder) – öffentlich, kurz zwischengespeichert, Änderungen über das ETag
+    const asset = url.pathname.match(/^\/api\/asset\/(.+)$/);
+    if (asset && request.method === "GET") {
+      const target = assetPath(decodeURIComponent(asset[1]));
+      const obj = target && env.FILES ? await env.FILES.get(ASSET_PREFIX + target.path, { onlyIf: request.headers }) : null;
+      if (!obj) return new Response("Nicht gefunden.", { status: 404 });
+      const headers = new Headers({ etag: obj.httpEtag, "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff", "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream" });
+      // Bedingung erfüllt (ETag gleich): ohne Inhalt
+      const body = "body" in obj ? (obj as R2ObjectBody).body : null;
+      if (!body) return new Response(null, { status: 304, headers });
+      return new Response(body, { headers });
     }
 
     const match = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)(\/ws)?$/);

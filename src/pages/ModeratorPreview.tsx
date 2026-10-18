@@ -140,7 +140,18 @@ function Moderator3D({ kind, mood, onStage, fallback }: { kind: FigureKind; mood
     return () => { gone = true; ro?.disconnect(); s?.dispose(); onStage(null); };
   }, [kind, quality, flat, onStage]);
 
-  if (flat || state === "failed") return <div className="absolute inset-0 grid place-items-center p-6">{fallback}</div>;
+  if (flat || state === "failed") {
+    return (
+      <div className="absolute inset-0 grid place-items-center p-6">
+        {fallback}
+        {state === "failed" && !flat && (
+          <p className="absolute top-3 right-3 left-3 rounded-xl bg-black/55 px-3 py-2 text-center text-sm text-[#f7ecd6]" data-testid="figure-missing">
+            Figur nicht gefunden – in der Verwaltung unter Einstellungen → Dateien → Moderator-Figuren „{kind}.glb“ hochladen.
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <>
       <div ref={holder} className="absolute inset-0" />

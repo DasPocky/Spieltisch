@@ -78,6 +78,17 @@ Alles läuft im kostenlosen Cloudflare-Tarif (100.000 Worker-Anfragen pro Tag; W
 
 Beim Bauen landen Commit, Zweig und Bauzeit im Code (in Cloudflare-Builds aus `WORKERS_CI_COMMIT_SHA` und `WORKERS_CI_BRANCH`, sonst aus git). Die Verwaltung vergleicht Gerät, Server (`/api/admin/status`) und den letzten Commit auf `main` des öffentlichen Repositorys. „Update offen“ heißt meist: Die Veröffentlichung läuft gerade.
 
-## R2-Speicher (Fotos)
+## R2-Speicher
 
-Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`, auch für Vorschauen). Jeder Raum legt seine Fotos unter `r/<Raum-Objekt-ID>/` ab und löscht sie, wenn er endet. Fehlt die Bindung, sind Fotos einfach aus.
+Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`, auch für Vorschauen). Ordner:
+
+- `r/<Raum-Objekt-ID>/` – Fotos der Spieler; jeder Raum löscht seine Fotos, wenn er endet.
+- `assets/moderator/` – 3D-Figuren des Moderators (`mensch.glb`, `roboter.glb`)
+- `assets/bilder/` – Bilder für Karten und Bühne (später)
+
+Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`. Fehlt eine Figur, zeigt der Moderator die Leuchtkugel.
+
+### Herkunft der Moderator-Figuren (nur freie Modelle)
+
+- `mensch.glb`: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead), erstellt mit Blender und MPFB – CC0 1.0. Verkleinert mit `npx @gltf-transform/cli optimize mpfb.glb mensch.glb --compress meshopt --texture-compress webp --texture-size 1024`.
+- `roboter.glb`: „RobotExpressive“ von Tomás Laulhé, Gesichtsausdrücke von Don McCurdy (three.js-Beispiele) – CC0 1.0. Liegt auch unter `tests/fixtures/` für die Tests.

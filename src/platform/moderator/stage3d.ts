@@ -14,9 +14,11 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 import type { Mood, Moment } from "./lines";
 import { visemesOf, type Viseme } from "./visemes";
+import { assetUrl } from "@shared/platform/files";
 
 export type FigureKind = "mensch" | "roboter";
-export const FIGURE_URL: Record<FigureKind, string> = { mensch: "/models/moderator/mensch.glb", roboter: "/models/moderator/roboter.glb" };
+/** Figuren liegen im Speicher (R2) – hochgeladen in der Verwaltung unter „Dateien“ */
+export const FIGURE_URL: Record<FigureKind, string> = { mensch: assetUrl("moderator/mensch.glb"), roboter: assetUrl("moderator/roboter.glb") };
 
 export interface ModeratorStage {
   /** Text sprechen lassen: Mundbilder laufen nach Schätzung, Wort-Signale der Stimme ziehen nach */

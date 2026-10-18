@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/platform/Segmented";
 import { useAdmin } from "./context";
+import { FilesPanel } from "./Files";
 import { setDev, useDev } from "@/lib/dev";
 import { DataTab } from "./Data";
 import { AuthError, Panel } from "./shared";
@@ -93,6 +94,7 @@ export function SettingsSection() {
           onSave={(archiveDays) => save({ archiveDays }, `Verlauf: ${archiveDays} Tage`)} />
       </Panel>
 
+      <FilesPanel />
       <UpdatesPanel />
       <NewsPanel />
       <HealthPanel />
