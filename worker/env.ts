@@ -28,6 +28,8 @@ export interface Env {
   WORKER_NAME?: string;
   /** Globale Ratenbremse von Cloudflare für sicherheitsrelevante Wege (Profil-Schlüssel, Übertragung, PIN) */
   SENSITIVE?: RateLimit;
+  /** R2-Speicher für größere Dateien (Fotos der Spieler). Fehlt er, sind Fotos aus. */
+  FILES?: R2Bucket;
 }
 
 /** Kurzwege zu den Durable Objects */

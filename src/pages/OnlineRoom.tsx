@@ -100,6 +100,7 @@ export function OnlineRoom({ code }: { code: string }) {
       pairing={room.pairing}
       tv={room.tv}
       onRemote={room.remote}
+      onPhoto={room.photo}
     />
   );
 }

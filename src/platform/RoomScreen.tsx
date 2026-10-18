@@ -62,6 +62,8 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   onKnock?: (id: string, decision: "admit" | "deny" | "wait") => void;
   /** Begleit-Handy koppeln (online, am Rechner) */
   onPair?: () => void;
+  /** Eigenes Foto (online) */
+  onPhoto?: (data: string | null) => void;
   pairing?: { code: string; until: number } | null;
 }
 
@@ -238,7 +240,7 @@ function Lobby(props: Props & { isHost: boolean }) {
     return (
       <>
         <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
-          playLabel={isHost ? "Spiel wählen" : "Zur Spiel-Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} />
+          playLabel={isHost ? "Spiel wählen" : "Zur Spiel-Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} onPhoto={props.onPhoto} />
         {isHost && (
           <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online
             onPick={(id) => {
@@ -252,7 +254,7 @@ function Lobby(props: Props & { isHost: boolean }) {
   return <GameLobby {...props} />;
 }
 
-function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call }: Props & { isHost: boolean }) {
+function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHost, call }: Props & { isHost: boolean }) {
   // Frisch erstellter Raum oder „Spiel wechseln“: der Host wählt zuerst das Spiel
   const [pick, setPick] = useState(() => {
     if (takeGamePick() && isHost) return true;
@@ -300,7 +302,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, isHost, call 
       <p className="mb-2 px-1 text-sm text-muted-foreground">
         Gespielt wird in dieser Reihenfolge.
       </p>
-      <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} />
+      <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} onPhoto={onPhoto} />
 
       {/* Einstellungen als eine Zeile – alles Weitere im Sheet */}
       <NavRow icon={SlidersHorizontal} onClick={() => setSettings(true)} data-testid="settings-summary" className="mt-3"

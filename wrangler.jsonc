@@ -31,12 +31,16 @@
   "vars": { "REALTIME_APP_ID": "6a2b13fa601e8f01bf6a94ccf63620bf", "CF_ACCOUNT_ID": "ef9cbceacd8be6cff839033e54c0cb6b", "WORKER_NAME": "spieltisch" },
   // Globale Ratenbremse für sicherheitsrelevante Wege (Profil-Schlüssel, Übertragungs-Code) – je Adresse und Minute
   "ratelimits": [{ "name": "SENSITIVE", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }],
+  // Größere Dateien (Fotos der Spieler) – Namen sind nicht erratbar, Räume räumen ihre Fotos beim Ende selbst weg
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "spieltisch-dateien" }],
   // Alle 5 Minuten prüfen, ob ein wartendes Update live gehen darf
   "triggers": { "crons": ["*/5 * * * *"] },
   // Vorschau je Zweig (Cloudflare Worker Previews, nur für Nicht-main-Zweige):
   // Jede Vorschau bekommt eigene, leere Durable Objects – Räume, Einstellungen, Profile und Gruppen von live bleiben unberührt.
   // Secrets erbt sie nicht: ohne ADMIN_PASSWORD ist die Verwaltung dort aus, ohne Realtime-Token auch Audio und Video.
   "previews": {
+    // Gleicher Speicher wie live: jeder Raum legt unter seiner eigenen Objekt-ID ab, Vorschau-Räume haben eigene IDs
+    "r2_buckets": [{ "binding": "FILES", "bucket_name": "spieltisch-dateien" }],
     "durable_objects": {
       "bindings": [
         { "name": "ROOMS", "class_name": "GameRoom" },

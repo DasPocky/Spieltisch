@@ -10,6 +10,7 @@ import { GameError } from "../shared/platform/types";
 import { BOT_PREFIX } from "../shared/platform/bots";
 import { isBotLevel, playBot } from "../shared/platform/botSkill";
 import { shuffle } from "../shared/platform/random";
+import { fromBase64, PHOTO_MAX_B64, PHOTO_MAX_BYTES, photoType } from "../shared/platform/photo";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
@@ -337,7 +338,11 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
     const text = typeof raw === "string" ? raw : new TextDecoder().decode(raw);
-    if (text.length > MAX_MESSAGE_BYTES) return;
+    // Fotos dürfen größer sein (bis PHOTO_MAX_BYTES) – alles andere bleibt klein. Zu groß: Bescheid geben statt still verwerfen.
+    if (text.length > (text.startsWith('{"type":"photo"') ? PHOTO_MAX_B64 + 100 : MAX_MESSAGE_BYTES)) {
+      this.send(ws, { type: "error", message: "Das war zu groß." });
+      return;
+    }
     // Falls die automatische Antwort nicht greift (lokal), selbst antworten
     if (text === PING) { try { ws.send(PONG); } catch { /* weg */ } return; }
 
@@ -389,6 +394,11 @@ export class GameRoom extends DurableObject<Env> {
       for (const w of this.ctx.getWebSockets()) {
         if ((w.deserializeAttachment() as Attachment | null)?.table) this.send(w, { type: "remote", cmd: msg.cmd, by });
       }
+      return;
+    }
+
+    if (msg.type === "photo") {
+      await this.setPhoto(ws, playerId, msg.data);
       return;
     }
 
@@ -631,6 +641,54 @@ export class GameRoom extends DurableObject<Env> {
     await this.destroy(`Der Raum war ${label} leer und ist abgelaufen.`);
   }
 
+  /** Letztes Foto je Spieler (Zeitpunkt) – höchstens eins alle paar Sekunden */
+  private photoAt = new Map<string, number>();
+
+  /**
+   * Eigenes Foto setzen oder entfernen: nur für sich selbst, nur echte Bilddateien bis PHOTO_MAX_BYTES.
+   * Gespeichert unter r/<Raum-Objekt>/<Zufall> – den Namen sehen nur Leute im Raum.
+   */
+  private async setPhoto(ws: WebSocket, playerId: string, data: string | null): Promise<void> {
+    const room = this.room!;
+    const bucket = this.env.FILES;
+    if (!bucket) { this.send(ws, { type: "error", message: "Fotos sind gerade nicht möglich." }); return; }
+    const now = Date.now();
+    if (now - (this.photoAt.get(playerId) ?? 0) < 3000) { this.send(ws, { type: "error", message: "Einen Moment – gleich geht es wieder." }); return; }
+    this.photoAt.set(playerId, now);
+    const old = room.state.photos?.[playerId];
+    let key: string | null = null;
+    if (data !== null) {
+      const bytes = fromBase64(data);
+      const type = bytes ? photoType(bytes) : null;
+      if (!bytes || !type || bytes.length > PHOTO_MAX_BYTES) { this.send(ws, { type: "error", message: "Das Bild ging nicht – bitte ein Foto (JPEG, PNG oder WebP) nehmen." }); return; }
+      const rand = [...crypto.getRandomValues(new Uint8Array(20))].map((b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[b % 62]).join("");
+      key = `r/${this.ctx.id.toString()}/${rand}`;
+      try { await bucket.put(key, bytes, { httpMetadata: { contentType: type, cacheControl: "private, max-age=31536000, immutable" } }); }
+      catch { this.send(ws, { type: "error", message: "Das Foto konnte gerade nicht gespeichert werden." }); return; }
+    }
+    const photos = { ...room.state.photos };
+    if (key) photos[playerId] = key; else delete photos[playerId];
+    room.state = { ...room.state, photos };
+    if (!Object.keys(photos).length) delete room.state.photos;
+    await this.persist();
+    this.broadcast();
+    if (old) try { await bucket.delete(old); } catch { /* räumt das Raumende weg */ }
+  }
+
+  /** Alle Fotos dieses Raums aus R2 löschen */
+  private async deletePhotos(): Promise<void> {
+    const bucket = this.env.FILES;
+    if (!bucket) return;
+    try {
+      const prefix = `r/${this.ctx.id.toString()}/`;
+      for (let i = 0; i < 10; i++) {
+        const list = await bucket.list({ prefix, limit: 500 });
+        if (list.objects.length) await bucket.delete(list.objects.map((o) => o.key));
+        if (!list.truncated) break;
+      }
+    } catch { /* nur ein Extra */ }
+  }
+
   /** Alle rauswerfen und sämtliche gespeicherten Daten des Raums löschen. */
   private async destroy(message: string): Promise<void> {
     const code = this.room?.code;
@@ -642,6 +700,7 @@ export class GameRoom extends DurableObject<Env> {
     }
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
+    await this.deletePhotos();
     this.room = null;
     if (code) try { await settingsOf(this.env).roomGone(code); } catch { /* Übersicht räumt beim Anzeigen selbst auf */ }
   }

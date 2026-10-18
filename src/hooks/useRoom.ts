@@ -340,11 +340,13 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
 
   /** Begleit-Handy koppeln: neuen Einmal-Code anfordern */
   const pair = useCallback(() => post({ type: "pair" }), [post]);
+  /** Eigenes Foto setzen (Base64) oder entfernen */
+  const photo = useCallback((data: string | null) => post({ type: "photo", data }), [post]);
   /** Fernbedienung: Befehl an den Fernseher (nur der Host) */
   const remote = useCallback((cmd: RemoteCmd) => post({ type: "remote", cmd }), [post]);
 
   /** Chat-Nachricht oder Reaktion schicken */
   const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing, tv, remote };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing, tv, remote, photo };
 }

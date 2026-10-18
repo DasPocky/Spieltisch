@@ -31,7 +31,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 ## Phase 1 – Grundlage für alle Spielweisen 🔨
 
-Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅ · Ton: drei Kanäle (Effekte, Musik, Publikum) mit eigener Lautstärke, Musik und Publikum am Tisch ✅ · Ohne Handy mitspielen: der Fernseher nimmt Spieler auf, ihre Hand erscheint hinter Sichtschutz am Fernseher ✅ · Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts steuert Ton und Verdecken ✅
+Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅ · Ton: drei Kanäle (Effekte, Musik, Publikum) mit eigener Lautstärke, Musik und Publikum am Tisch ✅ · Ohne Handy mitspielen: der Fernseher nimmt Spieler auf, ihre Hand erscheint hinter Sichtschutz am Fernseher ✅ · Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts steuert Ton und Verdecken ✅ · Bots mit Spielstärke (Mau-Mau, Uno, Vier gewinnt) ✅ · R2: Foto statt Tier im Raum ✅
 
 1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
 2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.
@@ -45,8 +45,8 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 6. **Handy als Begleiter:** Koppeln ✅, Fernbedienung ✅; offen: Kamera + Mikro, Chat + Reaktionen, private Hand.
 7. **Fernseher-Beitritt:** QR ✅, Spieler ohne Handy am Fernseher ✅; offen: Bild/Selfie ohne Profil; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
 8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken ✅ (später: Moderator-Stimme als vierter Kanal).
-9. **R2** für größere Daten (Selfies, Bildkarten): Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen.
-10. **Bots:** Spielstärke getrennt vom Zufall, reproduzierbar mit festem Startwert, keine fremden Geheimnisse.
+9. **R2** für größere Daten: Fotos der Spieler ✅ (Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen, Löschen mit dem Raum); später Bildkarten.
+10. **Bots:** Spielstärke getrennt vom Zufall, reproduzierbar mit festem Startwert, keine fremden Geheimnisse ✅ (Mau-Mau, Uno, Vier gewinnt; weitere Spiele in Phase 3).
 
 ## Phase 2 – Referenzspiel + Bühne und Moderator ⏳
 
