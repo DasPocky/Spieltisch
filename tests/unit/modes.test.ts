@@ -4,7 +4,7 @@ import { GAMES } from "@shared/games";
 
 describe("Spielweisen je Spiel", () => {
   it("nur bekannte Spiele und Spielweisen, nur Abweichungen werden gespeichert", () => {
-    expect(sanitizeModes({ uno: { table: "beta", desk: "on" }, maumau: { table: "on" }, gibtsnicht: { table: "off" }, schamlos: { table: "quatsch" } }))
+    expect(sanitizeModes({ uno: { table: "beta", stage: "on" }, maumau: { table: "on" }, gibtsnicht: { table: "off" }, schamlos: { table: "quatsch" } }))
       .toEqual({ uno: { table: "beta" } });
   });
   it("Zustand: eingebaut, von der Verwaltung überschrieben, „none“ wenn das Spiel es nicht kann", () => {

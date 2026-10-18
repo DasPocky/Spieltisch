@@ -161,3 +161,45 @@ test("Handy als Begleiter: QR am Rechner, Handy wird zweites Gerät desselben Sp
   await again.goto(link.replace(/^https?:\/\/[^/]+/, ""));
   await expect(again.getByText(/Kopplungs-Code ist abgelaufen/)).toBeVisible();
 });
+
+test("Am Rechner am Tisch mitspielen (Uno): eigene Hand unter dem Tisch, Tastatur zum Ziehen und Passen", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { uno: { desk: "on" } } });
+  try {
+    const page = await desktop(browser);
+    await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "uno"));
+    await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+    await page.getByLabel("Dein Name").fill("Anna");
+    await page.getByLabel(/PIN/).fill("7171");
+    await page.getByRole("button", { name: "Öffnen", exact: true }).click();
+    await page.getByTestId("meet-play").click();
+    await page.getByTestId("pick-uno").click();
+    const code = (await page.getByTestId("room-code").textContent())!.trim();
+    const phone = await newPhone(browser);
+    await phone.goto(`/r/${code}`);
+    await phone.getByLabel("Dein Name").fill("Ben");
+    await phone.getByLabel("PIN").fill("7171");
+    await phone.getByRole("button", { name: "Beitreten" }).click();
+    await page.getByRole("button", { name: "Spiel starten" }).click();
+
+    await expect(page.getByTestId("desk-stage")).toBeVisible();
+    await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(7);
+    await expect(page.getByTestId("table-seat")).toContainText("Ben");
+    await expectNoScroll(page);
+    await shot(page, "g7-desk-uno");
+
+    // Startkarte Farbwahl möglich: dann zuerst eine Farbe mit 1
+    const status = page.getByTestId("desk-hand").getByTestId("status");
+    if (/Farbwahl/.test((await status.textContent()) ?? "")) await page.keyboard.press("1");
+    if (!/ist am Zug/.test((await status.textContent()) ?? "")) {
+      // Anna ist dran: ziehen (Z) – danach passen (P), falls die gezogene Karte nicht gelegt wird
+      await page.keyboard.press("z");
+      await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(7);
+      await page.keyboard.press("p");
+      await expect.poll(async () => (await status.textContent()) ?? "").toMatch(/ist am Zug|Leg|Gezogene|ziehen/);
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

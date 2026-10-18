@@ -274,7 +274,8 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
           {model.grid ? <FeltGrid grid={model.grid} /> : model.dice && <FeltDice dice={model.dice} />}
         </OnFelt>
       )}
-      {model?.log.length && !sham ? <p className="table-banner absolute top-6 left-1/2 max-w-2xl -translate-x-1/2" data-testid="table-news">{model.log.at(-1)}</p> : null}
+      {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
+      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.log.at(-1)}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
     </>
   );
