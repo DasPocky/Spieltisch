@@ -185,7 +185,9 @@ export function chooseBotMove(room: RoomState, botId: string, level: BotLevel, o
 /** Zug eines Bots mit der Stärke, die der Raum für ihn kennt (ohne Angabe: zufällig wie die Testspieler) */
 export function playBot(room: RoomState, botId: string, online: boolean, seed = ""): { action: RoomAction; next: RoomState } | null {
   const level = room.botLevels?.[botId];
-  if (!level || level === "zufall") return botMove(room, botId, online);
+  // Spiele ohne Bewertung: echter Zufall (ein fester Startwert ließe den Bot in derselben Lage immer gleich ziehen –
+  // z. B. einen Würfel endlos an- und abwählen)
+  if (!level || level === "zufall" || !hasSkill(room.gameId)) return botMove(room, botId, online);
   if (!online && room.phase === "playing" && room.game && roomGame(room).currentPlayerId(room.game) !== botId) return null;
   return chooseBotMove(room, botId, level, online, seed);
 }

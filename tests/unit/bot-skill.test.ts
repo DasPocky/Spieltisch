@@ -79,3 +79,21 @@ describe("Bots mit Spielstärke", () => {
     expect(strong / games).toBeGreaterThan(0.6);
   });
 });
+
+describe("Bots ohne Bewertung", () => {
+  it("Spiele ohne Spielstärke enden trotzdem (kein Hin und Her in derselben Lage)", async () => {
+    const { playBot } = await import("@shared/platform/botSkill");
+    let r = start("tutto");
+    r = { ...r, bots: ["p1", "p2"], botLevels: { p1: "mittel", p2: "schwer" } };
+    const seen = new Set<string>();
+    for (let i = 0; i < 300 && !roomGame(r).isOver(r.game); i++) {
+      const cur = roomGame(r).currentPlayerId(r.game)!;
+      const m = playBot(r, cur, false);
+      if (!m) break;
+      r = m.next;
+      seen.add(cur);
+    }
+    // beide sind mindestens einmal drangekommen – keiner hängt in einer Schleife
+    expect(seen.size).toBe(2);
+  });
+});
