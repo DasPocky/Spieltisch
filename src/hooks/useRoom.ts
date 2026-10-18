@@ -44,7 +44,8 @@ interface Pending { id: string; msg: ClientMessage; created: number; sent: numbe
  *   Jede hat eine ID – der Server führt sie auch bei doppeltem Senden nur einmal aus.
  * - Wird das Handy wieder aktiv oder ist das Netz zurück, wird sofort geprüft.
  */
-export function useRoom(code: string, join: JoinData | null, attempt: number) {
+export function useRoom(code: string, join: JoinData | null, attempt: number, opts: { /** Spieler ohne Handy am Fernseher: eigener Zugang je Platz, ohne Profil und Gruppe dieses Geräts */ slot?: string } = {}) {
+  const slot = opts.slot;
   const [status, setStatus] = useState<RoomStatus>("checking");
   const [state, setState] = useState<RoomState | null>(null);
   const [me, setMe] = useState<string | null>(null);
@@ -139,9 +140,10 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       ws.onopen = () => {
         retry = 0;
         lastSeen = Date.now();
-        const creds = readJSON<RoomCreds>(credsKey(code));
+        const creds = readJSON<RoomCreds>(credsKey(code, slot));
         // Mit gespeichertem Zugang wiederverbinden; Name und PIN nur als Rückfall
-        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), ...(isCompanion(code) ? { companion: true } : {}), nonce, profile: myProfile().id, profileKey: myProfile().key, avatar: myAvatar(), group: activeGroupCode() ?? undefined };
+        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), ...(!slot && isCompanion(code) ? { companion: true } : {}), nonce,
+          ...(slot ? {} : { profile: myProfile().id, profileKey: myProfile().key, avatar: myAvatar(), group: activeGroupCode() ?? undefined }) };
         ws.send(JSON.stringify(msg));
       };
 
@@ -167,7 +169,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         } else if (msg.type === "joined") {
           clearTimeout(knockTimer);
           if (join?.pairCode) { try { localStorage.setItem(companionKey(code), "1"); } catch { /* egal */ } }
-          writeJSON(credsKey(code), { playerId: msg.playerId, token: msg.token } satisfies RoomCreds);
+          writeJSON(credsKey(code, slot), { playerId: msg.playerId, token: msg.token } satisfies RoomCreds);
           setMe(msg.playerId);
         } else if (msg.type === "state") {
           // Veralteter Stand (kam nach einem neueren an): verwerfen
@@ -204,7 +206,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
             stopped = true;
             fatalRef.current = attempt;
             clearTimeout(knockTimer);
-            if (msg.code === "bad_pin" || msg.code === "kicked" || msg.code === "not_joined" || msg.code === "closed") remove(credsKey(code));
+            if (msg.code === "bad_pin" || msg.code === "kicked" || msg.code === "not_joined" || msg.code === "closed") remove(credsKey(code, slot));
             outbox.current = [];
             syncPending();
             setError(msg.message);
@@ -275,14 +277,14 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         clearTimeout(t);
         const data = (await res.json()) as RoomInfo;
         if (stopped) return;
-        if (!data.exists) { remove(credsKey(code)); setStatus("missing"); return; }
+        if (!data.exists) { remove(credsKey(code, slot)); setStatus("missing"); return; }
         if (data.gameId) setGameId(data.gameId);
         setInfo(data);
       } catch {
         // offline oder langsam? dann trotzdem versuchen
       }
       if (stopped) return;
-      if (!join && !readJSON<RoomCreds>(credsKey(code))) { setStatus("needsJoin"); return; }
+      if (!join && !readJSON<RoomCreds>(credsKey(code, slot))) { setStatus("needsJoin"); return; }
       setStatus("connecting");
       connect();
     })();
@@ -301,7 +303,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       if (ws) { ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null; try { ws.close(); } catch { /* egal */ } }
       wsRef.current = null;
     };
-  }, [code, join, attempt]);
+  }, [code, join, attempt, slot]);
 
   /** Aktion in den Ausgang – geht sofort raus oder nach dem Wiederverbinden */
   const send = useCallback((action: RoomAction) => {

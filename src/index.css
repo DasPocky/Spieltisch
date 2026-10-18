@@ -359,3 +359,7 @@
   background: linear-gradient(180deg, #ff9677, #ff7a59);
   box-shadow: 0 2px 0 #c95637, 0 0 22px rgb(255 140 100 / 0.7);
 }
+
+/* Hand eines Spielers ohne Handy am Fernseher: die Handy-Ansicht füllt nur das Seitenfeld, nicht den ganzen Bildschirm */
+.couch-hand .h-dvh-safe { height: 100%; }
+.couch-hand .min-h-dvh-safe { min-height: 100%; }

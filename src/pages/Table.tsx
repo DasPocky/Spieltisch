@@ -27,6 +27,7 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
+import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
 const newPin = () => String(randomInt(900000) + 100000);
@@ -163,10 +164,13 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   const host = room.players.find((p) => p.id === room.hostId);
   const [felt, setFelt] = useState<FeltRect | null>(null);
   useTableSound(room, model);
+  const couch = useCouch(code);
+  // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
+  const [handOpen, setHandOpen] = useState(false);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
-      <main className="relative min-w-0 flex-1">
+      <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
         <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} />
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
@@ -186,6 +190,8 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         <Scores room={room} model={model} avatars={avatars} points={sham?.scores} />
         {model && <Log lines={model.log} />}
         <div className="mt-auto" />
+        <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} />
+        <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
         <SoundPanel />
         <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>
