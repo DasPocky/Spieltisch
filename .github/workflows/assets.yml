@@ -1,0 +1,33 @@
+name: Dateien einspielen
+
+# Von Hand starten (Actions → „Dateien einspielen“ → Run workflow): holt die freien 3D-Figuren,
+# verkleinert sie und legt sie in den Speicher (R2) der App. Braucht das Secret RELEASE_SECRET.
+on:
+  workflow_dispatch:
+    inputs:
+      nur:
+        description: "Nur eine Datei (leer = alle), z. B. moderator/mensch.glb"
+        required: false
+        default: ""
+      ziel:
+        description: "Adresse der App (leer = Live-Version)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    name: Figuren einspielen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/assets.mjs
+        env:
+          RELEASE_SECRET: ${{ secrets.RELEASE_SECRET }}
+          NUR: ${{ inputs.nur }}
+          ZIEL: ${{ inputs.ziel }}

@@ -20,6 +20,18 @@ export function adminCred(request: Request, password?: unknown): AdminCred {
   const pw = typeof password === "string" && password ? password : request.headers.get("x-admin-password") ?? undefined;
   return { token, password: pw || undefined };
 }
+/** Datei (Rohdaten im Body) in R2 ablegen – aus der Verwaltung und aus der GitHub-Aktion „Dateien einspielen“ */
+export async function putAsset(env: Env, path: string, request: Request): Promise<Response> {
+  if (!env.FILES) return json({ ok: false, error: "Der Dateispeicher ist nicht verbunden." }, 503);
+  if (Number(request.headers.get("content-length") ?? 0) > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.length > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
+  const type = fileType(bytes, path);
+  if (!type) return json({ ok: false, error: "Der Inhalt passt nicht zur Endung." }, 400);
+  await env.FILES.put(ASSET_PREFIX + path, bytes, { httpMetadata: { contentType: type } });
+  return json({ ok: true, path, size: bytes.length });
+}
+
 /** Kurzbeschreibung eines Eingriffs fürs Protokoll */
 function auditLabel(path: string, body: Record<string, unknown>): string {
   const room = path.match(/\/rooms\/([A-Z0-9]+)/)?.[1];
@@ -90,13 +102,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
     const target = assetPath(decodeURIComponent(file[1]));
     if (!target) return json({ ok: false, error: "Ordner, Name oder Endung passt nicht." }, 400);
     if (request.method === "DELETE") { await env.FILES.delete(ASSET_PREFIX + target.path); return json({ ok: true }); }
-    if (Number(request.headers.get("content-length") ?? 0) > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (bytes.length > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
-    const type = fileType(bytes, target.path);
-    if (!type) return json({ ok: false, error: "Der Inhalt passt nicht zur Endung." }, 400);
-    await env.FILES.put(ASSET_PREFIX + target.path, bytes, { httpMetadata: { contentType: type } });
-    return json({ ok: true, path: target.path, size: bytes.length });
+    return putAsset(env, target.path, request);
   }
   // Updates: Stand (Modus, wartende Version, Verlauf) und „Jetzt live schalten“
   if (path === "/api/admin/release" && request.method === "GET") return json(await settings.releaseStatus());

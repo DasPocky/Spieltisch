@@ -88,7 +88,14 @@ Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff
 
 Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`. Fehlt eine Figur, zeigt der Moderator die Leuchtkugel.
 
+### Figuren einspielen (GitHub-Aktion)
+
+Statt von Hand hochzuladen: in GitHub unter **Actions → „Dateien einspielen“ → Run workflow**. Die Aktion holt die freien
+Originale, verkleinert sie und legt sie über `PUT /api/release/files/<Ordner>/<Name>` in den Speicher (`scripts/assets.mjs`).
+Dafür braucht das Repo das Secret **RELEASE_SECRET** (Settings → Secrets and variables → Actions) – derselbe Wert wie beim
+Worker. Ohne passenden Schlüssel nimmt der Server nichts an; jede eingespielte Datei steht im Protokoll der Verwaltung.
+
 ### Herkunft der Moderator-Figuren (nur freie Modelle)
 
-- `mensch.glb`: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead), erstellt mit Blender und MPFB – CC0 1.0. Verkleinert mit `npx @gltf-transform/cli optimize mpfb.glb mensch.glb --compress meshopt --texture-compress webp --texture-size 1024`.
+- `mensch.glb`: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead), erstellt mit Blender und MPFB – CC0 1.0. Verkleinert mit `npx @gltf-transform/cli optimize mpfb.glb mensch.glb --compress meshopt --texture-compress webp --texture-size 1024 --flatten false --join false --simplify false` (Skelett „Armature“ bleibt erhalten).
 - `roboter.glb`: „RobotExpressive“ von Tomás Laulhé, Gesichtsausdrücke von Don McCurdy (three.js-Beispiele) – CC0 1.0. Liegt auch unter `tests/fixtures/` für die Tests.

@@ -8,7 +8,7 @@ import { Env, settingsOf, profileOf, transferOf } from "./env";
 import { allowed, countFail, limited, readBody, badRequest, json, withTimeout, makeCode, sameSecret } from "./http";
 import { GAME_IDS } from "./settings";
 import { handleGroups } from "./routes/groups";
-import { handleAdmin } from "./routes/admin";
+import { handleAdmin, putAsset } from "./routes/admin";
 import { handleCall } from "./routes/call";
 import { ownsProfile } from "./auth";
 import { ASSET_PREFIX, assetPath } from "../shared/platform/files";
@@ -45,6 +45,18 @@ export default {
       const v = { versionId: String(body?.versionId ?? ""), sha: String(body?.sha ?? ""), time: String(body?.time ?? "") };
       if (!/^[0-9a-f-]{36}$/.test(v.versionId) || !/^[0-9a-f]{7,40}$/.test(v.sha)) return badRequest();
       return json({ deploy: await settingsOf(env).releaseOffer(v) });
+    }
+
+    // Dateien einspielen (GitHub-Aktion „Dateien einspielen“, scripts/assets.mjs) – nur mit RELEASE_SECRET, nur hochladen
+    const release = url.pathname.match(/^\/api\/release\/files\/(.+)$/);
+    if (release && request.method === "PUT") {
+      const key = request.headers.get("x-release-key") ?? "";
+      if (!env.RELEASE_SECRET || !(await sameSecret(key, env.RELEASE_SECRET))) return json({ ok: false, error: "Schlüssel fehlt oder passt nicht." }, 403);
+      const target = assetPath(decodeURIComponent(release[1]));
+      if (!target) return json({ ok: false, error: "Ordner, Name oder Endung passt nicht." }, 400);
+      const res = await putAsset(env, target.path, request);
+      if (res.ok) await settingsOf(env).audit(`Datei eingespielt (GitHub): ${target.path}`);
+      return res;
     }
 
     // Zugangscode prüfen
