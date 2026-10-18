@@ -86,7 +86,7 @@ test("Raum: Nonce ist kein Zugang, Fernseher bekommt keinen Chat, Zuschauer zieh
 });
 
 test("Dateien einspielen: ohne passenden Release-Schlüssel nimmt der Server nichts an", async ({ request }) => {
-  const glb = Buffer.concat([Buffer.from("glTF"), Buffer.alloc(16)]);
-  expect((await request.put("/api/release/files/moderator/mensch.glb", { data: glb })).status()).toBe(403);
-  expect((await request.put("/api/release/files/moderator/mensch.glb", { data: glb, headers: { "x-release-key": "falsch" } })).status()).toBe(403);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  expect((await request.put("/api/release/files/bilder/test.png", { data: png })).status()).toBe(403);
+  expect((await request.put("/api/release/files/bilder/test.png", { data: png, headers: { "x-release-key": "falsch" } })).status()).toBe(403);
 });
