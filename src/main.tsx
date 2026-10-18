@@ -7,6 +7,14 @@ import App from "./App";
 import { checkFreshStart } from "./lib/freshStart";
 import { startUpdates } from "./lib/update";
 
+// Als App auf dem Homescreen: echte Fensterhöhe statt 100dvh (iOS rechnet dort die Statusleiste falsch heraus)
+if ((navigator as Navigator & { standalone?: boolean }).standalone || matchMedia("(display-mode: standalone)").matches) {
+  const fit = () => document.documentElement.style.setProperty("--app-h", `${window.innerHeight}px`);
+  fit();
+  window.addEventListener("resize", fit);
+  window.addEventListener("orientationchange", () => setTimeout(fit, 300));
+}
+
 // Admin-Einstellungen (u. a. der Look) gleich beim Start holen – und nach einem Neustart im Admin einmal frisch beginnen
 siteConfigNow();
 void whenSiteConfig().then(checkFreshStart);

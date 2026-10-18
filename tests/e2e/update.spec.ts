@@ -21,6 +21,8 @@ test("Update: alte App lädt auf der Startseite gleich neu und sagt kurz Beschei
   });
   await page.goto("/");
   await expect(page.getByText("Neue Version geladen")).toBeVisible({ timeout: 10_000 });
+  // Hinweis bleibt unter Statusleiste/Notch
+  expect(await page.locator("[data-sonner-toaster]").getAttribute("style")).toContain("safe-area-inset-top");
   await shot(page, "90-update-geladen");
   await mark(page);
   await page.waitForTimeout(2500);

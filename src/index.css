@@ -65,8 +65,10 @@
       var(--page-mid);
     overscroll-behavior: none;
   }
+  /* Bildschirmhöhe: als App auf dem Homescreen misst main.tsx nach (iOS meldet dort 100dvh zu klein → Streifen unten) */
+  :root { --app-h: 100dvh; }
   #root {
-    min-height: 100dvh;
+    min-height: var(--app-h);
     padding-top: env(safe-area-inset-top, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
@@ -154,10 +156,10 @@
 @media (prefers-reduced-motion: reduce) { .knock-door { animation: none; } }
 
 @utility h-dvh-safe {
-  height: calc(100dvh - env(safe-area-inset-top, 0px));
+  height: calc(var(--app-h) - env(safe-area-inset-top, 0px));
 }
 @utility min-h-dvh-safe {
-  min-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  min-height: calc(var(--app-h) - env(safe-area-inset-top, 0px));
 }
 
 @keyframes dice-in {
