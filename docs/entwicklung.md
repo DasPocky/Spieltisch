@@ -108,6 +108,8 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Bots mit Spielstärke** (`shared/platform/botSkill.ts`): „leicht“, „mittel“, „schwer“ bewerten Züge (Mau-Mau, Uno, Vier gewinnt) nur aus eigener Sicht, wiederholbar mit festem Startwert; andere Spiele und „zufall“ ziehen zufällig. Stufe je Bot in `RoomState.botLevels`.
 
+**Moderator** (`src/platform/moderator/`): `stage3d.ts` lädt eine Figur aus R2 (`/api/asset/moderator/…`, hochgeladen unter Verwaltung → Dateien; Herkunft und Lizenz in `docs/betrieb.md`, nur freie Modelle), hält sie lebendig (Atmen, Blinzeln, Blicke) und bewegt den Mund nach Mundbildern (`visemesOf`: Deutsch grob in Visem-Formen, im Takt der Wort-Signale der Gerätestimme). Gesten je Moment: Mensch über das Skelett (Drehungen um Achsen der Welt), Roboter über fertige Bewegungen. Ohne 3D erscheint die Leuchtkugel (`figures.tsx`). Feste Ansagen je Charakter in `lines.ts`.
+
 **Ton** (`src/platform/sound.ts`): alles mit WebAudio erzeugt, drei Kanäle mit eigener Lautstärke (`prefs.volFx/volMusic/volCrowd`) hinter einem Begrenzer – `playSound` (Effekte), `playCrowd` (Applaus, Jubel, „Oooh“, Lachen), `startMusic`/`stopMusic` (ruhige Akkordfolge, Lobby lebhafter). Der Tisch spielt Musik und Publikum (`table/sound.tsx`), die Handys nur Effekte.
 
 **Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.

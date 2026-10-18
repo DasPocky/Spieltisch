@@ -51,7 +51,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 ## Phase 2 – Referenzspiel + Bühne und Moderator ⏳
 
 1. **Referenzspiel vollständig** (Mau-Mau oder Uno): Desktop 2D/3D, Tisch/TV, private Hand, Tastatur/Touch, gemeinsame Bausteine herausgelöst, Abnahmeblatt (siehe unten) – danach erst die Spieleliste.
-2. **Moderator-Vorschau** (`/moderator`, nur Verwaltung) – erste Fassung mit 4 Figuren (Papierschnitt, Holzfigur, Showmaster, Leuchtkugel), Charakter und Gerätestimme ✅; realistische Figuren folgen nach Auswahl freier Modelle: 3–4 Figuren (Papierschnitt, freie realistische Modelle mit geprüfter Lizenz), Sprech-Animation, Grafik-Stufen – Auswahl durch dich.
+2. **Moderator-Vorschau** (`/moderator`, nur Verwaltung) – in 3D mit zwei freien Figuren (Mensch und Roboter, CC0): Mundbilder beim Sprechen, Blinzeln, Blicke, Gesichtsausdruck je Charakter, Gesten je Moment; Leuchtkugel als Ersatz ohne 3D ✅ – Auswahl durch dich: 3–4 Figuren (Papierschnitt, freie realistische Modelle mit geprüfter Lizenz), Sprech-Animation, Grafik-Stufen – Auswahl durch dich.
 3. **Moderator-MVP:** eine Bühne, ein Spiel (Schamlos), feste Ansagen, Gerätestimme, vollständiger Rückfall ohne Ton/Video/KI. Moderator ist Darstellung, keine Regelinstanz.
 4. **3D-Showstudio** mit Pulten, Lichtern, Kamerafahrten; TV-Ansicht je Spiel (Tisch oder Bühne), beim Einrichten wählbar, im Raum umschaltbar.
 5. **KI-Sprüche** über Cloudflare Workers AI, mit Tages- und Raumlimit, Filter und Rückfall auf feste Texte; später KI-Stimme. Charakter je Runde (charmant/frech/böse) – „frech/böse“ nur mit Zustimmung der Runde und passendem Set.
