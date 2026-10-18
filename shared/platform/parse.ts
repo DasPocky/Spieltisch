@@ -3,7 +3,7 @@
  * Jeder Nachrichtentyp hat hier seine Regeln (Pflichtfelder, Typen, Längen, erlaubte Werte); unbekannte Felder fallen weg.
  * Was nicht passt, wird als ganze Nachricht abgelehnt (null). Neue Nachrichtentypen brauchen hier einen Eintrag und einen Test.
  */
-import type { ClientMessage } from "./protocol";
+import { REMOTE_CMDS, type ClientMessage, type RemoteCmd } from "./protocol";
 
 type Obj = Record<string, unknown>;
 const isObj = (x: unknown): x is Obj => !!x && typeof x === "object" && !Array.isArray(x);
@@ -47,7 +47,7 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
       const avatar = m.avatar === undefined ? undefined : isObj(m.avatar) && plain(m.avatar) ? m.avatar : BAD;
       const p = pick({
         name: str(m.name, 64), pin: str(m.pin, 16), playerId: str(m.playerId, 64), token: str(m.token, 128),
-        profile: str(m.profile, 32), profileKey: str(m.profileKey, 64), avatar, group: str(m.group, 16), nonce: str(m.nonce, 64),
+        profile: str(m.profile, 32), profileKey: str(m.profileKey, 64), avatar, group: str(m.group, 16), nonce: str(m.nonce, 64), pairCode: str(m.pairCode, 16), companion: bool(m.companion),
       });
       return p ? ({ type: "join", ...p } as unknown as ClientMessage) : null;
     }
@@ -60,7 +60,10 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
     case "presence":
     case "closeRoom":
     case "claimHost":
+    case "pair":
       return { type: m.type };
+    case "remote":
+      return (REMOTE_CMDS as readonly unknown[]).includes(m.cmd) ? { type: "remote", cmd: m.cmd as RemoteCmd } : null;
     case "call": {
       if (m.session !== null && typeof m.session !== "string") return null;
       const p = pick({ audio: str(m.audio, 128), video: str(m.video, 128), mic: bool(m.mic), cam: bool(m.cam) });

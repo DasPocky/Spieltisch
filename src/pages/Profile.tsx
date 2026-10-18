@@ -29,7 +29,8 @@ import { useAdminDevice } from "@/lib/admin";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";
-import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
+import { Volumes } from "@/platform/Volumes";
+import { setPref, usePrefs, type SwitchPref } from "@/lib/prefs";
 import { clock, dayKey } from "@/lib/time";
 import { cn, fmt } from "@/lib/utils";
 
@@ -277,8 +278,8 @@ export function Profile() {
   );
 }
 
-const PREFS: [keyof Prefs, string, string][] = [
-  ["sound", "Töne", "Leise Klänge beim Spielen."],
+const PREFS: [SwitchPref, string, string][] = [
+  ["sound", "Töne", "Klänge, am großen Tisch auch Musik und Publikum."],
   ["vibration", "Vibration", "Kurz vibrieren, wenn du dran bist."],
   ["announce", "„Wer ist dran?“ ansagen", "Liest vor, wer am Zug ist."],
   ["hints", "Spielhilfen für mich", "Zeigt dir, welche Karten oder Züge gerade gehen – wenn der Raum Spielhilfen erlaubt."],
@@ -316,7 +317,7 @@ function PlayPrefs() {
             </Button>
           )}
         </div>
-      ))}
+      )).flatMap((row, i) => (PREFS[i][0] === "sound" && p.sound ? [row, <Volumes key="vol" className="pl-8" />] : [row]))}
     </div>
   );
 }

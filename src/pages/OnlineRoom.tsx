@@ -16,7 +16,8 @@ import { myAvatar } from "@/lib/profile";
 import { Avatar } from "@/platform/Avatar";
 
 export function OnlineRoom({ code }: { code: string }) {
-  const [join, setJoin] = useState<JoinData | null>(() => takePendingJoin(code));
+  // Begleit-Handy: Link vom Rechner (/r/CODE#pair=…) – gleich koppeln, ohne Name und PIN
+  const [join, setJoin] = useState<JoinData | null>(() => { const pc = pairFromLink(); return pc ? { name: "", pin: "", pairCode: pc } : takePendingJoin(code); });
   const [attempt, setAttempt] = useState(0);
   const room = useRoom(code, join, attempt);
   const [chat, setChat] = useState(false);
@@ -95,8 +96,20 @@ export function OnlineRoom({ code }: { code: string }) {
       chat={{ messages: room.chat, say: room.say }}
       knocks={room.knocks}
       onKnock={room.answerKnock}
+      onPair={room.pair}
+      pairing={room.pairing}
+      tv={room.tv}
+      onRemote={room.remote}
     />
   );
+}
+
+/** Kopplungs-Code aus dem Link des Rechners (/r/CODE#pair=…) – danach gleich wieder aus der Adresse nehmen */
+function pairFromLink(): string | null {
+  const m = location.hash.match(/pair=([A-HJ-NP-Z2-9]{8})/);
+  if (!m) return null;
+  history.replaceState(history.state, "", location.pathname + location.search);
+  return m[1];
 }
 
 /** PIN aus dem Link des Großen Tischs (/r/CODE#pin=1234) – danach gleich wieder aus der Adresse nehmen */

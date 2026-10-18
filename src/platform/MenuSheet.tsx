@@ -1,6 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cloneElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { BookOpen, Crown, Flag, History, Home, LogOut, Menu, Repeat, RotateCcw, Undo2, UserRound, Wrench } from "lucide-react";
+import { BookOpen, Crown, EyeOff, Flag, History, Home, LogOut, Menu, Repeat, RotateCcw, Undo2, UserRound, Volume1, Volume2, VolumeX, Wrench } from "lucide-react";
+import type { RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { getGame } from "@shared/games";
 import { currentPlayerId, skipLabel, type RoomState } from "@shared/platform/room";
@@ -11,7 +12,7 @@ import { getGameUI } from "@/games";
 import type { BoardProps } from "@/games/types";
 import { navigate } from "@/hooks/useRoute";
 import { setViewMode, useViewMode } from "@/hooks/useViewMode";
-import { setPref, usePrefs, type Prefs } from "@/lib/prefs";
+import { setPref, usePrefs, type SwitchPref } from "@/lib/prefs";
 import { RETURN_KEY } from "@/lib/storage";
 import { wantGamePick } from "@/lib/pickGame";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,9 @@ export interface MenuProps {
   onCloseRoom?: () => void;
   /** Host-Rolle übernehmen (online, wenn der Host offline ist) */
   onClaimHost?: () => void;
+  /** Ein Großer Tisch ist verbunden – der Host kann ihn fernsteuern */
+  tv?: boolean;
+  onRemote?: (cmd: RemoteCmd) => void;
 }
 
 /** So lange ohne Änderung am Spielstand gilt eine Partie als „hängt“ – dann steht Überspringen gleich da */
@@ -44,7 +48,7 @@ const STALL_MS = 20_000;
  * Partie · Spieler & Verlauf · Regeln · Einladen · Mein Gerät · Verlassen. Leere Abschnitte fallen weg.
  * Raum-Einstellungen stehen in der Lobby; hier nur, was sich während der Partie ändern lässt.
  */
-export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave, onCloseRoom, onClaimHost, manage }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch"> & {
+export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave, onCloseRoom, onClaimHost, manage, tv, onRemote }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch"> & {
   /** „Spieler verwalten“ für „Spieler & Verlauf“ (Host) */
   manage?: ReactNode;
 }) {
@@ -123,11 +127,12 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
                 <Collapsible title="Raum & Zugang" badge={<span className="truncate text-xs font-normal text-muted-foreground">{accessSummary(room.access ?? DEFAULT_ACCESS)}</span>} testId="room-settings">
                   <RoomSettings room={room} isHost={isHost} dispatch={dispatch} />
                 </Collapsible>
-                <Collapsible title="Großer Tisch" badge={<span className="truncate text-xs font-normal text-muted-foreground">Fernseher als Tisch</span>} testId="big-table">
-                  <p className="px-1 text-sm text-muted-foreground" data-testid="big-table-help">
+                <Collapsible title="Großer Tisch" badge={<span className="truncate text-xs font-normal text-muted-foreground">{tv ? "verbunden" : "Fernseher als Tisch"}</span>} testId="big-table">
+                  {tv && isHost && onRemote && <Remote onRemote={onRemote} />}
+                  {!tv && <p className="px-1 text-sm text-muted-foreground" data-testid="big-table-help">
                     Auf dem großen Bildschirm <b className="text-foreground">{location.host}/tisch</b> öffnen, „Laufenden Raum zeigen“ wählen und
                     Raumcode <b className="tracking-wider text-foreground">{code}</b> mit eurer PIN eingeben. Dort sehen alle Stapel, Ablage und wer dran ist – eure Karten bleiben auf den Handys.
-                  </p>
+                  </p>}
                 </Collapsible>
               </Section>
             )}
@@ -224,7 +229,7 @@ function useStalled(game: unknown) {
   return stalled;
 }
 
-const QUICK: [keyof Prefs, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"], ["diceMarks", "Würfel markieren"]];
+const QUICK: [SwitchPref, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"], ["diceMarks", "Würfel markieren"]];
 /** Spiele, in denen wertbare Würfel markiert werden können */
 const DICE_MARK_GAMES = new Set(["tutto"]);
 
@@ -296,5 +301,17 @@ function RoomSettings({ room, isHost, dispatch }: Pick<BoardProps, "room" | "isH
         <Button disabled={!changed} onClick={() => { dispatch({ type: "setAccess", access: draft }); toast("Raum-Einstellungen gespeichert"); }}>Übernehmen</Button>
       ) : <p className="-mt-1 text-xs text-muted-foreground">Legt der Host fest.</p>}
     </>
+  );
+}
+
+/** Fernbedienung für den Großen Tisch: Ton, Lautstärke der Musik, offene Hand am Fernseher verdecken */
+function Remote({ onRemote }: { onRemote: (cmd: RemoteCmd) => void }) {
+  const keys: [RemoteCmd, string, typeof Volume2][] = [["sound", "Ton an/aus", VolumeX], ["quieter", "Leiser", Volume1], ["louder", "Lauter", Volume2], ["cover", "Verdecken", EyeOff]];
+  return (
+    <div className="grid grid-cols-2 gap-2" data-testid="remote">
+      {keys.map(([cmd, label, Icon]) => (
+        <Button key={cmd} variant="secondary" className="justify-start" onClick={() => onRemote(cmd)} data-testid={`remote-${cmd}`}><Icon />{label}</Button>
+      ))}
+    </div>
   );
 }

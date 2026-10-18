@@ -160,7 +160,7 @@ export type AdminRoomAction =
   | { type: "lobby" }
   | { type: "pin"; pin: string }
   /** Entwickler-Modus: Testspieler dazu, einen sofort ziehen lassen, einen übernehmen */
-  | { type: "addBots"; n: number }
+  | { type: "addBots"; n: number; /** Spielstärke (fehlt: zufällig) */ level?: "zufall" | "leicht" | "mittel" | "schwer" }
   | { type: "botMove"; id: string }
   | { type: "takeOver"; id: string };
 

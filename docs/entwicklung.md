@@ -98,6 +98,14 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Am Rechner mitspielen:** Auf großen Bildschirmen zeigt der Raum bei Spielen mit „Am Rechner“ den Tisch aus eigener Sicht (`platform/desk`); das Spiel bekommt `desk: true` in den Board-Props und zeigt dann nur die eigene Hand mit Knöpfen, Maus und Tastatur (Beispiel: `games/maumau/Board.tsx`, `DeskHand`). Umschaltbar auf die klassische Ansicht.
 
+**Handy als Begleiter:** Am Rechner zeigt „Handy koppeln“ (`platform/desk/PairSheet.tsx`) einen QR mit `/r/CODE#pair=XXXXXXXX`. Der Raum gibt den Code auf `{ type: "pair" }` aus (8 Zeichen, 5 Minuten gültig, `room.pairs`). Das Handy tritt mit `pairCode` bei und wird zweites Gerät desselben Spielers (`Attachment.companion`) – Rechner und Handy verdrängen sich nicht gegenseitig. Der Code gilt nur für den Tab, der ihn eingelöst hat (Beitritts-Wert je Tab); danach verbindet das Handy über den Zugang neu.
+
+**Ohne Handy mitspielen** (`table/Couch.tsx`): Der Fernseher meldet Spieler als normale Mitspieler an – je Platz eine eigene Verbindung über `useRoom(…, { slot })` mit eigenem Zugang und ohne das Profil des Geräts. Ist so ein Spieler dran, öffnet sich links seine Handy-Ansicht hinter einem Sichtschutz (Enter deckt auf, Escape schließt); sonst über die Liste „Am Fernseher“.
+
+**Fernbedienung:** Am Fernseher springt der Fokus mit den Pfeiltasten von Knopf zu Knopf (`src/lib/spatialNav.ts`, Enter löst aus; in Eingabefeldern und Reglern bleiben die Pfeile beim Feld). Ist ein Tisch verbunden, bekommen die Handys `tv: true` im Spielstand; der Host sieht im Menü unter „Großer Tisch“ die Fernbedienung und schickt `{ type: "remote", cmd }` (`sound`, `louder`, `quieter`, `cover`). Der Raum reicht das nur an die Tische weiter.
+
+**Ton** (`src/platform/sound.ts`): alles mit WebAudio erzeugt, drei Kanäle mit eigener Lautstärke (`prefs.volFx/volMusic/volCrowd`) hinter einem Begrenzer – `playSound` (Effekte), `playCrowd` (Applaus, Jubel, „Oooh“, Lachen), `startMusic`/`stopMusic` (ruhige Akkordfolge, Lobby lebhafter). Der Tisch spielt Musik und Publikum (`table/sound.tsx`), die Handys nur Effekte.
+
 **Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.
 
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.

@@ -94,3 +94,117 @@ test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ab
   await screen.waitForTimeout(600);
   await shot(screen, "93-table-flach");
 });
+
+test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, ausschaltbar – ohne Fehler", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  const errors: string[] = [];
+  screen.on("pageerror", (e) => errors.push(e.message));
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen.getByTestId("table-lobby")).toBeVisible();
+  // Der Klick auf „Tisch aufbauen“ hat den Ton freigeschaltet
+  await expect(screen.getByTestId("sound-panel")).toBeVisible();
+  await screen.getByTestId("sound-more").click();
+  const music = screen.getByRole("slider", { name: "Musik" });
+  await music.fill("0");
+  await screen.getByRole("slider", { name: "Publikum" }).fill("80");
+  await shot(screen, "94-table-ton");
+  const prefs = await screen.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:prefs") ?? "{}"));
+  expect(prefs.volMusic).toBe(0);
+  expect(prefs.volCrowd).toBe(0.8);
+  await screen.getByTestId("sound-toggle").click();
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "false");
+  await expect(screen.getByRole("slider", { name: "Musik" })).toHaveCount(0);
+
+  // Neu geladen (ohne Klick): Ton wieder an → „Ton einschalten“, bis jemand klickt
+  await screen.getByTestId("sound-toggle").click();
+  await screen.reload();
+  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible();
+  if (await screen.getByTestId("sound-unlock").isVisible()) {
+    await screen.getByTestId("sound-unlock").click();
+    await expect(screen.getByTestId("sound-panel")).toBeVisible();
+  }
+  await screen.waitForTimeout(1500);
+  expect(errors).toEqual([]);
+});
+
+test("Ohne Handy mitspielen: der Fernseher nimmt Opa auf, zeigt seine Hand nur hinter dem Sichtschutz, Opa zieht am Fernseher", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  await expect(screen.getByTestId("table-seat")).toHaveCount(1);
+
+  await screen.getByTestId("couch-add").click();
+  await screen.getByLabel("Name für den Platz am Fernseher").fill("Opa");
+  await screen.keyboard.press("Enter");
+  await expect(screen.getByTestId("table-seat")).toHaveCount(2);
+  await expect(screen.getByTestId("couch-list")).toContainText("Opa");
+  await expect(anna.getByText("Opa")).toBeVisible();
+  await shot(screen, "95-couch-lobby");
+
+  await anna.getByTestId("meet-play").click();
+  await anna.getByTestId("pick-maumau").click();
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(screen.getByTestId("table-lobby")).toBeHidden();
+
+  // Ist Anna zuerst dran, zieht sie – dann ist Opa dran
+  const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
+  await expect(turn).toHaveCount(1);
+  if ((await turn.textContent())?.includes("Anna")) {
+    await anna.getByRole("button", { name: /ziehen/i }).first().click();
+    // Gezogene Karte passt nicht oder soll nicht gelegt werden: weiter
+    const pass = anna.getByRole("button", { name: /passen|behalten|weiter/i }).first();
+    await pass.click({ timeout: 3000 }).catch(() => undefined);
+  }
+  // Opas Hand öffnet sich verdeckt; erst nach „Karten zeigen“ sind Karten zu sehen
+  await expect(screen.getByTestId("couch-hand")).toBeVisible();
+  await expect(screen.getByTestId("couch-reveal")).toBeVisible();
+  await expect(screen.getByTestId("hand")).toHaveCount(0);
+  await shot(screen, "96-couch-verdeckt");
+  await screen.keyboard.press("Enter");
+  await expect(screen.getByTestId("couch-hand").getByTestId("hand")).toBeVisible();
+  await shot(screen, "97-couch-hand");
+  await screen.getByTestId("couch-hand").getByRole("button", { name: /ziehen/i }).first().click();
+  await expect(screen.getByTestId("table-seat").filter({ hasText: "Opa" })).toContainText(/· [67]/);
+  // Verdecken schließt die Hand
+  await screen.getByTestId("couch-close").click();
+  await expect(screen.getByTestId("couch-hand")).toHaveCount(0);
+});
+
+test("Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts schaltet Ton und Lautstärke am Tisch", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  await screen.goto("/tisch");
+  // Pfeiltasten: von „Tisch aufbauen“ nach rechts ins Formular (das gesperrte „Verbinden“ wird übersprungen)
+  await screen.getByTestId("table-new").focus();
+  await screen.keyboard.press("ArrowRight");
+  await expect(screen.getByLabel("PIN")).toBeFocused();
+  // Im Eingabefeld gehören die Pfeiltasten dem Feld
+  await screen.keyboard.press("ArrowLeft");
+  await expect(screen.getByLabel("PIN")).toBeFocused();
+  // Von „Zur Startseite“ (unten) nach oben zu „Tisch aufbauen“ und mit Enter auslösen
+  await screen.getByRole("button", { name: "Zur Startseite" }).focus();
+  await screen.keyboard.press("ArrowUp");
+  await expect(screen.getByTestId("table-new")).toBeFocused();
+  await screen.keyboard.press("Enter");
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "true");
+
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  await anna.getByRole("button", { name: "Menü" }).click();
+  await anna.getByTestId("big-table").click();
+  await expect(anna.getByTestId("remote")).toBeVisible();
+  await shot(anna, "98-fernbedienung");
+  await anna.getByTestId("remote-sound").click();
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "false");
+  await expect(screen.getByText("Anna: Ton aus")).toBeVisible();
+  await anna.getByTestId("remote-louder").click();
+  await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "true");
+  const vol = await screen.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:prefs") ?? "{}").volMusic);
+  expect(vol).toBeCloseTo(0.55, 2);
+});

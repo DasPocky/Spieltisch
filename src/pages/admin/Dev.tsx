@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Bot, Loader2, Minus, Plus, WifiOff } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
+import { BOT_LEVELS, hasSkill, type BotLevel } from "@shared/platform/botSkill";
+
+/** Spiele, in denen die Bots Züge bewerten */
+const SKILL_GAMES = GAME_IDS.filter(hasSkill).map((id) => getGame(id).info.name).join(", ");
 import { Confirm } from "@/components/Confirm";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -93,6 +97,7 @@ function TestRoom() {
   const { api } = useAdmin();
   const [game, setGame] = useState<string>(GAME_IDS[0]);
   const [bots, setBots] = useState(3);
+  const [level, setLevel] = useState<BotLevel>("mittel");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const max = Math.min(7, getGame(game).info.maxPlayers - 1);
@@ -100,13 +105,13 @@ function TestRoom() {
   const open = async () => {
     setBusy(true); setError(null);
     try {
-      const r = await api<{ code: string; pin: string }>("/api/admin/test-room", { game, bots: n });
+      const r = await api<{ code: string; pin: string }>("/api/admin/test-room", { game, bots: n, level });
       setPendingJoin(r.code, { name: myName() || "Admin", pin: r.pin });
       navigate(`/r/${r.code}`);
     } catch (e) { if (!(e instanceof AuthError)) setError((e as Error).message); setBusy(false); }
   };
   return (
-    <Panel title="Testraum mit Bots" hint="Unsichtbar unter „Offene Räume“, zählt nicht in der Statistik. Bots ziehen von selbst zufällig (nur erlaubte Züge). Unter „Live“ kannst du einen sofort ziehen lassen oder übernehmen.">
+    <Panel title="Testraum mit Bots" hint={`Unsichtbar unter „Offene Räume“, zählt nicht in der Statistik. Bots ziehen von selbst (nur erlaubte Züge) – mit Spielstärke, wo das Spiel sie kennt (${SKILL_GAMES}), sonst zufällig. Unter „Live“ kannst du einen sofort ziehen lassen oder übernehmen.`}>
       <label className="grid gap-1.5 text-sm font-semibold">
         Spiel
         <select value={game} onChange={(e) => setGame(e.target.value)} data-testid="dev-game"
@@ -120,6 +125,7 @@ function TestRoom() {
         <b className="w-6 text-center text-lg tabular-nums" data-testid="dev-bots">{n}</b>
         <Button variant="secondary" size="icon" className="size-9" aria-label="Ein Bot mehr" disabled={n >= max} onClick={() => setBots(n + 1)}><Plus /></Button>
       </div>
+      <Segmented label="Spielstärke" value={level} small onChange={setLevel} options={BOT_LEVELS} />
       {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}
       <Button disabled={busy} onClick={() => void open()}>{busy && <Loader2 className="animate-spin" />}Testraum öffnen</Button>
     </Panel>

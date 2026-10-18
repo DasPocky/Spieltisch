@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Expand, Loader2, LogOut, Tv } from "lucide-react";
-import { PIN_RE, ROOM_CODE_RE, WATCH_ID } from "@shared/platform/protocol";
+import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type RemoteCmd } from "@shared/platform/protocol";
+import { toast } from "sonner";
+import { prefs, setPref } from "@/lib/prefs";
 import type { RoomState } from "@shared/platform/room";
 import { randomInt } from "@shared/platform/random";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,12 @@ import { useQuality } from "@/lib/quality";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
+import { SoundPanel, useTableSound } from "@/platform/table/sound";
+import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
+import { enableSpatialNav } from "@/lib/spatialNav";
+
+/** Am Fernseher: mit den Pfeiltasten der Fernbedienung von Knopf zu Knopf */
+const useArrowKeys = () => useEffect(() => enableSpatialNav(), []);
 
 /** Neue PIN für einen Tisch-Raum – steht im QR-Code, abtippen muss sie niemand */
 const newPin = () => String(randomInt(900000) + 100000);
@@ -38,6 +46,7 @@ const joinLink = (code: string, pin: string) => `${location.origin}/r/${code}#pi
  * Der Bildschirm spielt nicht mit – er zeigt den Tisch, die Handys sind die Hände.
  */
 export function TableSetup() {
+  useArrowKeys();
   const { ids, locked, online } = useGames();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +104,7 @@ export function TableSetup() {
 
 /** Ein Raum auf dem großen Bildschirm */
 export function TableRoom({ code }: { code: string }) {
+  useArrowKeys();
   const [pin, setPin] = useState(() => readStr(tableKey(code)));
   const [error, setError] = useState<string | null>(null);
   if (!pin) {
@@ -121,7 +131,7 @@ export function TableRoom({ code }: { code: string }) {
 
 function TableLive({ code, pin, onReject }: { code: string; pin: string; onReject: (msg: string) => void }) {
   const hello = useMemo(() => ({ type: "table" as const, pin }), [pin]);
-  const { state, online, status, error } = useWatch(`/api/rooms/${code}/ws`, hello);
+  const { state, online, status, error, remote } = useWatch(`/api/rooms/${code}/ws`, hello);
   useEffect(() => { if (error && /PIN/.test(error)) onReject(error); }, [error, onReject]);
 
   // F: Vollbild an und aus
@@ -140,7 +150,29 @@ function TableLive({ code, pin, onReject }: { code: string; pin: string; onRejec
       </div>
     );
   }
-  return <TableView code={code} pin={pin} room={state} online={online} />;
+  return <TableView code={code} pin={pin} room={state} online={online} remote={remote} />;
+}
+
+type Remote = { cmd: RemoteCmd; by: string; n: number };
+
+/** Befehle der Fernbedienung (Handy des Hosts) ausführen und kurz zeigen, wer was gemacht hat. Gibt den Zähler für „Hand verdecken“ zurück. */
+function useRemote(remote: Remote | null): number {
+  const [cover, setCover] = useState(0);
+  useEffect(() => {
+    if (!remote) return;
+    const p = prefs();
+    const step = (d: number) => {
+      for (const k of ["volFx", "volMusic", "volCrowd"] as const) setPref(k, Math.round(Math.min(1, Math.max(0, p[k] + d)) * 20) / 20);
+      if (!p.sound && d > 0) setPref("sound", true);
+    };
+    const what = remote.cmd === "sound" ? (p.sound ? "Ton aus" : "Ton an") : remote.cmd === "louder" ? "Lauter" : remote.cmd === "quieter" ? "Leiser" : "Hand verdeckt";
+    if (remote.cmd === "sound") setPref("sound", !p.sound);
+    else if (remote.cmd === "louder") step(0.15);
+    else if (remote.cmd === "quieter") step(-0.15);
+    else setCover((c) => c + 1);
+    toast(`${remote.by}: ${what}`, { id: "remote", duration: 2000 });
+  }, [remote]);
+  return cover;
 }
 
 function toggleFullscreen() {
@@ -148,7 +180,7 @@ function toggleFullscreen() {
   else void document.documentElement.requestFullscreen?.().catch(() => undefined);
 }
 
-function TableView({ code, pin, room, online }: { code: string; pin: string; room: RoomState; online: Set<string> }) {
+function TableView({ code, pin, room, online, remote }: { code: string; pin: string; room: RoomState; online: Set<string>; remote: Remote | null }) {
   // Tisch-Ansicht des Spiels aus (oder Beta und kein Gerät der Verwaltung): Partie wie am Handy in der Mitte
   const config = useSiteConfig();
   const admin = useAdminDevice();
@@ -161,10 +193,15 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
   const [felt, setFelt] = useState<FeltRect | null>(null);
+  useTableSound(room, model);
+  const couch = useCouch(code);
+  // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
+  const [handOpen, setHandOpen] = useState(false);
+  const cover = useRemote(remote);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
-      <main className="relative min-w-0 flex-1">
+      <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
         <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} />
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
@@ -183,7 +220,11 @@ function TableView({ code, pin, room, online }: { code: string; pin: string; roo
         {playing && <JoinNote code={code} pin={pin} />}
         <Scores room={room} model={model} avatars={avatars} points={sham?.scores} />
         {model && <Log lines={model.log} />}
-        <div className="mt-auto flex gap-2">
+        <div className="mt-auto" />
+        <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
+        <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
+        <SoundPanel />
+        <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={() => { remove(tableKey(code)); navigate("/"); }}><LogOut className="size-4" />Verlassen</Button>
         </div>

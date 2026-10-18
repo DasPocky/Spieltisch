@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal, Smartphone } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { tableModel } from "./table/model";
@@ -36,6 +36,8 @@ import { EveningContext, EveningLine } from "./Evening";
 import { KnockBar, type KnockEntry } from "./KnockBar";
 import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
 import { setDeskView, useDesk } from "./desk/desk";
+import { PairButton } from "./desk/PairSheet";
+import { isCompanion } from "@/hooks/useRoom";
 
 /** Tisch am Rechner (3D) – erst laden, wenn er gebraucht wird */
 const DeskStage = lazy(() => import("./desk/DeskStage"));
@@ -58,6 +60,9 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Wer gerade anklopft (online, Einlass mit Anklopfen) */
   knocks?: KnockEntry[];
   onKnock?: (id: string, decision: "admit" | "deny" | "wait") => void;
+  /** Begleit-Handy koppeln (online, am Rechner) */
+  onPair?: () => void;
+  pairing?: { code: string; until: number } | null;
 }
 
 /** Gemeinsamer Rahmen für lokales und Online-Spiel: Kopfzeile, Lobby oder das Spielbrett des Moduls. */
@@ -118,6 +123,7 @@ export function RoomScreen(props: Props) {
           </div>
         )}
         <div className="room-tools flex shrink-0 items-center gap-1.5">
+          {code && props.onPair && me && !isCompanion(code) && <PairButton code={code} onPair={props.onPair} pairing={props.pairing ?? null} />}
           {desk.possible && (
             <Button variant="secondary" size="sm" className="hidden lg:inline-flex" data-testid="desk-toggle" onClick={() => setDeskView(desk.on ? "classic" : "table")}>
               {desk.on ? "Klassische Ansicht" : "Am Tisch spielen"}
@@ -134,6 +140,11 @@ export function RoomScreen(props: Props) {
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
       <UpdateBar playing={playing} />
+      {code && isCompanion(code) && (
+        <div className="mb-2 flex shrink-0 items-center gap-2 rounded-xl bg-ice/12 px-3 py-2 text-sm" role="status" data-testid="companion-note">
+          <Smartphone className="size-4 shrink-0" /><span>Gekoppelt mit deinem Rechner – hier: Kamera, Mikro, Chat und deine Karten.</span>
+        </div>
+      )}
       {props.knocks && props.onKnock && (
         <KnockBar knocks={props.knocks} isHost={isHost} hostOnline={!!room.hostId && !!online?.has(room.hostId)}
           hostName={room.players.find((p) => p.id === room.hostId)?.name} onAnswer={props.onKnock} />

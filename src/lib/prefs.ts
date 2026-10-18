@@ -12,17 +12,28 @@ export interface Prefs {
   hints: boolean;
   /** Würfelspiele: wertbare Würfel farbig markieren (Standard aus – die Würfel sollen wie echte aussehen) */
   diceMarks: boolean;
+  /** Lautstärken 0…1: Effekte (Karten, Würfel, „du bist dran“), Musik und Publikum (beides am großen Tisch) */
+  volFx: number;
+  volMusic: number;
+  volCrowd: number;
 }
 
+/** Schalter unter den Einstellungen (ohne die Lautstärken) */
+export type SwitchPref = { [K in keyof Prefs]: Prefs[K] extends boolean ? K : never }[keyof Prefs];
+export type VolumePref = "volFx" | "volMusic" | "volCrowd";
+
 const KEY = "spieltisch:prefs";
-export const DEFAULT_PREFS: Prefs = { sound: true, vibration: true, announce: false, hints: true, diceMarks: false };
+export const DEFAULT_PREFS: Prefs = { sound: true, vibration: true, announce: false, hints: true, diceMarks: false, volFx: 0.8, volMusic: 0.4, volCrowd: 0.6 };
 
 function read(): Prefs {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<Record<keyof Prefs, unknown>>;
-    const p = { ...DEFAULT_PREFS };
-    for (const k of Object.keys(p) as (keyof Prefs)[]) if (typeof raw[k] === "boolean") p[k] = raw[k];
-    return p;
+    const p: Record<string, unknown> = { ...DEFAULT_PREFS };
+    for (const k of Object.keys(p) as (keyof Prefs)[]) {
+      const v = raw[k];
+      if (typeof DEFAULT_PREFS[k] === "boolean" ? typeof v === "boolean" : typeof v === "number" && v >= 0 && v <= 1) p[k] = v;
+    }
+    return p as unknown as Prefs;
   } catch { return { ...DEFAULT_PREFS }; }
 }
 
@@ -43,6 +54,9 @@ export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]) {
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => { if (e.key === KEY || e.key === null) { current = read(); notify(); } });
 }
+
+/** Änderungen verfolgen (außerhalb von React, z. B. Lautstärken der Töne) */
+export function onPrefs(cb: () => void): () => void { listeners.add(cb); return () => { listeners.delete(cb); }; }
 
 export function usePrefs(): Prefs {
   return useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l); }, () => current);

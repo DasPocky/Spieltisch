@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { dev, diag, netDown, netDownUntil, onNetChange } from "@/lib/dev";
 import type { RoomAction, RoomState } from "@shared/platform/room";
-import { PING, PONG, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
+import { PING, PONG, type RemoteCmd, type CallPeer, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "@shared/platform/protocol";
 import type { KnockView } from "@shared/platform/directory";
 import { credsKey, readJSON, remove, writeJSON, wsUrl, type RoomCreds } from "@/lib/storage";
 import { myAvatar, myProfile } from "@/lib/profile";
@@ -11,7 +11,11 @@ import { noteServerBuild } from "@/lib/update";
 
 export type RoomStatus = "checking" | "missing" | "needsJoin" | "connecting" | "knocking" | "ready" | "failed" | "closed";
 
-export interface JoinData { name: string; pin: string }
+export interface JoinData { name: string; pin: string; /** Begleit-Handy: Kopplungs-Code vom Rechner */ pairCode?: string }
+
+/** Merker: dieses Gerät ist das Begleit-Handy eines Spielers am Rechner (je Raum) */
+export const companionKey = (code: string) => `spieltisch:companion:${code}`;
+export const isCompanion = (code: string) => { try { return localStorage.getItem(companionKey(code)) === "1"; } catch { return false; } };
 
 /** Herzschlag alle paar Sekunden; kommt so lange gar nichts zurück, ist die Verbindung tot */
 const PING_MS = 4000;
@@ -23,6 +27,11 @@ const ACK_MS = 6000;
 /** Ältere, nie angekommene Aktionen verwerfen – sie passen dann meist nicht mehr zum Spielstand */
 const GIVE_UP_MS = 45_000;
 
+/** Fester Zufallswert je Tab und Kopplungs-Code */
+function tabNonce(pairCode: string): string {
+  const key = `spieltisch:pairNonce:${pairCode}`;
+  try { const v = sessionStorage.getItem(key); if (v) return v; const n = rid(); sessionStorage.setItem(key, n); return n; } catch { return rid(); }
+}
 const rid = () => (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32);
 
 interface Pending { id: string; msg: ClientMessage; created: number; sent: number | null }
@@ -35,7 +44,8 @@ interface Pending { id: string; msg: ClientMessage; created: number; sent: numbe
  *   Jede hat eine ID – der Server führt sie auch bei doppeltem Senden nur einmal aus.
  * - Wird das Handy wieder aktiv oder ist das Netz zurück, wird sofort geprüft.
  */
-export function useRoom(code: string, join: JoinData | null, attempt: number) {
+export function useRoom(code: string, join: JoinData | null, attempt: number, opts: { /** Spieler ohne Handy am Fernseher: eigener Zugang je Platz, ohne Profil und Gruppe dieses Geräts */ slot?: string } = {}) {
+  const slot = opts.slot;
   const [status, setStatus] = useState<RoomStatus>("checking");
   const [state, setState] = useState<RoomState | null>(null);
   const [me, setMe] = useState<string | null>(null);
@@ -50,6 +60,10 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
   const [knocks, setKnocks] = useState<(KnockView & { at: number })[]>([]);
   /** Selbst vor der Tür: bis wann höchstens (lokale Zeit) */
   const [knockUntil, setKnockUntil] = useState(0);
+  /** Kopplungs-Code fürs Begleit-Handy (vom Server, kurz gültig) */
+  const [pairing, setPairing] = useState<{ code: string; until: number } | null>(null);
+  /** Ein Großer Tisch (Fernseher) ist verbunden */
+  const [tv, setTv] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const outbox = useRef<Pending[]>([]);
   const flushRef = useRef<() => void>(() => {});
@@ -73,7 +87,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
     // Vor der Tür: kommt bis zum Ende der Wartezeit nichts, selbst aufgeben – nichts bleibt hängen
     let knockTimer: ReturnType<typeof setTimeout> | undefined;
     // Gleicher Wert für alle Versuche dieses Beitritts – so entsteht nie ein zweiter Spieler
-    const nonce = rid();
+    // Begleit-Handy: ein fester Wert je Tab – doppelter Aufbau und Funkloch lösen denselben Code erneut ein, andere Geräte nicht
+    const nonce = join?.pairCode ? tabNonce(join.pairCode) : rid();
 
     const syncPending = () => setPending(outbox.current.length);
 
@@ -127,9 +142,10 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       ws.onopen = () => {
         retry = 0;
         lastSeen = Date.now();
-        const creds = readJSON<RoomCreds>(credsKey(code));
+        const creds = readJSON<RoomCreds>(credsKey(code, slot));
         // Mit gespeichertem Zugang wiederverbinden; Name und PIN nur als Rückfall
-        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), nonce, profile: myProfile().id, profileKey: myProfile().key, avatar: myAvatar(), group: activeGroupCode() ?? undefined };
+        const msg: ClientMessage = { type: "join", ...(join ?? {}), ...(creds ?? {}), ...(!slot && isCompanion(code) ? { companion: true } : {}), nonce,
+          ...(slot ? {} : { profile: myProfile().id, profileKey: myProfile().key, avatar: myAvatar(), group: activeGroupCode() ?? undefined }) };
         ws.send(JSON.stringify(msg));
       };
 
@@ -154,7 +170,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           }, msg.wait + 5000);
         } else if (msg.type === "joined") {
           clearTimeout(knockTimer);
-          writeJSON(credsKey(code), { playerId: msg.playerId, token: msg.token } satisfies RoomCreds);
+          if (join?.pairCode) { try { localStorage.setItem(companionKey(code), "1"); } catch { /* egal */ } }
+          writeJSON(credsKey(code, slot), { playerId: msg.playerId, token: msg.token } satisfies RoomCreds);
           setMe(msg.playerId);
         } else if (msg.type === "state") {
           // Veralteter Stand (kam nach einem neueren an): verwerfen
@@ -166,6 +183,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
           setMe(msg.you);
           hostRef.current = msg.state.hostId === msg.you;
           setOnline(new Set(msg.online));
+          setTv(!!msg.tv);
           setCall(msg.call ?? {});
           const now = Date.now();
           setKnocks((msg.knocks ?? []).map((k) => ({ ...k, at: now - k.ago })));
@@ -178,6 +196,8 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
             const ids = new Set(prev.map((m) => m.id));
             return [...prev, ...msg.messages.filter((m) => !ids.has(m.id))].slice(-100);
           });
+        } else if (msg.type === "paired") {
+          setPairing({ code: msg.code, until: Date.now() + Math.max(0, msg.until - Date.now()) });
         } else if (msg.type === "notice") {
           toast("Nachricht der Verwaltung", { description: msg.text, duration: 15_000 });
         } else if (msg.type === "ack") {
@@ -189,7 +209,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
             stopped = true;
             fatalRef.current = attempt;
             clearTimeout(knockTimer);
-            if (msg.code === "bad_pin" || msg.code === "kicked" || msg.code === "not_joined" || msg.code === "closed") remove(credsKey(code));
+            if (msg.code === "bad_pin" || msg.code === "kicked" || msg.code === "not_joined" || msg.code === "closed") remove(credsKey(code, slot));
             outbox.current = [];
             syncPending();
             setError(msg.message);
@@ -260,14 +280,14 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
         clearTimeout(t);
         const data = (await res.json()) as RoomInfo;
         if (stopped) return;
-        if (!data.exists) { remove(credsKey(code)); setStatus("missing"); return; }
+        if (!data.exists) { remove(credsKey(code, slot)); setStatus("missing"); return; }
         if (data.gameId) setGameId(data.gameId);
         setInfo(data);
       } catch {
         // offline oder langsam? dann trotzdem versuchen
       }
       if (stopped) return;
-      if (!join && !readJSON<RoomCreds>(credsKey(code))) { setStatus("needsJoin"); return; }
+      if (!join && !readJSON<RoomCreds>(credsKey(code, slot))) { setStatus("needsJoin"); return; }
       setStatus("connecting");
       connect();
     })();
@@ -286,7 +306,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
       if (ws) { ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null; try { ws.close(); } catch { /* egal */ } }
       wsRef.current = null;
     };
-  }, [code, join, attempt]);
+  }, [code, join, attempt, slot]);
 
   /** Aktion in den Ausgang – geht sofort raus oder nach dem Wiederverbinden */
   const send = useCallback((action: RoomAction) => {
@@ -318,8 +338,13 @@ export function useRoom(code: string, join: JoinData | null, attempt: number) {
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }, []);
 
+  /** Begleit-Handy koppeln: neuen Einmal-Code anfordern */
+  const pair = useCallback(() => post({ type: "pair" }), [post]);
+  /** Fernbedienung: Befehl an den Fernseher (nur der Host) */
+  const remote = useCallback((cmd: RemoteCmd) => post({ type: "remote", cmd }), [post]);
+
   /** Chat-Nachricht oder Reaktion schicken */
   const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing, tv, remote };
 }

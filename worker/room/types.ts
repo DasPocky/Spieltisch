@@ -45,6 +45,8 @@ export interface RoomData {
   test?: boolean;
   /** Zustands-Revision: steigt mit jeder gespeicherten Änderung des Raums – Geräte verwerfen ältere Stände */
   rev?: number;
+  /** Kopplungs-Codes für Begleit-Handys: Code → Spieler, gültig bis (Einmal-Code, kurz) */
+  pairs?: Record<string, { id: string; until: number; /** Beitritts-Wert des Tabs, der den Code eingelöst hat */ usedBy?: string | null }>;
   /** Noch nicht angekommene Ergebnisse für Profile und Gruppen (werden wiederholt) */
   results?: ResultJob[];
 }
@@ -76,4 +78,6 @@ export interface Attachment {
   watch?: boolean;
   /** Großer Tisch (mit PIN angemeldet) */
   table?: boolean;
+  /** Begleit-Handy eines Spielers am Rechner (zweites Gerät desselben Spielers) */
+  companion?: boolean;
 }

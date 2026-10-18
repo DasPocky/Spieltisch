@@ -126,3 +126,38 @@ test("Am Rechner am Tisch mitspielen (Mau-Mau): Tisch aus eigener Sicht, Hand da
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Handy als Begleiter: QR am Rechner, Handy wird zweites Gerät desselben Spielers – Rechner bleibt verbunden, Code gilt nur einmal", async ({ browser }) => {
+  const page = await desktop(browser);
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
+  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByLabel("Dein Name").fill("Anna");
+  await page.getByLabel(/PIN/).fill("8080");
+  await page.getByRole("button", { name: "Öffnen", exact: true }).click();
+  await page.getByTestId("meet-play").click();
+  await page.getByTestId("pick-maumau").click();
+  await page.getByTestId("pair-open").click();
+  const link = (await page.getByTestId("pair-link").textContent())!;
+  expect(link).toMatch(/#pair=[A-Z0-9]{8}$/);
+  await shot(page, "g5-koppeln");
+
+  const phone = await newPhone(browser);
+  await phone.goto(link.replace(/^https?:\/\/[^/]+/, ""));
+  await expect(phone.getByTestId("companion-note")).toBeVisible();
+  await expect(phone.getByText("Anna (du) · Host")).toBeVisible();
+  await shot(phone, "g6-begleiter");
+  // Der Rechner bleibt verbunden (wird nicht verdrängt) und ist weiter Anna
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("Anna (du) · Host")).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(page.getByText(/Verbindung wackelt/)).toHaveCount(0);
+  // Begleit-Handy lädt neu: bleibt Begleiter (über den Zugang, nicht über den Code)
+  await phone.reload();
+  await expect(phone.getByTestId("companion-note")).toBeVisible();
+  await expect(page.getByText("Anna (du) · Host")).toBeVisible();
+  // Derselbe Code ein zweites Mal: abgelehnt
+  const again = await newPhone(browser);
+  await again.goto(link.replace(/^https?:\/\/[^/]+/, ""));
+  await expect(again.getByText(/Kopplungs-Code ist abgelaufen/)).toBeVisible();
+});

@@ -2,18 +2,19 @@
 import { DurableObject } from "cloudflare:workers";
 import { isGameId } from "../shared/games";
 import { PROFILE_ID_RE } from "../shared/platform/profile";
-import { GROUP_CODE_RE, sanitizeAvatar } from "../shared/platform/group";
+import { GROUP_CODE_RE, randomCode, sanitizeAvatar } from "../shared/platform/group";
 import { accessFor, withDefaults, type GameDefaults, type SiteConfig } from "../shared/platform/access";
 import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type StatKind } from "../shared/platform/admin";
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
-import { BOT_PREFIX, botMove } from "../shared/platform/bots";
+import { BOT_PREFIX } from "../shared/platform/bots";
+import { isBotLevel, playBot } from "../shared/platform/botSkill";
 import { shuffle } from "../shared/platform/random";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
 } from "../shared/platform/directory";
-import { PROTOCOL, ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_RE, ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "../shared/platform/protocol";
+import { PAIR_CODE_RE, PAIR_MS, PROTOCOL, ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_RE, ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "../shared/platform/protocol";
 import { type AdminRoomAction, type AdminRoomDetail } from "../shared/platform/admin";
 import { Env, settingsOf, groupOf } from "./env";
 import { hashPin } from "./http";
@@ -261,6 +262,7 @@ export class GameRoom extends DurableObject<Env> {
             const id = `${BOT_PREFIX}${crypto.randomUUID().slice(0, 8)}`;
             next = addPlayer(next, { id, name: `Bot ${k}` });
             next.bots = [...(next.bots ?? []), id];
+            if (isBotLevel(a.level) && a.level !== "zufall") next.botLevels = { ...next.botLevels, [id]: a.level };
             names.add(`bot ${k}`);
             i++;
           }
@@ -366,6 +368,27 @@ export class GameRoom extends DurableObject<Env> {
     const playerId = att?.playerId;
     if (!playerId || !inRoom(this.room.state, playerId)) {
       this.send(ws, { type: "error", message: "Bitte tritt dem Raum zuerst bei.", code: "not_joined", fatal: true });
+      return;
+    }
+
+    // Begleit-Handy koppeln: kurzer Einmal-Code für genau diesen Spieler
+    if (msg.type === "pair") {
+      const now = Date.now();
+      const code = randomCode(8);
+      const live = Object.entries(this.room.pairs ?? {}).filter(([, p]) => p.until > now);
+      this.room.pairs = Object.fromEntries([...live, [code, { id: playerId, until: now + PAIR_MS }]].slice(-20));
+      await this.ctx.storage.put("room", this.room);
+      this.send(ws, { type: "paired", code, until: now + PAIR_MS });
+      return;
+    }
+
+    // Fernbedienung: der Host steuert den Fernseher (Ton, Musik, Hand verdecken) – geht nur an die Tische
+    if (msg.type === "remote") {
+      if (playerId !== this.room.state.hostId) return;
+      const by = this.room.state.players.find((p) => p.id === playerId)?.name ?? "";
+      for (const w of this.ctx.getWebSockets()) {
+        if ((w.deserializeAttachment() as Attachment | null)?.table) this.send(w, { type: "remote", cmd: msg.cmd, by });
+      }
       return;
     }
 
@@ -561,7 +584,7 @@ export class GameRoom extends DurableObject<Env> {
       gone.goneAt = Date.now();
       await this.persist();
     }
-    this.broadcast();
+    this.broadcast(ws);
     // Raum ist leer geworden: ab jetzt läuft die Lebensdauer; Verzeichnis gleich Bescheid geben
     if (this.room && this.onlineIds().size === 0) {
       await this.scheduleEnd();
@@ -649,6 +672,8 @@ export class GameRoom extends DurableObject<Env> {
     ws.serializeAttachment({ playerId: null, watch: true, table: true } satisfies Attachment);
     // Kein Chatverlauf: der Tisch zeigt keinen Chat, und den Bildschirm sieht jeder im Raum
     this.sendWatch(ws);
+    // Die Handys erfahren, dass es jetzt einen Fernseher gibt (Fernbedienung)
+    this.broadcast();
   }
 
   private async handleJoin(ws: WebSocket, raw: Extract<ClientMessage, { type: "join" }>): Promise<void> {
@@ -669,11 +694,33 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    // Begleit-Handy: mit gültigem Kopplungs-Code als zweites Gerät desselben Spielers (Code gilt nur einmal)
+    // (Schon gekoppelt und mit Token unterwegs: normal wiederverbinden – der Code läuft nach fünf Minuten ab)
+    const hasToken = !!(msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token);
+    if (typeof msg.pairCode === "string" && !hasToken) {
+      const pair = PAIR_CODE_RE.test(msg.pairCode) ? room.pairs?.[msg.pairCode] : undefined;
+      const now = Date.now();
+      // Einmal eingelöst, gilt der Code nur noch für denselben Tab (Funkloch, doppelter Aufbau) – nicht für andere Geräte
+      const other = pair?.usedBy !== undefined && pair.usedBy !== (msg.nonce ?? null);
+      if (!pair || pair.until < now || other || !room.tokens[pair.id] || !inRoom(room.state, pair.id)) {
+        this.send(ws, { type: "error", code: "rejected", fatal: true, message: "Der Kopplungs-Code ist abgelaufen. Lass dir am Rechner einen neuen zeigen." });
+        return;
+      }
+      if (pair.usedBy === undefined) { pair.usedBy = msg.nonce ?? null; await this.ctx.storage.put("room", room); }
+      ws.serializeAttachment({ playerId: pair.id, companion: true } satisfies Attachment);
+      this.dropOldSockets(pair.id, ws);
+      this.send(ws, { type: "joined", playerId: pair.id, token: room.tokens[pair.id] });
+      this.send(ws, { type: "chat", messages: room.chat ?? [] });
+      this.broadcast();
+      return;
+    }
+
     // Wiederverbinden mit Token (ohne PIN)
     if (msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token
         && inRoom(room.state, msg.playerId)) {
       this.healthDelta.reconnects++;
-      ws.serializeAttachment({ playerId: msg.playerId } satisfies Attachment);
+      // Begleit-Handy bleibt Begleit-Handy (sonst würde es den Rechner desselben Spielers verdrängen)
+      ws.serializeAttachment({ playerId: msg.playerId, ...(msg.companion ? { companion: true } : {}) } satisfies Attachment);
       this.dropOldSockets(msg.playerId, ws);
       let changed = false;
       if (typeof msg.profile === "string" && PROFILE_ID_RE.test(msg.profile) && room.profiles?.[msg.playerId] !== msg.profile) {
@@ -858,11 +905,13 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   /** Eine neue Verbindung desselben Spielers ersetzt alte, halb tote Verbindungen */
+  /** Ältere Verbindungen desselben Spielers schließen – das Begleit-Handy und der Rechner zählen getrennt */
   private dropOldSockets(playerId: string, keep: WebSocket): void {
+    const companion = !!(keep.deserializeAttachment() as Attachment | null)?.companion;
     for (const other of this.ctx.getWebSockets()) {
       if (other === keep) continue;
       const att = other.deserializeAttachment() as Attachment | null;
-      if (att?.playerId === playerId) { try { other.close(4001, "replaced"); } catch { /* schon zu */ } }
+      if (att?.playerId === playerId && !!att.companion === companion) { try { other.close(4001, "replaced"); } catch { /* schon zu */ } }
     }
   }
 
@@ -908,9 +957,15 @@ export class GameRoom extends DurableObject<Env> {
     return Date.now() - this.hostSeenAt < HOST_AWAY_MS;
   }
 
-  private broadcast(): void {
+  /** Hängt gerade ein Großer Tisch (Fernseher) am Raum? Die Handys zeigen dann die Fernbedienung. */
+  private hasTable(gone?: WebSocket): boolean {
+    return this.ctx.getWebSockets().some((w) => w !== gone && (w.deserializeAttachment() as Attachment | null)?.table);
+  }
+
+  private broadcast(gone?: WebSocket): void {
     if (!this.room) return;
     const sockets = this.ctx.getWebSockets();
+    const tv = this.hasTable(gone) || undefined;
     // Bots sind immer „da“ (für die Anzeige; die Lebensdauer des Raums hängt nur an echten Verbindungen)
     const onlineList = [...this.onlineIds(), ...(this.room.state.bots ?? [])];
     this.scheduleBots();
@@ -920,7 +975,7 @@ export class GameRoom extends DurableObject<Env> {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv });
     }
   }
 
@@ -933,7 +988,7 @@ export class GameRoom extends DurableObject<Env> {
 
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0 });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv: this.hasTable() || undefined });
   }
 
   /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */
@@ -956,7 +1011,7 @@ export class GameRoom extends DurableObject<Env> {
     const room = this.room;
     if (!room) return false;
     const before = room.state;
-    const res = botMove(before, id, true);
+    const res = playBot(before, id, true, room.code ?? "");
     if (!res) return false;
     room.state = res.next;
     await this.persist();
