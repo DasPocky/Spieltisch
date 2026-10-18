@@ -101,6 +101,8 @@ export type ServerMessage =
   | { type: "paired"; code: string; until: number }
   /** an den Großen Tisch: Befehl der Fernbedienung und von wem */
   | { type: "remote"; cmd: RemoteCmd; by: string }
+  /** Großer Tisch: schnelle Reaktion eines Spielers (nur Emoji, kein Text – den Fernseher sieht jeder im Raum) */
+  | { type: "react"; from: string; emoji: string }
   | { type: "error"; message: string; code?: ErrorCode; fatal?: boolean; /** gehört zu dieser Aktion */ id?: string };
 
 /** Herzschlag als reiner Text – der Server antwortet, ohne aufzuwachen */

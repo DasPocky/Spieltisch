@@ -12,6 +12,7 @@ import { handleAdmin, putAsset } from "./routes/admin";
 import { handleCall } from "./routes/call";
 import { ownsProfile } from "./auth";
 import { ASSET_PREFIX, assetPath } from "../shared/platform/files";
+import { AI_DAILY, AI_MODEL, cleanHostLine, hostPrompt, parseHostLine } from "../shared/platform/hostline";
 
 /** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
 let pendingRequests = 0;
@@ -57,6 +58,21 @@ export default {
       const res = await putAsset(env, target.path, request);
       if (res.ok) await settingsOf(env).audit(`Datei eingespielt (GitHub): ${target.path}`);
       return res;
+    }
+
+    // KI-Spruch für den Moderator am Tisch – nur wenn eingeschaltet, begrenzt; sonst 204 (der Tisch nimmt feste Texte)
+    if (url.pathname === "/api/host/line" && request.method === "POST") {
+      const settings = settingsOf(env);
+      if (!env.AI || !(await settings.config()).features.ai) return new Response(null, { status: 204 });
+      if (!allowed("ai", request.headers.get("cf-connecting-ip") ?? "local", 40)) return new Response(null, { status: 204 });
+      const req = parseHostLine(await readBody(request));
+      if (!req) return badRequest();
+      if (!(await settings.aiTake(AI_DAILY))) return new Response(null, { status: 204 });
+      try {
+        const out = await withTimeout(env.AI.run(AI_MODEL, { messages: hostPrompt(req), max_tokens: 60, temperature: 0.9 }), 5000) as { response?: unknown } | null;
+        const text = cleanHostLine(out?.response, req);
+        return text ? json({ text }) : new Response(null, { status: 204 });
+      } catch { return new Response(null, { status: 204 }); }
     }
 
     // Zugangscode prüfen

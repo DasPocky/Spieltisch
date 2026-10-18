@@ -78,6 +78,10 @@ Alles läuft im kostenlosen Cloudflare-Tarif (100.000 Worker-Anfragen pro Tag; W
 
 Beim Bauen landen Commit, Zweig und Bauzeit im Code (in Cloudflare-Builds aus `WORKERS_CI_COMMIT_SHA` und `WORKERS_CI_BRANCH`, sonst aus git). Die Verwaltung vergleicht Gerät, Server (`/api/admin/status`) und den letzten Commit auf `main` des öffentlichen Repositorys. „Update offen“ heißt meist: Die Veröffentlichung läuft gerade.
 
+## KI-Sprüche (Workers AI)
+
+Der Moderator am Tisch kann frische Sprüche über Cloudflare Workers AI holen (Binding `AI` in `wrangler.jsonc`, Modell in `shared/platform/hostline.ts`). Standardmäßig aus – einschalten in der Verwaltung unter Einstellungen → Funktionen → „KI-Sprüche“. Grenzen: höchstens 400 Sprüche am Tag für alle Räume, je Adresse 40 in 10 Minuten; nur für Begrüßung, Kartenzar, Rundenpunkt und Sieg (nicht bei jedem Zug). Jede Antwort wird geprüft (ein Satz, Name enthalten, keine unerwünschten Wörter, keine Links) – sonst und bei jedem Fehler spricht der Moderator seine festen Texte. Lokal und in den Tests ist Workers AI nicht verbunden (`remoteBindings: false` in `vite.config.ts`).
+
 ## R2-Speicher
 
 Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`, auch für Vorschauen). Ordner:

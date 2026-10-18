@@ -283,6 +283,16 @@ export class SiteSettings extends DurableObject<Env> {
     await this.ctx.storage.put("stats", this.stats);
   }
 
+  /** Einen KI-Spruch für heute verbuchen – false, wenn das Tageslimit erreicht ist */
+  async aiTake(max: number): Promise<boolean> {
+    const day = new Date().toISOString().slice(0, 10);
+    const used = (await this.ctx.storage.get<{ day: string; count: number }>("ai")) ?? { day, count: 0 };
+    const today = used.day === day ? used : { day, count: 0 };
+    if (today.count >= max) return false;
+    await this.ctx.storage.put("ai", { day, count: today.count + 1 });
+    return true;
+  }
+
   async statsGet(): Promise<SiteStats> {
     return this.stats;
   }

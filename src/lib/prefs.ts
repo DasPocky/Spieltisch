@@ -16,6 +16,10 @@ export interface Prefs {
   volFx: number;
   volMusic: number;
   volCrowd: number;
+  /** Moderator am großen Tisch: Smiley mit Ansagen (Wer ist dran, Punkte, Sieg) */
+  host: boolean;
+  /** Ansagen des Moderators vorlesen (sonst nur Sprechblase) */
+  hostVoice: boolean;
 }
 
 /** Schalter unter den Einstellungen (ohne die Lautstärken) */
@@ -23,7 +27,7 @@ export type SwitchPref = { [K in keyof Prefs]: Prefs[K] extends boolean ? K : ne
 export type VolumePref = "volFx" | "volMusic" | "volCrowd";
 
 const KEY = "spieltisch:prefs";
-export const DEFAULT_PREFS: Prefs = { sound: true, vibration: true, announce: false, hints: true, diceMarks: false, volFx: 0.8, volMusic: 0.4, volCrowd: 0.6 };
+export const DEFAULT_PREFS: Prefs = { sound: true, vibration: true, announce: false, hints: true, diceMarks: false, volFx: 0.8, volMusic: 0.4, volCrowd: 0.6, host: true, hostVoice: true };
 
 function read(): Prefs {
   try {

@@ -41,6 +41,10 @@ test("Großer Tisch: Bildschirm baut auf, Handys treten per QR-Link bei, Mau-Mau
   await expect(screen.getByTestId("table-lobby")).toBeHidden();
   await expect(screen.getByTestId("table-view")).toContainText("Mau-Mau");
   await expect(screen.getByTestId("table-seat").first()).toContainText(/· 5/);
+  // Der Moderator (Leuchtkugel) begrüßt die Runde – reine Anzeige, abschaltbar
+  await expect(screen.getByTestId("table-host")).toBeVisible();
+  await expect(screen.getByTestId("table-host-line")).not.toBeEmpty();
+  await shot(screen, "90b-table-moderator");
 
   // Wer dran ist, zieht am Handy – der Tisch zählt mit
   const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
@@ -51,6 +55,20 @@ test("Großer Tisch: Bildschirm baut auf, Handys treten per QR-Link bei, Mau-Mau
   await shot(screen, "91-table-maumau");
   // Der Tisch zeigt keine fremden Karten – nur die Anzahl
   await expect(screen.getByTestId("hand")).toHaveCount(0);
+  // Reaktion vom Handy schwebt über dem Platz am Tisch – Text-Nachrichten bleiben auf den Handys
+  await ben.getByTestId("chat-button").click();
+  await ben.getByLabel("Nachricht").fill("Nur für uns");
+  await ben.getByRole("button", { name: "Senden" }).click();
+  await ben.getByRole("button", { name: "Reaktion 👍" }).click();
+  await expect(screen.getByTestId("table-react")).toHaveText("👍");
+  await expect(screen.getByTestId("table-view")).not.toContainText("Nur für uns");
+  await shot(screen, "91b-table-reaktion");
+  await ben.keyboard.press("Escape");
+  // Moderator ausschalten: Leuchtkugel weg, wieder an: da
+  await screen.getByTestId("host-toggle").click();
+  await expect(screen.getByTestId("table-host")).toHaveCount(0);
+  await screen.getByTestId("host-toggle").click();
+  await expect(screen.getByTestId("table-host")).toBeVisible();
 });
 
 test("Großer Tisch: falsche PIN wird abgelehnt, die richtige verbindet", async ({ browser }) => {

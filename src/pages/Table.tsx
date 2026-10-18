@@ -29,6 +29,7 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
+import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
 import { FeltDice, FeltGrid } from "@/platform/table/blocks";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
@@ -132,7 +133,7 @@ export function TableRoom({ code }: { code: string }) {
 
 function TableLive({ code, pin, onReject }: { code: string; pin: string; onReject: (msg: string) => void }) {
   const hello = useMemo(() => ({ type: "table" as const, pin }), [pin]);
-  const { state, online, status, error, remote } = useWatch(`/api/rooms/${code}/ws`, hello);
+  const { state, online, status, error, remote, reacts } = useWatch(`/api/rooms/${code}/ws`, hello);
   useEffect(() => { if (error && /PIN/.test(error)) onReject(error); }, [error, onReject]);
 
   // F: Vollbild an und aus
@@ -151,10 +152,12 @@ function TableLive({ code, pin, onReject }: { code: string; pin: string; onRejec
       </div>
     );
   }
-  return <TableView code={code} pin={pin} room={state} online={online} remote={remote} />;
+  return <TableView code={code} pin={pin} room={state} online={online} remote={remote} reacts={reacts} />;
 }
 
 type Remote = { cmd: RemoteCmd; by: string; n: number };
+/** Reaktion eines Spielers (Emoji), schwebt kurz über seinem Platz */
+type TableReact = { id: number; from: string; emoji: string };
 
 /** Befehle der Fernbedienung (Handy des Hosts) ausführen und kurz zeigen, wer was gemacht hat. Gibt den Zähler für „Hand verdecken“ zurück. */
 function useRemote(remote: Remote | null): number {
@@ -181,7 +184,7 @@ function toggleFullscreen() {
   else void document.documentElement.requestFullscreen?.().catch(() => undefined);
 }
 
-function TableView({ code, pin, room, online, remote }: { code: string; pin: string; room: RoomState; online: Set<string>; remote: Remote | null }) {
+function TableView({ code, pin, room, online, remote, reacts }: { code: string; pin: string; room: RoomState; online: Set<string>; remote: Remote | null; reacts: TableReact[] }) {
   // Tisch-Ansicht des Spiels aus (oder Beta und kein Gerät der Verwaltung): Partie wie am Handy in der Mitte
   const config = useSiteConfig();
   const admin = useAdminDevice();
@@ -195,6 +198,8 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
   const host = room.players.find((p) => p.id === room.hostId);
   const [felt, setFelt] = useState<FeltRect | null>(null);
   useTableSound(room, model);
+  const [mood, setMood] = useState(readMood);
+  const moderator = useTableHost(room, model, mood, game?.info.name);
   const couch = useCouch(code);
   // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
   const [handOpen, setHandOpen] = useState(false);
@@ -203,7 +208,7 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
       <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
-        <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} />
+        <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} reacts={reacts} />
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#3e9a92] to-[#1f5f5b] shadow-lg">{game ? <game.Icon className="size-6 text-white" /> : <Tv className="size-5 text-white" />}</span>
@@ -213,6 +218,7 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
           </div>
         </header>
 
+        {moderator.on && <HostCorner say={moderator.say} mood={mood} />}
         {!playing && <OnFelt rect={felt}><Lobby code={code} pin={pin} count={room.players.length} host={host?.name} /></OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
       </main>
@@ -224,6 +230,7 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
         <div className="mt-auto" />
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
         <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
+        <HostPanel mood={mood} onMood={setMood} />
         <SoundPanel />
         <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>
@@ -239,8 +246,8 @@ function TableView({ code, pin, room, online, remote }: { code: string; pin: str
  * Am Fernseher für alle (`me` fehlt) – oder am Rechner aus eigener Sicht: der eigene Platz ist vorn,
  * die eigene Hand liegt nicht verdeckt auf dem Tisch (sie steht offen darunter).
  */
-export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt }: {
-  room: RoomState; online: Set<string>; model: TableModel | null; sham?: SchamlosState | null; me?: string | null; showSeats?: boolean; onFelt?: (f: FeltRect) => void;
+export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt, reacts = [] }: {
+  room: RoomState; online: Set<string>; model: TableModel | null; sham?: SchamlosState | null; me?: string | null; showSeats?: boolean; onFelt?: (f: FeltRect) => void; reacts?: TableReact[];
 }) {
   const avatars = useMemo(() => roomAvatars(room), [room]);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
@@ -268,6 +275,11 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]} />
       ))}
+      {reacts.map((r) => {
+        const i = players.findIndex((p) => p.id === r.from);
+        const at = points[i];
+        return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
+      })}
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
       {(model?.dice || model?.grid) && (
         <OnFelt rect={felt}>

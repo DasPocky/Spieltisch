@@ -28,6 +28,7 @@ const FEATURES: [keyof SiteFeatures, string, string][] = [
   ["profiles", "Profile", "persönliche Statistik"],
   ["local", "Ein Handy für alle", "lokal spielen ohne Raum"],
   ["offline", "Offline-App", "Seite und Spiele auf dem Handy speichern"],
+  ["ai", "KI-Sprüche", "Moderator mit frischen Sprüchen (Cloudflare Workers AI, höchstens 400 am Tag)"],
 ];
 const LIMITS: [keyof SiteLimits, string, string, number, number][] = [
   ["roomHours", "Leere Räume höchstens", "Stunden", 1, 336],
