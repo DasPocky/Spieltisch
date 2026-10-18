@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
 import { Seats } from "@/platform/Seats";
 import {
@@ -129,7 +129,7 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<UnoState, UnoAct
   return <ResultScreen winner={win.join(" & ")} subtitle={single ? "hat alle Karten abgelegt" : `mit ${ranking[0]?.score ?? 0} Punkten`} ranking={ranking} isHost={isHost} dispatch={dispatch} scoreLabel="Punkte" />;
 }
 
-function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoState, UnoAction>) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: BoardProps<UnoState, UnoAction>) {
   const players = room.players;
   const local = me === null;
   const [uno, setUno] = useState(false);
@@ -168,6 +168,11 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<UnoStat
     : s.drawn ? (playable(s.drawn) ? "Gezogene Karte legen – oder passen." : "Die gezogene Karte passt nicht – tippe auf Passen.")
     : s.pendingDraw ? `Leg drauf oder zieh ${s.pendingDraw} Karten.`
     : hand.some(playable) ? "Leg eine passende Karte." : "Nichts passt – zieh eine Karte.";
+
+  // Am Rechner am Tisch: Stapel, Ablage und Mitspieler zeigt der Tisch darüber – hier nur die eigene Hand
+  if (desk) {
+    return <UnoDesk {...{ s, hand, playable, myTurn, uno, setUno, unoRule, wild, setWild, seven, setSeven, others, play, pick, act, status, drawnFits, hints }} />;
+  }
 
   return (
     <>
@@ -332,5 +337,102 @@ function TableBoard(props: BoardProps<UnoState, UnoAction>) {
         ) : <p className="glass rounded-xl py-3 text-center text-muted-foreground">{missing || !w ? "Trag deine Punkte ein." : "Der Host schließt die Runde ab."}</p>}
       </div>
     </>
+  );
+}
+
+/** Uno am Rechner: große Hand, Knöpfe und Tastatur (1–9 legen, Z ziehen, U Uno, P passen, A anzweifeln, 1–4 Farbe, Esc zurück) */
+function UnoDesk({ s, hand, playable, myTurn, uno, setUno, unoRule, wild, setWild, seven, setSeven, others, play, pick, act, status, drawnFits, hints }: {
+  s: UnoState; hand: Card[]; playable: (c: Card) => boolean; myTurn: boolean; uno: boolean; setUno: (f: (u: boolean) => boolean) => void; unoRule: boolean;
+  wild: Card | null; setWild: (c: Card | null) => void; seven: Card | null; setSeven: (c: Card | null) => void; others: { id: string; name: string }[];
+  play: (c: Card, color?: UnoColor, target?: string) => void; pick: (c: Card) => void; act: (a: UnoAction) => void; status: string; drawnFits: boolean; hints: boolean;
+}) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      const n = Number(e.key);
+      if (wild || (myTurn && s.pickColor)) {
+        if (e.key === "Escape") setWild(null);
+        else if (n >= 1 && n <= 4) (wild ? play(wild, COLORS[n - 1]) : act({ type: "color", color: COLORS[n - 1] }));
+        return;
+      }
+      if (seven) {
+        if (e.key === "Escape") setSeven(null);
+        else if (n >= 1 && n <= others.length) play(seven, undefined, others[n - 1].id);
+        return;
+      }
+      if (s.phase === "roundEnd") { if (e.key === "Enter") act({ type: "nextRound" }); return; }
+      if (!myTurn) return;
+      const k = e.key.toLowerCase();
+      if (n >= 1 && n <= hand.length && playable(hand[n - 1])) pick(hand[n - 1]);
+      else if (k === "z" && !s.drawn) act({ type: "draw" });
+      else if (k === "p" && s.drawn) act({ type: "pass" });
+      else if (k === "a" && s.challenge) act({ type: "doubt" });
+      else if (k === "u" && unoRule && hand.length === 2) setUno((u) => !u);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
+
+  const colorPick = (onPick: (c: UnoColor) => void, title: string, onCancel?: () => void) => (
+    <div className="glass mx-auto rounded-2xl p-4">
+      <p className="mb-2 text-center font-semibold">{title} <span className="font-normal text-muted-foreground">(1–4{onCancel ? ", Esc" : ""})</span></p>
+      <div className="grid grid-cols-4 gap-3">
+        {COLORS.map((c, i) => (
+          <button key={c} type="button" onClick={() => onPick(c)} aria-label={COLOR_NAME[c]} title={`${i + 1}: ${COLOR_NAME[c]}`}
+            className="flex w-24 flex-col items-center gap-1.5 rounded-xl bg-navy-800/60 py-3 font-bold ring-1 ring-inset ring-border outline-none transition hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-ring">
+            <span className="size-10 rounded-full ring-2 ring-white/30" style={{ background: UNO_BG[c] }} />{COLOR_NAME[c]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-center gap-3 text-base">
+        {drawnFits ? <span data-testid="status"><HintChip onClick={() => pick(s.drawn!)}>Passt – direkt legen?</HintChip></span>
+          : <span data-testid="status" className={cn(myTurn && "font-semibold")}><SmoothText>{status}</SmoothText></span>}
+      </div>
+      {s.phase === "roundEnd" ? (
+        <Button size="lg" className="mx-auto" onClick={() => act({ type: "nextRound" })}>Nächste Runde <kbd className="ml-1 text-xs opacity-60">Enter</kbd></Button>
+      ) : wild ? colorPick((c) => play(wild, c), "Welche Farbe soll es sein?", () => setWild(null))
+        : myTurn && s.pickColor ? colorPick((c) => act({ type: "color", color: c }), "Startkarte Farbwahl – welche Farbe?")
+        : seven ? (
+          <div className="glass mx-auto rounded-2xl p-4">
+            <p className="mb-2 text-center font-semibold">Mit wem tauschst du die Karten? <span className="font-normal text-muted-foreground">(Zahl, Esc)</span></p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {others.map((p, i) => <Button key={p.id} variant="secondary" onClick={() => play(seven, undefined, p.id)}>{i + 1}: {p.name}</Button>)}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-end justify-center gap-2" data-testid="hand">
+              {hand.map((c, i) => {
+                const ok = playable(c);
+                return (
+                  <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!ok} onClick={() => pick(c)}
+                    title={`${i + 1}: ${ok ? "legen" : myTurn ? "passt gerade nicht" : "warte, bis du dran bist"}`}
+                    className={cn("card-in w-24 shrink-0 rounded-[12%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default xl:w-28",
+                      ok && "-translate-y-3 hover:-translate-y-6", c === s.drawn ? "ring-[3px] ring-ice" : ok && hints && "hint-glow")}>
+                    <UnoCardView card={c} dim={myTurn && !ok} />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mx-auto grid w-full max-w-xl grid-cols-[1fr_auto_1fr] gap-2">
+              <Button variant="secondary" size="lg" disabled={!myTurn || !!s.drawn} onClick={() => act({ type: "draw" })} title="Z">
+                {s.challenge ? "4 ziehen" : s.pendingDraw ? `${s.pendingDraw} ziehen` : "Ziehen"} <kbd className="ml-1 text-xs opacity-60">Z</kbd>
+              </Button>
+              {unoRule ? (
+                <Button size="lg" variant={uno ? "ice" : "secondary"} aria-pressed={uno} disabled={!myTurn || hand.length !== 2} onClick={() => setUno((u) => !u)} title="U">
+                  Uno! <kbd className="ml-1 text-xs opacity-60">U</kbd>
+                </Button>
+              ) : <span />}
+              {s.challenge ? <Button size="lg" disabled={!myTurn} onClick={() => act({ type: "doubt" })} title="A">Anzweifeln <kbd className="ml-1 text-xs opacity-60">A</kbd></Button>
+                : <Button variant="secondary" size="lg" disabled={!myTurn || !s.drawn} onClick={() => act({ type: "pass" })} title="P">Passen <kbd className="ml-1 text-xs opacity-60">P</kbd></Button>}
+            </div>
+          </>
+        )}
+    </div>
   );
 }

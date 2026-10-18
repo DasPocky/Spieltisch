@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { ADMIN_PW, adminLogin, ALL_ON, createRoom, newPhone, openSettings, setConfig, shot } from "./util";
+import { ADMIN_PW, adminLogin, ALL_ON, createRoom, expectNoScroll, newPhone, openSettings, setConfig, shot } from "./util";
 
 async function setDefaults(request: APIRequestContext, defaults: object) {
   const res = await request.post("/api/admin", { data: { password: ADMIN_PW, defaults } });
@@ -384,4 +384,30 @@ test("Admin: Update-Zeitpunkt, Neuigkeiten bearbeiten, Betrieb und Protokoll", a
   await page.getByTestId("audit").locator("summary").click();
   await expect(page.getByTestId("audit")).toContainText("Einstellungen gespeichert");
   await shot(page, "a21-betrieb-protokoll");
+});
+
+test("Moderator-Vorschau: aus der Verwaltung erreichbar, vier Figuren, Charakter und Ansagen – ohne Scrollen", async ({ page, browser }) => {
+  await adminLogin(page);
+  await page.getByTestId("moderator-link").click();
+  await expect(page).toHaveURL(/\/moderator$/);
+  await expect(page.getByTestId("moderator-preview")).toBeVisible();
+  await page.getByRole("radio", { name: "Holger" }).click();
+  await page.getByRole("radio", { name: "Frech" }).click();
+  await page.getByTestId("say-hallo").click();
+  await expect(page.getByTestId("moderator-line")).not.toHaveText(/Tippe eine Ansage an/);
+  await expectNoScroll(page);
+  await shot(page, "m1-moderator-handy");
+
+  // Am Rechner: alle Figuren nebeneinander
+  const desk = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE", storageState: await page.context().storageState() })).newPage();
+  await desk.goto("/moderator");
+  for (const id of ["papier", "holz", "show", "kugel"]) await expect(desk.getByTestId(`figure-${id}`)).toBeVisible();
+  await desk.getByTestId("figure-show").click();
+  await desk.getByTestId("say-sieg").click();
+  await shot(desk, "m2-moderator-rechner");
+
+  // Ohne Verwaltung: nur ein Hinweis
+  const guest = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" })).newPage();
+  await guest.goto("/moderator");
+  await expect(guest.getByText("Nur für die Verwaltung")).toBeVisible();
 });

@@ -84,7 +84,7 @@ const estimate = (text: string) => 900 + text.length * 70;
  * Liest `text` vor – Satz für Satz mit natürlichen Pausen – und meldet, wann alles gesagt ist.
  * Ohne Sprachausgabe wird kurz gewartet, damit Abläufe gleich getaktet bleiben.
  */
-export function speak(text: string, opts: { force?: boolean } = {}): Promise<void> {
+export function speak(text: string, opts: { force?: boolean; /** je gesprochenem Wort (für Mundbewegung) */ onWord?: () => void; /** Stimmlage, 1 = normal */ pitch?: number } = {}): Promise<void> {
   if (!text.trim()) return Promise.resolve();
   if (!speechSupported() || (current === false && !opts.force)) return new Promise((r) => setTimeout(r, Math.min(estimate(text), 2500)));
   return new Promise((resolve) => {
@@ -100,7 +100,8 @@ export function speak(text: string, opts: { force?: boolean } = {}): Promise<voi
         u.lang = voice?.lang ?? "de-DE";
         if (voice) u.voice = voice;
         u.rate = RATE[voiceRate()];
-        u.pitch = 1;
+        u.pitch = opts.pitch ?? 1;
+        if (opts.onWord) u.onboundary = (e) => { if (e.name === "word") opts.onWord!(); };
         if (i === parts.length - 1) { u.onend = finish; u.onerror = finish; }
         speechSynthesis.speak(u);
       });

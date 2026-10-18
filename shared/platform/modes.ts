@@ -23,7 +23,7 @@ export const MODE_STATES: { value: ModeState; label: string }[] = [
 export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = {
   // Referenzspiel fürs Mitspielen am Rechner – Beta bis zur Abnahme
   maumau: { table: "on", desk: "beta" },
-  uno: { table: "on" },
+  uno: { table: "on", desk: "beta" },
   schamlos: { table: "on" },
   // Bausteine Würfel und Spielfeld – Beta bis zur Abnahme
   kniffel: { table: "beta" },
