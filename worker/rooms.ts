@@ -442,7 +442,9 @@ export class GameRoom extends DurableObject<Env> {
       appendChat(chat, m);
       await this.persist();
       for (const s of this.ctx.getWebSockets()) {
-        if (getsChat(s.deserializeAttachment() as Attachment | null)) this.send(s, { type: "chat", messages: [m], append: true });
+        const att = s.deserializeAttachment() as Attachment | null;
+        if (getsChat(att)) this.send(s, { type: "chat", messages: [m], append: true });
+        else if (att?.table && m.emoji) this.send(s, { type: "react", from: m.from, emoji: m.emoji });
       }
       await this.feature("chat");
       return;

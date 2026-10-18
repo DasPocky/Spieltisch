@@ -55,6 +55,15 @@ test("Großer Tisch: Bildschirm baut auf, Handys treten per QR-Link bei, Mau-Mau
   await shot(screen, "91-table-maumau");
   // Der Tisch zeigt keine fremden Karten – nur die Anzahl
   await expect(screen.getByTestId("hand")).toHaveCount(0);
+  // Reaktion vom Handy schwebt über dem Platz am Tisch – Text-Nachrichten bleiben auf den Handys
+  await ben.getByTestId("chat-button").click();
+  await ben.getByLabel("Nachricht").fill("Nur für uns");
+  await ben.getByRole("button", { name: "Senden" }).click();
+  await ben.getByRole("button", { name: "Reaktion 👍" }).click();
+  await expect(screen.getByTestId("table-react")).toHaveText("👍");
+  await expect(screen.getByTestId("table-view")).not.toContainText("Nur für uns");
+  await shot(screen, "91b-table-reaktion");
+  await ben.keyboard.press("Escape");
   // Moderator ausschalten: Leuchtkugel weg, wieder an: da
   await screen.getByTestId("host-toggle").click();
   await expect(screen.getByTestId("table-host")).toHaveCount(0);

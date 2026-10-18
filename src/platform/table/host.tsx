@@ -79,7 +79,7 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
   return { on, say: on ? say : null };
 }
 
-/** Der Smiley oben rechts auf dem Tisch mit Sprechblase */
+/** Der Smiley unten rechts am Tisch mit Sprechblase */
 export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
   const [mouth, setMouth] = useState(0);
   const [blink, setBlink] = useState(false);
@@ -106,9 +106,9 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
   }, []);
 
   return (
-    <div className="pointer-events-none absolute top-5 right-6 flex max-w-[min(34rem,60%)] items-start justify-end gap-2" data-testid="table-host">
+    <div className="pointer-events-none absolute right-6 bottom-5 flex max-w-[min(34rem,60%)] items-end justify-end gap-2" data-testid="table-host">
       {say && (
-        <p className={cn("text-in mt-4 rounded-2xl rounded-tr-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
+        <p className={cn("text-in mb-6 rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
           data-testid="table-host-line" aria-live="polite">{say.text}</p>
       )}
       <OrbHost mouth={mouth} blink={blink} mood={mood} className="size-36 shrink-0" />
