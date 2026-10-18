@@ -1,0 +1,10 @@
+Moderator-Figuren – Herkunft und Lizenz
+
+mensch.glb
+  Quelle: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead),
+  erstellt mit Blender und der Erweiterung MPFB. Lizenz: CC0 1.0 (gemeinfrei).
+  Für Spieltisch verkleinert (Meshopt, WebP-Texturen 1024 px).
+
+roboter.glb
+  Quelle: „RobotExpressive“ von Tomás Laulhé, Gesichtsausdrücke ergänzt von Don McCurdy
+  (three.js-Beispiele). Lizenz: CC0 1.0 (gemeinfrei).

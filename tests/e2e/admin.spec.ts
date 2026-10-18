@@ -386,25 +386,40 @@ test("Admin: Update-Zeitpunkt, Neuigkeiten bearbeiten, Betrieb und Protokoll", a
   await shot(page, "a21-betrieb-protokoll");
 });
 
-test("Moderator-Vorschau: aus der Verwaltung erreichbar, vier Figuren, Charakter und Ansagen – ohne Scrollen", async ({ page, browser }) => {
+test("Moderator-Vorschau: aus der Verwaltung erreichbar, 3D-Figuren mit Charakter, Ansagen und Gesten – ohne Scrollen", async ({ page, browser }) => {
+  test.setTimeout(90_000);
   await adminLogin(page);
   await page.getByTestId("moderator-link").click();
   await expect(page).toHaveURL(/\/moderator$/);
   await expect(page.getByTestId("moderator-preview")).toBeVisible();
-  await page.getByRole("radio", { name: "Holger" }).click();
+  // Die 3D-Figur lädt (Ladekreis weg, Bühne gezeichnet)
+  await expect(page.getByTestId("moderator-3d")).toBeAttached();
+  await expect(page.getByTestId("moderator-stage").locator(".animate-spin")).toHaveCount(0, { timeout: 30_000 });
   await page.getByRole("radio", { name: "Frech" }).click();
   await page.getByTestId("say-hallo").click();
   await expect(page.getByTestId("moderator-line")).not.toHaveText(/Tippe eine Ansage an/);
+  await page.waitForTimeout(700);
   await expectNoScroll(page);
-  await shot(page, "m1-moderator-handy");
+  await shot(page, "m1-moderator-mensch");
 
-  // Am Rechner: alle Figuren nebeneinander
+  // Roboter am Rechner
   const desk = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE", storageState: await page.context().storageState() })).newPage();
   await desk.goto("/moderator");
-  for (const id of ["papier", "holz", "show", "kugel"]) await expect(desk.getByTestId(`figure-${id}`)).toBeVisible();
-  await desk.getByTestId("figure-show").click();
+  await desk.getByTestId("figure-roboter").click();
+  await expect(desk.getByTestId("moderator-stage").locator(".animate-spin")).toHaveCount(0, { timeout: 30_000 });
+  await desk.getByTestId("say-hallo").click();
+  await desk.waitForTimeout(900);
+  await shot(desk, "m2-moderator-roboter");
+  await desk.getByTestId("figure-mensch").click();
+  await expect(desk.getByTestId("moderator-stage").locator(".animate-spin")).toHaveCount(0, { timeout: 30_000 });
   await desk.getByTestId("say-sieg").click();
-  await shot(desk, "m2-moderator-rechner");
+  await desk.waitForTimeout(700);
+  await shot(desk, "m3-moderator-mensch-rechner");
+
+  // Ohne 3D: die Leuchtkugel als Ersatz
+  await page.evaluate(() => localStorage.setItem("spieltisch:quality", "flach"));
+  await page.reload();
+  await expect(page.getByRole("img", { name: "Leuchtkugel" })).toBeVisible();
 
   // Ohne Verwaltung: nur ein Hinweis
   const guest = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" })).newPage();
