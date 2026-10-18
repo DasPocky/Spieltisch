@@ -26,7 +26,7 @@ export async function putAsset(env: Env, path: string, request: Request): Promis
   if (Number(request.headers.get("content-length") ?? 0) > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
   const bytes = new Uint8Array(await request.arrayBuffer());
   if (bytes.length > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
-  const type = fileType(bytes, path);
+  const type = fileType(bytes);
   if (!type) return json({ ok: false, error: "Der Inhalt passt nicht zur Endung." }, 400);
   await env.FILES.put(ASSET_PREFIX + path, bytes, { httpMetadata: { contentType: type } });
   return json({ ok: true, path, size: bytes.length });

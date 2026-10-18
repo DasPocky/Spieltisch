@@ -83,19 +83,10 @@ Beim Bauen landen Commit, Zweig und Bauzeit im Code (in Cloudflare-Builds aus `W
 Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`, auch für Vorschauen). Ordner:
 
 - `r/<Raum-Objekt-ID>/` – Fotos der Spieler; jeder Raum löscht seine Fotos, wenn er endet.
-- `assets/moderator/` – 3D-Figuren des Moderators (`mensch.glb`, `roboter.glb`)
-- `assets/bilder/` – Bilder für Karten und Bühne (später)
+- `assets/bilder/` – Bilder für Karten und Bühne
 
-Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`. Fehlt eine Figur, zeigt der Moderator die Leuchtkugel.
+Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`.
 
-### Figuren einspielen (GitHub-Aktion)
+### Dateien per Schlüssel einspielen
 
-Statt von Hand hochzuladen: in GitHub unter **Actions → „Dateien einspielen“ → Run workflow**. Die Aktion holt die freien
-Originale, verkleinert sie und legt sie über `PUT /api/release/files/<Ordner>/<Name>` in den Speicher (`scripts/assets.mjs`).
-Dafür braucht das Repo das Secret **RELEASE_SECRET** (Settings → Secrets and variables → Actions) – derselbe Wert wie beim
-Worker. Ohne passenden Schlüssel nimmt der Server nichts an; jede eingespielte Datei steht im Protokoll der Verwaltung.
-
-### Herkunft der Moderator-Figuren (nur freie Modelle)
-
-- `mensch.glb`: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead), erstellt mit Blender und MPFB – CC0 1.0. Verkleinert mit `npx @gltf-transform/cli optimize mpfb.glb mensch.glb --compress meshopt --texture-compress webp --texture-size 2048 --flatten false --join false --simplify false` (Skelett „Armature“ bleibt erhalten).
-- `roboter.glb`: „RobotExpressive“ von Tomás Laulhé, Gesichtsausdrücke von Don McCurdy (three.js-Beispiele) – CC0 1.0. Liegt auch unter `tests/fixtures/` für die Tests.
+`PUT /api/release/files/<Ordner>/<Name>` nimmt Dateien mit dem Kopf `x-release-key: <RELEASE_SECRET>` an (gleiche Prüfung wie in der Verwaltung, Eintrag im Protokoll) – für spätere Automatisierungen. Ohne passenden Schlüssel nimmt der Server nichts an.

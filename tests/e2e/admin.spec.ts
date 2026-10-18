@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { ADMIN_PW, adminLogin, ALL_ON, createRoom, expectNoScroll, newPhone, openSettings, setConfig, shot } from "./util";
 
@@ -387,47 +386,27 @@ test("Admin: Update-Zeitpunkt, Neuigkeiten bearbeiten, Betrieb und Protokoll", a
   await shot(page, "a21-betrieb-protokoll");
 });
 
-test("Moderator-Vorschau: aus der Verwaltung erreichbar, 3D-Figuren mit Charakter, Ansagen und Gesten – ohne Scrollen", async ({ page, browser }) => {
-  test.setTimeout(90_000);
+test("Dateien und Moderator-Vorschau: Bild hochladen, Leuchtkugel mit Charakter und Ansagen – ohne Scrollen", async ({ page, browser }) => {
   await adminLogin(page);
-  // Figuren liegen im Speicher (R2): den Roboter über „Dateien“ hochladen, ein Nicht-Modell wird abgelehnt
+  // Bilder liegen im Speicher (R2): echtes Bild wird angenommen, falscher Inhalt abgelehnt
   await page.goto("/admin/einstellungen");
-  const files = page.getByTestId("files-moderator");
-  await files.getByLabel("Moderator-Figuren hochladen").setInputFiles({ name: "roboter.glb", mimeType: "model/gltf-binary", buffer: readFileSync("tests/fixtures/roboter.glb") });
-  await expect(files).toContainText("roboter.glb");
-  await files.getByLabel("Moderator-Figuren hochladen").setInputFiles({ name: "fake.glb", mimeType: "model/gltf-binary", buffer: Buffer.from("kein Modell") });
+  const files = page.getByTestId("files-bilder");
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await files.getByLabel("Bilder hochladen").setInputFiles({ name: "punkt.png", mimeType: "image/png", buffer: png });
+  await expect(files).toContainText("punkt.png");
+  await files.getByLabel("Bilder hochladen").setInputFiles({ name: "fake.png", mimeType: "image/png", buffer: Buffer.from("kein Bild") });
   await expect(page.getByTestId("admin-files")).toContainText("Der Inhalt passt nicht zur Endung.");
+
   await page.goto("/admin");
   await page.getByTestId("moderator-link").click();
   await expect(page).toHaveURL(/\/moderator$/);
-  await expect(page.getByTestId("moderator-preview")).toBeVisible();
-  // Mensch fehlt im Speicher: Leuchtkugel mit Hinweis, wo die Datei hingehört
-  await expect(page.getByTestId("figure-missing")).toContainText("mensch.glb");
-  // Roboter lädt aus dem Speicher
-  await page.getByTestId("figure-roboter").click();
-  await expect(page.getByTestId("moderator-3d")).toBeAttached();
-  await expect(page.getByTestId("moderator-stage").locator(".animate-spin")).toHaveCount(0, { timeout: 30_000 });
-  await expect(page.getByTestId("figure-missing")).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Leuchtkugel" })).toBeVisible();
   await page.getByRole("radio", { name: "Frech" }).click();
   await page.getByTestId("say-hallo").click();
   await expect(page.getByTestId("moderator-line")).not.toHaveText(/Tippe eine Ansage an/);
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(500);
   await expectNoScroll(page);
-  await shot(page, "m1-moderator-roboter-handy");
-
-  // Roboter am Rechner
-  const desk = await (await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE", storageState: await page.context().storageState() })).newPage();
-  await desk.goto("/moderator");
-  await desk.getByTestId("figure-roboter").click();
-  await expect(desk.getByTestId("moderator-stage").locator(".animate-spin")).toHaveCount(0, { timeout: 30_000 });
-  await desk.getByTestId("say-hallo").click();
-  await desk.waitForTimeout(900);
-  await shot(desk, "m2-moderator-roboter");
-
-  // Ohne 3D: die Leuchtkugel als Ersatz
-  await page.evaluate(() => localStorage.setItem("spieltisch:quality", "flach"));
-  await page.reload();
-  await expect(page.getByRole("img", { name: "Leuchtkugel" })).toBeVisible();
+  await shot(page, "m1-moderator-handy");
 
   // Ohne Verwaltung: nur ein Hinweis
   const guest = await (await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" })).newPage();

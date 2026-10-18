@@ -92,7 +92,7 @@ export function AdminHome() {
       <button type="button" onClick={() => navigate("/moderator")} data-testid="moderator-link"
         className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-left outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring">
         <Mic className="size-5 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1"><b className="block">Moderator-Vorschau</b><span className="text-sm text-muted-foreground">Figuren ansehen und anhören – eine für die Bühne aussuchen</span></span>
+        <span className="min-w-0 flex-1"><b className="block">Moderator-Vorschau</b><span className="text-sm text-muted-foreground">Leuchtkugel, Charakter und Stimme ausprobieren</span></span>
       </button>
     </div>
   );
