@@ -112,6 +112,8 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 **Grafik-Stufen** (`src/lib/quality.ts`): hoch/mittel/einfach/flach – automatisch nach Gerät und gemessener Bildrate, im Profil festlegbar. „Flach“ (oder kein WebGL, Grafik abgestürzt) zeichnet den Tisch mit `table/flat.ts` – gleiche Schnittstelle wie die 3D-Szene.
 
+**Bausteine des Tischs:** Ein Tischmodell besteht aus Karten (Stapel, Ablage, verdeckte Hände, Lückensatz), Würfeln (`dice`), Spielfeld (`grid`) und Plätzen (wer dran ist, Punkte, `notes` je Platz). Jedes Spiel baut sein Modell selbst in `src/games/<id>/table.ts` und trägt es in `MODELS` (`table/model.ts`) ein; neue Tisch-Ansichten starten in `GAME_MODES` als `beta`. Würfel und Spielfeld liegen als `FeltDice`/`FeltGrid` (`table/blocks.tsx`) auf dem Filz – im 3D- und im flachen Tisch gleich.
+
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
 
 ## Versionen und Updates

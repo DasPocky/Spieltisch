@@ -31,7 +31,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 ## Phase 1 – Grundlage für alle Spielweisen 🔨
 
-Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅ · Ton: drei Kanäle (Effekte, Musik, Publikum) mit eigener Lautstärke, Musik und Publikum am Tisch ✅ · Ohne Handy mitspielen: der Fernseher nimmt Spieler auf, ihre Hand erscheint hinter Sichtschutz am Fernseher ✅ · Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts steuert Ton und Verdecken ✅ · Bots mit Spielstärke (Mau-Mau, Uno, Vier gewinnt) ✅ · R2: Foto statt Tier im Raum ✅
+Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅ · Ton: drei Kanäle (Effekte, Musik, Publikum) mit eigener Lautstärke, Musik und Publikum am Tisch ✅ · Ohne Handy mitspielen: der Fernseher nimmt Spieler auf, ihre Hand erscheint hinter Sichtschutz am Fernseher ✅ · Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts steuert Ton und Verdecken ✅ · Bots mit Spielstärke (Mau-Mau, Uno, Vier gewinnt) ✅ · R2: Foto statt Tier im Raum ✅ · Gemeinsame Bausteine am Tisch (Karten, Würfel, Spielfeld, Platz-Notiz; Modell je Spiel) – Kniffel und Vier gewinnt am Tisch (Beta) ✅
 
 1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
 2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.
@@ -41,7 +41,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
    - **Tisch + Handy:** der Rechner/Fernseher ist der Tisch für alle (heutiger Großer Tisch), gespielt wird am Handy – auch der Host kann zusätzlich am Rechner eine Hand haben,
    - **nur am Handy** wie bisher.
    Ohne 3D (schwacher Rechner, WebGL-Ausfall) ein **einfacher flacher Tisch** mit gleicher Anordnung. 2D und 3D sind nur Ansichten desselben Spielstands.
-5. **Gemeinsame Bausteine** statt Einzellösungen: `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
+5. **Gemeinsame Bausteine** statt Einzellösungen (Tisch: Karten, Würfel, Spielfeld, Platz ✅; 3D-Würfel und -Steine folgen): `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
 6. **Handy als Begleiter:** Koppeln ✅, Fernbedienung ✅; offen: Kamera + Mikro, Chat + Reaktionen, private Hand.
 7. **Fernseher-Beitritt:** QR ✅, Spieler ohne Handy am Fernseher ✅; offen: Bild/Selfie ohne Profil; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
 8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken ✅ (später: Moderator-Stimme als vierter Kanal).
