@@ -8,7 +8,7 @@ import { LipsyncDe } from "@met4citizen/talkinghead/modules/lipsync-de.mjs";
 import { Color, MeshStandardMaterial, type Mesh, type Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
-import { reducedMotion, renderSettings, type Quality } from "@/lib/quality";
+import { reducedMotion, type Quality } from "@/lib/quality";
 import type { Mood, Moment } from "./lines";
 import type { ModeratorStage } from "./stage3d";
 
@@ -24,18 +24,21 @@ if (!proto.spieltischMeshopt) {
 const MOOD: Record<Mood, string> = { charmant: "happy", frech: "neutral", boese: "angry" };
 
 export async function createHumanStage(box: HTMLElement, url: string, quality: Quality, mood: Mood): Promise<ModeratorStage> {
-  const set = renderSettings(quality);
   const calm = reducedMotion();
   const before = new Set(box.children);
   const head = new TalkingHead(box, {
     ttsEndpoint: "",
     lipsyncModules: [],
     lipsyncLang: "de",
-    cameraView: "mid",
+    // Kopf bis Hüfte: Mund gut sichtbar, erhobene Hände bleiben im Bild
+    cameraView: "upper",
+    cameraDistance: 1.6,
+    cameraY: 0.35,
     cameraRotateEnable: false,
     cameraZoomEnable: false,
     cameraPanEnable: false,
-    modelPixelRatio: set.pixelRatio,
+    // Eine Figur allein ist günstig: scharf zeichnen (Handys haben 2–3 Bildpunkte je Punkt)
+    modelPixelRatio: quality === "einfach" ? Math.min(window.devicePixelRatio || 1, 1.5) : Math.min(window.devicePixelRatio || 1, 2),
     modelFPS: quality === "einfach" ? 24 : 30,
     modelMovementFactor: calm ? 0.4 : 1,
     avatarIdleEyeContact: 0.45,
@@ -59,6 +62,36 @@ export async function createHumanStage(box: HTMLElement, url: string, quality: Q
   });
   if (import.meta.env.DEV) for (const c of own) (c as unknown as { head?: unknown }).head = head;
   let current = mood;
+  // Sprechen: Plan der Mundbilder (Sekunden ab Start), eigener Takt
+  let talk: { plan: { v: string; t: number; d: number; word: number }[]; t0: number; wordStarts: number[] } | null = null;
+  let raf = 0, last = 0;
+  // Mundbilder weich überblenden – direkt als Echtzeit-Werte (die überstimmen die Animationen der Bibliothek)
+  const VIS = ["aa", "E", "I", "O", "U", "PP", "SS", "TH", "DD", "FF", "kk", "nn", "RR", "CH"];
+  const level: Record<string, number> = {};
+  const mt = head.mtAvatar as Record<string, { realtime: number | null; needsUpdate: boolean }>;
+  const put = (v: string, x: number | null) => { const m = mt[`viseme_${v}`]; if (m) { m.realtime = x; m.needsUpdate = true; } };
+  const mouth = (now: number) => {
+    raf = 0;
+    const dt = Math.min(0.1, last ? (now - last) / 1000 : 0.016);
+    last = now;
+    const t = talk ? (performance.now() - talk.t0) / 1000 : 0;
+    const end = talk?.plan.at(-1);
+    if (talk && (!end || t > end.t + end.d + 0.2)) talk = null;
+    const cur = talk?.plan.find((p) => t >= p.t && t < p.t + p.d);
+    let open = false, jaw = 0;
+    for (const v of VIS) {
+      const want = cur && cur.v === v ? (v === "PP" || v === "FF" ? 0.95 : 0.8) : 0;
+      level[v] = (level[v] ?? 0) + (want - (level[v] ?? 0)) * Math.min(1, dt * 22);
+      if (level[v] > 0.01) open = true;
+      put(v, talk || level[v] > 0.01 ? level[v] : null);
+      if (v === "aa" || v === "O") jaw += level[v] * 0.45; else if (v === "E" || v === "I" || v === "U") jaw += level[v] * 0.2;
+    }
+    // Kiefer mit öffnen – sonst bewegen sich nur die Lippen und der Mund wirkt aus der Ferne still
+    const j = mt.jawOpen;
+    if (j) { j.realtime = talk || jaw > 0.01 ? Math.min(0.5, jaw) : null; j.needsUpdate = true; }
+    if (talk || open) raf = requestAnimationFrame(mouth);
+    else last = 0;
+  };
   const playMoment = (m: Moment) => {
     if (m === "hallo") head.playGesture("handup", 3);
     else if (m === "dran") { head.playGesture("index", 2.5); head.playGesture("yes", 1.5); }
@@ -68,20 +101,29 @@ export async function createHumanStage(box: HTMLElement, url: string, quality: Q
 
   return {
     speak(text, durationMs) {
-      // Wörter gleichmäßig nach Länge über die geschätzte Sprechdauer verteilen
-      const words = text.split(/\s+/).filter(Boolean);
-      const weights = words.map((w) => w.length + 2);
-      const sum = weights.reduce((a, b) => a + b, 0);
-      let acc = 0;
-      const wtimes = weights.map((w) => { const t = (acc / sum) * durationMs; acc += w; return t; });
-      const wdurations = weights.map((w) => (w / sum) * durationMs * 0.92);
-      const ctx = head.audioCtx;
-      const audio = ctx.createBuffer(1, Math.max(1, Math.ceil((ctx.sampleRate * durationMs) / 1000)), ctx.sampleRate);
-      if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
-      head.speakAudio({ audio, words, wtimes, wdurations }, { lipsyncLang: "de" });
+      // Mundbilder selbst takten (unabhängig von der Tonausgabe – auf manchen Handys läuft die Bibliothek sonst stumm)
+      const de = head.lipsync.de;
+      const words = de.preProcessText(text).split(" ").filter(Boolean).map((w) => de.wordsToVisemes(w));
+      const pause = 1.2; // Lücke zwischen Wörtern (in Viseme-Einheiten)
+      const total = words.reduce((a, w) => a + (w.times.at(-1) ?? 0) + (w.durations.at(-1) ?? 0) + pause, 0) || 1;
+      const k = durationMs / 1000 / total;
+      const plan: { v: string; t: number; d: number; word: number }[] = [];
+      let at = 0;
+      words.forEach((w, i) => {
+        w.visemes.forEach((v, j) => plan.push({ v, t: (at + w.times[j]) * k, d: w.durations[j] * k, word: i }));
+        at += (w.times.at(-1) ?? 0) + (w.durations.at(-1) ?? 0) + pause;
+      });
+      talk = { plan, t0: performance.now(), wordStarts: words.map((_, i) => plan.find((p) => p.word === i)?.t ?? 0) };
+      if (!raf) raf = requestAnimationFrame(mouth);
     },
-    word() { /* die Bibliothek hält ihren eigenen Takt */ },
-    stopSpeaking() { head.stopSpeaking(); },
+    word() {
+      // Die Stimme ist bei einem neuen Wort: Zeitplan auf dieses Wort ziehen
+      if (!talk) return;
+      const now = (performance.now() - talk.t0) / 1000;
+      const next = talk.wordStarts.find((t) => t > now + 0.05);
+      if (next !== undefined) talk.t0 -= (next - now) * 1000;
+    },
+    stopSpeaking() { talk = null; },
     setMood(m) { current = m; head.setMood(MOOD[m]); },
     gesture(m) {
       // Nach dem Sprechstart: die Bibliothek setzt beim Sprechen eigene Handbewegungen, die Geste soll gewinnen
@@ -89,6 +131,7 @@ export async function createHumanStage(box: HTMLElement, url: string, quality: Q
     },
     resize() { head.onResize(); },
     dispose() {
+      cancelAnimationFrame(raf);
       try { head.stop(); head.stopSpeaking(); head.resizeobserver?.disconnect(); head.clearThree(head.scene); head.renderer.dispose(); } catch { /* egal */ }
       for (const c of own) c.remove();
     },

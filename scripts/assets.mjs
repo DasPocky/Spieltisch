@@ -23,7 +23,7 @@ const FILES = [
     path: "moderator/mensch.glb",
     url: "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb",
     license: "CC0 – Figur aus den TalkingHead-Beispielen (Blender/MPFB)",
-    optimize: ["--compress", "meshopt", "--texture-compress", "webp", "--texture-size", "1024", "--flatten", "false", "--join", "false", "--simplify", "false"],
+    optimize: ["--compress", "meshopt", "--texture-compress", "webp", "--texture-size", "2048", "--flatten", "false", "--join", "false", "--simplify", "false"],
   },
   {
     path: "moderator/roboter.glb",

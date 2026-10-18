@@ -97,5 +97,5 @@ Worker. Ohne passenden Schlüssel nimmt der Server nichts an; jede eingespielte 
 
 ### Herkunft der Moderator-Figuren (nur freie Modelle)
 
-- `mensch.glb`: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead), erstellt mit Blender und MPFB – CC0 1.0. Verkleinert mit `npx @gltf-transform/cli optimize mpfb.glb mensch.glb --compress meshopt --texture-compress webp --texture-size 1024 --flatten false --join false --simplify false` (Skelett „Armature“ bleibt erhalten).
+- `mensch.glb`: Beispiel-Figur „mpfb.glb“ aus dem Projekt TalkingHead (github.com/met4citizen/TalkingHead), erstellt mit Blender und MPFB – CC0 1.0. Verkleinert mit `npx @gltf-transform/cli optimize mpfb.glb mensch.glb --compress meshopt --texture-compress webp --texture-size 2048 --flatten false --join false --simplify false` (Skelett „Armature“ bleibt erhalten).
 - `roboter.glb`: „RobotExpressive“ von Tomás Laulhé, Gesichtsausdrücke von Don McCurdy (three.js-Beispiele) – CC0 1.0. Liegt auch unter `tests/fixtures/` für die Tests.
