@@ -243,7 +243,7 @@ function RoomSheet({ code, onClose, onChanged, onWatch }: { code: string | null;
                 ))}
               </ul>
               {devOn && (
-                <Button variant="secondary" size="sm" className="justify-self-start" disabled={busy} onClick={() => void act({ type: "addBots", n: 1 }, "Bot ist dabei – der Raum ist jetzt ein Testraum.")}>
+                <Button variant="secondary" size="sm" className="justify-self-start" disabled={busy} onClick={() => void act({ type: "addBots", n: 1, level: "mittel" }, "Bot ist dabei – der Raum ist jetzt ein Testraum.")}>
                   <Bot />Bot dazu
                 </Button>
               )}

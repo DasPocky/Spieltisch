@@ -59,6 +59,8 @@ export interface RoomState {
   access?: RoomAccess;
   /** Testspieler (Entwickler-Modus): ziehen von selbst zufällig, aber erlaubt */
   bots?: string[];
+  /** Spielstärke je Bot („leicht“ … „schwer“, siehe botSkill.ts) – fehlt: zufällig */
+  botLevels?: Record<string, "zufall" | "leicht" | "mittel" | "schwer">;
 }
 
 export interface Evening {
@@ -358,6 +360,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
         s.bench = s.bench!.filter((p) => p.id !== a.id);
         if (!s.bench.length) delete s.bench;
         if (s.bots) s.bots = s.bots.filter((id) => id !== a.id);
+        if (s.botLevels) delete s.botLevels[a.id];
         if (s.avatars) delete s.avatars[a.id];
         if (s.members) delete s.members[a.id];
         return s;
@@ -370,6 +373,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       }
       s.players.splice(i, 1);
       if (s.bots) s.bots = s.bots.filter((id) => id !== a.id);
+      if (s.botLevels) delete s.botLevels[a.id];
       if (s.avatars) delete s.avatars[a.id];
       if (s.members) delete s.members[a.id];
       if (s.hostId === a.id) s.hostId = s.players[0]?.id ?? null;

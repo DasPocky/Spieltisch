@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { botMove } from "@shared/platform/bots";
+import { playBot } from "@shared/platform/botSkill";
 import { addPlayer, applyRoomAction, createRoom, currentPlayerId, defaultOptions, roomGame, migrateRoomState, upgradeRoom, type RoomAction, type RoomState } from "@shared/platform/room";
 import { withDefaults, type GameDefaults } from "@shared/platform/access";
 import { GAME_IDS, isGameId } from "@shared/games";
@@ -115,7 +115,7 @@ export function LocalGame() {
   const botTurn = room.bots?.length && room.phase === "playing" ? currentPlayerId(room) : null;
   useEffect(() => {
     if (!botTurn || !room.bots?.includes(botTurn)) return;
-    const t = setTimeout(() => run((s) => botMove(s, botTurn, false)?.next ?? s), 900 + Math.random() * 600);
+    const t = setTimeout(() => run((s) => playBot(s, botTurn, false)?.next ?? s), 900 + Math.random() * 600);
     return () => clearTimeout(t);
   }, [room, botTurn, run]);
 
@@ -146,7 +146,8 @@ export function LocalGame() {
         if (from) linkLocalPlayer(id, from.code, from.member);
         run((s) => {
           const next = addPlayer(s, { id, name });
-          if (bot) next.bots = [...(next.bots ?? []), id];
+          // Bots im Entwickler-Modus spielen „mittel“ (bewertete Spiele), sonst zufällig
+          if (bot) { next.bots = [...(next.bots ?? []), id]; next.botLevels = { ...next.botLevels, [id]: "mittel" }; }
           return from ? { ...next, avatars: { ...next.avatars, [id]: from.avatar }, members: { ...next.members, [id]: from.member } } : next;
         });
       }}

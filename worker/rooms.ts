@@ -7,7 +7,8 @@ import { accessFor, withDefaults, type GameDefaults, type SiteConfig } from "../
 import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type StatKind } from "../shared/platform/admin";
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
-import { BOT_PREFIX, botMove } from "../shared/platform/bots";
+import { BOT_PREFIX } from "../shared/platform/bots";
+import { isBotLevel, playBot } from "../shared/platform/botSkill";
 import { shuffle } from "../shared/platform/random";
 import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
@@ -261,6 +262,7 @@ export class GameRoom extends DurableObject<Env> {
             const id = `${BOT_PREFIX}${crypto.randomUUID().slice(0, 8)}`;
             next = addPlayer(next, { id, name: `Bot ${k}` });
             next.bots = [...(next.bots ?? []), id];
+            if (isBotLevel(a.level) && a.level !== "zufall") next.botLevels = { ...next.botLevels, [id]: a.level };
             names.add(`bot ${k}`);
             i++;
           }
@@ -1009,7 +1011,7 @@ export class GameRoom extends DurableObject<Env> {
     const room = this.room;
     if (!room) return false;
     const before = room.state;
-    const res = botMove(before, id, true);
+    const res = playBot(before, id, true, room.code ?? "");
     if (!res) return false;
     room.state = res.next;
     await this.persist();

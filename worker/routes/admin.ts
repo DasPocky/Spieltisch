@@ -7,6 +7,7 @@ import { BUILD, type ServerStatus } from "../../shared/build";
 import { sanitizeAccess, type RoomAccess } from "../../shared/platform/directory";
 import { PIN_RE, ROOM_CODE_RE } from "../../shared/platform/protocol";
 import { type AdminRoomAction } from "../../shared/platform/admin";
+import { isBotLevel } from "../../shared/platform/botSkill";
 import { Env, settingsOf, profileOf, groupOf } from "../env";
 import { readBody, badRequest, json, withTimeout, makeCode } from "../http";
 import { WATCH_PATH } from "../rooms";
@@ -178,7 +179,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
       const code = makeCode();
       const stub = env.ROOMS.get(env.ROOMS.idFromName(code));
       if (!(await stub.init(pin, gameId, true, code, config.defaults, access, false, true))) continue;
-      const res = await stub.adminAct({ type: "addBots", n });
+      const res = await stub.adminAct({ type: "addBots", n, level: isBotLevel(body.level) ? body.level : undefined });
       if (!res.ok) return json(res, 400);
       return json({ code, pin }, 201);
     }
