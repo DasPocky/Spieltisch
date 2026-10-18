@@ -11,7 +11,7 @@ import { OrbHost } from "@/platform/moderator/figures";
 import { LINES, MOMENTS, MOODS, type Mood, type Moment } from "@/platform/moderator/lines";
 import type { FigureKind, ModeratorStage } from "@/platform/moderator/stage3d";
 
-/** Figuren zur Auswahl – beide frei nutzbar (CC0), siehe public/models/moderator/LIZENZEN.txt */
+/** Figuren zur Auswahl – beide frei nutzbar (CC0), siehe docs/betrieb.md */
 const FIGURES: { kind: FigureKind; name: string; look: string; pitch: number }[] = [
   { kind: "mensch", name: "Lena", look: "Mensch", pitch: 1.1 },
   { kind: "roboter", name: "Robo", look: "Roboter", pitch: 1.35 },
@@ -61,7 +61,8 @@ export function ModeratorPreview() {
     stage.current?.gesture(moment);
     stage.current?.speak(text, 400 + text.length * 62);
     await speak(text, { force: true, pitch: fig.pitch, onWord: () => stage.current?.word() });
-    if (run.current === id) { setSpeaking(false); stage.current?.stopSpeaking(); }
+    // Die Figur spricht ihren Zeitplan selbst zu Ende (auch wenn das Gerät keine Stimme hat)
+    if (run.current === id) setSpeaking(false);
   };
   const stop = () => { run.current++; try { speechSynthesis.cancel(); } catch { /* egal */ } setSpeaking(false); stage.current?.stopSpeaking(); };
 
@@ -118,25 +119,21 @@ function Moderator3D({ kind, mood, onStage, fallback }: { kind: FigureKind; mood
   useEffect(() => {
     if (flat || !holder.current) return;
     const box = holder.current;
-    const canvas = document.createElement("canvas");
-    canvas.className = "absolute inset-0 size-full";
-    canvas.dataset.testid = "moderator-3d";
-    box.replaceChildren(canvas);
     let s: ModeratorStage | null = null, gone = false;
     let ro: ResizeObserver | null = null;
     setState("loading");
     void import("@/platform/moderator/stage3d")
-      .then((m) => m.createModeratorStage(canvas, kind, quality, moodRef.current))
+      .then((m) => m.createModeratorStage(box, kind, quality, moodRef.current))
       .then((stage) => {
         if (gone) { stage.dispose(); return; }
         s = stage;
-        ro = new ResizeObserver(() => stage.resize(canvas.clientWidth, canvas.clientHeight));
-        ro.observe(canvas);
-        stage.resize(canvas.clientWidth, canvas.clientHeight);
+        ro = new ResizeObserver(() => stage.resize(box.clientWidth, box.clientHeight));
+        ro.observe(box);
+        stage.resize(box.clientWidth, box.clientHeight);
         onStage(stage);
         setState("ready");
       })
-      .catch(() => { if (!gone) setState("failed"); });
+      .catch((e: unknown) => { console.error("Moderator:", e); if (!gone) setState("failed"); });
     return () => { gone = true; ro?.disconnect(); s?.dispose(); onStage(null); };
   }, [kind, quality, flat, onStage]);
 
@@ -154,7 +151,7 @@ function Moderator3D({ kind, mood, onStage, fallback }: { kind: FigureKind; mood
   }
   return (
     <>
-      <div ref={holder} className="absolute inset-0" />
+      <div ref={holder} className="absolute inset-0" data-testid="moderator-3d" />
       {state === "loading" && <div className="absolute inset-0 grid place-items-center"><Loader2 className="size-8 animate-spin text-[#f7ecd6]" /></div>}
     </>
   );
