@@ -835,3 +835,69 @@ test("Fischen und Hellseher am Tisch: Teich und Quartette bzw. Trumpf und Stich 
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Werwolf, Eine Nacht und Spion am Tisch: Aufsteller mit Phase, Nachtlicht, Uhr, verdeckte Karten an den Plätzen", async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await setConfig(request, { ...ALL_ON, modes: { werwolf: { table: "on" }, einenacht: { table: "on" }, spion: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const phones: Page[] = [];
+    for (const n of ["Anna", "Ben", "Cem", "Dora", "Emil"]) phones.push(await joinByLink(browser, code, pin, n));
+    const [anna] = phones;
+    const pick = async (id: string, first = false) => {
+      if (!first) {
+        await anna.getByRole("button", { name: "Menü" }).click();
+        await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+        await anna.getByRole("button", { name: "Spiel wählen" }).click();
+      } else await anna.getByTestId("meet-play").click();
+      await anna.getByTestId(`pick-${id}`).click();
+      await anna.getByRole("button", { name: "Spiel starten" }).click();
+    };
+
+    // Werwolf: Karten ansehen, dann Nacht – Licht gedimmt, jede Karte liegt verdeckt am Platz
+    await pick("werwolf", true);
+    await expect(screen.getByTestId("table-sign")).toContainText("Schaut eure Karte an");
+    await expect(screen.getByTestId("seat-board")).toHaveCount(5);
+    for (const p of phones) {
+      const card = p.getByRole("button", { name: /Rolle aufdecken|Deine Rolle/ }).first();
+      if ((await card.getAttribute("aria-label"))?.includes("aufdecken")) await card.click();
+      await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+    }
+    await expect(screen.getByTestId("table-sign")).toContainText("Nacht 1");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9p-tisch-werwolf-nacht");
+
+    // Eine Nacht: drei Karten in der Mitte, nach der Nacht läuft die Uhr
+    await pick("einenacht");
+    for (const p of phones) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+    await expect(screen.getByTestId("table-sign")).toContainText("Die Nacht");
+    await expect(screen.getByTestId("table-pile")).toHaveCount(3);
+    for (const p of phones) {
+      const drunk = p.getByRole("group", { name: "Karten in der Mitte" }).getByRole("button", { name: "Karte 1" });
+      if (await p.getByText("Tausche mit einer Karte aus der Mitte").isVisible()) await drunk.click();
+      else await p.getByRole("button", { name: "Fertig" }).click();
+    }
+    await expect(screen.getByTestId("table-sign")).toContainText("Wer ist der Werwolf?");
+    await expect(screen.getByTestId("table-clock")).toContainText(/\d:\d\d/);
+    await screen.waitForTimeout(800);
+    await shot(screen, "9q-tisch-einenacht-tag");
+
+    // Spion: Karte ansehen, dann fragt der Erste – Uhr läuft
+    await pick("spion");
+    for (const p of phones) {
+      await p.getByRole("button", { name: "Karte ansehen" }).click();
+      await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+    }
+    await expect(screen.getByTestId("table-sign")).toContainText("fragt");
+    await expect(screen.getByTestId("table-clock")).toBeVisible();
+    await screen.waitForTimeout(800);
+    await shot(screen, "9r-tisch-spion");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

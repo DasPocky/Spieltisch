@@ -326,3 +326,16 @@ export function drawBoard(kind: NonNullable<TableModel["tabletop"]>["board"]): H
   g.beginPath(); g.arc(S / 2, S / 2, (0.45 / L.half) * (S / 2), 0, Math.PI * 2); g.fillStyle = "#c9a96a"; g.fill();
   return c;
 }
+
+/** Aufsteller (Partyspiele): heller Karton mit Rand, Phase groß, Hinweis darunter */
+export function drawSign(title: string, sub?: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 1024; c.height = 400;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#f7ecd6"; rounded(g, 0, 0, 1024, 400, 36); g.fill();
+  g.strokeStyle = "#8a6f4e"; g.lineWidth = 8; rounded(g, 18, 18, 988, 364, 26); g.stroke();
+  g.fillStyle = "#2b2118"; g.textAlign = "center"; g.textBaseline = "middle";
+  fit(g, title, 900, 128); g.fillText(title, 512, sub ? 160 : 200);
+  if (sub) { g.fillStyle = "#6b5a46"; fit(g, sub, 900, 56, 600); g.fillText(sub, 512, 295); }
+  return c;
+}

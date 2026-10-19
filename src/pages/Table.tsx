@@ -33,7 +33,7 @@ import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
-import { FeltDice, FeltGrid, FeltTabletop } from "@/platform/table/blocks";
+import { FeltDice, FeltGrid, FeltSign, FeltTabletop, SignClock } from "@/platform/table/blocks";
 import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
@@ -322,13 +322,14 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
-      {(model?.dice || model?.grid || model?.piles || model?.words5 || model?.tabletop) && (
+      {(model?.dice || model?.grid || model?.piles || model?.words5 || model?.tabletop || model?.sign) && (
         <OnFelt rect={felt} className={cn(real && "sr-only")}>
-          {model.grid ? <FeltGrid grid={model.grid} /> : model.tabletop ? <FeltTabletop top={model.tabletop} /> : model.dice
+          {model.sign ? <div className="flex flex-col items-center gap-[3cqh]"><FeltSign sign={model.sign} />{model.piles && <FeltPiles piles={model.piles} small />}</div> : model.grid ? <FeltGrid grid={model.grid} /> : model.tabletop ? <FeltTabletop top={model.tabletop} /> : model.dice
             ? <div className="flex flex-col items-center gap-[3cqh]">{model.piles && <FeltPiles piles={model.piles} small />}<FeltDice dice={model.dice} /></div>
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
+      {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
       {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}

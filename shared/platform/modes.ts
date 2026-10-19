@@ -43,6 +43,10 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   ludo: { table: "beta" },
   fischen: { table: "beta" },
   hellseher: { table: "beta" },
+  // Baustein Aufsteller (Partyspiele) – Beta bis zur Abnahme
+  werwolf: { table: "beta" },
+  einenacht: { table: "beta" },
+  spion: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

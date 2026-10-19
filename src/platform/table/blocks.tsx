@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Die } from "@/platform/Die";
 import { drawBoard } from "./textures";
 import { cn } from "@/lib/utils";
@@ -75,5 +75,27 @@ export function FeltTabletop({ top }: { top: NonNullable<TableModel["tabletop"]>
       </svg>
       {top.die?.value ? <Die value={top.die.value} className="size-[min(14cqh,9cqw)] drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)]" /> : null}
     </div>
+  );
+}
+
+/** Aufsteller (Partyspiele) ohne 3D: Karton mit Phase und Hinweis */
+export function FeltSign({ sign }: { sign: NonNullable<TableModel["sign"]> }) {
+  return (
+    <div className="paper-note grid place-items-center gap-[1.5cqh] px-[5cqw] py-[4cqh] text-center" data-testid="table-sign">
+      <span className="text-[9cqh] leading-tight font-bold">{sign.title}</span>
+      {sign.sub && <span className="text-[4.5cqh] font-semibold opacity-75">{sign.sub}</span>}
+    </div>
+  );
+}
+
+/** Uhr für Partyspiele: läuft bis `endsAt` herunter (bei 0 bleibt sie stehen, das Spiel entscheidet) */
+export function SignClock({ endsAt }: { endsAt: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const left = Math.max(0, Math.round((endsAt - now) / 1000));
+  return (
+    <span className={cn("table-banner tabular-nums text-4xl", left <= 30 && "text-[#ff9b85]")} role="timer" aria-label={`noch ${Math.floor(left / 60)} Minuten ${left % 60} Sekunden`} data-testid="table-clock">
+      {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
+    </span>
   );
 }

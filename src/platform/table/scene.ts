@@ -9,7 +9,7 @@ import {
   SRGBColorSpace, Vector3, Vector2, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSlot } from "./textures";
+import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSign, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
@@ -120,7 +120,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   const floor = new Mesh(new PlaneGeometry(30, 30), new MeshStandardMaterial({ color: "#2a1a0e", roughness: 1 }));
   floor.rotation.x = -Math.PI / 2; floor.position.y = -1.8; floor.receiveShadow = true; scene.add(floor);
 
-  scene.add(new HemisphereLight("#ffe9c9", "#3a2414", 0.7));
+  const hemi = new HemisphereLight("#ffe9c9", "#3a2414", 0.7);
+  scene.add(hemi);
   const lamp = new SpotLight("#ffd9a0", 42, 16, 0.8, 0.6, 1.6);
   lamp.position.set(-0.4, 6, 0.6); lamp.castShadow = q.shadows; lamp.shadow.mapSize.set(q.shadowSize, q.shadowSize); lamp.shadow.bias = -0.0004;
   scene.add(lamp, lamp.target);
@@ -189,8 +190,11 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     anims = [];
     anchors = seatAnchors(seats.length);
     glow.visible = false;
-    if (!model) { last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
+    if (!model) { lamp.intensity = 42; hemi.intensity = 0.7; fill.intensity = 0.25; last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
     deck = model.deck;
+    // Nacht: Lampe gedimmt, kühles Licht von der Seite
+    const night = !!model.night;
+    lamp.intensity = night ? 14 : 42; hemi.intensity = night ? 0.25 : 0.7; fill.intensity = night ? 0.7 : 0.25;
     if (model.words) { updateWords(model, seats); return; }
     if (model.words5) { wordGrid(model.words5); return; }
     if (model.dice) { diceRow(model, seats); return; }
@@ -227,7 +231,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const [fx, fz] = anchors[from];
       fly(newest, new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92));
     }
-    if (model.piles || model.boards) laid(model, seats);
+    if (model.sign) sign(model.sign);
+    if (model.piles || model.boards) laid(model, seats, model.sign ? 0.3 : -0.06);
     last = { top: topCard, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
     render();
   }
@@ -398,7 +403,9 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     piles.forEach((p, i) => {
       const x = x0 + i * step;
       const h = hash(p.label);
-      if (p.top !== null) {
+      if (p.top === "?") {
+        numCard(null, pw, x, SURFACE + 0.004, pz, ((h % 9) - 4) / 90);
+      } else if (p.top !== null) {
         // ein paar Karten darunter, leicht verschoben – wie ein echter Stapel
         if (!p.single) for (let k = 0; k < 3; k++) numCard({ text: p.top, tone: p.tone }, pw, x + ((h >> k) % 5 - 2) * 0.006, SURFACE + 0.003 + k * 0.006, pz + ((h >> (k + 3)) % 5 - 2) * 0.006, ((h >> (k + 6)) % 9 - 4) / 90);
         const top = numCard({ text: p.top, tone: p.tone }, pw, x, SURFACE + 0.003 + 3 * 0.006, pz, ((h % 7) - 3) / 120);
@@ -428,7 +435,9 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       // äußere Grenze: Filzrand bzw. Innenkante der Hand
       const outer = onX ? (handCards ? Math.abs(ax) * 0.92 - hd / 2 : FELT_W / 2) - MARGIN : (handCards ? Math.abs(az) * 0.92 - hd / 2 : FELT_D / 2) - MARGIN;
       // hinten mehr Abstand: von schräg vorn ragen die Stapel in der Mitte dorthin
-      const inner = (onX ? hx : hz + (az < 0 ? 0.1 : 0)) + MARGIN;
+      // Stapel liegen ggf. versetzt (pz); hinten mehr Abstand – von schräg vorn ragen sie dorthin, ein Aufsteller erst recht
+      let inner = (onX ? hx : az > 0 ? hz + pz : hz - pz + 0.1) + MARGIN;
+      if (model.sign && !onX && az < 0) inner = Math.max(inner, 0.85);
       const rows = Math.ceil(board.cells.length / board.cols);
       const W = board.cols * bw + (board.cols - 1) * gap, D = rows * bd + (rows - 1) * gap;
       // Breite entlang der Kante: bis zum nächsten Platz auf derselben Seite
@@ -666,6 +675,32 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     }
     last = { top: null, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
     render();
+  }
+
+
+  // ---------- Aufsteller (Partyspiele) ----------
+  let signTex: Texture | null = null;
+  let signKey = "";
+  /** Karton steht schräg in der Mitte, zum Bildschirm gewandt – Phase groß, Hinweis darunter */
+  function sign(sg: NonNullable<TableModel["sign"]>) {
+    const key = `${sg.title}|${sg.sub ?? ""}`;
+    if (key !== signKey || !signTex) {
+      signTex?.dispose();
+      signTex = new CanvasTexture(drawSign(sg.title, sg.sub)); signTex.colorSpace = SRGBColorSpace; signTex.anisotropy = aniso;
+      signKey = key;
+    }
+    const W = 2.0, H = W * 0.39;
+    const face = new MeshStandardMaterial({ map: signTex, roughness: 0.7 });
+    const board = new Mesh(new BoxGeometry(W, H, 0.03), [edge, edge, edge, edge, face, edge]);
+    const group = new Group();
+    group.rotation.x = -(Math.PI / 2 - BOARD_TILT);
+    group.position.set(0, SURFACE + (H / 2) * Math.sin(BOARD_TILT) + 0.01, -0.32);
+    board.castShadow = true; group.add(board);
+    // Stütze hinten
+    const prop = new Mesh(new BoxGeometry(0.5, H * 0.9, 0.02), edge);
+    prop.position.set(0, -H * 0.05, -0.2); prop.rotation.x = 0.5; group.add(prop);
+    live.add(group);
+    contact(0, -0.25, W, 0.5, 0);
   }
 
   // ---------- Zeichnen ----------
