@@ -32,7 +32,7 @@ export function EveningLine({ className }: { className?: string }) {
       <>
         <button type="button" onClick={() => setPlanning(true)} data-testid="plan-open"
           className={cn("flex w-full items-center justify-center gap-2 rounded-xl py-1.5 text-sm font-semibold text-primary", className)}>
-          <PartyPopper className="size-4" />Partyabend planen – mehrere Spiele mit Gesamtwertung
+          <PartyPopper className="size-4" />Partyabend planen · Gesamtwertung
         </button>
         <PlanSheet open={planning} onOpenChange={setPlanning} />
       </>

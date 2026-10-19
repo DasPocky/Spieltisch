@@ -34,6 +34,7 @@ import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
 import { FeltDice, FeltGrid } from "@/platform/table/blocks";
+import { FeltPiles, SeatBoard } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
@@ -310,7 +311,8 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
-          video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined} />
+          video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
+          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} />
       ))}
       {reacts.map((r) => {
         const i = players.findIndex((p) => p.id === r.from);
@@ -318,9 +320,9 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
-      {(model?.dice || model?.grid) && (
+      {(model?.dice || model?.grid || model?.piles) && (
         <OnFelt rect={felt}>
-          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice && <FeltDice dice={model.dice} />}
+          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice ? <FeltDice dice={model.dice} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
@@ -375,9 +377,13 @@ function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel |
   return <div ref={holder} className="absolute inset-0" />;
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoHidden, onToggleVideo }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoHidden, onToggleVideo, board, boardAbove }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
   video?: MediaStream; videoHidden?: boolean; onToggleVideo?: () => void;
+  /** offene Auslage des Spielers (z. B. Raster) unter dem Platz */
+  board?: NonNullable<TableModel["boards"]>[string];
+  /** Platz unten am Tisch: Auslage über dem Platz statt darunter (sonst ragt sie aus dem Bild) */
+  boardAbove?: boolean;
 }) {
   const showVideo = !!video && !videoHidden;
   const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
@@ -396,6 +402,7 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoH
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
       {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
+      {board && <div className={cn(boardAbove && "order-first")}><SeatBoard board={board} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
     </div>
   );

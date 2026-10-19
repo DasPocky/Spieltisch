@@ -28,6 +28,9 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   // Bausteine Würfel und Spielfeld: abgenommen (docs/abnahme/fuenfwuerfel.md, vier.md)
   fuenfwuerfel: { table: "on", stage: "beta" },
   vier: { table: "on", stage: "beta" },
+  // Bausteine Stapel und Auslage am Platz – Beta bis zur Abnahme
+  stapelbau: { table: "beta" },
+  himmelskarten: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

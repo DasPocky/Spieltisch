@@ -521,3 +521,42 @@ test("Bühne bei Schamlos: schwarze Karte groß auf der Leinwand, Antworten eing
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Stapelbau und Himmelskarten am Tisch: Stapel in der Mitte, offene Auslage an jedem Platz", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { stapelbau: { table: "on" }, himmelskarten: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    await joinByLink(browser, code, pin, "Ben");
+
+    // Stapelbau: vier Aufbaustapel und der Nachziehstapel, an jedem Platz Vorrat + vier Ablagen
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-stapelbau").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile")).toHaveCount(5);
+    await expect(screen.getByTestId("seat-board")).toHaveCount(2);
+    await expect(screen.getByTestId("seat-board").first().locator("span")).toHaveCount(5);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9c-tisch-stapelbau");
+
+    // Himmelskarten: Ziehen und Ablage in der Mitte, 12 Karten je Platz – anfangs verdeckt
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-himmelskarten").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile")).toHaveCount(2);
+    await expect(screen.getByTestId("seat-board").first().locator("span")).toHaveCount(12);
+    await expect(screen.getByTestId("seat-board").first()).toContainText("?");
+    await screen.waitForTimeout(500);
+    await shot(screen, "9d-tisch-himmelskarten");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

@@ -49,5 +49,25 @@ describe("Großer Tisch: Modell aus der Sicht ohne eigene Karten", () => {
     expect(g.cells[0][3]).toBeNull();
     expect(g.last).toEqual([3, 5]);
   });
+
+  it("Zahlenkarten: Stapelbau zeigt Aufbaustapel und Vorrat + Ablagen am Platz, Himmelskarten das Raster – nur Offenes", () => {
+    const sb = viewRoom(act(roomWith(["Anna", "Ben"], "stapelbau"), { type: "start" }), WATCH_ID);
+    const m = tableModel(sb)!;
+    expect(m.piles?.map((p) => p.label)).toEqual(["Stapel 1", "Stapel 2", "Stapel 3", "Stapel 4", "Ziehen"]);
+    expect(m.piles?.slice(0, 4).every((p) => p.top === null)).toBe(true);
+    expect(m.boards?.p1.cells).toHaveLength(5);
+    // oberste Vorratskarte offen, Ablagen anfangs leer
+    expect(m.boards?.p1.cells[0]).not.toBeNull();
+    expect(m.boards?.p1.cells.slice(1).every((c) => c === null)).toBe(true);
+    expect(m.notes?.p1).toMatch(/^Vorrat \d+$/);
+
+    const sk = viewRoom(act(roomWith(["Anna", "Ben"], "himmelskarten"), { type: "start" }), WATCH_ID);
+    const h = tableModel(sk)!;
+    expect(h.boards?.p1.cols).toBe(4);
+    expect(h.boards?.p1.cells).toHaveLength(12);
+    // am Anfang alles verdeckt – der Tisch kennt die Werte nicht
+    expect(h.boards?.p1.cells.every((c) => c === "?")).toBe(true);
+    expect(h.piles?.[1].top).not.toBeNull();
+  });
 });
 

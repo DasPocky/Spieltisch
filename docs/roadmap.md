@@ -59,9 +59,9 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 
 ## Phase 3 – Spiel für Spiel komplett 🔨
 
-**Keine Markennamen** ✅: Spiele mit Markennamen heißen jetzt Eins!, Stapelbau, Zehn Phasen, Decknamen, Himmelskarten, Glückssieben, Fünf Würfel und Alles oder nichts – in der App, im Code, in Kennungen und Dateinamen. Alte Räume, Statistiken, Profile, Gruppen, Einstellungen und Links laufen weiter (`shared/games/renamed.ts`). Offen: Bilder in `docs/images` neu aufnehmen.
+**Keine Markennamen** ✅: Spiele mit Markennamen heißen jetzt Eins!, Stapelbau, Zehn Phasen, Decknamen, Himmelskarten, Glückssieben, Fünf Würfel und Alles oder nichts – in der App, im Code, in Kennungen und Dateinamen. Alte Räume, Statistiken, Profile, Gruppen, Einstellungen und Links laufen weiter (`shared/games/renamed.ts`). Werbebilder neu aus aktuellen Screenshots (`node scripts/bilder.mjs`) ✅.
 
-**Stand:** abgenommen Mau-Mau, Eins!, Schamlos, Fünf Würfel, Vier in einer Reihe ✅ · am Tisch in Arbeit: Stapelbau, Himmelskarten (Bausteine „Stapel“ und „Auslage am Platz“) 🔨
+**Stand:** abgenommen Mau-Mau, Eins!, Schamlos, Fünf Würfel, Vier in einer Reihe ✅ · am Tisch als Beta: Stapelbau, Himmelskarten (neue Bausteine „Stapel“ in der Mitte und „Auslage am Platz“) ✅ – Abnahme nach dem Ausprobieren
 
 „Komplett“ = am Tisch spielbar (nur Rechner · Tisch + Handy · nur Handy; 3D und einfacher Tisch) · Bühne, wo es passt · Moderator-Ansagen · Bots mit Spielstärke. Reihenfolge nach Beliebtheit (Statistik), Mau-Mau, Eins!, Schamlos zuerst.
 
