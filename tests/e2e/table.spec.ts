@@ -599,7 +599,8 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     for (let i = 0; i < 15 && !(await screen.getByTestId("seat-board").count()); i++) {
       for (const p of phones) {
         const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
-        if (await hit.isEnabled().catch(() => false)) { await hit.click(); break; }
+        // Knopf kann zwischen Prüfen und Tippen gesperrt werden (Zug vorbei) – nicht ewig warten
+        if (await hit.isEnabled().catch(() => false)) { await hit.click({ timeout: 3000 }).catch(() => {}); break; }
       }
       await screen.waitForTimeout(600);
     }

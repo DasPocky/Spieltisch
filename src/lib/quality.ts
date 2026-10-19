@@ -54,11 +54,16 @@ export function webglOk(): boolean {
   return gl;
 }
 
+/** Vorschaubilder in voller Qualität gewünscht (auch ohne Grafikchip) */
+function hqWanted(): boolean {
+  try { return localStorage.getItem("spieltisch:diceHQ") === "1"; } catch { return false; }
+}
+
 /** Startwert nach Gerät */
 function guess(): Quality {
   if (!webglOk()) return "flach";
   // Ohne Grafikchip (Software-Zeichnung): jedes Bild dauert lange – schlicht, aber flüssig. Für Vorschaubilder lässt sich das abschalten.
-  if (soft) { try { if (localStorage.getItem("spieltisch:diceHQ") !== "1") return "einfach"; } catch { return "einfach"; } }
+  if (soft && !hqWanted()) return "einfach";
   const nav = navigator as Navigator & { deviceMemory?: number };
   const mem = nav.deviceMemory ?? 8;
   const cores = navigator.hardwareConcurrency ?? 8;
@@ -91,9 +96,12 @@ export const reducedMotion = () => typeof matchMedia === "function" && matchMedi
 export function frameMeter(): (dtMs: number) => void {
   let slow = 0, total = 0;
   return (dt) => {
-    if (qualityPref() !== "auto" || dt <= 0 || dt > 1000) return;
-    total++;
-    if (dt > 42) slow++;
+    // über 5 s: Tab war im Hintergrund; Vorschaubilder in voller Qualität bleiben, wie sie sind
+    if (qualityPref() !== "auto" || dt <= 0 || dt > 5000 || hqWanted()) return;
+    // Sehr langsame Bilder (unter 5 pro Sekunde) zählen mehrfach – sonst hängt der Tisch eine Minute, bis die Stufe sinkt
+    const w = dt > 200 ? 5 : 1;
+    total += w;
+    if (dt > 42) slow += w;
     if (total >= 40) {
       if (slow / total > 0.5) {
         const next = ORDER[Math.min(ORDER.length - 1, ORDER.indexOf(quality()) + 1)];
