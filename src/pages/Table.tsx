@@ -3,7 +3,8 @@ import { Expand, Loader2, LogOut, Tv } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { prefs, setPref } from "@/lib/prefs";
-import type { RoomState } from "@shared/platform/room";
+import { eveningRanking, planStatus, type RoomState } from "@shared/platform/room";
+import { getGame } from "@shared/games";
 import { randomInt } from "@shared/platform/random";
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
@@ -196,6 +197,7 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
   const sham = playing && tableOn && room.gameId === "schamlos" ? (room.game as SchamlosState) : null;
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
+  const plan = planStatus(room.evening);
   const [felt, setFelt] = useState<FeltRect | null>(null);
   useTableSound(room, model);
   const [mood, setMood] = useState(readMood);
@@ -219,7 +221,9 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
         </header>
 
         {moderator.on && <HostCorner say={moderator.say} mood={mood} />}
-        {!playing && <OnFelt rect={felt}><Lobby code={code} pin={pin} count={room.players.length} host={host?.name} /></OnFelt>}
+        {!playing && <OnFelt rect={felt}>{plan && plan.played > 0
+          ? <PartyBoard room={room} />
+          : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />}</OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
       </main>
 
@@ -379,7 +383,7 @@ function OnFelt({ rect, children, className }: { rect: FeltRect | null; children
 }
 
 /** Lobby: Karte mit QR-Code liegt auf dem Tisch – Code, PIN und drei Schritte */
-function Lobby({ code, pin, count, host }: { code: string; pin: string; count: number; host?: string }) {
+function Lobby({ code, pin, count, host, plan }: { code: string; pin: string; count: number; host?: string; plan?: string[] }) {
   const steps = ["Handy-Kamera auf den Code halten", "Namen eingeben und beitreten", count === 0 ? "Wer zuerst da ist, wählt das Spiel" : `${host ?? "Der Host"} wählt das Spiel und startet`];
   return (
     <div className="paper-note pointer-events-auto flex max-h-[92cqh] max-w-[96cqw] items-center gap-[4cqw] p-[4cqh]" data-testid="table-lobby">
@@ -390,6 +394,7 @@ function Lobby({ code, pin, count, host }: { code: string; pin: string; count: n
         <div>
           <div className="text-[2.6cqh] font-bold uppercase tracking-[0.2em] text-[#8a6f4e]">Mitspielen</div>
           <h2 className="text-[6.5cqh] font-bold leading-tight">Setzt euch an den Tisch</h2>
+          {plan && <p className="mt-[1cqh] text-[3cqh] font-semibold text-[#c2492e]" data-testid="table-plan">🎉 Partyabend: {plan.map((g) => getGame(g).info.name).join(" → ")}</p>}
         </div>
         <ol className="grid gap-[1.6cqh]">
           {steps.map((s, i) => (
@@ -403,6 +408,50 @@ function Lobby({ code, pin, count, host }: { code: string; pin: string; count: n
           <div><div className="text-[2.2cqh] font-bold uppercase tracking-wider text-[#8a6f4e]">PIN</div><div className="text-[4.6cqh] font-bold leading-none tracking-[0.1em]">{pin}</div></div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Partyabend am Fernseher: Zwischenstand und nächstes Spiel – am Ende die Siegerehrung mit Podest */
+function PartyBoard({ room }: { room: RoomState }) {
+  const plan = planStatus(room.evening)!;
+  const ranking = eveningRanking(room.evening);
+  const podium = ranking.slice(0, 3);
+  return (
+    <div className="paper-note pointer-events-auto flex max-h-[92cqh] w-[min(88cqw,150cqh)] flex-col gap-[2.4cqh] p-[4cqh]" data-testid="party-board">
+      <div>
+        <div className="text-[3.6cqh] font-bold uppercase tracking-[0.2em] text-[#8a6f4e]">Partyabend · {plan.done ? "Siegerehrung" : `nach ${plan.played} von ${plan.games.length} Spielen`}</div>
+        <h2 className="text-[9cqh] font-bold leading-tight">{plan.done ? `${podium[0]?.name ?? "?"} gewinnt den Abend!` : `Als Nächstes: ${plan.next ? getGame(plan.next).info.name : "–"}`}</h2>
+      </div>
+      {plan.done ? (
+        <div className="flex items-end justify-center gap-[2cqw]" data-testid="party-podium">
+          {[1, 0, 2].map((i) => podium[i] && (
+            <div key={podium[i].id} className="flex w-[18cqw] flex-col items-center gap-[1cqh]">
+              <span className="truncate text-[5cqh] font-bold">{podium[i].name}</span>
+              <div className={cn("grid w-full place-items-center rounded-t-[1.4cqh] text-[6cqh] font-bold text-white shadow-inner",
+                i === 0 ? "h-[24cqh] bg-[#e0a526]" : i === 1 ? "h-[17cqh] bg-[#9aa7b4]" : "h-[12cqh] bg-[#b4794a]")}>{i + 1}</div>
+              <span className="text-[3.6cqh] text-[#8a6f4e]">{podium[i].wins} {podium[i].wins === 1 ? "Sieg" : "Siege"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ol className="grid gap-[1.2cqh]">
+          {ranking.slice(0, 6).map((r, i) => (
+            <li key={r.id} className="flex items-center gap-[1.4cqw] text-[5.6cqh]">
+              <span className="grid size-[7.5cqh] shrink-0 place-items-center rounded-full bg-[#ff7a59] text-[4.2cqh] font-bold text-white">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{r.name}</span>
+              <span className="font-bold tabular-nums">{r.wins}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      <ol className="flex flex-wrap gap-[1cqh] text-[3.6cqh] font-semibold">
+        {plan.games.map((g, i) => (
+          <li key={i} className={cn("rounded-full px-[1.4cqh] py-[0.5cqh]", i < plan.played ? "bg-[#3e9a92] text-white" : i === plan.played ? "bg-[#ff7a59] text-white" : "bg-[#efe3cc] text-[#8a6f4e]")}>
+            {i < plan.played ? "✓ " : ""}{getGame(g).info.name}
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

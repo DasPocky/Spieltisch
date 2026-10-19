@@ -323,3 +323,61 @@ test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf 
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Partyabend: Host plant zwei Spiele, nach der Partie ist das nächste dran, der Fernseher zeigt den Zwischenstand", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { vier: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+
+    // Plan: erst Vier in einer Reihe, dann Mau-Mau
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-vier").click();
+    await anna.getByTestId("plan-open").click();
+    await anna.getByTestId("plan-vier").click();
+    await anna.getByTestId("plan-maumau").click();
+    await shot(anna, "92-partyabend-planen");
+    await anna.getByTestId("plan-start").click();
+    await expect(screen.getByTestId("table-plan")).toContainText("Vier in einer Reihe → Mau-Mau");
+    await expect(anna.getByText("Partyabend · Spiel 1 von 2")).toBeVisible();
+    await shot(anna, "92b-partyabend-lobby");
+
+    // Vier in einer Reihe: wer anfängt, spielt Spalte 1 und gewinnt senkrecht
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-grid")).toBeVisible();
+    const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
+    const firstIsAnna = (await turn.textContent())?.includes("Anna");
+    const [p1, p2] = firstIsAnna ? [anna, ben] : [ben, anna];
+    for (let i = 0; i < 4; i++) {
+      await p1.getByRole("button", { name: "Spalte 1", exact: true }).click();
+      if (i < 3) {
+        await expect(screen.getByTestId("table-grid").locator("circle[fill='#d0453b']")).toHaveCount(i + 1);
+        await p2.getByRole("button", { name: "Spalte 2", exact: true }).click();
+        await expect(turn).toContainText(firstIsAnna ? "Anna" : "Ben");
+      }
+    }
+    await anna.getByRole("button", { name: "Zur Lobby" }).click();
+
+    // Fernseher: Zwischenstand, Mau-Mau ist als Nächstes gewählt
+    const board = screen.getByTestId("party-board");
+    await expect(board).toBeVisible();
+    await expect(board).toContainText("Mau-Mau");
+    await expect(board).toContainText(firstIsAnna ? "Anna" : "Ben");
+    await expect(anna.getByText("Partyabend · Spiel 2 von 2")).toBeVisible();
+    await shot(screen, "92c-partyabend-tisch");
+
+    // Beenden: Plan weg, Tafel weg
+    await anna.getByText("Partyabend · Spiel 2 von 2").click();
+    await anna.getByTestId("plan-end").click();
+    await expect(board).toHaveCount(0);
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

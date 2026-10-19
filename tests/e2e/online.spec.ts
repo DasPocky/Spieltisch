@@ -38,7 +38,7 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
   await guest.getByLabel("PIN").fill("4711");
   await guest.getByRole("button", { name: "Beitreten" }).click();
   await expect(guest.getByText("Warte, bis der Host das Spiel startet …")).toBeVisible();
-  await expect(host.getByText("Ben")).toBeVisible();
+  await expect(host.getByText("Ben", { exact: true })).toBeVisible();
   await shot(guest, "21-online-lobby-guest");
 
   // Nur der Host kann Einstellungen ändern – Gäste sehen sie im selben Sheet
@@ -115,7 +115,7 @@ test("Host entfernt einen Spieler", async ({ browser }) => {
   const guest = await newPhone(browser);
   const code = await createRoom(host, "Anna", "123456");
   await joinRoom(guest, code, "Ben", "123456");
-  await expect(host.getByText("Ben")).toBeVisible();
+  await expect(host.getByText("Ben", { exact: true })).toBeVisible();
   // Unter Last kann die Lobby neu zeichnen, während der Dialog aufgeht – dann einfach nochmal öffnen
   await expect(async () => {
     const dialog = host.getByRole("alertdialog", { name: "Ben entfernen?" });
@@ -194,7 +194,7 @@ test("Mitten in der Partie beitreten: Wartebank, mit „Nochmal“ dabei", async
     await p.getByRole("button", { name: "Beitreten" }).click();
   };
   await join(ben, "Ben");
-  await expect(anna.getByText("Ben")).toBeVisible();
+  await expect(anna.getByText("Ben", { exact: true })).toBeVisible();
   await anna.getByRole("button", { name: "Spiel starten" }).click();
   // Cem kommt zu spät: sitzt auf der Wartebank und sieht, worauf er wartet
   await join(cem, "Cem");

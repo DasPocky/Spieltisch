@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Smile } from "lucide-react";
-import { roomGame, type RoomState } from "@shared/platform/room";
+import { eveningRanking, planStatus, roomGame, type RoomState } from "@shared/platform/room";
 import type { PlayerResult } from "@shared/platform/types";
 import { setPref, usePrefs } from "@/lib/prefs";
 import { readStr, writeStr } from "@/lib/storage";
@@ -53,13 +53,21 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
   const sham = room.gameId === "schamlos";
   const turn = playing && !over ? model?.turn ?? null : null;
   const pickBy = model?.words?.pickBy ?? null;
-  const last = useRef<{ playing: boolean; over: boolean; turn: string | null; pickBy: string | null } | null>(null);
+  const partyDone = planStatus(room.evening)?.done ?? false;
+  const last = useRef<{ playing: boolean; over: boolean; turn: string | null; pickBy: string | null; partyDone: boolean } | null>(null);
 
   useEffect(() => {
-    const now = { playing, over, turn, pickBy };
+    const now = { playing, over, turn, pickBy, partyDone };
     const prev = last.current;
     last.current = now;
     if (!prev) return;
+    // Partyabend durch: zurück am Tisch wird der Sieger des Abends geehrt
+    if (now.partyDone && !now.playing && (!prev.partyDone || prev.playing)) {
+      const r = eveningRanking(room.evening);
+      const best = r[0]?.wins ?? 0;
+      const who = r.filter((x) => x.wins === best && best > 0).map((x) => x.name);
+      if (who.length) { announce("sieg", who.join(" und ")); return; }
+    }
     if (now.playing && !prev.playing) { announce("hallo"); return; }
     if (now.over && !prev.over) {
       let winners: PlayerResult[] = [];
@@ -77,7 +85,7 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
     }
     if (now.pickBy && now.pickBy !== prev.pickBy) { announce("punkt", name(now.pickBy)); return; }
     if (now.turn && now.turn !== prev.turn) announce(sham ? "zar" : "dran", name(now.turn));
-  }, [playing, over, turn, pickBy]);
+  }, [playing, over, turn, pickBy, partyDone]);
 
   // Sprechblase nach der Sprechdauer ausblenden
   useEffect(() => {
