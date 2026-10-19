@@ -309,6 +309,8 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
   return (
     <>
       <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} onReal={setReal} />
+      {/* Wie durch ein Objektiv: der Rand dunkelt ab, der Blick geht zur Mitte */}
+      {real && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_70%_at_50%_52%,transparent_55%,rgb(0_0_0/0.5))]" />}
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
