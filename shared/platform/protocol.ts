@@ -77,6 +77,9 @@ export interface CallPeer {
   cam: boolean;
 }
 
+/** Im Videochat steht der Große Tisch (Couch-Kamera) unter dieser Kennung – kein Spieler */
+export const TABLE_CALL_ID = "@tisch";
+
 export const CALL_SESSION_RE = /^[A-Za-z0-9_-]{8,128}$/;
 export const CALL_TRACK_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -88,7 +91,8 @@ export type ServerMessage =
   | { type: "joined"; playerId: string; token: string }
   | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer>; /** wer gerade anklopft */ knocks?: KnockView[];
       /** Revision des Raums – ein Stand mit kleinerer Revision als der zuletzt gesehene ist veraltet */ rev?: number;
-      /** ein Großer Tisch (Fernseher) ist verbunden – das Handy des Hosts zeigt die Fernbedienung */ tv?: boolean }
+      /** ein Großer Tisch (Fernseher) ist verbunden – das Handy des Hosts zeigt die Fernbedienung */ tv?: boolean;
+      /** an den Rechner: das Begleit-Handy dieses Spielers ist verbunden */ paired?: boolean }
   /** An den Gast: PIN stimmt, jetzt wartet er auf Einlass (`wait`: so lange höchstens noch, ms) */
   | { type: "knocking"; wait: number }
   /** Aktion angekommen (oder schon früher ausgeführt) */
@@ -103,6 +107,8 @@ export type ServerMessage =
   | { type: "remote"; cmd: RemoteCmd; by: string }
   /** Großer Tisch: schnelle Reaktion eines Spielers (nur Emoji, kein Text – den Fernseher sieht jeder im Raum) */
   | { type: "react"; from: string; emoji: string }
+  /** An den Großen Tisch: Schlüssel für den Videochat (Videos an den Plätzen abholen, Couch-Kamera senden) */
+  | { type: "tableKey"; key: string }
   | { type: "error"; message: string; code?: ErrorCode; fatal?: boolean; /** gehört zu dieser Aktion */ id?: string };
 
 /** Herzschlag als reiner Text – der Server antwortet, ohne aufzuwachen */

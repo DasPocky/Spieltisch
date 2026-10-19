@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { PING, PONG, type RemoteCmd, type ChatMsg, type ClientMessage, type ServerMessage } from "@shared/platform/protocol";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PING, PONG, type CallPeer, type RemoteCmd, type ChatMsg, type ClientMessage, type ServerMessage } from "@shared/platform/protocol";
 import type { RoomState } from "@shared/platform/room";
 import { wsUrl } from "@/lib/storage";
 import { noteServerBuild } from "@/lib/update";
@@ -20,6 +20,11 @@ export function useWatch(path: string, hello?: ClientMessage) {
   const [remote, setRemote] = useState<{ cmd: RemoteCmd; by: string; n: number } | null>(null);
   /** Großer Tisch: Reaktionen der letzten Sekunden (Emoji am Platz) */
   const [reacts, setReacts] = useState<{ id: number; from: string; emoji: string }[]>([]);
+  /** Videochat: wer welche Spuren hat (Großer Tisch zeigt die Videos an den Plätzen) */
+  const [call, setCall] = useState<Record<string, CallPeer>>({});
+  /** Großer Tisch: Schlüssel für den Videochat vom Server */
+  const [tableKey, setTableKey] = useState<string | null>(null);
+  const sock = useRef<WebSocket | null>(null);
   const tries = useRef(0);
   const first = useRef(hello);
   first.current = hello;
@@ -31,6 +36,7 @@ export function useWatch(path: string, hello?: ClientMessage) {
     let done = false;
     const connect = () => {
       ws = new WebSocket(wsUrl(path));
+      sock.current = ws;
       ws.onopen = () => {
         tries.current = 0;
         if (first.current) ws?.send(JSON.stringify(first.current));
@@ -41,7 +47,8 @@ export function useWatch(path: string, hello?: ClientMessage) {
         let msg: ServerMessage;
         try { msg = JSON.parse(ev.data) as ServerMessage; } catch { return; }
         if (msg.type === "hello") noteServerBuild(msg.build, msg.protocol);
-        else if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setStatus("live"); }
+        else if (msg.type === "state") { setState(msg.state); setOnline(new Set(msg.online)); setCall(msg.call ?? {}); setStatus("live"); }
+        else if (msg.type === "tableKey") setTableKey(msg.key);
         else if (msg.type === "chat") setChat((prev) => (msg.append ? [...prev, ...msg.messages].slice(-100) : msg.messages));
         else if (msg.type === "react") {
           const id = Date.now() + Math.random();
@@ -68,5 +75,10 @@ export function useWatch(path: string, hello?: ClientMessage) {
     };
   }, [path]);
 
-  return { state, online, chat, status, error, remote, reacts };
+  /** Großer Tisch: Couch-Kamera im Videochat an- oder abmelden (der Server nimmt vom Tisch nur das an) */
+  const announce = useCallback((m: Extract<ClientMessage, { type: "call" }>) => {
+    try { if (sock.current?.readyState === WebSocket.OPEN) sock.current.send(JSON.stringify(m)); } catch { /* weg */ }
+  }, []);
+
+  return { state, online, chat, status, error, remote, reacts, call, tableKey, announce };
 }

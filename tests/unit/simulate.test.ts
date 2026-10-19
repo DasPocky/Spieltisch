@@ -121,6 +121,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["maumau", 4, {}],
   ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
   ["maumau", 7, { deck: "fr52", hand: "6" }],
+  ["schamlos", 3, {}],
+  ["schamlos", 6, { set_schwarz: true }],
   ["uno", 2, {}],
   ["uno", 5, { stack: true, plus4: "any", uno: false, target: "round" }],
   ["uno", 8, { target: "round" }],

@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { ALL_ON, newPhone, setConfig, shot } from "./util";
+import { ALL_ON, FAKE_RTC, newPhone, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
@@ -279,7 +279,7 @@ test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, 
   expect((await ben.request.get("/api/photo/r/../../wrangler.jsonc")).status()).toBe(404);
 });
 
-test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz (Beta eingeschaltet)", async ({ browser, request }) => {
+test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz", async ({ browser, request }) => {
   test.setTimeout(120_000);
   await setConfig(request, { ...ALL_ON, modes: { kniffel: { table: "on" }, vier: { table: "on" } } });
   try {
@@ -377,6 +377,146 @@ test("Partyabend: Host plant zwei Spiele, nach der Partie ist das nächste dran,
     await anna.getByText("Partyabend · Spiel 2 von 2").click();
     await anna.getByTestId("plan-end").click();
     await expect(board).toHaveCount(0);
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Video am Tisch: Kamera-Bild an Annas Platz (einzeln und ganz abschaltbar), Couch-Kamera bei Ben, Selfie für Opa ohne Handy", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
+  await ctx.addInitScript(FAKE_RTC);
+  const screen = await ctx.newPage();
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  const join = async (name: string) => {
+    const phone = await newPhone(browser);
+    await phone.context().addInitScript(FAKE_RTC);
+    await phone.goto(`/r/${code}#pin=${pin}`);
+    await phone.getByLabel("Dein Name").fill(name);
+    await phone.getByRole("button", { name: "Beitreten" }).click();
+    return phone;
+  };
+  const anna = await join("Anna");
+  const ben = await join("Ben");
+  await expect(screen.getByTestId("table-seat")).toHaveCount(2);
+
+  // Anna kommt mit Video in den Chat: ihr Bild erscheint an ihrem Platz
+  // Treffpunkt: Kamera an
+  await anna.getByRole("button", { name: "Video an" }).click();
+  const annaSeat = screen.getByTestId("table-seat").filter({ hasText: "Anna" });
+  await expect(annaSeat.getByTestId("seat-video")).toBeAttached();
+  await shot(screen, "93-tisch-video");
+  // einzeln aus- und wieder einblenden
+  await annaSeat.getByTestId("seat-video-toggle").click();
+  await expect(annaSeat.getByTestId("seat-video")).toHaveCount(0);
+  await expect(annaSeat).toContainText("Video aus");
+  await annaSeat.getByTestId("seat-video-toggle").click();
+  await expect(annaSeat.getByTestId("seat-video")).toBeAttached();
+  // alle Videos aus
+  await screen.getByTestId("table-video-toggle").click();
+  await expect(screen.getByTestId("seat-video")).toHaveCount(0);
+  await screen.getByTestId("table-video-toggle").click();
+  await expect(annaSeat.getByTestId("seat-video")).toBeAttached();
+
+  // Couch-Kamera: Ben (im Chat) sieht die Kachel „Couch“
+  await ben.getByRole("button", { name: "Nur Sprache" }).click();
+  await screen.getByTestId("couch-cam").click();
+  await expect(screen.getByTestId("couch-cam")).toContainText("Kamera aus");
+  await expect(ben.getByTestId("meet").getByText("Couch", { exact: true })).toBeVisible();
+  await shot(ben, "93d-handy-couch");
+  await screen.getByTestId("couch-cam").click();
+  await expect(ben.getByTestId("meet").getByText("Couch", { exact: true })).toHaveCount(0);
+
+  // Opa ohne Handy: Foto mit der Kamera am Bildschirm
+  await screen.getByTestId("couch-add").click();
+  await screen.getByLabel("Name für den Platz am Fernseher").fill("Opa");
+  await screen.getByTestId("couch-add-ok").click();
+  await expect(screen.getByTestId("table-seat")).toHaveCount(3);
+  await screen.getByTestId("couch-photo").click();
+  await expect(screen.getByTestId("table-camera-video")).toBeVisible();
+  await shot(screen, "93b-tisch-selfie");
+  await screen.getByTestId("table-camera-shoot").click();
+  await expect(screen.getByTestId("table-camera-count")).toHaveText("3");
+  await expect(screen.getByTestId("table-camera")).toHaveCount(0, { timeout: 10_000 });
+  await expect(screen.getByTestId("table-seat").filter({ hasText: "Opa" }).locator("img")).toBeVisible({ timeout: 10_000 });
+  await shot(screen, "93c-tisch-opa-foto");
+});
+
+test("Bühne: Showstudio mit Leinwand und Pulten – Lobby auf der Leinwand, dann Mau-Mau, Spotlicht auf dem, der dran ist", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { maumau: { stage: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-maumau").click();
+
+    await screen.getByTestId("view-stage").click();
+    await expect(screen.getByTestId("studio-3d")).toBeAttached();
+    await expect(screen.getByTestId("studio-screen").getByTestId("table-lobby")).toBeVisible();
+    await expect(screen.getByTestId("table-seat")).toHaveCount(2);
+    await screen.waitForTimeout(800);
+    await shot(screen, "94-buehne-lobby");
+
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("studio-screen").getByTestId("table-flat")).toBeAttached();
+    await expect(screen.locator('[data-testid="table-seat"][data-turn="true"]')).toHaveCount(1);
+    await expect(screen.getByTestId("table-seat").first()).toContainText(/· 5/);
+    await screen.waitForTimeout(1500);
+    await shot(screen, "94b-buehne-maumau");
+
+    // zurück zum Tisch – gemerkt je Gerät
+    await screen.getByTestId("view-table").click();
+    await expect(screen.getByTestId("studio")).toHaveCount(0);
+    await expect(screen.getByTestId("table-3d")).toBeAttached();
+    void ben;
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Bühne bei Schamlos: schwarze Karte groß auf der Leinwand, Antworten eingesetzt, Punkt hervorgehoben", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { schamlos: { stage: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const all = [await joinByLink(browser, code, pin, "Anna"), await joinByLink(browser, code, pin, "Ben"), await joinByLink(browser, code, pin, "Cem")];
+    await all[0].getByTestId("meet-play").click();
+    await all[0].getByTestId("pick-schamlos").click();
+    await screen.getByTestId("view-stage").click();
+    await all[0].getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("studio-prompt")).toBeVisible();
+
+    let czar = all[0];
+    for (const p of all) if ((await p.getByTestId("schamlos-czar").textContent())?.includes("Du bist Zar")) czar = p;
+    for (const p of all.filter((x) => x !== czar)) {
+      const button = p.getByRole("button", { name: /^Wähle|legen$/ });
+      const need = /2 Karten/.test((await button.textContent()) ?? "") ? 2 : 1;
+      for (let i = 0; i < need; i++) await p.getByTestId("hand").getByRole("button").nth(i).click();
+      await p.getByRole("button", { name: /legen$/ }).click();
+    }
+    await expect(screen.getByTestId("studio-answer")).toHaveCount(2);
+    await screen.waitForTimeout(800);
+    await shot(screen, "95-buehne-schamlos");
+    await czar.getByTestId("schamlos-subs").getByRole("button").first().click();
+    await expect(screen.getByTestId("studio-words")).toContainText("Punkt für");
+    await screen.waitForTimeout(500);
+    await shot(screen, "95b-buehne-schamlos-punkt");
   } finally {
     await setConfig(request, ALL_ON);
   }

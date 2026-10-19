@@ -1,6 +1,6 @@
 import { createContext, useEffect, useRef, useState } from "react";
 import { Loader2, Mic, MicOff, Moon, Phone, PhoneOff, Video, VideoOff, X } from "lucide-react";
-import type { CallPeer } from "@shared/platform/protocol";
+import { TABLE_CALL_ID, type CallPeer } from "@shared/platform/protocol";
 import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -58,9 +58,10 @@ export function CallInvite({ call }: { call: CallControls }) {
 export function CallStrip({ call, players, me, compact }: { call: CallControls; players: Player[]; me: string | null; /** im Spiel: Gesichter zeigt die Spielerleiste */ compact?: boolean }) {
   const [big, setBig] = useState(false);
   if (call.phase === "off") return null;
-  const ids = Object.keys(call.peers).filter((id) => players.some((p) => p.id === id));
+  // Die Couch-Kamera des Großen Tischs erscheint als eigene Kachel „Couch“
+  const ids = Object.keys(call.peers).filter((id) => id === TABLE_CALL_ID || players.some((p) => p.id === id));
   if (me && !ids.includes(me)) ids.unshift(me);
-  const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
+  const nameOf = (id: string) => (id === TABLE_CALL_ID ? "Couch" : players.find((p) => p.id === id)?.name ?? "?");
 
   return (
     <>

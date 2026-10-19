@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Expand, Loader2, LogOut, Tv } from "lucide-react";
-import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type RemoteCmd } from "@shared/platform/protocol";
+import { Armchair, Camera, Expand, Loader2, LogOut, Sparkles, Tv, Video, VideoOff } from "lucide-react";
+import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
-import { prefs, setPref } from "@/lib/prefs";
+import { prefs, setPref, usePrefs } from "@/lib/prefs";
 import { eveningRanking, planStatus, type RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
 import { randomInt } from "@shared/platform/random";
@@ -23,8 +23,10 @@ import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
+import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 import { createFlatScene } from "@/platform/table/flat";
+import { createStudioScene, type StudioScene } from "@/platform/table/studio";
 import { useQuality } from "@/lib/quality";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
@@ -34,6 +36,7 @@ import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/
 import { FeltDice, FeltGrid } from "@/platform/table/blocks";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
+import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
 
 /** Am Fernseher: mit den Pfeiltasten der Fernbedienung von Knopf zu Knopf */
 const useArrowKeys = () => useEffect(() => enableSpatialNav(), []);
@@ -134,7 +137,7 @@ export function TableRoom({ code }: { code: string }) {
 
 function TableLive({ code, pin, onReject }: { code: string; pin: string; onReject: (msg: string) => void }) {
   const hello = useMemo(() => ({ type: "table" as const, pin }), [pin]);
-  const { state, online, status, error, remote, reacts } = useWatch(`/api/rooms/${code}/ws`, hello);
+  const { state, online, status, error, remote, reacts, call, tableKey: callKey, announce } = useWatch(`/api/rooms/${code}/ws`, hello);
   useEffect(() => { if (error && /PIN/.test(error)) onReject(error); }, [error, onReject]);
 
   // F: Vollbild an und aus
@@ -153,7 +156,7 @@ function TableLive({ code, pin, onReject }: { code: string; pin: string; onRejec
       </div>
     );
   }
-  return <TableView code={code} pin={pin} room={state} online={online} remote={remote} reacts={reacts} />;
+  return <TableView code={code} pin={pin} room={state} online={online} remote={remote} reacts={reacts} call={call} callKey={callKey} announce={announce} />;
 }
 
 type Remote = { cmd: RemoteCmd; by: string; n: number };
@@ -185,7 +188,10 @@ function toggleFullscreen() {
   else void document.documentElement.requestFullscreen?.().catch(() => undefined);
 }
 
-function TableView({ code, pin, room, online, remote, reacts }: { code: string; pin: string; room: RoomState; online: Set<string>; remote: Remote | null; reacts: TableReact[] }) {
+function TableView({ code, pin, room, online, remote, reacts, call, callKey, announce }: {
+  code: string; pin: string; room: RoomState; online: Set<string>; remote: Remote | null; reacts: TableReact[];
+  call: Record<string, CallPeer>; callKey: string | null; announce: (m: Extract<ClientMessage, { type: "call" }>) => void;
+}) {
   // Tisch-Ansicht des Spiels aus (oder Beta und kein Gerät der Verwaltung): Partie wie am Handy in der Mitte
   const config = useSiteConfig();
   const admin = useAdminDevice();
@@ -206,11 +212,31 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
   // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
   const [handOpen, setHandOpen] = useState(false);
   const cover = useRemote(remote);
+  // Videochat: Videos an den Plätzen (abschaltbar, einzeln ausblendbar) und Couch-Kamera
+  const callReady = useCallReady();
+  const p = usePrefs();
+  const videos = useSeatVideos(code, callReady ? callKey : null, call, p.tableVideo);
+  const couchCam = useCouchCam(code, callReady ? callKey : null, announce);
+  // Ansicht am Fernseher: Tisch oder Bühne (Showstudio) – je Gerät gemerkt, nur mit 3D und wenn das Spiel die Bühne kann
+  const [tvView, setTvView] = useState<"table" | "stage">(() => (readStr(TV_VIEW_KEY) === "stage" ? "stage" : "table"));
+  const level = useQuality();
+  const stagePossible = level !== "flach" && webglOk() && modeAllowed(config?.modes, room.gameId, "stage", admin) && (!playing || !!model || !!sham);
+  const stage = tvView === "stage" && stagePossible;
+  const pickView = (v: "table" | "stage") => { writeStr(TV_VIEW_KEY, v); setTvView(v); };
+  const [hiddenVideos, setHiddenVideos] = useState<Set<string>>(new Set());
+  const toggleVideo = useCallback((id: string) => setHiddenVideos((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
       <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
-        <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} reacts={reacts} />
+        {stage ? (
+          <StudioStage room={room} online={online} model={model} sham={sham} reacts={reacts} videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo}>
+            {!playing && (plan && plan.played > 0 ? <PartyBoard room={room} /> : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />)}
+          </StudioStage>
+        ) : (
+          <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} reacts={reacts}
+            videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo} />
+        )}
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#3e9a92] to-[#1f5f5b] shadow-lg">{game ? <game.Icon className="size-6 text-white" /> : <Tv className="size-5 text-white" />}</span>
@@ -221,7 +247,7 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
         </header>
 
         {moderator.on && <HostCorner say={moderator.say} mood={mood} />}
-        {!playing && <OnFelt rect={felt}>{plan && plan.played > 0
+        {!playing && !stage && <OnFelt rect={felt}>{plan && plan.played > 0
           ? <PartyBoard room={room} />
           : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />}</OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
@@ -234,6 +260,8 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
         <div className="mt-auto" />
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
         <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
+        {stagePossible && <ViewPanel view={stage ? "stage" : "table"} onView={pickView} />}
+        {callReady && <VideoPanel cam={couchCam} />}
         <HostPanel mood={mood} onMood={setMood} />
         <SoundPanel />
         <div className="flex gap-2">
@@ -250,8 +278,12 @@ function TableView({ code, pin, room, online, remote, reacts }: { code: string; 
  * Am Fernseher für alle (`me` fehlt) – oder am Rechner aus eigener Sicht: der eigene Platz ist vorn,
  * die eigene Hand liegt nicht verdeckt auf dem Tisch (sie steht offen darunter).
  */
-export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt, reacts = [] }: {
+export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt, reacts = [], videos, hiddenVideos, onToggleVideo, flat }: {
   room: RoomState; online: Set<string>; model: TableModel | null; sham?: SchamlosState | null; me?: string | null; showSeats?: boolean; onFelt?: (f: FeltRect) => void; reacts?: TableReact[];
+  /** Videos der Mitspieler (Kamera an) – erscheinen statt des Bilds am Platz */
+  videos?: Record<string, MediaStream>; hiddenVideos?: Set<string>; onToggleVideo?: (id: string) => void;
+  /** immer der flache Tisch (z. B. auf der Leinwand der Bühne) */
+  flat?: boolean;
 }) {
   const avatars = useMemo(() => roomAvatars(room), [room]);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
@@ -273,11 +305,12 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
 
   return (
     <>
-      <TableCanvas model={shown} seats={seats} onSeats={onSeats} />
+      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} />
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
-          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]} />
+          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
+          video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined} />
       ))}
       {reacts.map((r) => {
         const i = players.findIndex((p) => p.id === r.from);
@@ -301,14 +334,14 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
  * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
  * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
  */
-function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void }) {
+function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean }) {
   const scene = useRef<TableScene | null>(null);
   const holder = useRef<HTMLDivElement>(null);
   const seatKey = seats.join();
   const level = useQuality();
   // WebGL verloren (Grafiktreiber, zu wenig Speicher): ab jetzt flach
   const [lost, setLost] = useState(false);
-  const flat = level === "flach" || lost || !webglOk();
+  const flat = forceFlat || level === "flach" || lost || !webglOk();
   const latest = useRef({ model, seats });
   latest.current = { model, seats };
 
@@ -342,21 +375,176 @@ function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seat
   return <div ref={holder} className="absolute inset-0" />;
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoHidden, onToggleVideo }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
+  video?: MediaStream; videoHidden?: boolean; onToggleVideo?: () => void;
 }) {
+  const showVideo = !!video && !videoHidden;
+  const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
   return (
     <div className={cn("seat-plate absolute flex w-36 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 transition-[left,top]", away && "opacity-55")}
       style={{ left: `clamp(80px, ${x}px, calc(100% - 80px))`, top: `clamp(70px, ${y}px, calc(100% - 60px))` }} data-testid="table-seat" data-turn={turn}>
-      {/* Hier kommt später das Video hin – bis dahin das Bild */}
-      <div className={cn("grid h-20 w-28 place-items-center rounded-2xl bg-[#3b2a1a]/70 shadow-lg ring-2 ring-[#f7ecd6]/80", turn && "ring-4 ring-[#ff7a59] shadow-[0_0_30px_8px_rgb(255_140_100/0.55)]")}>
-        <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />
-      </div>
+      {/* Video (Kamera an) oder Bild – am Fernseher per Klick einzeln aus- und wieder einblendbar */}
+      {video && onToggleVideo ? (
+        <button type="button" onClick={onToggleVideo} aria-label={showVideo ? `Video von ${name} ausblenden` : `Video von ${name} zeigen`} data-testid="seat-video-toggle"
+          className={cn(seatBox, "pointer-events-auto outline-none focus-visible:ring-4 focus-visible:ring-[#f7ecd6]", turn && seatTurn)}>
+          {face}
+          {!showVideo && <span className="absolute right-1 bottom-1 rounded bg-black/60 px-1 text-[0.65rem] font-semibold">Video aus</span>}
+        </button>
+      ) : <div className={cn(seatBox, turn && seatTurn)}>{face}</div>}
       <span className={cn("plate max-w-full truncate", turn && "plate-turn")}>
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
       {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
+    </div>
+  );
+}
+
+const TV_VIEW_KEY = "spieltisch:tvView";
+
+/** Am Fernseher umschalten: Tisch oder Bühne */
+function ViewPanel({ view, onView }: { view: "table" | "stage"; onView: (v: "table" | "stage") => void }) {
+  const btn = "flex h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#f7ecd6]";
+  return (
+    <div className="flex gap-1 rounded-xl bg-white/10 p-1" role="group" aria-label="Ansicht" data-testid="view-panel">
+      {(["table", "stage"] as const).map((v) => (
+        <button key={v} type="button" aria-pressed={view === v} onClick={() => onView(v)} data-testid={`view-${v}`}
+          className={cn(btn, view === v ? "bg-[#f7ecd6] text-[#2b2118]" : "text-[#f7ecd6] hover:bg-white/10")}>
+          {v === "table" ? <><Armchair className="size-4" />Tisch</> : <><Sparkles className="size-4" />Bühne</>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Showstudio: 3D-Bühne mit Leinwand und Pulten. Auf der Leinwand läuft das Spiel (flacher Tisch, Würfel, Brett, Schamlos)
+ * oder – vor der Partie – die Lobby; an den Pulten stehen Bild bzw. Video, Name und Kartenzahl/Punkte.
+ */
+function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, onToggleVideo, children }: {
+  room: RoomState; online: Set<string>; model: TableModel | null; sham: SchamlosState | null; reacts: TableReact[];
+  videos: Record<string, MediaStream>; hiddenVideos: Set<string>; onToggleVideo: (id: string) => void; children?: React.ReactNode;
+}) {
+  const avatars = useMemo(() => roomAvatars(room), [room]);
+  const holder = useRef<HTMLDivElement>(null);
+  const scene = useRef<StudioScene | null>(null);
+  const level = useQuality();
+  const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
+  const [screen, setScreen] = useState<FeltRect | null>(null);
+  const seats = room.players.map((p) => p.id);
+  const seatKey = seats.join();
+  const turn = model?.turn ?? sham?.czar ?? null;
+  const measure = useCallback(() => {
+    const s = scene.current;
+    if (!s) return;
+    const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
+    const next = s.podiumPoints(), r = s.screenRect();
+    setPoints((prev) => (prev.length === next.length && prev.every((p, i) => near(p.x, next[i].x) && near(p.y, next[i].y)) ? prev : next));
+    setScreen((prev) => (prev && near(prev.x, r.x) && near(prev.y, r.y) && near(prev.w, r.w) && near(prev.h, r.h) ? prev : r));
+  }, []);
+  const latest = useRef({ seats, turn });
+  latest.current = { seats, turn };
+
+  useEffect(() => {
+    const box = holder.current;
+    if (!box) return;
+    const canvas = document.createElement("canvas");
+    canvas.className = "absolute inset-0 size-full";
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.dataset.testid = "studio-3d";
+    box.replaceChildren(canvas);
+    const s = createStudioScene(canvas, level, measure);
+    scene.current = s;
+    const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); measure(); });
+    ro.observe(canvas);
+    s.update(latest.current.seats, latest.current.turn);
+    return () => { ro.disconnect(); s.dispose(); scene.current = null; };
+  }, [level, measure]);
+
+  useEffect(() => {
+    scene.current?.update(seatKey ? seatKey.split(",") : [], turn);
+    measure();
+  }, [seatKey, turn, measure]);
+
+  return (
+    <div className="absolute inset-0" data-testid="studio">
+      <div ref={holder} className="absolute inset-0" />
+      {/* Leinwand: das Spiel flach – oder Lobby/Siegerehrung */}
+      {screen && (
+        <div className="absolute overflow-hidden rounded-md bg-[#0e2a2c]" style={{ left: screen.x, top: screen.y, width: screen.w, height: screen.h, containerType: "size" }} data-testid="studio-screen">
+          {children ? <div className="absolute inset-0 flex items-center justify-center p-[3cqh]">{children}</div>
+            : model?.words ? <WordsScreen words={model.words} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />
+            : <TableStage room={room} online={online} model={model} sham={sham} showSeats={false} flat />}
+        </div>
+      )}
+      {room.players.map((p, i) => points[i] && (
+        <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
+          turn={turn === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
+          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : ""}` : model?.notes?.[p.id]}
+          video={videos[p.id]} videoHidden={hiddenVideos.has(p.id)} onToggleVideo={() => onToggleVideo(p.id)} />
+      ))}
+      {reacts.map((r) => {
+        const at = points[room.players.findIndex((p) => p.id === r.from)];
+        return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y - 60 }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
+      })}
+    </div>
+  );
+}
+
+/**
+ * Lückensatz-Spiele auf der Leinwand: die schwarze Karte groß zum Mitlesen, beim Wählen die Antworten schon eingesetzt,
+ * danach die gewählte hervorgehoben – wie in einer Spielshow. Wer gelegt hat, steht nicht dabei (anonym bis zum Punkt).
+ */
+function WordsScreen({ words, name, count }: { words: NonNullable<TableModel["words"]>; name: (id: string) => string; count: number }) {
+  const prompt = cardText(words.prompt);
+  return (
+    <div className="absolute inset-0 flex flex-col gap-[3cqh] p-[4cqh] text-white" data-testid="studio-words">
+      <div className="rounded-[2cqh] bg-[#141018] p-[3.5cqh] text-[6cqh] leading-tight font-bold shadow-[0_0_6cqh_rgb(255_122_89/0.25)] ring-1 ring-white/15" data-testid="studio-prompt">
+        {prompt.split(BLANK).map((part, i, all) => <span key={i}>{part}{i < all.length - 1 && <span className="inline-block w-[14cqh] border-b-[0.6cqh] border-white/80 align-baseline" />}</span>)}
+      </div>
+      {words.subs.length === 0 ? (
+        <p className="text-center text-[4.5cqh] font-semibold opacity-85">{words.playedBy.length} von {count - 1} haben gelegt …</p>
+      ) : (
+        <ol className="grid min-h-0 flex-1 auto-rows-fr gap-[2cqh]" style={{ gridTemplateColumns: `repeat(${Math.min(3, words.subs.length)}, minmax(0, 1fr))` }}>
+          {words.subs.map((cards, i) => (
+            <li key={i} data-testid="studio-answer"
+              className={cn("flex flex-col justify-center gap-[1.5cqh] rounded-[2cqh] bg-[#fbf7ef] p-[3cqh] text-[4.8cqh] leading-snug font-semibold text-[#141018] transition-[transform,opacity]",
+                words.pick !== null && (words.pick === i ? "scale-105 ring-[0.8cqh] ring-[#ff7a59]" : "opacity-45"))}>
+              <span>{fillIn(words.prompt, cards).map((p, k) => <span key={k} className={p.fill ? "text-[#c2492e]" : "opacity-60"}>{p.text}</span>)}</span>
+              {words.pick === i && words.pickBy && <span className="text-[4cqh] font-bold text-[#c2492e]">Punkt für {name(words.pickBy)}!</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+const seatBox = "relative grid h-20 w-28 place-items-center overflow-hidden rounded-2xl bg-[#3b2a1a]/70 shadow-lg ring-2 ring-[#f7ecd6]/80";
+const seatTurn = "ring-4 ring-[#ff7a59] shadow-[0_0_30px_8px_rgb(255_140_100/0.55)]";
+
+function SeatVideo({ stream }: { stream: MediaStream }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => { if (ref.current) { ref.current.srcObject = stream; void ref.current.play().catch(() => {}); } }, [stream]);
+  return <video ref={ref} autoPlay playsInline muted className="size-full object-cover" data-testid="seat-video" />;
+}
+
+/** Am Tisch: Videos an den Plätzen an/aus, Couch-Kamera (Bild des Wohnzimmers für die Online-Mitspieler) */
+function VideoPanel({ cam }: { cam: ReturnType<typeof useCouchCam> }) {
+  const p = usePrefs();
+  const btn = "flex h-10 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 text-sm font-semibold text-[#f7ecd6] outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-[#f7ecd6]";
+  return (
+    <div className="grid gap-1.5" data-testid="video-panel">
+      <div className="flex gap-2">
+        <button type="button" className={cn(btn, "flex-1", !p.tableVideo && "opacity-50 line-through")} onClick={() => setPref("tableVideo", !p.tableVideo)} aria-pressed={p.tableVideo} data-testid="table-video-toggle">
+          <Video className="size-4" />Videos
+        </button>
+        <button type="button" className={cn(btn, "flex-1", cam.on && "bg-[#ff7a59]/80 hover:bg-[#ff7a59]")} disabled={cam.busy} onClick={() => (cam.on ? cam.stop() : void cam.start())} aria-pressed={cam.on} aria-label={cam.on ? "Couch-Kamera aus" : "Couch-Kamera an"} title="Bild vom Sofa für die Online-Mitspieler" data-testid="couch-cam">
+          {cam.busy ? <Loader2 className="size-4 animate-spin" /> : cam.on ? <VideoOff className="size-4" /> : <Camera className="size-4" />}{cam.on ? "Kamera aus" : "Kamera"}
+        </button>
+      </div>
+      {cam.error && <p role="alert" className="text-xs font-semibold text-[#ffb4a2]">{cam.error}</p>}
     </div>
   );
 }

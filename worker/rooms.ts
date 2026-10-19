@@ -15,7 +15,7 @@ import {
   DEFAULT_ACCESS, HOST_AWAY_MS, KNOCK_DENY_MS, KNOCK_GRACE_MS, KNOCK_TIMEOUT_MS, LIFE_LABEL, LIFE_MS, lifeMs, mayAdmit, sanitizeAccess,
   type KnockView, type RoomAccess, type RoomCard,
 } from "../shared/platform/directory";
-import { PAIR_CODE_RE, PAIR_MS, PROTOCOL, ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_RE, ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "../shared/platform/protocol";
+import { PAIR_CODE_RE, PAIR_MS, PROTOCOL, ACTION_ID_RE, CALL_SESSION_RE, CALL_TRACK_RE, TABLE_CALL_ID, CHAT_MAX, PIN_RE, PING, PONG, STALE_MS, ROOM_CODE_RE, ADMIN_CHAT_ID, MAX_NOTICE, WATCH_ID, type ChatMsg, type ClientMessage, type RoomInfo, type ServerMessage } from "../shared/platform/protocol";
 import { type AdminRoomAction, type AdminRoomDetail } from "../shared/platform/admin";
 import { Env, settingsOf, groupOf } from "./env";
 import { hashPin } from "./http";
@@ -355,8 +355,12 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
-    // Wer zuschaut, liest nur mit
-    if ((ws.deserializeAttachment() as Attachment | null)?.watch) return;
+    // Wer zuschaut, liest nur mit – der Große Tisch darf nur seine Couch-Kamera im Videochat melden
+    const watcher = ws.deserializeAttachment() as Attachment | null;
+    if (watcher?.watch) {
+      if (watcher.table && msg.type === "call") await this.tableCall(msg);
+      return;
+    }
 
     await this.expireKnocks();
 
@@ -590,6 +594,11 @@ export class GameRoom extends DurableObject<Env> {
       delete this.room.call[att.playerId];
       await this.persist();
     }
+    // Letzter Großer Tisch weg: Couch-Kamera aus dem Videochat
+    if (att?.table && this.room?.call?.[TABLE_CALL_ID] && !this.hasTable(ws)) {
+      delete this.room.call[TABLE_CALL_ID];
+      await this.persist();
+    }
     // Gast vor der Tür hat die Verbindung verloren: Eintrag bleibt kurz stehen (Funkloch), erst danach fällt er weg
     const gone = att?.knock ? this.room?.knocks?.find((k) => k.id === att.knock) : undefined;
     if (gone && !this.knockSocket(gone.id)) {
@@ -607,8 +616,25 @@ export class GameRoom extends DurableObject<Env> {
   /** Darf dieser Spieler den Sprachchat nutzen? Optional: gehört ihm die Sitzung? */
   async callAuth(playerId: string, token: string, session: string | null): Promise<boolean> {
     const room = this.room;
-    if (!room || !playerId || room.tokens[playerId] !== token) return false;
+    if (!room || !playerId) return false;
+    const ok = playerId === TABLE_CALL_ID ? !!token && !!room.tableKeys?.includes(token) : room.tokens[playerId] === token;
+    if (!ok) return false;
     return session === null || room.callSessions?.[session] === playerId;
+  }
+
+  /** Couch-Kamera des Großen Tischs im Videochat an- oder abmelden (nur Sitzungen, die der Tisch angelegt hat) */
+  private async tableCall(msg: Extract<ClientMessage, { type: "call" }>): Promise<void> {
+    if (!this.room) return;
+    const call = (this.room.call ??= {});
+    if (msg.session === null) delete call[TABLE_CALL_ID];
+    else {
+      if (typeof msg.session !== "string" || !CALL_SESSION_RE.test(msg.session) || this.room.callSessions?.[msg.session] !== TABLE_CALL_ID) return;
+      const video = typeof msg.video === "string" && CALL_TRACK_RE.test(msg.video) ? msg.video : undefined;
+      // Die Couch-Kamera sendet nur Bild – Ton kommt von den Handys
+      call[TABLE_CALL_ID] = { session: msg.session, video, mic: false, cam: msg.cam === true };
+    }
+    await this.persist();
+    this.broadcast();
   }
 
   /** Neue SFU-Sitzung merken (höchstens eine Handvoll pro Spieler, alte fallen raus) */
@@ -731,6 +757,11 @@ export class GameRoom extends DurableObject<Env> {
   private async handleTable(ws: WebSocket, msg: Extract<ClientMessage, { type: "table" }>): Promise<void> {
     if (!(await this.checkPin(ws, msg.pin))) return;
     ws.serializeAttachment({ playerId: null, watch: true, table: true } satisfies Attachment);
+    // Schlüssel für den Videochat: Videos der Spieler abholen, Couch-Kamera senden
+    const key = crypto.randomUUID();
+    this.room!.tableKeys = [...(this.room!.tableKeys ?? []), key].slice(-4);
+    await this.ctx.storage.put("room", this.room);
+    this.send(ws, { type: "tableKey", key });
     // Kein Chatverlauf: der Tisch zeigt keinen Chat, und den Bildschirm sieht jeder im Raum
     this.sendWatch(ws);
     // Die Handys erfahren, dass es jetzt einen Fernseher gibt (Fernbedienung)
@@ -1018,6 +1049,17 @@ export class GameRoom extends DurableObject<Env> {
     return Date.now() - this.hostSeenAt < HOST_AWAY_MS;
   }
 
+  /** Spieler, deren Begleit-Handy gerade verbunden ist – ihr Rechner bietet dann „Karten nur am Handy“ an */
+  private pairedIds(gone?: WebSocket): Set<string> {
+    const ids = new Set<string>();
+    for (const w of this.ctx.getWebSockets()) {
+      if (w === gone) continue;
+      const att = w.deserializeAttachment() as Attachment | null;
+      if (att?.companion && att.playerId && w.readyState === WebSocket.OPEN) ids.add(att.playerId);
+    }
+    return ids;
+  }
+
   /** Hängt gerade ein Großer Tisch (Fernseher) am Raum? Die Handys zeigen dann die Fernbedienung. */
   private hasTable(gone?: WebSocket): boolean {
     return this.ctx.getWebSockets().some((w) => w !== gone && (w.deserializeAttachment() as Attachment | null)?.table);
@@ -1032,11 +1074,12 @@ export class GameRoom extends DurableObject<Env> {
     this.scheduleBots();
     if (this.room.state.hostId && onlineList.includes(this.room.state.hostId)) this.hostSeenAt = Date.now();
     this.lastOnline = [...onlineList].sort().join();
+    const paired = this.pairedIds(gone);
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv, paired: (!att.companion && paired.has(att.playerId)) || undefined });
     }
   }
 
@@ -1049,7 +1092,8 @@ export class GameRoom extends DurableObject<Env> {
 
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv: this.hasTable() || undefined });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv: this.hasTable() || undefined,
+      paired: (!(ws.deserializeAttachment() as Attachment | null)?.companion && this.pairedIds().has(playerId)) || undefined });
   }
 
   /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */

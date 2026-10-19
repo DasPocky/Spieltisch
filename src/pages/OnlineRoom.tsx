@@ -98,6 +98,7 @@ export function OnlineRoom({ code }: { code: string }) {
       onKnock={room.answerKnock}
       onPair={room.pair}
       pairing={room.pairing}
+      paired={room.paired}
       tv={room.tv}
       onRemote={room.remote}
       onPhoto={room.photo}

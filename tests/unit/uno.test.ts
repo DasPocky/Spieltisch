@@ -206,6 +206,24 @@ describe("Uno", () => {
   });
 });
 
+describe("Abnahme Uno: Grenzfälle", () => {
+  it("leerer Stapel: Ablage wird gemischt, die oberste Karte bleibt liegen", () => {
+    let r = fix(start(), { p1: ["b-9"], p2: ["g-5"], p3: ["y-3"] }, "r-1", []);
+    r = { ...r, game: { ...g(r), discard: ["g-7", "y-7", "r-1"] } };
+    r = game(r, { type: "draw" }, "p1");
+    expect(g(r).hands.p1).toHaveLength(2);
+    expect(g(r).discard).toEqual(["r-1"]);
+  });
+  it("Spieler verlässt das Spiel: zu zweit gewinnt der Verbleibende, zu dritt geht es weiter", () => {
+    const two = g(act(start(2), { type: "removePlayer", id: "p2" }));
+    expect(two.roundWinner).toBe("p1");
+    expect(two.phase).not.toBe("play");
+    const r = act(start(3), { type: "removePlayer", id: "p2" });
+    expect(Object.keys(g(r).hands)).not.toContain("p2");
+    expect(["p1", "p3"]).toContain(g(r).curId);
+  });
+});
+
 describe("Uno – nächste Runde", () => {
   it("darf jeder starten, nicht nur der Host", () => {
     let r = fix(start(3), { p1: ["r-1"], p2: ["y-5"], p3: ["g-skip"] }, "r-9");

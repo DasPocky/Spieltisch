@@ -64,6 +64,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
   const [pairing, setPairing] = useState<{ code: string; until: number } | null>(null);
   /** Ein Großer Tisch (Fernseher) ist verbunden */
   const [tv, setTv] = useState(false);
+  const [paired, setPaired] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const outbox = useRef<Pending[]>([]);
   const flushRef = useRef<() => void>(() => {});
@@ -184,6 +185,7 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
           hostRef.current = msg.state.hostId === msg.you;
           setOnline(new Set(msg.online));
           setTv(!!msg.tv);
+          setPaired(!!msg.paired);
           setCall(msg.call ?? {});
           const now = Date.now();
           setKnocks((msg.knocks ?? []).map((k) => ({ ...k, at: now - k.ago })));
@@ -348,5 +350,5 @@ export function useRoom(code: string, join: JoinData | null, attempt: number, op
   /** Chat-Nachricht oder Reaktion schicken */
   const say = useCallback((m: { text?: string; emoji?: string }) => post({ type: "chat", id: rid(), ...m }), [post]);
 
-  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing, tv, remote, photo };
+  return { status, state, me, online, error, gameId: state?.gameId ?? gameId, info, send, closeRoom, claimHost, call, announceCall, pending, chat, say, knocks, answerKnock, knockUntil, pair, pairing, paired, tv, remote, photo };
 }

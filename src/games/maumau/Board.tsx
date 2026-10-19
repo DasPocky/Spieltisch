@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { Seats } from "@/platform/Seats";
 import { DECKS, isJack, SUIT_NAME, type Card, type Suit } from "@shared/cards/deck";
 import { canPlay, top, type MauMauAction, type MauMauState } from "@shared/games/maumau/logic";
@@ -164,9 +165,7 @@ function DeskHand({ s, hand, playable, myTurn, mau, setMau, mauRule, unter, setU
   unter: Card | null; setUnter: (c: Card | null) => void; play: (c: Card, wish?: Suit) => void; act: (a: MauMauAction) => void; status: string; drawnFits: boolean; hints: boolean;
 }) {
   const pick = (c: Card) => (isJack(c) ? setUnter(c) : play(c));
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  useDeskKeys((e) => {
       if (unter) {
         const i = Number(e.key) - 1;
         if (e.key === "Escape") setUnter(null);
@@ -179,9 +178,6 @@ function DeskHand({ s, hand, playable, myTurn, mau, setMau, mauRule, unter, setU
       else if ((e.key === "z" || e.key === "Z") && !s.drawn) act({ type: "draw" });
       else if ((e.key === "p" || e.key === "P") && s.drawn) act({ type: "pass" });
       else if ((e.key === "m" || e.key === "M") && mauRule && hand.length === 2) setMau((m) => !m);
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
   });
   return (
     <div className="flex flex-col gap-3">

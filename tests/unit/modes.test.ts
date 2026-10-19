@@ -4,15 +4,17 @@ import { GAMES } from "@shared/games";
 
 describe("Spielweisen je Spiel", () => {
   it("nur bekannte Spiele und Spielweisen, nur Abweichungen werden gespeichert", () => {
-    expect(sanitizeModes({ uno: { table: "beta", stage: "on" }, maumau: { table: "on" }, gibtsnicht: { table: "off" }, schamlos: { table: "quatsch" } }))
-      .toEqual({ uno: { table: "beta" } });
+    expect(sanitizeModes({ uno: { table: "beta", stage: "on" }, maumau: { table: "on" }, tutto: { stage: "on" }, gibtsnicht: { table: "off" }, schamlos: { table: "quatsch" } }))
+      .toEqual({ uno: { table: "beta", stage: "on" } });
   });
   it("Zustand: eingebaut, von der Verwaltung überschrieben, „none“ wenn das Spiel es nicht kann", () => {
     expect(modeState({}, "uno", "table")).toBe("on");
     expect(modeState({ uno: { table: "off" } }, "uno", "table")).toBe("off");
-    expect(modeState({}, "kniffel", "table")).toBe("beta");
+    expect(modeState({}, "kniffel", "table")).toBe("on");
+    expect(modeState({}, "kniffel", "stage")).toBe("beta");
     expect(modeState({}, "tutto", "table")).toBe("none");
-    expect(modeState({}, "uno", "stage")).toBe("none");
+    expect(modeState({}, "uno", "stage")).toBe("beta");
+    expect(modeState({}, "tutto", "stage")).toBe("none");
   });
   it("Beta nur für Geräte der Verwaltung", () => {
     const m = { uno: { table: "beta" as const } };

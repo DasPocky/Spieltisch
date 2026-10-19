@@ -35,7 +35,7 @@ import { RoomHints } from "@/lib/prefs";
 import { EveningContext, EveningLine } from "./Evening";
 import { KnockBar, type KnockEntry } from "./KnockBar";
 import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
-import { setDeskView, useDesk } from "./desk/desk";
+import { setDeskPrivate, setDeskView, useDesk, useDeskPrivate } from "./desk/desk";
 import { PairButton } from "./desk/PairSheet";
 import { isCompanion } from "@/hooks/useRoom";
 
@@ -65,6 +65,8 @@ interface Props extends Omit<MenuProps, "board" | "onAddLocal"> {
   /** Eigenes Foto (online) */
   onPhoto?: (data: string | null) => void;
   pairing?: { code: string; until: number } | null;
+  /** Das Begleit-Handy dieses Spielers ist verbunden (online, am Rechner) */
+  paired?: boolean;
 }
 
 /** Gemeinsamer Rahmen für lokales und Online-Spiel: Kopfzeile, Lobby oder das Spielbrett des Moduls. */
@@ -85,6 +87,9 @@ export function RoomScreen(props: Props) {
   const desk = useDesk(room, me);
   // Nur solange die Partie läuft und das Spiel ein Tischbild hat (z. B. nicht mit echten Karten); Ergebnis wieder klassisch
   const atTable = desk.on && !benched && !!room.game && !roomGame(room).isOver(room.game) && tableModel(room) !== null;
+  // Private Hand: nur solange das Begleit-Handy verbunden ist – sonst liegen die Karten wieder hier (nichts bleibt hängen)
+  const wantPrivate = useDeskPrivate();
+  const handOnPhone = atTable && !!props.paired && wantPrivate;
   const board: BoardProps | null = playing && !benched
     ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch, desk: atTable }
     : null;
@@ -131,6 +136,11 @@ export function RoomScreen(props: Props) {
               {desk.on ? "Klassische Ansicht" : "Am Tisch spielen"}
             </Button>
           )}
+          {atTable && props.paired && (
+            <Button variant="secondary" size="sm" className="hidden lg:inline-flex" data-testid="desk-private" onClick={() => setDeskPrivate(!wantPrivate)}>
+              {handOnPhone ? "Karten hier zeigen" : "Karten nur am Handy"}
+            </Button>
+          )}
           {board && HeaderExtra && <HeaderExtra {...board} />}
           {props.chat && code && <ChatButton code={code} chat={props.chat} players={room.players} me={me} />}
           {props.call && <CallButton call={props.call} />}
@@ -155,7 +165,12 @@ export function RoomScreen(props: Props) {
       <RoomHints.Provider value={!room.noHints}>{board && atTable && me ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3 pb-3">
           <Suspense fallback={<div className="table-room min-h-0 flex-1 rounded-3xl" />}><DeskStage room={room} online={online ?? new Set()} me={me} /></Suspense>
-          <div className="mx-auto flex w-full max-w-4xl shrink-0 flex-col" data-testid="desk-hand"><Board key={room.round} {...board} /></div>
+          {handOnPhone ? (
+            <div className="glass mx-auto flex w-full max-w-xl shrink-0 items-center gap-3 rounded-2xl px-4 py-3" role="status" data-testid="desk-hand-private">
+              <Smartphone className="size-5 shrink-0 text-primary" />
+              <span className="text-sm">Deine Karten liegen auf deinem Handy – hier sehen alle nur den Tisch.</span>
+            </div>
+          ) : <div className="mx-auto flex w-full max-w-4xl shrink-0 flex-col" data-testid="desk-hand"><Board key={room.round} {...board} /></div>}
         </div>
       ) : board ? <Board key={room.round} {...board} /> : benched ? <BenchWait room={room} me={me} chat={props.chat} /> : <Lobby {...props} isHost={isHost} />}</RoomHints.Provider>
     </div>

@@ -16,6 +16,12 @@ const choice = createStore<"table" | "classic">(readStr(KEY) === "classic" ? "cl
 export const setDeskView = (v: "table" | "classic") => { writeStr(KEY, v); choice.set(v); };
 export const useDeskView = choice.use;
 
+// Karten nur am Begleit-Handy: der Rechner zeigt den Tisch für alle, die eigene Hand bleibt privat (je Gerät)
+const PRIVATE_KEY = "spieltisch:deskPrivate";
+const priv = createStore<boolean>(readStr(PRIVATE_KEY) === "1");
+export const setDeskPrivate = (v: boolean) => { writeStr(PRIVATE_KEY, v ? "1" : "0"); priv.set(v); };
+export const useDeskPrivate = priv.use;
+
 const WIDE = "(min-width: 1024px) and (min-height: 600px)";
 const wideNow = () => typeof matchMedia === "function" && matchMedia(WIDE).matches;
 function useWide(): boolean {

@@ -42,20 +42,20 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
    - **nur am Handy** wie bisher.
    Ohne 3D (schwacher Rechner, WebGL-Ausfall) ein **einfacher flacher Tisch** mit gleicher Anordnung. 2D und 3D sind nur Ansichten desselben Spielstands.
 5. **Gemeinsame Bausteine** statt Einzellösungen (Tisch: Karten, Würfel, Spielfeld, Platz ✅; 3D-Würfel und -Steine folgen): `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
-6. **Handy als Begleiter:** Koppeln ✅, Fernbedienung ✅, Reaktionen vom Handy schweben am Tisch über dem Platz ✅ (Text bleibt auf den Handys); offen: Kamera + Mikro, private Hand.
-7. **Fernseher-Beitritt:** QR ✅, Spieler ohne Handy am Fernseher ✅; offen: Bild/Selfie ohne Profil; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
+6. **Handy als Begleiter:** Koppeln ✅, Fernbedienung ✅, Reaktionen vom Handy schweben am Tisch über dem Platz ✅ (Text bleibt auf den Handys), private Hand am Rechner ✅, Kamera + Mikro übers Begleit-Handy (es ist im Videochat derselbe Spieler) ✅.
+7. **Fernseher-Beitritt:** QR ✅, Spieler ohne Handy am Fernseher ✅, Selfie ohne Profil mit der Kamera am Bildschirm ✅, Video am TV: Bilder der Spieler an ihren Plätzen (einzeln und ganz abschaltbar, nur Bild) und Couch-Kamera fürs Wohnzimmer ✅; am Rechner erscheinen Mitspieler im Videochat ebenfalls am Platz ✅.
 8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken ✅ (später: Moderator-Stimme als vierter Kanal).
 9. **R2** für größere Daten: Fotos der Spieler ✅ (Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen, Löschen mit dem Raum); später Bildkarten.
 10. **Bots:** Spielstärke getrennt vom Zufall, reproduzierbar mit festem Startwert, keine fremden Geheimnisse ✅ (Mau-Mau, Uno, Vier gewinnt; weitere Spiele in Phase 3).
 
 ## Phase 2 – Referenzspiel + Bühne und Moderator ⏳
 
-1. **Referenzspiel vollständig** (Mau-Mau oder Uno): Desktop 2D/3D, Tisch/TV, private Hand, Tastatur/Touch, gemeinsame Bausteine herausgelöst, Abnahmeblatt (siehe unten) – danach erst die Spieleliste.
+1. **Referenzspiel vollständig:** Mau-Mau abgenommen ✅ ([Abnahmeblatt](abnahme/maumau.md)) – Desktop 2D/3D, Tisch/TV, private Hand (Karten nur am Begleit-Handy), Tastatur/Touch, Tastatur-Baustein auch für Uno, Bots auf allen Stufen ohne illegale Züge; „Am Rechner“ für Mau-Mau eingebaut an. Uno danach abgenommen ✅ ([Abnahmeblatt](abnahme/uno.md)), Schamlos ✅ ([Abnahmeblatt](abnahme/schamlos.md)) mit eigener Bühnen-Leinwand (schwarze Karte groß, Antworten eingesetzt), Kniffel ✅ und Vier in einer Reihe ✅ am Tisch freigegeben ([kniffel](abnahme/kniffel.md), [vier](abnahme/vier.md)).
 2. **Moderator-Vorschau** (`/moderator`, nur Verwaltung) – Leuchtkugel mit Mund, Blinzeln und drei Charakteren ✅. 3D-Figuren (menschlich und Comic) ausprobiert und verworfen: menschliche wirken unecht, freie Comic-Pakete ließen sich nicht automatisch laden.
 3. **Moderator-MVP:** Leuchtkugel am großen Tisch für alle Tischspiele (Begrüßung, wer dran ist, Kartenzar, Rundenpunkt, Sieg), Gerätestimme, abschaltbar, Charakter wählbar ✅ – reine Darstellung, keine Regelinstanz.
-4. **3D-Showstudio** mit Pulten, Lichtern, Kamerafahrten; TV-Ansicht je Spiel (Tisch oder Bühne), beim Einrichten wählbar, im Raum umschaltbar.
+4. **3D-Showstudio** ✅ (Beta: Mau-Mau, Uno, Schamlos, Kniffel, Vier gewinnt): Bühne mit Leinwand, Pult je Spieler mit Leuchtstreifen, schwenkende Scheinwerfer, Spotlicht und Kamerafahrt zu dem, der dran ist; am Fernseher „Tisch | Bühne“ umschaltbar (je Gerät gemerkt). Später: eigene Bühnen-Ansichten je Spiel (Quiz, Zeichnen), Abnahme → „an“.
 5. **KI-Sprüche** über Cloudflare Workers AI ✅ (Schalter in der Verwaltung, 400 am Tag, Filter, Rückfall auf feste Texte); später KI-Stimme. Charakter je Runde (charmant/frech/böse) – „frech/böse“ nur mit Zustimmung der Runde und passendem Set.
-6. **Partyabend:** Host plant die Reihenfolge (2–8 Spiele), nach jeder Partie ist das nächste gewählt, Gesamtwertung über die Abendliste, Zwischenstand und Siegerehrung mit Podest am Fernseher, Moderator ruft den Abendsieger aus ✅; später: abstimmen, Mini-Runden.
+6. **Partyabend:** Host plant die Reihenfolge (2–8 Spiele), nach jeder Partie ist das nächste gewählt, Gesamtwertung über die Abendliste, Zwischenstand und Siegerehrung mit Podest am Fernseher, Moderator ruft den Abendsieger aus ✅, Auswahl als Raster ohne Scrollen ✅; später: abstimmen, Mini-Runden.
 
 ## Phase 3 – Spiel für Spiel komplett ⏳
 

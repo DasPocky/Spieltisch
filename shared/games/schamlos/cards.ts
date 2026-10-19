@@ -34,7 +34,7 @@ export const SETS: CardSet[] = [
 /** Erstes Set je Sprache – gilt, wenn nichts gewählt ist */
 export const DEFAULT_SET: Record<Lang, string> = { de: "frech", en: "cheeky" };
 
-const BLANK = "___";
+export const BLANK = "___";
 
 const DATA: Record<string, { black: string[]; white: string[] }> = { frech, ab18, plus, schwarz, cheeky, filthy, naughty, dark };
 type Deck = { black: string[]; white: string[] };

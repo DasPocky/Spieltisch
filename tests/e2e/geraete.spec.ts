@@ -203,3 +203,46 @@ test("Am Rechner am Tisch mitspielen (Uno): eigene Hand unter dem Tisch, Tastatu
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Private Hand: am Rechner liegt der Tisch für alle, die Karten nur auf dem Begleit-Handy – geht das Handy, kommen sie zurück", async ({ browser }) => {
+  // Mau-Mau ist das Referenzspiel: „Am Rechner“ ist ohne Verwaltung eingeschaltet
+  const page = await desktop(browser);
+  await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
+  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByLabel("Dein Name").fill("Anna");
+  await page.getByLabel(/PIN/).fill("7272");
+  await page.getByRole("button", { name: "Öffnen", exact: true }).click();
+  await page.getByTestId("meet-play").click();
+  await page.getByTestId("pick-maumau").click();
+  const code = (await page.getByTestId("room-code").textContent())!.trim();
+  await page.getByTestId("pair-open").click();
+  const link = (await page.getByTestId("pair-link").textContent())!;
+  await page.keyboard.press("Escape");
+  const companion = await newPhone(browser);
+  await companion.goto(link.replace(/^https?:\/\/[^/]+/, ""));
+  await expect(companion.getByTestId("companion-note")).toBeVisible();
+  const ben = await newPhone(browser);
+  await ben.goto(`/r/${code}`);
+  await ben.getByLabel("Dein Name").fill("Ben");
+  await ben.getByLabel("PIN").fill("7272");
+  await ben.getByRole("button", { name: "Beitreten" }).click();
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+
+  await expect(page.getByTestId("desk-stage")).toBeVisible();
+  await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(5);
+  // Karten aufs Handy: der Rechner zeigt nur noch den Tisch
+  await page.getByTestId("desk-private").click();
+  await expect(page.getByTestId("desk-hand-private")).toBeVisible();
+  await expect(page.getByTestId("hand")).toHaveCount(0);
+  await expect(companion.getByTestId("hand").locator("button")).toHaveCount(5);
+  await expectNoScroll(page);
+  await shot(page, "g8-desk-private");
+  await shot(companion, "g8b-desk-private-handy");
+
+  // Begleit-Handy weg: die Karten liegen sofort wieder am Rechner – nichts bleibt hängen
+  await companion.context().close();
+  await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(5, { timeout: 15_000 });
+  await expect(page.getByTestId("desk-private")).toHaveCount(0);
+});

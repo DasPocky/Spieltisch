@@ -149,3 +149,39 @@ export function expectInOrder(text: string, parts: string[]) {
   let at = -1;
   for (const p of parts) { const i = text.indexOf(p, at + 1); expect(i, `Ansage „${p}“ fehlt oder kommt zu früh`).toBeGreaterThan(at); at = i; }
 }
+
+/**
+ * Sprachchat Ende-zu-Ende mit Fake-SFU (REALTIME_FAKE=1 im Dev-Server). Im Browser ersetzen wir Kamera/Mikro
+ * und die WebRTC-Verbindung durch Attrappen, die das SDP des Fake-SFU verstehen und Spuren melden.
+ */
+export const FAKE_RTC = () => {
+  const fakeStream = (video: boolean) => {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const dest = ctx.createMediaStreamDestination();
+    osc.connect(dest); osc.start();
+    const s = new MediaStream(dest.stream.getAudioTracks());
+    if (video) {
+      const c = document.createElement("canvas"); c.width = 64; c.height = 48;
+      const g = c.getContext("2d")!; g.fillStyle = "#3a7"; g.fillRect(0, 0, 64, 48);
+      s.addTrack(c.captureStream(5).getVideoTracks()[0]);
+    }
+    return s;
+  };
+  Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia: async (c: MediaStreamConstraints) => fakeStream(!!c.video) } });
+  class FakePC {
+    ontrack: ((e: { transceiver: { mid: string }; track: MediaStreamTrack }) => void) | null = null;
+    localDescription: RTCSessionDescriptionInit | null = null;
+    n = 0;
+    addTransceiver(track: MediaStreamTrack) { return { mid: String(this.n++), sender: { track } }; }
+    async createOffer() { return { type: "offer", sdp: "fake-offer" }; }
+    async createAnswer() { return { type: "answer", sdp: "fake-answer" }; }
+    async setLocalDescription(d: RTCSessionDescriptionInit) { this.localDescription = d; }
+    async setRemoteDescription(d: RTCSessionDescriptionInit) {
+      const mids = /mids=([\w,]+)/.exec(d.sdp ?? "")?.[1]?.split(",") ?? [];
+      for (const mid of mids) setTimeout(() => this.ontrack?.({ transceiver: { mid }, track: fakeStream(false).getAudioTracks()[0] }), 10);
+    }
+    close() {}
+  }
+  (window as unknown as { RTCPeerConnection: unknown }).RTCPeerConnection = FakePC;
+};

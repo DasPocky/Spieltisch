@@ -97,3 +97,24 @@ describe("Bots ohne Bewertung", () => {
     expect(seen.size).toBe(2);
   });
 });
+
+describe("Abnahme: Bots", () => {
+  it.each([["maumau", [2, 3, 4]], ["uno", [2, 3, 4]], ["vier", [2]], ["kniffel", [2, 3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
+    for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
+      for (const n of counts) {
+        let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));
+        // Uno: eine Runde reicht (sonst bis 500 Punkte)
+        if (gameId === "uno") r = { ...r, options: { ...r.options, target: "round" } };
+        let i = 0;
+        for (; i < 3000 && !roomGame(r).isOver(r.game); i++) {
+          const cur = roomGame(r).currentPlayerId(r.game)!;
+          const m = chooseBotMove(r, cur, level, true, `${level}:${n}:${i}`);
+          expect(m, `${level}/${n}: kein Zug bei ${i}`).toBeTruthy();
+          // derselbe Zug, frisch über die Regeln geschickt: wird angenommen
+          r = act(r, m!.action, cur);
+        }
+        expect(roomGame(r).isOver(r.game), `${level}/${n} endet`).toBe(true);
+      }
+    }
+  }, 60_000);
+});
