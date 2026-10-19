@@ -1,5 +1,6 @@
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { Seats } from "@/platform/Seats";
 import {
   canPlay, colorOf, COLOR_NAME, COLORS, cardLabel, isWild, leaders, top, valueOf,
@@ -346,9 +347,7 @@ function UnoDesk({ s, hand, playable, myTurn, uno, setUno, unoRule, wild, setWil
   wild: Card | null; setWild: (c: Card | null) => void; seven: Card | null; setSeven: (c: Card | null) => void; others: { id: string; name: string }[];
   play: (c: Card, color?: UnoColor, target?: string) => void; pick: (c: Card) => void; act: (a: UnoAction) => void; status: string; drawnFits: boolean; hints: boolean;
 }) {
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  useDeskKeys((e) => {
       const n = Number(e.key);
       if (wild || (myTurn && s.pickColor)) {
         if (e.key === "Escape") setWild(null);
@@ -368,9 +367,6 @@ function UnoDesk({ s, hand, playable, myTurn, uno, setUno, unoRule, wild, setWil
       else if (k === "p" && s.drawn) act({ type: "pass" });
       else if (k === "a" && s.challenge) act({ type: "doubt" });
       else if (k === "u" && unoRule && hand.length === 2) setUno((u) => !u);
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
   });
 
   const colorPick = (onPick: (c: UnoColor) => void, title: string, onCancel?: () => void) => (

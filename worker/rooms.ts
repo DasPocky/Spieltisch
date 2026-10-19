@@ -1018,6 +1018,17 @@ export class GameRoom extends DurableObject<Env> {
     return Date.now() - this.hostSeenAt < HOST_AWAY_MS;
   }
 
+  /** Spieler, deren Begleit-Handy gerade verbunden ist – ihr Rechner bietet dann „Karten nur am Handy“ an */
+  private pairedIds(gone?: WebSocket): Set<string> {
+    const ids = new Set<string>();
+    for (const w of this.ctx.getWebSockets()) {
+      if (w === gone) continue;
+      const att = w.deserializeAttachment() as Attachment | null;
+      if (att?.companion && att.playerId && w.readyState === WebSocket.OPEN) ids.add(att.playerId);
+    }
+    return ids;
+  }
+
   /** Hängt gerade ein Großer Tisch (Fernseher) am Raum? Die Handys zeigen dann die Fernbedienung. */
   private hasTable(gone?: WebSocket): boolean {
     return this.ctx.getWebSockets().some((w) => w !== gone && (w.deserializeAttachment() as Attachment | null)?.table);
@@ -1032,11 +1043,12 @@ export class GameRoom extends DurableObject<Env> {
     this.scheduleBots();
     if (this.room.state.hostId && onlineList.includes(this.room.state.hostId)) this.hostSeenAt = Date.now();
     this.lastOnline = [...onlineList].sort().join();
+    const paired = this.pairedIds(gone);
     for (const ws of sockets) {
       const att = ws.deserializeAttachment() as Attachment | null;
       if (att?.watch) { this.sendWatch(ws, onlineList); continue; }
       if (!att?.playerId) continue;
-      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv });
+      this.send(ws, { type: "state", state: viewRoom(this.room.state, att.playerId), you: att.playerId, online: onlineList, call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv, paired: (!att.companion && paired.has(att.playerId)) || undefined });
     }
   }
 
@@ -1049,7 +1061,8 @@ export class GameRoom extends DurableObject<Env> {
 
   private sendState(ws: WebSocket, playerId: string): void {
     if (!this.room) return;
-    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv: this.hasTable() || undefined });
+    this.send(ws, { type: "state", state: viewRoom(this.room.state, playerId), you: playerId, online: [...this.onlineIds()], call: this.room.call ?? {}, knocks: this.knockViews(), rev: this.room.rev ?? 0, tv: this.hasTable() || undefined,
+      paired: (!(ws.deserializeAttachment() as Attachment | null)?.companion && this.pairedIds().has(playerId)) || undefined });
   }
 
   /** Bots: kurz nach jeder Änderung zieht einer von ihnen, solange die Partie läuft und jemand zuschaut */

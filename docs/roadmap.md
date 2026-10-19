@@ -42,7 +42,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
    - **nur am Handy** wie bisher.
    Ohne 3D (schwacher Rechner, WebGL-Ausfall) ein **einfacher flacher Tisch** mit gleicher Anordnung. 2D und 3D sind nur Ansichten desselben Spielstands.
 5. **Gemeinsame Bausteine** statt Einzellösungen (Tisch: Karten, Würfel, Spielfeld, Platz ✅; 3D-Würfel und -Steine folgen): `CardStack`, `HiddenHand`, `Dice`, `Token`, `Grid`, `Seat` – Physik/Kamera zeigen nur angenommene Züge.
-6. **Handy als Begleiter:** Koppeln ✅, Fernbedienung ✅, Reaktionen vom Handy schweben am Tisch über dem Platz ✅ (Text bleibt auf den Handys); offen: Kamera + Mikro, private Hand.
+6. **Handy als Begleiter:** Koppeln ✅, Fernbedienung ✅, Reaktionen vom Handy schweben am Tisch über dem Platz ✅ (Text bleibt auf den Handys), private Hand am Rechner ✅; offen: Kamera + Mikro.
 7. **Fernseher-Beitritt:** QR ✅, Spieler ohne Handy am Fernseher ✅; offen: Bild/Selfie ohne Profil; Video am TV (Couch-Kamera, Online-Mitspieler, einzeln, abschaltbar).
 8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken ✅ (später: Moderator-Stimme als vierter Kanal).
 9. **R2** für größere Daten: Fotos der Spieler ✅ (Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen, Löschen mit dem Raum); später Bildkarten.
@@ -50,7 +50,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 
 ## Phase 2 – Referenzspiel + Bühne und Moderator ⏳
 
-1. **Referenzspiel vollständig** (Mau-Mau oder Uno): Desktop 2D/3D, Tisch/TV, private Hand, Tastatur/Touch, gemeinsame Bausteine herausgelöst, Abnahmeblatt (siehe unten) – danach erst die Spieleliste.
+1. **Referenzspiel vollständig:** Mau-Mau abgenommen ✅ ([Abnahmeblatt](abnahme/maumau.md)) – Desktop 2D/3D, Tisch/TV, private Hand (Karten nur am Begleit-Handy), Tastatur/Touch, Tastatur-Baustein auch für Uno, Bots auf allen Stufen ohne illegale Züge; „Am Rechner“ für Mau-Mau eingebaut an.
 2. **Moderator-Vorschau** (`/moderator`, nur Verwaltung) – Leuchtkugel mit Mund, Blinzeln und drei Charakteren ✅. 3D-Figuren (menschlich und Comic) ausprobiert und verworfen: menschliche wirken unecht, freie Comic-Pakete ließen sich nicht automatisch laden.
 3. **Moderator-MVP:** Leuchtkugel am großen Tisch für alle Tischspiele (Begrüßung, wer dran ist, Kartenzar, Rundenpunkt, Sieg), Gerätestimme, abschaltbar, Charakter wählbar ✅ – reine Darstellung, keine Regelinstanz.
 4. **3D-Showstudio** mit Pulten, Lichtern, Kamerafahrten; TV-Ansicht je Spiel (Tisch oder Bühne), beim Einrichten wählbar, im Raum umschaltbar.

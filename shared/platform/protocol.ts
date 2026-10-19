@@ -88,7 +88,8 @@ export type ServerMessage =
   | { type: "joined"; playerId: string; token: string }
   | { type: "state"; state: RoomState; you: string; online: string[]; call?: Record<string, CallPeer>; /** wer gerade anklopft */ knocks?: KnockView[];
       /** Revision des Raums – ein Stand mit kleinerer Revision als der zuletzt gesehene ist veraltet */ rev?: number;
-      /** ein Großer Tisch (Fernseher) ist verbunden – das Handy des Hosts zeigt die Fernbedienung */ tv?: boolean }
+      /** ein Großer Tisch (Fernseher) ist verbunden – das Handy des Hosts zeigt die Fernbedienung */ tv?: boolean;
+      /** an den Rechner: das Begleit-Handy dieses Spielers ist verbunden */ paired?: boolean }
   /** An den Gast: PIN stimmt, jetzt wartet er auf Einlass (`wait`: so lange höchstens noch, ms) */
   | { type: "knocking"; wait: number }
   /** Aktion angekommen (oder schon früher ausgeführt) */

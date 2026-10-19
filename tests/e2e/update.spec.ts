@@ -66,7 +66,7 @@ test("Was ist neu: einmal pro Gerät, danach im Profil", async ({ browser }) => 
     localStorage.setItem("spieltisch:test-news", "true");
     localStorage.setItem("spieltisch:onboarded", "true");
     localStorage.setItem("spieltisch:name", "Ida");
-    if (!sessionStorage.getItem("t-news")) { sessionStorage.setItem("t-news", "1"); localStorage.setItem("spieltisch:newsSeen", "2026-10-schamlos"); }
+    if (!sessionStorage.getItem("t-news")) { sessionStorage.setItem("t-news", "1"); localStorage.setItem("spieltisch:newsSeen", "2026-10-updates"); }
   });
   await page.goto("/");
   const sheet = page.getByTestId("whats-new");

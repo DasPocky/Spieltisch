@@ -97,3 +97,22 @@ describe("Bots ohne Bewertung", () => {
     expect(seen.size).toBe(2);
   });
 });
+
+describe("Abnahme Mau-Mau: Bots", () => {
+  it("jede Stufe, 2–4 Spieler: nur erlaubte Züge, jede Partie endet", () => {
+    for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
+      for (const n of [2, 3, 4]) {
+        let r = start("maumau", ["A", "B", "C", "D"].slice(0, n));
+        let i = 0;
+        for (; i < 3000 && !roomGame(r).isOver(r.game); i++) {
+          const cur = roomGame(r).currentPlayerId(r.game)!;
+          const m = chooseBotMove(r, cur, level, true, `${level}:${n}:${i}`);
+          expect(m, `${level}/${n}: kein Zug bei ${i}`).toBeTruthy();
+          // derselbe Zug, frisch über die Regeln geschickt: wird angenommen
+          r = act(r, m!.action, cur);
+        }
+        expect(roomGame(r).isOver(r.game), `${level}/${n} endet`).toBe(true);
+      }
+    }
+  });
+});
