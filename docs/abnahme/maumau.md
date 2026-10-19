@@ -18,7 +18,7 @@ Mau-Mau ist das Referenzspiel: An ihm wird geprüft, was „komplett“ heißt, 
 | Bots: jede Stufe, 2–4 Spieler, nur erlaubte Züge, jede Partie endet; „schwer“ gewinnt öfter | `tests/unit/bot-skill.test.ts` |
 | Moderator-Rückfall: ohne KI feste Ansagen | `tests/unit/hostline.test.ts`, `tests/e2e/security.spec.ts` |
 | Echte Karten (nur Punkte zählen) | `tests/e2e/realcards.spec.ts` |
-| Gemeinsame Bausteine statt Einzellösungen | Hand `platform/cards/Fan`, Karten `platform/cards/PlayingCard`, Plätze `platform/Seats`, Tastatur `platform/desk/keys` (auch Uno), Tisch `platform/table/*` |
+| Gemeinsame Bausteine statt Einzellösungen | Hand `platform/cards/Fan`, Karten `platform/cards/PlayingCard`, Plätze `platform/Seats`, Tastatur `platform/desk/keys` (auch Eins!), Tisch `platform/table/*` |
 | Doku, Screenshots, „Für Spieler“ | `docs/entwicklung.md`, `screenshots/g4…g8b`, `shared/news.ts` |
 
 ## Neue Spiele

@@ -11,7 +11,7 @@ import { Segmented } from "./Segmented";
 import { DeckPicker } from "./cards/DeckPicker";
 
 /** Spiele mit Spielhilfen (siehe useHints) */
-export const HINT_GAMES = new Set(["uno", "maumau", "phase10", "skipbo", "skyjo", "kniffel", "flip7", "tutto"]);
+export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles"]);
 
 const ENTRY_OPTIONS = [
   { value: "turn", label: "Wer dran ist", hint: "am eigenen Handy" },

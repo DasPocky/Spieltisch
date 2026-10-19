@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { F7State } from "@shared/games/flip7/logic";
+import type { F7State } from "@shared/games/glueckssieben/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import { planStatus, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
@@ -11,8 +11,8 @@ function start(gameId: string, options: Record<string, string | number>, n = 3) 
 }
 
 describe("Punkteblock mit echten Karten", () => {
-  it("Flip 7: Punkte eintragen, nur eigene, Runde abschließen, zurücknehmen, Sieg ab Ziel", () => {
-    let r = start("flip7", { mode: "table", target: 100 });
+  it("Glückssieben: Punkte eintragen, nur eigene, Runde abschließen, zurücknehmen, Sieg ab Ziel", () => {
+    let r = start("glueckssieben", { mode: "table", target: 100 });
     const g = (x: RoomState) => x.game as F7State;
     expect(g(r).curId).toBeNull();
     expect(() => game(r, { type: "hit" })).toThrow(/Punkte/);
@@ -48,16 +48,16 @@ describe("Punkteblock mit echten Karten", () => {
 });
 
 describe("Spielabend", () => {
-  const finishFlip7 = (r: RoomState, pts: [string, number][]) => {
+  const finishGlueckssieben = (r: RoomState, pts: [string, number][]) => {
     for (const [id, p] of pts) r = game(r, { type: "padEnter", player: id, points: p });
     return game(r, { type: "padFinish" });
   };
 
   it("zählt Siege über Partien und Spiele, Rücknahme des Endes zählt nicht", () => {
-    let r = start("flip7", { mode: "table", target: 100 });
-    r = finishFlip7(r, [["p1", 120], ["p2", 10], ["p3", 0]]);
+    let r = start("glueckssieben", { mode: "table", target: 100 });
+    r = finishGlueckssieben(r, [["p1", 120], ["p2", 10], ["p3", 0]]);
     expect(r.evening?.wins).toEqual({ p1: 1, p2: 0, p3: 0 });
-    expect(r.evening?.log.map((x) => x.gameId)).toEqual(["flip7"]);
+    expect(r.evening?.log.map((x) => x.gameId)).toEqual(["glueckssieben"]);
     // Ende zurücknehmen: zählt nicht mehr, neu beenden zählt einmal
     r = act(r, { type: "undo" });
     expect(r.evening?.wins.p1).toBe(0);
@@ -66,10 +66,10 @@ describe("Spielabend", () => {
     expect(r.evening?.wins.p1).toBe(1);
     // Nochmal: zweite Partie, Ben gewinnt
     r = act(r, { type: "restart" });
-    r = finishFlip7(r, [["p1", 0], ["p2", 130], ["p3", 0]]);
+    r = finishGlueckssieben(r, [["p1", 0], ["p2", 130], ["p3", 0]]);
     expect(r.evening?.wins).toEqual({ p1: 1, p2: 1, p3: 0 });
     // Anderes Spiel: Wertung bleibt
-    r = act(act(r, { type: "toLobby" }), { type: "selectGame", gameId: "kniffel" });
+    r = act(act(r, { type: "toLobby" }), { type: "selectGame", gameId: "fuenfwuerfel" });
     expect(r.evening?.log).toHaveLength(2);
     // Gäste dürfen nicht zurücksetzen, Host schon
     expect(() => act(r, { type: "resetEvening" }, "p2")).toThrow(/Host/);
@@ -79,14 +79,14 @@ describe("Spielabend", () => {
 
   it("Partyabend: Plan legt das erste Spiel fest, nach jeder Partie steht das nächste bereit, am Ende ist er durch", () => {
     let r = roomWith(["Anna", "Ben", "Cem"]);
-    expect(() => act(r, { type: "setPlan", games: ["flip7", "kniffel"] }, "p2")).toThrow(/Host/);
+    expect(() => act(r, { type: "setPlan", games: ["glueckssieben", "fuenfwuerfel"] }, "p2")).toThrow(/Host/);
     expect(() => act(r, { type: "setPlan", games: ["gibtsnicht"] })).toThrow();
-    r = act(r, { type: "setPlan", games: ["flip7", "maumau"] });
-    expect(r.gameId).toBe("flip7");
-    expect(planStatus(r.evening)).toMatchObject({ played: 0, next: "flip7", done: false });
+    r = act(r, { type: "setPlan", games: ["glueckssieben", "maumau"] });
+    expect(r.gameId).toBe("glueckssieben");
+    expect(planStatus(r.evening)).toMatchObject({ played: 0, next: "glueckssieben", done: false });
     for (const [key, value] of Object.entries({ mode: "table", target: 100 })) r = act(r, { type: "setOption", key, value });
     r = act(r, { type: "start" });
-    r = finishFlip7(r, [["p1", 0], ["p2", 120], ["p3", 0]]);
+    r = finishGlueckssieben(r, [["p1", 0], ["p2", 120], ["p3", 0]]);
     expect(planStatus(r.evening)).toMatchObject({ played: 1, next: "maumau" });
     // Ende zurücknehmen: zählt auch für den Plan nicht
     r = act(r, { type: "undo" });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
+import { renamedGameId } from "@shared/games/renamed";
 import { LOCAL_GAME_KEY } from "@/lib/storage";
 
 /** Bereiche der Verwaltung: /admin, /admin/live … */
@@ -42,8 +43,10 @@ function parse(path: string): Route {
   if (/^\/lokal\/?$/.test(path)) return { name: "local" };
   const game = path.match(/^\/spiel\/([a-z0-9-]+)(\/lokal)?\/?$/);
   // Alte Spielseite und alter Link zur lokalen Partie: Spiel vormerken, weiter zur lokalen Lobby
-  if (game && isGameId(game[1])) {
-    try { localStorage.setItem(LOCAL_GAME_KEY, game[1]); } catch { /* egal */ }
+  // (auch Links mit der früheren Kennung eines umbenannten Spiels)
+  const linked = game ? renamedGameId(game[1]) : null;
+  if (linked && isGameId(linked)) {
+    try { localStorage.setItem(LOCAL_GAME_KEY, linked); } catch { /* egal */ }
     history.replaceState(null, "", "/lokal");
     return { name: "local" };
   }

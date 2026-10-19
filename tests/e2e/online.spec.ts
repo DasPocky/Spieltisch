@@ -7,7 +7,7 @@ async function newPhone(browser: Browser): Promise<Page> {
 }
 
 async function createRoom(host: Page, name: string, pin: string): Promise<string> {
-  const code = await createRoomAs(host, "tutto", name, pin);
+  const code = await createRoomAs(host, "alles", name, pin);
   expect(code).toMatch(/^[A-Z0-9]{5}$/);
   return code;
 }
@@ -17,7 +17,7 @@ async function joinRoom(page: Page, code: string, name: string, pin: string) {
   await page.getByRole("button", { name: "Beitreten", exact: true }).click();
   await page.getByLabel("Raumcode").fill(code);
   await page.getByRole("button", { name: "Weiter" }).click();
-  await expect(page.getByText(`Tutto · Raum`)).toBeVisible();
+  await expect(page.getByText(`Alles oder nichts · Raum`)).toBeVisible();
   await page.getByLabel("Dein Name").fill(name);
   await page.getByLabel("PIN").fill(pin);
   await page.getByRole("button", { name: "Beitreten" }).click();
@@ -125,15 +125,15 @@ test("Host entfernt einen Spieler", async ({ browser }) => {
   await expect(guest.getByText("Du wurdest aus dem Raum entfernt.")).toBeVisible();
 });
 
-test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
+test("Host wechselt in der Lobby zu Fünf Würfel", async ({ browser }) => {
   const host = await newPhone(browser);
   const guest = await newPhone(browser);
   const code = await createRoom(host, "Anna", "2468");
   await joinRoom(guest, code, "Ben", "2468");
   await host.getByRole("button", { name: /Gespielt wird/ }).click();
-  await host.getByRole("button", { name: /^Kniffel/ }).click();
+  await host.getByRole("button", { name: /^Fünf Würfel/ }).click();
   await expect(guest.getByText("Gespielt wird", { exact: true })).toBeVisible();
-  await expect(guest.getByRole("button", { name: /Gespielt wird Kniffel/ })).toBeVisible();
+  await expect(guest.getByRole("button", { name: /Gespielt wird Fünf Würfel/ })).toBeVisible();
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(guest.getByText("Warte auf Anna")).toBeVisible();
   await host.getByRole("button", { name: /Würfeln/ }).click();
@@ -141,8 +141,8 @@ test("Host wechselt in der Lobby zu Kniffel", async ({ browser }) => {
   await expect.poll(() => dice(host)).toHaveLength(5);
   await expect.poll(() => dice(guest)).toEqual(await dice(host));
   await expectNoScroll(guest);
-  await shot(host, "36-kniffel-online-host");
-  await shot(guest, "37-kniffel-online-guest");
+  await shot(host, "36-fuenfwuerfel-online-host");
+  await shot(guest, "37-fuenfwuerfel-online-guest");
   await host.getByRole("button", { name: /Chance/ }).click();
   await host.getByRole("button", { name: /eintragen/ }).click();
   await expect(guest.getByTestId("current-player")).toHaveText("Du");
@@ -186,7 +186,7 @@ test("Spielleiter-Funktionen: Host spielt normal mit, bis er sie einschaltet", a
 
 test("Mitten in der Partie beitreten: Wartebank, mit „Nochmal“ dabei", async ({ browser }) => {
   const [anna, ben, cem] = await Promise.all([newPhone(browser), newPhone(browser), newPhone(browser)]);
-  const code = await createRoomAs(anna, "kniffel", "Anna", "2468");
+  const code = await createRoomAs(anna, "fuenfwuerfel", "Anna", "2468");
   const join = async (p: Page, name: string) => {
     await p.goto(`/r/${code}`);
     await p.getByLabel("Dein Name").fill(name);

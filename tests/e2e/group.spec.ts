@@ -5,8 +5,8 @@ import { closeSettings, createRoom, expectInView, expectNoScroll, joinRoom, newP
 const DIR = process.env.GROUP_SHOTS ?? "test-results/groups";
 const snap = async (page: Page, name: string) => { await page.waitForTimeout(400); await page.screenshot({ path: `${DIR}/${name}.png` }); };
 
-/** Tutto mit Ziel 1.000 schnell zu Ende spielen: bis eine Karte mit Würfelpunkten kommt, dann 1.000 eintragen */
-async function finishTutto(page: Page) {
+/** Alles oder nichts mit Ziel 1.000 schnell zu Ende spielen: bis eine Karte mit Würfelpunkten kommt, dann 1.000 eintragen */
+async function finishAlles(page: Page) {
   await openSettings(page);
   const target = page.getByRole("button", { name: "Spielziel verringern" });
   for (let i = 0; i < 5; i++) await target.click();
@@ -90,7 +90,7 @@ test("Gruppe: erstellen, per Link beitreten, Avatare, lokale und Online-Partie z
   await expect(ben.getByTestId("group-name")).toHaveText("Spieleabend Mo");
 
   // Lokal: Mitglieder per Tipp dazu, Ergebnis landet in der Bestenliste
-  await anna.goto("/spiel/tutto/lokal");
+  await anna.goto("/spiel/alles/lokal");
   const picks = anna.getByTestId("group-picks");
   await expect(picks).toContainText("Spieleabend Mo");
   await picks.getByRole("button", { name: "Anna hinzufügen" }).click();
@@ -98,17 +98,17 @@ test("Gruppe: erstellen, per Link beitreten, Avatare, lokale und Online-Partie z
   await expect(picks).toBeHidden();
   await expect(anna.locator("ol").getByText("🦊")).toBeVisible();
   await snap(anna, "lobby-local");
-  await finishTutto(anna);
+  await finishAlles(anna);
   await anna.goto(`/g/${code}`);
   await expect.poll(async () => Object.values(await board(anna)).reduce((n, [w, p]) => n + w * 10 + p, 0)).toBe(12);
   const local = await board(anna);
   expect(local.Anna[1]).toBe(1);
   expect(local.Ben[1]).toBe(1);
-  await expect(anna.getByRole("radio", { name: "Tutto" })).toBeVisible();
+  await expect(anna.getByRole("radio", { name: "Alles oder nichts" })).toBeVisible();
   await snap(anna, "group");
 
   // Online: Lobby zeigt „An Gruppe senden“ und wer aus der Gruppe da ist
-  const room = await createRoom(anna, "tutto", "Anna", "1357");
+  const room = await createRoom(anna, "alles", "Anna", "1357");
   await expect(anna.getByTestId("group-share")).toContainText("1 von 2 dabei");
   await expect(anna.getByRole("button", { name: "An Gruppe senden" })).toBeVisible();
   await joinRoom(ben, room, "Ben", "1357");
@@ -119,9 +119,9 @@ test("Gruppe: erstellen, per Link beitreten, Avatare, lokale und Online-Partie z
   await ben.close();
 
   // Online allein gewinnen (Ben raus) – zählt für die Gruppe
-  const solo = await createRoom(anna, "tutto", "Anna", "2468");
+  const solo = await createRoom(anna, "alles", "Anna", "2468");
   expect(solo).toMatch(/^[A-Z0-9]{5}$/);
-  await finishTutto(anna);
+  await finishAlles(anna);
   await anna.goto(`/g/${code}`);
   await expect.poll(async () => (await board(anna)).Anna[1]).toBe(2);
 
@@ -152,7 +152,7 @@ test("Gruppe: erstellen, per Link beitreten, Avatare, lokale und Online-Partie z
   await expect(neu.getByLabel("Dein Name")).toHaveValue("Anna");
   await expect(neu.getByTestId("my-avatar")).toContainText("🦊");
   await expect(neu.getByTestId("groups-card")).toContainText("Spieleabend Mo");
-  await expect(neu.getByTestId("stats")).toContainText("Tutto");
+  await expect(neu.getByTestId("stats")).toContainText("Alles oder nichts");
   // Der Code gilt nur einmal
   const again = await newPhone(browser);
   await again.goto(`/profil/uebernehmen/${transfer.replace("-", "")}`);

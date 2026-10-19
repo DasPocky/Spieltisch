@@ -20,11 +20,12 @@ export const NEWS: NewsEntry[] = [
     title: "Partyabend, Bühne und Kartenspiele am Rechner",
     items: [
       "Partyabend: Der Host plant mehrere Spiele hintereinander – der Fernseher zeigt den Zwischenstand und am Ende das Siegerpodest.",
-      "Mau-Mau und Uno am Rechner sind fertig: Tisch aus deiner Sicht, Karten darunter, alles auch per Tastatur.",
+      "Mau-Mau und Eins! am Rechner sind fertig: Tisch aus deiner Sicht, Karten darunter, alles auch per Tastatur.",
       "Mit gekoppeltem Handy bleiben deine Karten auf Wunsch nur dort – der Rechner zeigt allen nur den Tisch.",
       "Am großen Bildschirm: Wer die Kamera anhat, ist an seinem Platz zu sehen – und das Sofa kann per Kamera mitspielen.",
       "Ohne Handy dabei? Der Bildschirm macht ein Foto für deinen Platz.",
       "Neu zum Ausprobieren: die Bühne – ein Showstudio mit Pulten und Scheinwerfern statt des Tischs.",
+      "Einige Spiele haben eigene Namen bekommen – gleiche Regeln, gleiche Statistik: Eins!, Stapelbau, Zehn Phasen, Himmelskarten, Glückssieben, Decknamen, Fünf Würfel und Alles oder nichts.",
     ],
   },
   {

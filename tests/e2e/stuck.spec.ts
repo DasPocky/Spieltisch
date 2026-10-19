@@ -4,7 +4,7 @@ import { createRoom, joinRoom, newPhone, shot } from "./util";
 test("Host geht offline – ein Mitspieler übernimmt", async ({ browser }) => {
   const host = await newPhone(browser);
   const guest = await newPhone(browser);
-  const code = await createRoom(host, "tutto", "Anna", "1111");
+  const code = await createRoom(host, "alles", "Anna", "1111");
   await joinRoom(guest, code, "Ben", "1111");
   await host.context().close();
   await expect(guest.getByText("(Host) ist offline.")).toBeVisible();

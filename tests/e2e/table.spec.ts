@@ -104,9 +104,9 @@ test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ab
   const anna = await joinByLink(browser, code, pin, "Anna");
   await joinByLink(browser, code, pin, "Ben");
   await anna.getByTestId("meet-play").click();
-  await anna.getByTestId("pick-uno").click();
+  await anna.getByTestId("pick-eins").click();
   await anna.getByRole("button", { name: "Spiel starten" }).click();
-  await expect(screen.getByTestId("table-view")).toContainText("Uno");
+  await expect(screen.getByTestId("table-view")).toContainText("Eins!");
   await expect(screen.getByTestId("table-seat")).toHaveCount(2);
   await expect(screen.getByTestId("table-seat").first()).toContainText(/· \d/);
   await screen.waitForTimeout(600);
@@ -279,9 +279,9 @@ test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, 
   expect((await ben.request.get("/api/photo/r/../../wrangler.jsonc")).status()).toBe(404);
 });
 
-test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz", async ({ browser, request }) => {
+test("Bausteine am Tisch: Fünf Würfel-Würfel und Brett von Vier in einer Reihe erscheinen auf dem Filz", async ({ browser, request }) => {
   test.setTimeout(120_000);
-  await setConfig(request, { ...ALL_ON, modes: { kniffel: { table: "on" }, vier: { table: "on" } } });
+  await setConfig(request, { ...ALL_ON, modes: { fuenfwuerfel: { table: "on" }, vier: { table: "on" } } });
   try {
     const screen = await newScreen(browser);
     await screen.goto("/tisch");
@@ -292,9 +292,9 @@ test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf 
     const anna = await joinByLink(browser, code, pin, "Anna");
     const ben = await joinByLink(browser, code, pin, "Ben");
 
-    // Kniffel: wer dran ist, würfelt – fünf Würfel auf dem Filz, Punkte an den Plätzen
+    // Fünf Würfel: wer dran ist, würfelt – fünf Würfel auf dem Filz, Punkte an den Plätzen
     await anna.getByTestId("meet-play").click();
-    await anna.getByTestId("pick-kniffel").click();
+    await anna.getByTestId("pick-fuenfwuerfel").click();
     await anna.getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-dice")).toBeVisible();
     const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
@@ -304,9 +304,9 @@ test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf 
     await expect(screen.getByTestId("table-dice")).toContainText(/noch 2 Würfe/);
     await expect(screen.getByTestId("table-seat").first()).toContainText("0 Pkt.");
     await screen.waitForTimeout(600);
-    await shot(screen, "9a-tisch-kniffel");
+    await shot(screen, "9a-tisch-fuenfwuerfel");
 
-    // Vier gewinnt: zurück in die Lobby, Spiel wechseln
+    // Vier in einer Reihe: zurück in die Lobby, Spiel wechseln
     await anna.getByRole("button", { name: "Menü" }).click();
     await anna.getByRole("button", { name: "Spiel wechseln" }).click();
     await anna.getByRole("button", { name: "Spiel wählen" }).click();

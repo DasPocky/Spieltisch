@@ -3,7 +3,7 @@ import { ChevronRight, DoorOpen, LogIn, Plus, Smartphone, Tv, Users } from "luci
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
 import { useGames } from "@/hooks/useGames";
-import { LOCAL_GAME_KEY, localKey, readJSON, readStr } from "@/lib/storage";
+import { LOCAL_GAME_KEY, readLocal, readStr } from "@/lib/storage";
 import { getGame, isGameId } from "@shared/games";
 import { myAvatar, myName } from "@/lib/profile";
 import { IconTile, Logo } from "@/platform/Logo";
@@ -25,7 +25,7 @@ import { navigate } from "@/hooks/useRoute";
 function runningLocal(): string | null {
   const id = readStr(LOCAL_GAME_KEY);
   if (!isGameId(id)) return null;
-  const saved = readJSON<{ phase?: string; game?: unknown }>(localKey(id));
+  const saved = readLocal<{ phase?: string; game?: unknown }>(id);
   return saved?.phase === "playing" && saved.game ? getGame(id).info.name : null;
 }
 

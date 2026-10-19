@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { closeSettings, expectInView, expectNoScroll, openSettings, shot, startLocalTutto } from "./util";
+import { closeSettings, expectInView, expectNoScroll, openSettings, shot, startLocalAlles } from "./util";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -23,15 +23,15 @@ test("Startseite: Lobby, dann Spiel – lokal wie online, ohne Scrollen", async 
   await page.getByTestId("game-card").click();
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
   await shot(page, "01b-local-pick");
-  await page.getByRole("button", { name: /^Kniffel/ }).click();
-  await expect(page.getByTestId("game-card")).toContainText("Kniffel");
+  await page.getByRole("button", { name: /^Fünf Würfel/ }).click();
+  await expect(page.getByTestId("game-card")).toContainText("Fünf Würfel");
   // Spieler bleiben beim Wechsel, Einstellungen als eine Zeile
   for (const n of ["Anna", "Ben", "Cem", "Dora", "Emil", "Finn"]) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();
   }
   await page.getByTestId("game-card").click();
-  await page.getByRole("button", { name: /^Tutto/ }).click();
+  await page.getByRole("button", { name: /^Alles oder nichts/ }).click();
   await expect(page.getByText("Finn")).toBeVisible();
   await expect(page.getByTestId("settings-summary")).toContainText("Spielziel 6.000");
   // Sechs Spieler: die Lobby passt ohne Scrollen, „Spiel starten“ bleibt unten
@@ -58,27 +58,27 @@ test("Startseite: Lobby, dann Spiel – lokal wie online, ohne Scrollen", async 
   await expect(page.getByTestId("meet")).toBeVisible();
   await page.getByTestId("meet-play").click();
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
-  await page.getByRole("button", { name: /^Uno/ }).click();
+  await page.getByRole("button", { name: /^Eins!/ }).click();
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeHidden();
-  await expect(page.getByTestId("game-card")).toContainText("Uno");
+  await expect(page.getByTestId("game-card")).toContainText("Eins!");
   await expectNoScroll(page);
   await shot(page, "01e-lobby");
   // Alte Spielseite: führt in die lokale Lobby mit diesem Spiel
-  await page.goto("/spiel/skyjo");
+  await page.goto("/spiel/himmelskarten");
   await expect(page).toHaveURL(/\/lokal$/);
-  await expect(page.getByTestId("game-card")).toContainText("Skyjo");
+  await expect(page.getByTestId("game-card")).toContainText("Himmelskarten");
   // Regeln im Menü
   await page.getByRole("button", { name: "Menü" }).click();
-  await page.getByRole("button", { name: "Regeln: Skyjo" }).click();
-  await expect(page.getByRole("heading", { name: "Regeln: Skyjo" })).toBeVisible();
+  await page.getByRole("button", { name: "Regeln: Himmelskarten" }).click();
+  await expect(page.getByRole("heading", { name: "Regeln: Himmelskarten" })).toBeVisible();
   await shot(page, "03-rules");
 });
 
 test("Alter lokaler Spielstand lädt weiter über den alten Link", async ({ page }) => {
-  await startLocalTutto(page, ["Anna", "Ben"]);
+  await startLocalAlles(page, ["Anna", "Ben"]);
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   await page.goto("/");
-  await page.goto("/spiel/tutto/lokal");
+  await page.goto("/spiel/alles/lokal");
   await expect(page).toHaveURL(/\/lokal$/);
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   // Verlassen führt zur Startseite, „Ein Handy für alle“ setzt die Partie fort
@@ -89,8 +89,8 @@ test("Alter lokaler Spielstand lädt weiter über den alten Link", async ({ page
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
 });
 
-test("Lokales Tutto mit echten Würfeln", async ({ page }) => {
-  await startLocalTutto(page, ["Anna", "Ben"]);
+test("Lokales Alles oder nichts mit echten Würfeln", async ({ page }) => {
+  await startLocalAlles(page, ["Anna", "Ben"]);
   await expect(page.getByTestId("current-player")).toHaveText("Anna");
   await expectNoScroll(page);
   await shot(page, "04-local-start");
@@ -107,13 +107,13 @@ test("Lokales Tutto mit echten Würfeln", async ({ page }) => {
   await expect(page.getByTestId("turn-pts")).toHaveText("600");
   await expectNoScroll(page);
   await shot(page, "05-local-points");
-  // Tutto (falls die Karte eins kennt): Bonus kommt dazu, nächste Karte liegt schon offen
-  const tutto = page.getByRole("button", { name: /Tutto geschafft/ });
-  if (await tutto.isVisible()) {
-    await tutto.click();
+  // Alles oder nichts (falls die Karte eins kennt): Bonus kommt dazu, nächste Karte liegt schon offen
+  const alles = page.getByRole("button", { name: /Volltreffer geschafft/ });
+  if (await alles.isVisible()) {
+    await alles.click();
     await expect(page.getByTestId("turn-pts")).not.toHaveText("600");
-    await expect(page.getByTestId("tutto-banner")).toBeVisible();
-    await shot(page, "05b-local-after-tutto");
+    await expect(page.getByTestId("volltreffer-banner")).toBeVisible();
+    await shot(page, "05b-local-after-volltreffer");
   }
   await page.getByRole("button", { name: /eintragen/ }).click();
   await expect(page.getByTestId("current-player")).not.toHaveText(who!);
@@ -124,8 +124,8 @@ test("Lokales Tutto mit echten Würfeln", async ({ page }) => {
   await expect(page.getByTestId("current-player")).toHaveText(next!);
 });
 
-test("Lokales Tutto mit App-Würfel", async ({ page }) => {
-  await page.goto("/spiel/tutto/lokal");
+test("Lokales Alles oder nichts mit App-Würfel", async ({ page }) => {
+  await page.goto("/spiel/alles/lokal");
   await page.getByLabel("Name des Spielers").fill("Anna");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
   await openSettings(page);
@@ -151,7 +151,7 @@ test("Lokales Tutto mit App-Würfel", async ({ page }) => {
 
 test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
-  await startLocalTutto(page, ["Anna", "Ben", "Cem", "Dora", "Emil"]);
+  await startLocalAlles(page, ["Anna", "Ben", "Cem", "Dora", "Emil"]);
   await expectNoScroll(page);
   await shot(page, "08-small-screen");
   await page.getByRole("button", { name: "Menü" }).click();
@@ -163,7 +163,7 @@ test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
   await page.getByTestId("my-device").getByRole("button").first().click();
   await page.getByRole("radio", { name: /Voll/ }).click();
   await shot(page, "09-menu");
-  // Spieler & Verlauf: auch bei Tutto (ohne Leiste) – mit Stapel
+  // Spieler & Verlauf: auch bei Alles oder nichts (ohne Leiste) – mit Stapel
   await page.getByRole("button", { name: /Spieler & Verlauf/ }).click();
   await expect(page.getByRole("heading", { name: "Spieler & Verlauf" })).toBeVisible();
   await expect(page.getByTestId("overview")).toContainText("Emil");
@@ -176,7 +176,7 @@ test("Menü, Ansicht „Voll“ und kleines Handy", async ({ page }) => {
 });
 
 test("Partie beenden, Spiel wechseln, Startseite: Menü schließt sich, Auswahl kommt sofort", async ({ page }) => {
-  await startLocalTutto(page, ["Anna", "Ben"]);
+  await startLocalAlles(page, ["Anna", "Ben"]);
   // Nochmal: neu gemischt, das Menü geht von selbst zu
   await page.getByRole("button", { name: "Menü" }).click();
   await page.getByRole("button", { name: "Nochmal" }).click();
@@ -188,8 +188,8 @@ test("Partie beenden, Spiel wechseln, Startseite: Menü schließt sich, Auswahl 
   await page.getByRole("button", { name: "Spiel wählen" }).click();
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Menü" })).toHaveCount(0);
-  await page.getByRole("button", { name: /^Kniffel/ }).click();
-  await expect(page.getByTestId("game-card")).toContainText("Kniffel");
+  await page.getByRole("button", { name: /^Fünf Würfel/ }).click();
+  await expect(page.getByTestId("game-card")).toContainText("Fünf Würfel");
   await expect(page.getByText("Mitspieler · 2")).toBeVisible();
   await page.getByRole("button", { name: "Spiel starten" }).click();
   // Zur Startseite: die laufende Partie steht dort
@@ -197,13 +197,13 @@ test("Partie beenden, Spiel wechseln, Startseite: Menü schließt sich, Auswahl 
   await page.waitForTimeout(500); // Menü fährt noch hoch
   await expectInView(page, page.getByRole("button", { name: /Zur Startseite/ }));
   await page.getByRole("button", { name: /Zur Startseite/ }).click();
-  await expect(page.getByRole("button", { name: /Ein Handy für alle/ })).toContainText("Kniffel läuft noch");
+  await expect(page.getByRole("button", { name: /Ein Handy für alle/ })).toContainText("Fünf Würfel läuft noch");
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   // Partie beenden: zurück in die Lobby, Menü zu, keine Spielauswahl
   await page.getByRole("button", { name: "Menü" }).click();
   await page.getByRole("button", { name: /Partie beenden/ }).click();
   await page.getByRole("button", { name: "Beenden", exact: true }).click();
-  await expect(page.getByTestId("game-card")).toContainText("Kniffel");
+  await expect(page.getByTestId("game-card")).toContainText("Fünf Würfel");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("button", { name: "Zur Startseite" }).click();
   await expect(page.getByRole("button", { name: /Ein Handy für alle/ })).not.toContainText("läuft noch");

@@ -31,7 +31,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 ## Phase 1 – Grundlage für alle Spielweisen 🔨
 
-Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅ · Ton: drei Kanäle (Effekte, Musik, Publikum) mit eigener Lautstärke, Musik und Publikum am Tisch ✅ · Ohne Handy mitspielen: der Fernseher nimmt Spieler auf, ihre Hand erscheint hinter Sichtschutz am Fernseher ✅ · Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts steuert Ton und Verdecken ✅ · Bots mit Spielstärke (Mau-Mau, Uno, Vier gewinnt) ✅ · R2: Foto statt Tier im Raum ✅ · Gemeinsame Bausteine am Tisch (Karten, Würfel, Spielfeld, Platz-Notiz; Modell je Spiel) – Kniffel und Vier gewinnt am Tisch (Beta) ✅ · Uno am Rechner mitspielen (Beta, Tastatur) ✅
+Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stufen (automatisch nach Gerät und Bildrate, im Profil) ✅ · einfacher flacher Tisch ohne 3D bzw. bei WebGL-Ausfall ✅ · am Rechner am Tisch mitspielen – Referenz Mau-Mau (Beta): eigene Sicht, Hand darunter, Tastatur, umschaltbar ✅ · Begleit-Handy koppeln (QR am Rechner, Einmal-Code, zweites Gerät desselben Spielers) ✅ · Ton: drei Kanäle (Effekte, Musik, Publikum) mit eigener Lautstärke, Musik und Publikum am Tisch ✅ · Ohne Handy mitspielen: der Fernseher nimmt Spieler auf, ihre Hand erscheint hinter Sichtschutz am Fernseher ✅ · Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts steuert Ton und Verdecken ✅ · Bots mit Spielstärke (Mau-Mau, Eins!, Vier in einer Reihe) ✅ · R2: Foto statt Tier im Raum ✅ · Gemeinsame Bausteine am Tisch (Karten, Würfel, Spielfeld, Platz-Notiz; Modell je Spiel) – Fünf Würfel und Vier in einer Reihe am Tisch (Beta) ✅ · Eins! am Rechner mitspielen (Beta, Tastatur) ✅
 
 1. **Geräte- und Rollenmodell zuerst:** Profil → Geräte → Raum-Mitgliedschaft (Handy als Hand, Desktop als Steuerung, Mediengerät) und Raum-Anzeigen (Tisch, Zuschauer). Begleit-Handy und TV mit kurzen Paarungs-Codes, widerrufbar.
 2. **Spielweisen je Spiel** (Handy · Desktop · Tisch/TV · Bühne · Ein Gerät), im Admin je Spiel schaltbar, neue als „Beta“.
@@ -46,31 +46,35 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 7. **Fernseher-Beitritt:** QR ✅, Spieler ohne Handy am Fernseher ✅, Selfie ohne Profil mit der Kamera am Bildschirm ✅, Video am TV: Bilder der Spieler an ihren Plätzen (einzeln und ganz abschaltbar, nur Bild) und Couch-Kamera fürs Wohnzimmer ✅; am Rechner erscheinen Mitspieler im Videochat ebenfalls am Platz ✅.
 8. **Ton:** Effekte, Musik, Publikum, getrennte Lautstärken ✅ (später: Moderator-Stimme als vierter Kanal).
 9. **R2** für größere Daten: Fotos der Spieler ✅ (Typ-, Größen-, Inhalts- und Rechteprüfung, Verkleinern beim Hochladen, Löschen mit dem Raum); später Bildkarten.
-10. **Bots:** Spielstärke getrennt vom Zufall, reproduzierbar mit festem Startwert, keine fremden Geheimnisse ✅ (Mau-Mau, Uno, Vier gewinnt; weitere Spiele in Phase 3).
+10. **Bots:** Spielstärke getrennt vom Zufall, reproduzierbar mit festem Startwert, keine fremden Geheimnisse ✅ (Mau-Mau, Eins!, Vier in einer Reihe; weitere Spiele in Phase 3).
 
 ## Phase 2 – Referenzspiel + Bühne und Moderator ⏳
 
-1. **Referenzspiel vollständig:** Mau-Mau abgenommen ✅ ([Abnahmeblatt](abnahme/maumau.md)) – Desktop 2D/3D, Tisch/TV, private Hand (Karten nur am Begleit-Handy), Tastatur/Touch, Tastatur-Baustein auch für Uno, Bots auf allen Stufen ohne illegale Züge; „Am Rechner“ für Mau-Mau eingebaut an. Uno danach abgenommen ✅ ([Abnahmeblatt](abnahme/uno.md)), Schamlos ✅ ([Abnahmeblatt](abnahme/schamlos.md)) mit eigener Bühnen-Leinwand (schwarze Karte groß, Antworten eingesetzt), Kniffel ✅ und Vier in einer Reihe ✅ am Tisch freigegeben ([kniffel](abnahme/kniffel.md), [vier](abnahme/vier.md)).
+1. **Referenzspiel vollständig:** Mau-Mau abgenommen ✅ ([Abnahmeblatt](abnahme/maumau.md)) – Desktop 2D/3D, Tisch/TV, private Hand (Karten nur am Begleit-Handy), Tastatur/Touch, Tastatur-Baustein auch für Eins!, Bots auf allen Stufen ohne illegale Züge; „Am Rechner“ für Mau-Mau eingebaut an. Eins! danach abgenommen ✅ ([Abnahmeblatt](abnahme/eins.md)), Schamlos ✅ ([Abnahmeblatt](abnahme/schamlos.md)) mit eigener Bühnen-Leinwand (schwarze Karte groß, Antworten eingesetzt), Fünf Würfel ✅ und Vier in einer Reihe ✅ am Tisch freigegeben ([fuenfwuerfel](abnahme/fuenfwuerfel.md), [vier](abnahme/vier.md)).
 2. **Moderator-Vorschau** (`/moderator`, nur Verwaltung) – Leuchtkugel mit Mund, Blinzeln und drei Charakteren ✅. 3D-Figuren (menschlich und Comic) ausprobiert und verworfen: menschliche wirken unecht, freie Comic-Pakete ließen sich nicht automatisch laden.
 3. **Moderator-MVP:** Leuchtkugel am großen Tisch für alle Tischspiele (Begrüßung, wer dran ist, Kartenzar, Rundenpunkt, Sieg), Gerätestimme, abschaltbar, Charakter wählbar ✅ – reine Darstellung, keine Regelinstanz.
-4. **3D-Showstudio** ✅ (Beta: Mau-Mau, Uno, Schamlos, Kniffel, Vier gewinnt): Bühne mit Leinwand, Pult je Spieler mit Leuchtstreifen, schwenkende Scheinwerfer, Spotlicht und Kamerafahrt zu dem, der dran ist; am Fernseher „Tisch | Bühne“ umschaltbar (je Gerät gemerkt). Später: eigene Bühnen-Ansichten je Spiel (Quiz, Zeichnen), Abnahme → „an“.
+4. **3D-Showstudio** ✅ (Beta: Mau-Mau, Eins!, Schamlos, Fünf Würfel, Vier in einer Reihe): Bühne mit Leinwand, Pult je Spieler mit Leuchtstreifen, schwenkende Scheinwerfer, Spotlicht und Kamerafahrt zu dem, der dran ist; am Fernseher „Tisch | Bühne“ umschaltbar (je Gerät gemerkt). Später: eigene Bühnen-Ansichten je Spiel (Quiz, Zeichnen), Abnahme → „an“.
 5. **KI-Sprüche** über Cloudflare Workers AI ✅ (Schalter in der Verwaltung, 400 am Tag, Filter, Rückfall auf feste Texte); später KI-Stimme. Charakter je Runde (charmant/frech/böse) – „frech/böse“ nur mit Zustimmung der Runde und passendem Set.
 6. **Partyabend:** Host plant die Reihenfolge (2–8 Spiele), nach jeder Partie ist das nächste gewählt, Gesamtwertung über die Abendliste, Zwischenstand und Siegerehrung mit Podest am Fernseher, Moderator ruft den Abendsieger aus ✅, Auswahl als Raster ohne Scrollen ✅; später: abstimmen, Mini-Runden.
 
-## Phase 3 – Spiel für Spiel komplett ⏳
+## Phase 3 – Spiel für Spiel komplett 🔨
 
-„Komplett“ = am Tisch spielbar (nur Rechner · Tisch + Handy · nur Handy; 3D und einfacher Tisch) · Bühne, wo es passt · Moderator-Ansagen · Bots mit Spielstärke. Reihenfolge nach Beliebtheit (Statistik), Mau-Mau, Uno, Schamlos zuerst.
+**Keine Markennamen** ✅: Spiele mit Markennamen heißen jetzt Eins!, Stapelbau, Zehn Phasen, Decknamen, Himmelskarten, Glückssieben, Fünf Würfel und Alles oder nichts – in der App, im Code, in Kennungen und Dateinamen. Alte Räume, Statistiken, Profile, Gruppen, Einstellungen und Links laufen weiter (`shared/games/renamed.ts`). Offen: Bilder in `docs/images` neu aufnehmen.
+
+**Stand:** abgenommen Mau-Mau, Eins!, Schamlos, Fünf Würfel, Vier in einer Reihe ✅ · am Tisch in Arbeit: Stapelbau, Himmelskarten (Bausteine „Stapel“ und „Auslage am Platz“) 🔨
+
+„Komplett“ = am Tisch spielbar (nur Rechner · Tisch + Handy · nur Handy; 3D und einfacher Tisch) · Bühne, wo es passt · Moderator-Ansagen · Bots mit Spielstärke. Reihenfolge nach Beliebtheit (Statistik), Mau-Mau, Eins!, Schamlos zuerst.
 
 **Abnahmeblatt je Spiel:** Regel-Tests inkl. Grenzfälle · Zufallspartien mit festen Startwerten · Geheimhaltung (Tisch/Zuschauer sehen nichts Privates) und Rechte · lokal, online, Wiederverbinden, Update mitten in der Partie · 2D/3D/TV/Bühne soweit vorgesehen · Tastatur/Touch/Maus, reduzierte Bewegung, kleine Displays · Bots ohne illegale Züge, Moderator-Rückfall · Doku, Screenshots, „Für Spieler“.
 
 | Spielart | Spiele | Besonderheiten |
 | --- | --- | --- |
-| Karten | Mau-Mau, Uno, Skip-Bo, Skyjo, Phase 10, Flip 7, Fischen, Hellseher | Ablagen/Auslagen in 3D, Ziehen mit der Maus |
-| Würfel | Kniffel, Tutto, Mäxchen | Würfel fliegen über den Tisch, Handy schütteln, Mäxchen mit Becher |
-| Party | Werwolf, Eine Nacht, Spion, Codenames, Schamlos | Moderator als Spielleiter, Nacht-Stimmung, Abstimmung live, Geheimes nur am Handy |
-| Brett | Dame, Mühle, Vier gewinnt, Ludo | Holzbrett auf dem Tisch, Züge animiert |
+| Karten | Mau-Mau, Eins!, Stapelbau, Himmelskarten, Zehn Phasen, Glückssieben, Fischen, Hellseher | Ablagen/Auslagen in 3D, Ziehen mit der Maus |
+| Würfel | Fünf Würfel, Alles oder nichts, Mäxchen | Würfel fliegen über den Tisch, Handy schütteln, Mäxchen mit Becher |
+| Party | Werwolf, Eine Nacht, Spion, Decknamen, Schamlos | Moderator als Spielleiter, Nacht-Stimmung, Abstimmung live, Geheimes nur am Handy |
+| Brett | Dame, Mühle, Vier in einer Reihe, Ludo | Holzbrett auf dem Tisch, Züge animiert |
 
-**Dazwischen, sobald die Bühne steht:** Zeichnen & Raten · Quiz & Schätzen · **Schamlos Paket B** (Kartenset-Baukasten auch für Quiz/Codenames/Zeichnen, private Sets, öffentliche Sets und Karten mit Freigabe, Bildkarten in R2).
+**Dazwischen, sobald die Bühne steht:** Zeichnen & Raten · Quiz & Schätzen · **Schamlos Paket B** (Kartenset-Baukasten auch für Quiz/Decknamen/Zeichnen, private Sets, öffentliche Sets und Karten mit Freigabe, Bildkarten in R2).
 
 ## Phase 4 – Später ⏳
 

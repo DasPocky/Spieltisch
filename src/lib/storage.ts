@@ -1,4 +1,6 @@
 /** Kleine Helfer rund um localStorage – alles in try/catch, weil Storage fehlen kann. */
+import type { GameId } from "@shared/games";
+import { formerGameId, renamedGameId, renameStored } from "@shared/games/renamed";
 
 /** WebSocket-Adresse auf demselben Server (wss, wenn die Seite über https läuft) */
 export const wsUrl = (path: string) => `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${path}`;
@@ -10,7 +12,8 @@ const store = (session: boolean) => (session ? sessionStorage : localStorage);
 
 /** Text lesen (null, wenn nichts da oder Speicher gesperrt) */
 export function readStr(key: string, session = false): string | null {
-  try { return store(session).getItem(key); } catch { return null; }
+  // frühere Spielkennungen (vor der Umbenennung) gleich als heutige lesen
+  try { const v = store(session).getItem(key); return v === null ? null : renamedGameId(v); } catch { return null; }
 }
 
 /** Text schreiben; null löscht */
@@ -29,7 +32,7 @@ export function wipeLocal(keep: readonly string[] = []) {
 export function readJSON<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    return raw ? renameStored(JSON.parse(raw) as T) : null;
   } catch {
     return null;
   }
@@ -69,6 +72,11 @@ export function takePendingJoin(code: string): { name: string; pin: string } | n
 
 /** Lokaler Spielstand pro Spiel */
 export const localKey = (gameId: string) => `spieltisch:local:${gameId}`;
+/** Gespeicherte lokale Partie – auch unter der früheren Kennung des Spiels (vor der Umbenennung) */
+export function readLocal<T>(gameId: GameId): T | null {
+  const old = formerGameId(gameId);
+  return readJSON<T>(localKey(gameId)) ?? (old ? readJSON<T>(localKey(old)) : null);
+}
 /** Zuletzt lokal gewähltes Spiel – „Ein Handy für alle“ öffnet dessen Lobby (bzw. die laufende Partie) */
 export const LOCAL_GAME_KEY = "spieltisch:localGame";
 /** Würfel in voller Qualität, auch ohne Grafikchip (Entwickler-Modus, Screenshots) */

@@ -106,7 +106,7 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
               </Section>
             )}
 
-            {/* Spieleigenes für alle, z. B. Codenames „Dein Team“ */}
+            {/* Spieleigenes für alle, z. B. Decknamen „Dein Team“ */}
             {board && !isHost && Extras && <Extras {...board} />}
 
             {board && (
@@ -187,7 +187,7 @@ function HostActions({ room, board, online, dispatch }: { room: RoomState; board
   const stalled = useStalled(room.game);
   const cur = currentPlayerId(room);
   const stuck = stalled || (!!online && !!cur && !online.has(cur));
-  // Rückgängig: zuerst die Plattform (letzte Züge), danach das Zurücknehmen des Spiels (z. B. Kniffel-Einträge)
+  // Rückgängig: zuerst die Plattform (letzte Züge), danach das Zurücknehmen des Spiels (z. B. Fünf Würfel-Einträge)
   const undoable = room.undo?.length ?? room.undoCount ?? 0;
   const entry = board.hostTools && !!ui.undoEntry?.(board.game);
 
@@ -231,7 +231,7 @@ function useStalled(game: unknown) {
 
 const QUICK: [SwitchPref, string][] = [["sound", "Töne"], ["vibration", "Vibration"], ["hints", "Spielhilfen für mich"], ["diceMarks", "Würfel markieren"]];
 /** Spiele, in denen wertbare Würfel markiert werden können */
-const DICE_MARK_GAMES = new Set(["tutto"]);
+const DICE_MARK_GAMES = new Set(["alles"]);
 
 /** Nur für dieses Handy: Ansicht, hell/dunkel, Töne – der Rest steht im Profil */
 function MyDevice({ room }: { room: RoomState }) {

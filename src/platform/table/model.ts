@@ -8,22 +8,22 @@
  *  - Würfel: Augen, gehaltene, Hinweis („noch 2 Würfe“)
  *  - Spielfeld: Raster mit Steinen zweier Farben, letzter Zug, Gewinnreihe
  *  - Stapel: offene Zahlenkarten in der Mitte (Aufbau, Ablage)
- *  - Auslage: offene Karten je Platz im Raster (Skyjo, Skip-Bo-Ablagen)
+ *  - Auslage: offene Karten je Platz im Raster (Himmelskarten, Stapelbau-Ablagen)
  *  - Plätze: wer dran ist, Punkte, eine kurze Notiz je Platz
  * Das Modell baut jedes Spiel selbst (src/games/<id>/table.ts) aus seiner öffentlichen Sicht.
  */
 import type { RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
 import { maumauTable } from "../../games/maumau/table";
-import { unoTable } from "../../games/uno/table";
+import { einsTable } from "../../games/eins/table";
 import { schamlosTable } from "../../games/schamlos/table";
-import { kniffelTable } from "../../games/kniffel/table";
+import { fuenfwuerfelTable } from "../../games/fuenfwuerfel/table";
 import { vierTable } from "../../games/vier/table";
-import { skipboTable } from "../../games/skipbo/table";
-import { skyjoTable } from "../../games/skyjo/table";
+import { stapelbauTable } from "../../games/stapelbau/table";
+import { himmelskartenTable } from "../../games/himmelskarten/table";
 
-/** Kartenart: französisch/deutsch („cards“), Uno oder Textkarten (Schamlos) */
-export type TableDeck = "cards" | "uno" | "schamlos";
+/** Kartenart: französisch/deutsch („cards“), Eins! oder Textkarten (Schamlos) */
+export type TableDeck = "cards" | "eins" | "schamlos";
 
 export interface TableModel {
   deck: TableDeck;
@@ -37,7 +37,7 @@ export interface TableModel {
   turn: string | null;
   /** zählt Züge – neue Karte auf der Ablage fliegt vom Platz dessen, der eben dran war */
   n: number;
-  /** Farbe, die gerade gilt (Wunsch nach Unter bzw. Uno-Farbe) – als Text und Farbton */
+  /** Farbe, die gerade gilt (Wunsch nach Unter bzw. Eins-Farbe) – als Text und Farbton */
   color?: { label: string; hex: string };
   /** Punkte je Spieler, falls das Spiel mitzählt */
   scores?: Record<string, number>;
@@ -70,7 +70,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, uno: unoTable, schamlos: schamlosTable, kniffel: kniffelTable, vier: vierTable, skipbo: skipboTable, skyjo: skyjoTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

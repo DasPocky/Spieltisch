@@ -26,7 +26,7 @@ export function FeltDice({ dice }: { dice: NonNullable<TableModel["dice"]> }) {
   );
 }
 
-/** Spielfeld: Raster mit Steinen zweier Farben (z. B. Vier gewinnt) – letzter Stein mit Ring, Gewinnreihe leuchtet */
+/** Spielfeld: Raster mit Steinen zweier Farben (z. B. Vier in einer Reihe) – letzter Stein mit Ring, Gewinnreihe leuchtet */
 export function FeltGrid({ grid }: { grid: NonNullable<TableModel["grid"]> }) {
   const rows = grid.cells.length, cols = grid.cells[0]?.length ?? 0;
   const W = cols * 10 + 2, H = rows * 10 + 2;

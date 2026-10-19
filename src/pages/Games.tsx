@@ -65,7 +65,7 @@ export function GameSheet({ gameId, onClose }: { gameId: string | null; onClose:
   const close = () => { onClose(); setTimeout(() => setView("info"), 300); };
   useBackClose(!!gameId, close);
   const info = gameId ? getGame(gameId).info : null;
-  const Icon = gameIcon(gameId ?? "tutto");
+  const Icon = gameIcon(gameId ?? "alles");
   return (
     <Sheet open={!!gameId} onOpenChange={(o) => { if (!o) close(); }}>
       <SheetContent data-testid="game-sheet">

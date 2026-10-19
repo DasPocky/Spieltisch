@@ -17,7 +17,7 @@ test("Profil: die ID allein reicht nicht – lesen, ändern, Ergebnis, Übertrag
   for (const headers of [{}, theirs]) {
     expect((await request.get(`/api/profile/${id}`, { headers })).status()).toBe(403);
     expect((await request.put(`/api/profile/${id}`, { headers, data: { name: "Fremd" } })).status()).toBe(403);
-    expect((await request.post(`/api/profile/${id}/result`, { headers, data: { gameId: "kniffel", won: true, players: 2 } })).status()).toBe(403);
+    expect((await request.post(`/api/profile/${id}/result`, { headers, data: { gameId: "fuenfwuerfel", won: true, players: 2 } })).status()).toBe(403);
     expect((await request.post(`/api/profile/${id}/transfer`, { headers })).status()).toBe(403);
     expect((await request.delete(`/api/profile/${id}`, { headers })).status()).toBe(403);
   }
@@ -39,7 +39,7 @@ test("Gruppe: mit fremder Profil-ID nichts ändern, nur die Vorschau sehen", asy
   const code = g.group.code as string;
   const wrong = { "x-profile-key": key("d") };
   expect((await request.put(`/api/groups/${code}`, { headers: wrong, data: { profile: id, name: "Gekapert" } })).status()).toBe(403);
-  expect((await request.post(`/api/groups/${code}/result`, { headers: wrong, data: { profile: id, gameId: "kniffel", players: [] } })).status()).toBe(403);
+  expect((await request.post(`/api/groups/${code}/result`, { headers: wrong, data: { profile: id, gameId: "fuenfwuerfel", players: [] } })).status()).toBe(403);
   const look = await (await request.get(`/api/groups/${code}`, { headers: { ...wrong, "x-profile": id } })).json();
   expect(look.group).toBeUndefined();
   expect(look.preview).toBeTruthy();

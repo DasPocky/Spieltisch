@@ -9,7 +9,7 @@ import type { BuildInfo } from "../build";
  * Weitere Versionen: Build (shared/build.ts), Raum-Schema (RoomState.v), Spielstand je Spiel (GameLogic.version) –
  * siehe docs/entwicklung.md, „Versionen und Updates“.
  */
-export const PROTOCOL = 1;
+export const PROTOCOL = 2;
 
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_CODE_LENGTH = 5;

@@ -51,7 +51,7 @@ test("Sprachchat: beitreten, hören, stumm, nachts still, verlassen", async ({ b
 
 test("Sprachchat: nur Mitspieler, nur eigene Sitzungen", async ({ browser, request }) => {
   const anna = await phone(browser);
-  const code = await createRoom(anna, "tutto", "Anna", "3232");
+  const code = await createRoom(anna, "alles", "Anna", "3232");
   const creds = await anna.evaluate((c) => JSON.parse(localStorage.getItem(`spieltisch:room:${c}`)!), code);
   const call = (data: object) => request.post(`/api/rooms/${code}/call`, { data });
   expect((await call({ playerId: creds.playerId, token: "falsch", op: "new" })).status()).toBe(403);
@@ -70,7 +70,7 @@ test("Sprachchat: nur Mitspieler, nur eigene Sitzungen", async ({ browser, reque
 
 test("Text-Chat: schreiben, Reaktion über dem Platz, Ungelesen-Zähler", async ({ browser }) => {
   const [anna, ben] = await Promise.all([phone(browser), phone(browser)]);
-  const code = await createRoom(anna, "uno", "Anna", "3333");
+  const code = await createRoom(anna, "eins", "Anna", "3333");
   await joinRoom(ben, code, "Ben", "3333");
   await anna.getByTestId("chat-button").click();
   await anna.getByLabel("Nachricht").fill("Hallo Ben!");
@@ -116,8 +116,8 @@ test("Jeder Raum ist Treffpunkt: erst reden, sehen, schreiben – dann ein Spiel
   // Nicht-Host schaut in die Spiel-Lobby, der Host wählt das Spiel
   await expect(ben.getByTestId("meet-play")).toHaveText("Zur Spiel-Lobby");
   await anna.getByTestId("meet-play").click();
-  await anna.getByTestId("pick-kniffel").click();
-  await expect(anna.getByTestId("game-card")).toContainText("Kniffel");
+  await anna.getByTestId("pick-fuenfwuerfel").click();
+  await expect(anna.getByTestId("game-card")).toContainText("Fünf Würfel");
   await expect(ben.getByTestId("meet")).toHaveCount(0);
-  await expect(ben.getByTestId("game-card")).toContainText("Kniffel");
+  await expect(ben.getByTestId("game-card")).toContainText("Fünf Würfel");
 });

@@ -3,13 +3,13 @@ import { toast } from "sonner";
 import { playBot } from "@shared/platform/botSkill";
 import { addPlayer, applyRoomAction, createRoom, currentPlayerId, defaultOptions, roomGame, migrateRoomState, upgradeRoom, type RoomAction, type RoomState } from "@shared/platform/room";
 import { withDefaults, type GameDefaults } from "@shared/platform/access";
-import { GAME_IDS, isGameId } from "@shared/games";
+import { GAME_IDS, isGameId, type GameId } from "@shared/games";
 import { GameError } from "@shared/platform/types";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Button } from "@/components/ui/button";
 import { navigate } from "@/hooks/useRoute";
 import { siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
-import { LOCAL_GAME_KEY, localKey, readJSON, writeJSON } from "@/lib/storage";
+import { LOCAL_GAME_KEY, localKey, readLocal, readStr, writeJSON } from "@/lib/storage";
 import { myName, reportLocal } from "@/lib/profile";
 import { linkLocalPlayer, localLinks, reportGroupResult } from "@/lib/group";
 import type { GroupPick } from "@/platform/PlayerManager";
@@ -51,7 +51,7 @@ const applyDefaults = (r: RoomState, defaults: GameDefaults | undefined): RoomSt
 
 /** Gespeicherten Spielstand fortsetzen – nach einem Update mit der alten Version zu Ende, umgerechnet oder sanft neu */
 function load(gameId: string): RoomState {
-  const saved = readJSON<RoomState>(localKey(gameId));
+  const saved = readLocal<RoomState>(gameId as GameId);
   if (saved?.gameId === gameId) {
     try { return upgradeRoom(migrateRoomState(saved)).room; } catch { /* unbrauchbar – neu anfangen */ }
   }
@@ -76,7 +76,8 @@ function useStartStats(room: RoomState) {
 
 /** Zuletzt lokal gewähltes Spiel (Startseite bzw. alte Spiel-Links merken es vor) */
 function localGameId(): string {
-  try { const id = localStorage.getItem(LOCAL_GAME_KEY); if (isGameId(id)) return id; } catch { /* egal */ }
+  const id = readStr(LOCAL_GAME_KEY);
+  if (isGameId(id)) return id;
   return GAME_IDS[0];
 }
 

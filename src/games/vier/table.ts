@@ -2,7 +2,7 @@ import type { RoomState } from "@shared/platform/room";
 import { COLOR_NAME, type VierState } from "@shared/games/vier/logic";
 import type { TableModel } from "../../platform/table/model";
 
-/** Vier gewinnt am Tisch: das Brett groß in der Mitte, Farbe an den Plätzen */
+/** Vier in einer Reihe am Tisch: das Brett groß in der Mitte, Farbe an den Plätzen */
 export function vierTable(room: RoomState): TableModel | null {
   const s = room.game as VierState;
   // Zeilen von oben nach unten; s.grid speichert je Spalte von unten nach oben

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getGame } from "@shared/games";
-import { freshPile } from "@shared/games/tutto/logic";
+import { freshPile } from "@shared/games/alles/logic";
 import { defaultOptions } from "@shared/platform/room";
 import { randomInt, shuffle } from "@shared/platform/random";
 
@@ -31,7 +31,7 @@ describe("Fairer Zufall", () => {
     expect(perms.size).toBe(120);
   });
 
-  it("Tutto-Stapel: gleiche Karten hintereinander nur so oft wie bei echtem Mischen", () => {
+  it("Alles oder nichts-Stapel: gleiche Karten hintereinander nur so oft wie bei echtem Mischen", () => {
     const pile = freshPile({});
     const n = pile.length;
     const counts = new Map<string, number>();
@@ -46,12 +46,12 @@ describe("Fairer Zufall", () => {
 
   it("Startspieler/Geber wandert reihum – jede Partie fängt jemand anderes an", () => {
     const players = ["a", "b", "c", "d"].map((id) => ({ id, name: id.toUpperCase() }));
-    const games = ["uno", "maumau", "skipbo", "fischen", "kniffel", "tutto", "maexchen", "ludo", "phase10", "flip7", "hellseher"];
+    const games = ["eins", "maumau", "stapelbau", "fischen", "fuenfwuerfel", "alles", "maexchen", "ludo", "zehnphasen", "glueckssieben", "hellseher"];
     for (const id of games) {
       const g = getGame(id);
       const starts = new Set<string>();
       for (let round = 0; round < 4; round++) {
-        // Startkarten wie „Aussetzen“ verschieben den Ersten – daher je Partie der häufigste Anfänger aus 41 Versuchen (bei 15 lag Uno in ~1 % der Läufe daneben)
+        // Startkarten wie „Aussetzen“ verschieben den Ersten – daher je Partie der häufigste Anfänger aus 41 Versuchen (bei 15 lag Eins! in ~1 % der Läufe daneben)
         const tally = new Map<string, number>();
         for (let k = 0; k < 41; k++) {
           const s = g.setup({ players, hostId: "a", actorId: null, options: defaultOptions(g.settings), now: 0, round }) as Record<string, unknown>;

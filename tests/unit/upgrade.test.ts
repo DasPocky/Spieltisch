@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
-import { GAMES, getGame } from "@shared/games";
+import { GAMES, getGame, type GameId } from "@shared/games";
+import { formerGameId } from "@shared/games/renamed";
 import { addPlayer, applyRoomAction, createRoom, migrateRoomState, ROOM_SCHEMA, roomGame, upgradeRoom, type RoomState } from "@shared/platform/room";
 import type { GameLogic } from "@shared/platform/types";
 import { berlinHour, DEFAULT_UPDATE, releaseDue, sanitizeUpdate } from "@shared/platform/update";
@@ -18,16 +19,16 @@ function playing(gameId: string): RoomState {
 
 describe("Update: laufende Partien", () => {
   it("Start merkt sich die Spielversion", () => {
-    const r = playing("uno");
-    expect(r.gameVersion).toBe(getGame("uno").version);
+    const r = playing("eins");
+    expect(r.gameVersion).toBe(getGame("eins").version);
     expect(upgradeRoom(r)).toEqual({ room: r, result: "same" });
   });
 
   it("Räume von vor der Versionsprüfung gelten als aktuell", () => {
-    const { gameVersion: _, ...old } = playing("uno");
+    const { gameVersion: _, ...old } = playing("eins");
     const up = upgradeRoom(old as RoomState);
     expect(up.result).toBe("same");
-    expect(up.room.gameVersion).toBe(getGame("uno").version);
+    expect(up.room.gameVersion).toBe(getGame("eins").version);
   });
 
   it("gesicherte alte Version: Partie läuft damit zu Ende, die nächste startet aktuell", () => {
@@ -41,8 +42,8 @@ describe("Update: laufende Partien", () => {
   });
 
   it("ohne gesicherte Version: umrechnen, wenn das Spiel es kann", () => {
-    const logic = getGame("uno");
-    const r = { ...playing("uno"), gameVersion: logic.version - 1, undo: [{}] };
+    const logic = getGame("eins");
+    const r = { ...playing("eins"), gameVersion: logic.version - 1, undo: [{}] };
     logic.migrate = (s) => ({ ...(s as object), migrated: true });
     try {
       const up = upgradeRoom(r);
@@ -54,14 +55,14 @@ describe("Update: laufende Partien", () => {
   });
 
   it("sonst endet die Partie sanft: Lobby, Spieler und Spielabend bleiben, Hinweis für die Lobby", () => {
-    const r = { ...playing("uno"), gameVersion: 999, evening: { wins: { a: 2 }, names: { a: "A" }, log: [] } };
+    const r = { ...playing("eins"), gameVersion: 999, evening: { wins: { a: 2 }, names: { a: "A" }, log: [] } };
     const up = upgradeRoom(r);
     expect(up.result).toBe("reset");
     expect(up.room.phase).toBe("lobby");
     expect(up.room.game).toBeNull();
     expect(up.room.players.map((p) => p.id)).toEqual(["a", "b", "c"]);
     expect(up.room.evening?.wins.a).toBe(2);
-    expect(up.room.updated?.gameId).toBe("uno");
+    expect(up.room.updated?.gameId).toBe("eins");
     // Neue Partie: Hinweis weg
     expect(applyRoomAction(up.room, { type: "start" }, null).updated).toBeUndefined();
   });
@@ -119,15 +120,39 @@ describe("Was ist neu?", () => {
   });
 });
 
+describe("Umbenannte Spiele: alte Räume laufen weiter", () => {
+  const old = (id: GameId) => formerGameId(id)!;
+  it("Würfelblock: früheres Feld und frühere Einstellung werden übernommen, Partie läuft weiter", () => {
+    let r = applyRoomAction(applyRoomAction(addPlayer(createRoom("fuenfwuerfel"), { id: "a", name: "A" }), { type: "start" }, "a"), { type: "game", action: { type: "roll" } }, "a");
+    // wie früher gespeichert: alte Kennung, altes Feld im Block, alte Einstellung
+    const raw = JSON.parse(JSON.stringify({ ...r, v: 1, gameId: old("fuenfwuerfel") })
+      .replaceAll('"pasch"', `"${old("fuenfwuerfel")}"`).replaceAll('"morePasch"', '"m' + "oreK" + old("fuenfwuerfel").slice(1) + '"'));
+    r = migrateRoomState(raw);
+    expect(r.gameId).toBe("fuenfwuerfel");
+    expect(r.options.morePasch).toBeDefined();
+    expect(JSON.stringify(r)).not.toContain(old("fuenfwuerfel"));
+    expect(() => applyRoomAction(r, { type: "game", action: { type: "score", cat: "pasch" } }, "a")).not.toThrow();
+  });
+  it("Spielabend und Plan mit früheren Kennungen", () => {
+    const raw = { ...createRoom("maumau"), v: 1, evening: { wins: {}, log: [{ gameId: old("alles"), winners: [], at: 1 }], plan: { games: [old("eins"), "maumau"], played: 1 } } };
+    const r = migrateRoomState(raw);
+    expect(r.evening?.log[0].gameId).toBe("alles");
+    expect(r.evening?.plan?.games).toEqual(["eins", "maumau"]);
+  });
+});
+
 describe("Gespeicherte Räume (Fixtures) laden", () => {
-  const load = (f: string) => JSON.parse(readFileSync(`tests/fixtures/rooms/${f}`, "utf8")) as unknown;
+  // Fixtures sind gespeicherte Räume von früher – dort stehen die früheren Spielkennungen (im Text als „@alt:<heutige>“)
+  const load = (f: string) => JSON.parse(readFileSync(`tests/fixtures/rooms/${f}`, "utf8").replace(/@alt:(\w+)/g, (_, id: GameId) => formerGameId(id)!)) as unknown;
   it("v1, Partie läuft (vor der Versionsprüfung gespeichert): weiterspielen mit Spielern, Punkten, Spielabend", () => {
-    const raw = load("v1-uno-playing.json") as RoomState;
+    const raw = load("v1-eins-playing.json") as RoomState;
     const r = upgradeRoom(migrateRoomState(raw)).room;
     expect(r.phase).toBe("playing");
     expect(r.players.map((p) => p.id)).toEqual(["a", "b", "c"]);
     expect(r.evening?.wins.a).toBe(1);
-    expect(r.gameVersion).toBe(getGame("uno").version);
+    expect(r.gameVersion).toBe(getGame("eins").version);
+    expect(r.gameId).toBe("eins");
+    expect(r.options.eins).toBe(true);
     expect(r.game).toEqual(raw.game);
     // ein Zug geht weiter
     const view = roomGame(r);
@@ -141,8 +166,8 @@ describe("Gespeicherte Räume (Fixtures) laden", () => {
   it("Kaputtes wird abgelehnt, Lücken werden aufgefüllt", () => {
     expect(() => migrateRoomState(null)).toThrow();
     expect(() => migrateRoomState({ v: 1 })).toThrow();
-    const r = migrateRoomState({ gameId: "uno", phase: "playing" });
-    expect(r).toMatchObject({ v: 1, players: [], phase: "lobby", game: null, round: 0 });
-    expect(ROOM_SCHEMA).toBe(1);
+    const r = migrateRoomState({ gameId: "eins", phase: "playing" });
+    expect(r).toMatchObject({ v: 2, players: [], phase: "lobby", game: null, round: 0 });
+    expect(ROOM_SCHEMA).toBe(2);
   });
 });

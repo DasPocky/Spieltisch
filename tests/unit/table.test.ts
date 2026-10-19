@@ -9,7 +9,7 @@ describe("Großer Tisch: Modell aus der Sicht ohne eigene Karten", () => {
     expect(tableModel(roomWith(["Anna", "Ben"], "maumau"))).toBeNull();
   });
 
-  for (const gameId of ["maumau", "uno"]) {
+  for (const gameId of ["maumau", "eins"]) {
     it(`${gameId}: Stapel, Ablage, Kartenzahl und wer dran ist – ohne fremde Karten`, () => {
       const r = act(roomWith(["Anna", "Ben", "Cem"], gameId), { type: "start" });
       const seen = viewRoom(r, WATCH_ID);
@@ -25,15 +25,15 @@ describe("Großer Tisch: Modell aus der Sicht ohne eigene Karten", () => {
   }
 
   it("Spiele ohne Tisch-Ansicht und echte Karten: kein Modell (Handy-Ansicht in der Mitte)", () => {
-    expect(tableModel(act(roomWith(["Anna", "Ben"], "tutto"), { type: "start" }))).toBeNull();
-    // Kniffel mit echten Würfeln: Augen unbekannt – kein Modell
-    expect(tableModel(act(act(roomWith(["Anna", "Ben"], "kniffel"), { type: "setOption", key: "diceMode", value: "real" }), { type: "start" }))).toBeNull();
+    expect(tableModel(act(roomWith(["Anna", "Ben"], "alles"), { type: "start" }))).toBeNull();
+    // Fünf Würfel mit echten Würfeln: Augen unbekannt – kein Modell
+    expect(tableModel(act(act(roomWith(["Anna", "Ben"], "fuenfwuerfel"), { type: "setOption", key: "diceMode", value: "real" }), { type: "start" }))).toBeNull();
     const real = act(act(roomWith(["Anna", "Ben"], "maumau"), { type: "setOption", key: "mode", value: "table" }), { type: "start" });
     expect(tableModel(real)).toBeNull();
   });
 
-  it("Würfel und Spielfeld: Kniffel zeigt Würfel und Punkte, Vier gewinnt das Brett von oben nach unten", () => {
-    let k = act(roomWith(["Anna", "Ben"], "kniffel"), { type: "start" });
+  it("Würfel und Spielfeld: Fünf Würfel zeigt Würfel und Punkte, Vier in einer Reihe das Brett von oben nach unten", () => {
+    let k = act(roomWith(["Anna", "Ben"], "fuenfwuerfel"), { type: "start" });
     const km = tableModel(k)!;
     expect(km.dice?.values).toEqual([]);
     expect(km.notes?.p1).toBe("0 Pkt.");

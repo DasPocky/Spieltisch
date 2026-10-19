@@ -19,36 +19,36 @@ async function openRoom(page: Page, pin: string, room: { name: string; visibilit
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
   await page.getByTestId("meet-play").click();
-  await page.getByTestId(`pick-${room.game ?? "uno"}`).click();
+  await page.getByTestId(`pick-${room.game ?? "eins"}`).click();
   await expect(page.getByTestId("game-card")).toBeVisible();
   return page.url().split("/").pop()!;
 }
 
 test("Start: offene Räume anderer, eigene Räume ohne PIN, private bleiben unsichtbar", async ({ browser }) => {
   const anna = await phoneAs(browser, "Anna");
-  const code = await openRoom(anna, "4321", { name: "Kniffelrunde" });
+  const code = await openRoom(anna, "4321", { name: "Würfelrunde" });
   const cem = await phoneAs(browser, "Cem");
   const secret = await openRoom(cem, "1111", { name: "Geheimbund", visibility: /Niemand/ });
 
   const ben = await phoneAs(browser, "Ben");
   await ben.goto("/");
   const open = ben.getByTestId("open-rooms");
-  await expect(open.getByTestId(`room-card-${code}`)).toContainText("Kniffelrunde");
-  await expect(open.getByTestId(`room-card-${code}`)).toContainText("Uno · Lobby");
+  await expect(open.getByTestId(`room-card-${code}`)).toContainText("Würfelrunde");
+  await expect(open.getByTestId(`room-card-${code}`)).toContainText("Eins! · Lobby");
   await expect(ben.getByTestId(`room-card-${secret}`)).toHaveCount(0);
   await expectNoScroll(ben);
   await shot(ben, "08-start-offene-raeume");
 
   // Antippen: Beitrittsformular mit Namen des Raums, dann PIN
   await open.getByTestId(`room-card-${code}`).click();
-  await expect(ben.getByText("Kniffelrunde · Uno · Raum")).toBeVisible();
+  await expect(ben.getByText("Würfelrunde · Eins! · Raum")).toBeVisible();
   await ben.getByLabel("PIN").fill("4321");
   await ben.getByRole("button", { name: "Beitreten" }).click();
   await expect(ben.getByText("Warte, bis der Host das Spiel startet …")).toBeVisible();
 
   // Zurück auf dem Start: jetzt unter „Deine Räume“ – ein Tipp, und Ben ist ohne PIN wieder drin
   await ben.goto("/");
-  await expect(ben.getByTestId("my-rooms").getByTestId(`room-card-${code}`)).toContainText("Kniffelrunde");
+  await expect(ben.getByTestId("my-rooms").getByTestId(`room-card-${code}`)).toContainText("Würfelrunde");
   await expect(ben.getByTestId("open-rooms").getByTestId(`room-card-${code}`)).toHaveCount(0);
   await shot(ben, "08b-start-deine-raeume");
   await ben.getByTestId(`room-card-${code}`).click();
@@ -63,7 +63,7 @@ test("Start: offene Räume anderer, eigene Räume ohne PIN, private bleiben unsi
 
 test("Laufende Partie: Wer über die Liste dazukommt, schaut zu und spielt ab der nächsten Partie mit", async ({ browser }) => {
   const anna = await phoneAs(browser, "Anna");
-  const code = await openRoom(anna, "5555", { name: "Uno-Abend" });
+  const code = await openRoom(anna, "5555", { name: "Eins-Abend" });
   const ben = await phoneAs(browser, "Ben");
   await ben.goto(`/r/${code}`);
   await ben.getByLabel("PIN").fill("5555");
@@ -72,7 +72,7 @@ test("Laufende Partie: Wer über die Liste dazukommt, schaut zu und spielt ab de
 
   const dora = await phoneAs(browser, "Dora");
   await dora.goto("/");
-  await expect(dora.getByTestId(`room-card-${code}`)).toContainText("Uno · läuft");
+  await expect(dora.getByTestId(`room-card-${code}`)).toContainText("Eins! · läuft");
   await dora.getByTestId(`room-card-${code}`).click();
   await expect(dora.getByTestId("join-spectate")).toContainText("du schaust zu");
   await dora.getByLabel("PIN").fill("5555");

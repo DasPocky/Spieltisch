@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { closeSettings, expectInView, expectNoScroll, openSettings, shot, startLocalTutto } from "./util";
+import { closeSettings, expectInView, expectNoScroll, openSettings, shot, startLocalAlles } from "./util";
 
 /** Kleine und große Handys, Tablet und Browserfenster */
 const SIZES = [
@@ -10,12 +10,12 @@ const SIZES = [
 ];
 
 for (const size of SIZES) {
-  test(`Tutto passt ohne Scrollen: ${size.name} ${size.width}×${size.height}`, async ({ page }) => {
+  test(`Alles oder nichts passt ohne Scrollen: ${size.name} ${size.width}×${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await page.goto("/");
     await page.evaluate(() => localStorage.clear());
     await expectNoScroll(page);
-    await startLocalTutto(page, ["Anna", "Ben", "Cem", "Dora", "Emil"]);
+    await startLocalAlles(page, ["Anna", "Ben", "Cem", "Dora", "Emil"]);
     const plus = page.getByRole("button", { name: "+100", exact: true });
     for (let i = 0; i < 40 && !(await plus.isVisible()); i++) {
       await page.getByRole("button", { name: /Niete|ächster Spieler/i }).first().click();
@@ -104,7 +104,7 @@ async function clippedButtons(page: import("@playwright/test").Page) {
   });
 }
 
-const GAMES: [string, number][] = [["skyjo", 4], ["codenames", 4], ["tutto", 3], ["kniffel", 3], ["flip7", 4], ["werwolf", 6], ["einenacht", 4], ["maumau", 4], ["uno", 3], ["skipbo", 3], ["phase10", 3], ["fischen", 3]];
+const GAMES: [string, number][] = [["himmelskarten", 4], ["decknamen", 4], ["alles", 3], ["fuenfwuerfel", 3], ["glueckssieben", 4], ["werwolf", 6], ["einenacht", 4], ["maumau", 4], ["eins", 3], ["stapelbau", 3], ["zehnphasen", 3], ["fischen", 3]];
 for (const size of [{ width: 320, height: 568 }, { width: 1280, height: 720 }]) {
   for (const [game, n] of GAMES) {
     test(`${game} ohne Scrollen und Abschneiden: ${size.width}×${size.height}`, async ({ page }) => {

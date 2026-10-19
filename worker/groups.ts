@@ -1,4 +1,5 @@
 /** Feste Gruppen: Mitglieder, Bestenliste, Pinnwand */
+import { renameStored } from "../shared/games/renamed";
 import { DurableObject } from "cloudflare:workers";
 import { isGameId } from "../shared/games";
 import { addGroupResult, newGroup, previewGroup, removeMember, sanitizeGroupResult, upsertMember, viewGroup, cleanGroupName, type GroupData, type GroupPreview, type GroupView } from "../shared/platform/group";
@@ -17,7 +18,7 @@ export class GroupStore extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => { this.group = (await ctx.storage.get<GroupData>("group")) ?? null; });
+    ctx.blockConcurrencyWhile(async () => { this.group = renameStored((await ctx.storage.get<GroupData>("group")) ?? null); });
   }
 
   /** Neue Gruppe mit dem ersten Mitglied. null, wenn der Code schon vergeben ist. */

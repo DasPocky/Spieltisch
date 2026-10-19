@@ -48,7 +48,7 @@ describe("Chat", () => {
 describe("Ergebnisse", () => {
   it("je Profil und Gruppe ein Auftrag mit derselben Partie-Kennung", () => {
     const room = { code: "ABCDE", createdAt: 5, profiles: { a: "PROFA", b: "PROFB" }, groups: { a: "GRP1", b: "GRP1" } };
-    const jobs = resultJobs(room, "uno", 3, [{ id: "a", won: true }, { id: "b", won: false }, { id: "c", won: false }], 100);
+    const jobs = resultJobs(room, "eins", 3, [{ id: "a", won: true }, { id: "b", won: false }, { id: "c", won: false }], 100);
     expect(jobs.map((j) => `${j.kind}:${j.target}`)).toEqual(["profile:PROFA", "profile:PROFB", "group:GRP1"]);
     expect(new Set(jobs.map((j) => j.event))).toEqual(new Set([resultEvent(room, 3)]));
     expect(resultEvent(room, 3)).not.toBe(resultEvent(room, 4));

@@ -18,7 +18,7 @@ test("Verwaltung: Tab erscheint nach der Anmeldung, Abmelden nimmt ihn wieder we
 
 test("Verwaltung Live: Nachricht, Host, Einstellungen, Partie beenden, PIN, Entfernen, Zuschauen", async ({ browser }) => {
   const anna = await newPhone(browser);
-  const code = await createRoom(anna, "tutto", "Anna", "1234");
+  const code = await createRoom(anna, "alles", "Anna", "1234");
   const ben = await newPhone(browser);
   await joinRoom(ben, code, "Ben", "1234");
   await anna.getByRole("button", { name: "Spiel starten" }).click();
@@ -112,7 +112,7 @@ test("Entwickler-Modus: Testraum mit Bots – Bots ziehen selbst, Raum ist unsic
   await page.getByRole("checkbox", { name: "Entwickler-Modus" }).click();
   await page.goto("/admin");
   await page.getByTestId("admin-tile-entwickler").click();
-  await page.getByTestId("dev-game").selectOption("tutto");
+  await page.getByTestId("dev-game").selectOption("alles");
   await page.getByRole("button", { name: "Ein Bot weniger" }).click();
   await expect(page.getByTestId("dev-bots")).toHaveText("2");
   await page.getByRole("button", { name: "Testraum öffnen" }).click();
@@ -139,14 +139,14 @@ test("Entwickler-Modus: Testraum mit Bots – Bots ziehen selbst, Raum ist unsic
   await shot(page, "dev-live-bots");
   await sheet.getByRole("button", { name: "Bot 2 übernehmen" }).click();
   await expect(page).toHaveURL(new RegExp(`/r/${code}$`));
-  await expect(page.getByTestId("tutto-board").or(page.getByTestId("current-player"))).toBeVisible();
+  await expect(page.getByTestId("alles-board").or(page.getByTestId("current-player"))).toBeVisible();
 });
 
 test("Entwickler-Modus: Bots in „Ein Handy für alle“ ziehen, wenn sie dran sind", async ({ page }) => {
   test.setTimeout(120_000);
   await adminLogin(page);
   await page.evaluate(() => localStorage.setItem("spieltisch:dev", JSON.stringify({ on: true })));
-  await page.goto("/spiel/tutto/lokal");
+  await page.goto("/spiel/alles/lokal");
   await page.getByRole("button", { name: /Bot dazu/ }).click();
   await page.getByLabel("Name des Spielers").fill("Anna");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
@@ -157,7 +157,7 @@ test("Entwickler-Modus: Bots in „Ein Handy für alle“ ziehen, wenn sie dran 
 test("Entwickler-Modus: Diagnose-Anzeige und künstliches Funkloch – der Raum verbindet sich danach von selbst", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const host = await newPhone(browser);
-  const code = await createRoom(host, "tutto", "Hanna", "4321");
+  const code = await createRoom(host, "alles", "Hanna", "4321");
   await adminLogin(page);
   await page.evaluate(() => localStorage.setItem("spieltisch:dev", JSON.stringify({ on: true, overlay: true })));
   await joinRoom(page, code, "Admin", "4321");
