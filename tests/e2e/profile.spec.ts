@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { closeSettings, createRoom, openSettings, shot } from "./util";
 
-/** Tutto mit Ziel 1.000 schnell gewinnen: bis eine Karte mit Würfelpunkten kommt, dann 1.000 eintragen */
-async function winTutto(page: Page) {
+/** Alles oder nichts mit Ziel 1.000 schnell gewinnen: bis eine Karte mit Würfelpunkten kommt, dann 1.000 eintragen */
+async function winAlles(page: Page) {
   await openSettings(page);
   const target = page.getByRole("button", { name: "Spielziel verringern" });
   for (let i = 0; i < 5; i++) await target.click();
@@ -37,14 +37,14 @@ test("Profil: Online- und lokale Partien landen in der Statistik", async ({ brow
   await page.getByRole("button", { name: "Speichern" }).click();
 
   // Online-Raum allein gewinnen
-  await createRoom(page, "tutto", "Anna", "2468");
-  await winTutto(page);
+  await createRoom(page, "alles", "Anna", "2468");
+  await winAlles(page);
 
   // Lokal: der Spieler „Anna“ bin ich
-  await page.goto("/spiel/tutto/lokal");
+  await page.goto("/spiel/alles/lokal");
   await page.getByLabel("Name des Spielers").fill("Anna");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await winTutto(page);
+  await winAlles(page);
 
   await page.goto("/profil");
   await expect(page.getByTestId("stats")).toContainText("2 Partien · 2 gewonnen (100 %)");

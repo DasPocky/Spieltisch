@@ -4,26 +4,26 @@ import { GAMES } from "@shared/games";
 
 describe("Spielweisen je Spiel", () => {
   it("nur bekannte Spiele und Spielweisen, nur Abweichungen werden gespeichert", () => {
-    expect(sanitizeModes({ uno: { table: "beta", stage: "on" }, maumau: { table: "on" }, tutto: { stage: "on" }, gibtsnicht: { table: "off" }, schamlos: { table: "quatsch" } }))
-      .toEqual({ uno: { table: "beta", stage: "on" } });
+    expect(sanitizeModes({ eins: { table: "beta", stage: "on" }, maumau: { table: "on" }, alles: { stage: "on" }, gibtsnicht: { table: "off" }, schamlos: { table: "quatsch" } }))
+      .toEqual({ eins: { table: "beta", stage: "on" } });
   });
   it("Zustand: eingebaut, von der Verwaltung überschrieben, „none“ wenn das Spiel es nicht kann", () => {
-    expect(modeState({}, "uno", "table")).toBe("on");
-    expect(modeState({ uno: { table: "off" } }, "uno", "table")).toBe("off");
-    expect(modeState({}, "kniffel", "table")).toBe("on");
-    expect(modeState({}, "kniffel", "stage")).toBe("beta");
-    expect(modeState({}, "tutto", "table")).toBe("none");
-    expect(modeState({}, "uno", "stage")).toBe("beta");
-    expect(modeState({}, "tutto", "stage")).toBe("none");
+    expect(modeState({}, "eins", "table")).toBe("on");
+    expect(modeState({ eins: { table: "off" } }, "eins", "table")).toBe("off");
+    expect(modeState({}, "fuenfwuerfel", "table")).toBe("on");
+    expect(modeState({}, "fuenfwuerfel", "stage")).toBe("beta");
+    expect(modeState({}, "alles", "table")).toBe("none");
+    expect(modeState({}, "eins", "stage")).toBe("beta");
+    expect(modeState({}, "alles", "stage")).toBe("none");
   });
   it("Beta nur für Geräte der Verwaltung", () => {
-    const m = { uno: { table: "beta" as const } };
-    expect(modeAllowed(m, "uno", "table", false)).toBe(false);
-    expect(modeAllowed(m, "uno", "table", true)).toBe(true);
-    expect(modeAllowed({ uno: { table: "off" } }, "uno", "table", true)).toBe(false);
+    const m = { eins: { table: "beta" as const } };
+    expect(modeAllowed(m, "eins", "table", false)).toBe(false);
+    expect(modeAllowed(m, "eins", "table", true)).toBe(true);
+    expect(modeAllowed({ eins: { table: "off" } }, "eins", "table", true)).toBe(false);
   });
   it("Tisch-Spiele sind echte Spiele", () => {
-    expect(TABLE_GAMES).toEqual(["maumau", "uno", "schamlos", "kniffel", "vier"]);
+    expect(TABLE_GAMES).toEqual(["maumau", "eins", "schamlos", "fuenfwuerfel", "vier", "stapelbau", "himmelskarten", "zehnphasen", "glueckssieben", "decknamen"]);
     for (const id of Object.keys(GAME_MODES)) expect(id in GAMES).toBe(true);
   });
 });

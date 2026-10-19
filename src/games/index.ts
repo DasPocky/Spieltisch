@@ -7,78 +7,78 @@ import { use, type ComponentType } from "react";
 import { GAME_IDS, getGame, isGameId, type GameId } from "@shared/games";
 import type { GameUI } from "./types";
 import { legacyLoader } from "@/legacy";
-import { Icon as CodenamesIcon } from "./codenames/Icon";
+import { Icon as DecknamenIcon } from "./decknamen/Icon";
 import { Icon as DameIcon } from "./dame/Icon";
 import { Icon as EinenachtIcon } from "./einenacht/Icon";
 import { Icon as FischenIcon } from "./fischen/Icon";
-import { Icon as Flip7Icon } from "./flip7/Icon";
+import { Icon as GlueckssiebenIcon } from "./glueckssieben/Icon";
 import { Icon as HellseherIcon } from "./hellseher/Icon";
-import { Icon as KniffelIcon } from "./kniffel/Icon";
+import { Icon as FuenfWuerfelIcon } from "./fuenfwuerfel/Icon";
 import { Icon as LudoIcon } from "./ludo/Icon";
 import { Icon as MaexchenIcon } from "./maexchen/Icon";
 import { Icon as MaumauIcon } from "./maumau/Icon";
 import { Icon as MuehleIcon } from "./muehle/Icon";
-import { Icon as Phase10Icon } from "./phase10/Icon";
+import { Icon as ZehnPhasenIcon } from "./zehnphasen/Icon";
 import { Icon as SchamlosIcon } from "./schamlos/Icon";
-import { Icon as SkipboIcon } from "./skipbo/Icon";
-import { Icon as SkyjoIcon } from "./skyjo/Icon";
+import { Icon as StapelbauIcon } from "./stapelbau/Icon";
+import { Icon as HimmelskartenIcon } from "./himmelskarten/Icon";
 import { Icon as SpionIcon } from "./spion/Icon";
-import { Icon as TuttoIcon } from "./tutto/Icon";
-import { Icon as UnoIcon } from "./uno/Icon";
+import { Icon as AllesIcon } from "./alles/Icon";
+import { Icon as EinsIcon } from "./eins/Icon";
 import { Icon as VierIcon } from "./vier/Icon";
 import { Icon as WerwolfIcon } from "./werwolf/Icon";
 
 type Icon = ComponentType<{ className?: string }>;
 
 const ICONS: Record<GameId, Icon> = {
-  codenames: CodenamesIcon,
+  decknamen: DecknamenIcon,
   dame: DameIcon,
   einenacht: EinenachtIcon,
   fischen: FischenIcon,
-  flip7: Flip7Icon,
+  glueckssieben: GlueckssiebenIcon,
   hellseher: HellseherIcon,
-  kniffel: KniffelIcon,
+  fuenfwuerfel: FuenfWuerfelIcon,
   ludo: LudoIcon,
   maexchen: MaexchenIcon,
   maumau: MaumauIcon,
   muehle: MuehleIcon,
-  phase10: Phase10Icon,
+  zehnphasen: ZehnPhasenIcon,
   schamlos: SchamlosIcon,
-  skipbo: SkipboIcon,
-  skyjo: SkyjoIcon,
+  stapelbau: StapelbauIcon,
+  himmelskarten: HimmelskartenIcon,
   spion: SpionIcon,
-  tutto: TuttoIcon,
-  uno: UnoIcon,
+  alles: AllesIcon,
+  eins: EinsIcon,
   vier: VierIcon,
   werwolf: WerwolfIcon,
 };
 
 const LOADERS: Record<GameId, () => Promise<GameUI>> = {
-  codenames: () => import("./codenames").then((m) => m.codenamesUI as unknown as GameUI),
+  decknamen: () => import("./decknamen").then((m) => m.decknamenUI as unknown as GameUI),
   dame: () => import("./dame").then((m) => m.dameUI as unknown as GameUI),
   einenacht: () => import("./einenacht").then((m) => m.einenachtUI as unknown as GameUI),
   fischen: () => import("./fischen").then((m) => m.fischenUI as unknown as GameUI),
-  flip7: () => import("./flip7").then((m) => m.flip7UI as unknown as GameUI),
+  glueckssieben: () => import("./glueckssieben").then((m) => m.glueckssiebenUI as unknown as GameUI),
   hellseher: () => import("./hellseher").then((m) => m.hellseherUI as unknown as GameUI),
-  kniffel: () => import("./kniffel").then((m) => m.kniffelUI as unknown as GameUI),
+  fuenfwuerfel: () => import("./fuenfwuerfel").then((m) => m.fuenfwuerfelUI as unknown as GameUI),
   ludo: () => import("./ludo").then((m) => m.ludoUI as unknown as GameUI),
   maexchen: () => import("./maexchen").then((m) => m.maexchenUI as unknown as GameUI),
   maumau: () => import("./maumau").then((m) => m.maumauUI as unknown as GameUI),
   muehle: () => import("./muehle").then((m) => m.muehleUI as unknown as GameUI),
-  phase10: () => import("./phase10").then((m) => m.phase10UI as unknown as GameUI),
+  zehnphasen: () => import("./zehnphasen").then((m) => m.zehnphasenUI as unknown as GameUI),
   schamlos: () => import("./schamlos").then((m) => m.schamlosUI as unknown as GameUI),
-  skipbo: () => import("./skipbo").then((m) => m.skipboUI as unknown as GameUI),
-  skyjo: () => import("./skyjo").then((m) => m.skyjoUI as unknown as GameUI),
+  stapelbau: () => import("./stapelbau").then((m) => m.stapelbauUI as unknown as GameUI),
+  himmelskarten: () => import("./himmelskarten").then((m) => m.himmelskartenUI as unknown as GameUI),
   spion: () => import("./spion").then((m) => m.spionUI as unknown as GameUI),
-  tutto: () => import("./tutto").then((m) => m.tuttoUI as unknown as GameUI),
-  uno: () => import("./uno").then((m) => m.unoUI as unknown as GameUI),
+  alles: () => import("./alles").then((m) => m.allesUI as unknown as GameUI),
+  eins: () => import("./eins").then((m) => m.einsUI as unknown as GameUI),
   vier: () => import("./vier").then((m) => m.vierUI as unknown as GameUI),
   werwolf: () => import("./werwolf").then((m) => m.werwolfUI as unknown as GameUI),
 };
 
 const loaded = new Map<string, GameUI>();
 const loading = new Map<string, Promise<GameUI>>();
-const idOf = (id: string): GameId => (isGameId(id) ? id : "tutto");
+const idOf = (id: string): GameId => (isGameId(id) ? id : "alles");
 
 /**
  * Spiel laden (einmal) – für Vorladen, z. B. wenn es in der Lobby gewählt wird.

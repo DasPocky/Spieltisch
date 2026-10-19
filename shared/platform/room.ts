@@ -4,6 +4,7 @@
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
+import { renameGameFields, renamedGameId } from "../games/renamed";
 import { legacyGame } from "../legacy";
 import { sanitizeAvatar, type Avatar } from "./avatar";
 import { sanitizeAccess, type RoomAccess } from "./directory";
@@ -13,7 +14,7 @@ export const MAX_PLAYERS = 20;
 export const MAX_NAME = 16;
 
 export interface RoomState {
-  v: 1;
+  v: 2;
   gameId: string;
   players: Player[];
   hostId: string | null;
@@ -181,7 +182,7 @@ export function sanitizeOption(def: SettingDef, value: unknown): OptionValue {
 export function createRoom(gameId: string = DEFAULT_GAME): RoomState {
   const id = isGameId(gameId) ? gameId : DEFAULT_GAME;
   return {
-    v: 1, gameId: id, players: [], hostId: null, entry: "turn",
+    v: ROOM_SCHEMA, gameId: id, players: [], hostId: null, entry: "turn",
     options: defaultOptions(getGame(id).settings), phase: "lobby", game: null, round: 0,
   };
 }
@@ -194,9 +195,25 @@ export function roomGame(room: RoomState): GameLogic<unknown, { type: string }> 
 }
 
 /** Version des Raum-Formats (`RoomState.v`). Beim Erhöhen eine Übernahme in ROOM_MIGRATIONS eintragen und eine Fixture ablegen. */
-export const ROOM_SCHEMA = 1;
+export const ROOM_SCHEMA = 2;
 /** Übernahmen alter Raum-Formate: von Version n auf n+1 */
-const ROOM_MIGRATIONS: Record<number, (s: Record<string, unknown>) => Record<string, unknown>> = {};
+const ROOM_MIGRATIONS: Record<number, (s: Record<string, unknown>) => Record<string, unknown>> = {
+  // 1 → 2: Spiele umbenannt (keine Markennamen) – Spiel, Einstellungen, Spielstand, Rückgängig, Spielabend und Hinweis übernehmen
+  1: (s) => {
+    const gameId = renamedGameId(String(s.gameId));
+    const ev = s.evening as Evening | undefined;
+    const upd = s.updated as RoomState["updated"];
+    return {
+      ...s, v: 2, gameId,
+      options: renameGameFields(gameId, s.options),
+      game: renameGameFields(gameId, s.game),
+      ...(Array.isArray(s.undo) ? { undo: s.undo.map((g) => renameGameFields(gameId, g)) } : {}),
+      ...(ev ? { evening: { ...ev, log: (ev.log ?? []).map((l) => ({ ...l, gameId: renamedGameId(l.gameId) })),
+        ...(ev.plan ? { plan: { ...ev.plan, games: ev.plan.games.map(renamedGameId) } } : {}) } } : {}),
+      ...(upd ? { updated: { ...upd, gameId: renamedGameId(upd.gameId) } } : {}),
+    };
+  },
+};
 
 /**
  * Gespeicherten Raum laden: alte Formate schrittweise übernehmen, Grundform sichern (fehlende Listen ergänzen).
@@ -215,7 +232,7 @@ export function migrateRoomState(raw: unknown): RoomState {
   const r = s as unknown as RoomState;
   return {
     ...r,
-    v: 1,
+    v: ROOM_SCHEMA,
     gameId: isGameId(r.gameId) ? r.gameId : DEFAULT_GAME,
     players: Array.isArray(r.players) ? r.players : [],
     options: r.options && typeof r.options === "object" ? r.options : defaultOptions(getGame(r.gameId).settings),

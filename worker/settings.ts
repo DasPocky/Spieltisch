@@ -1,4 +1,5 @@
 /** Ein einziges Durable Object für die Seite: Admin-Einstellungen und -Sitzungen, Raumverzeichnis, Statistik, Verlauf */
+import { renameStored } from "../shared/games/renamed";
 import { DurableObject } from "cloudflare:workers";
 import { GAMES, isGameId } from "../shared/games";
 import { PROFILE_ID_RE } from "../shared/platform/profile";
@@ -51,9 +52,10 @@ export class SiteSettings extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
+      // renameStored: Spiele mit früheren Kennungen (vor der Umbenennung) übernehmen
       const saved = await ctx.storage.get<SettingsData>("settings");
-      if (saved) this.data = saved;
-      this.stats = (await ctx.storage.get<SiteStats>("stats")) ?? this.stats;
+      if (saved) this.data = renameStored(saved);
+      this.stats = renameStored((await ctx.storage.get<SiteStats>("stats")) ?? this.stats);
     });
   }
 
@@ -133,7 +135,7 @@ export class SiteSettings extends DurableObject<Env> {
     if (!ROOM_CODE_RE.test(room.code)) return;
     await this.ctx.storage.put(`room:${room.code}`, room);
     const key = archKey(room.code, room.createdAt);
-    const a = (await this.ctx.storage.get<ArchivedRoom>(key)) ?? { code: room.code, createdAt: room.createdAt, lastAt: room.activeAt, games: [], players: [], partien: 0 };
+    const a = renameStored(await this.ctx.storage.get<ArchivedRoom>(key)) ?? { code: room.code, createdAt: room.createdAt, lastAt: room.activeAt, games: [], players: [], partien: 0 };
     a.lastAt = Math.max(a.lastAt, room.activeAt);
     for (const p of room.players) if (!a.players.includes(p.name)) a.players.push(p.name);
     if (room.phase === "playing" && !a.games.includes(room.gameId)) a.games.push(room.gameId);
@@ -151,7 +153,7 @@ export class SiteSettings extends DurableObject<Env> {
 
   /** Verlauf, neueste zuerst; was älter ist als die eingestellte Frist, wird dabei gelöscht */
   async archiveList(): Promise<ArchivedRoom[]> {
-    const all = await this.ctx.storage.list<ArchivedRoom>({ prefix: "arch:" });
+    const all = new Map([...(await this.ctx.storage.list<ArchivedRoom>({ prefix: "arch:" }))].map(([k, a]) => [k, renameStored(a)]));
     const days = (await this.config()).archiveDays;
     const cut = Date.now() - days * 86_400_000;
     const old = [...all].filter(([, a]) => a.lastAt < cut).map(([k]) => k);
@@ -252,7 +254,7 @@ export class SiteSettings extends DurableObject<Env> {
       const room = await this.ctx.storage.get<AdminRoom>(`room:${code}`);
       if (room) {
         const key = archKey(code, room.createdAt);
-        const a = await this.ctx.storage.get<ArchivedRoom>(key);
+        const a = renameStored(await this.ctx.storage.get<ArchivedRoom>(key));
         if (a) await this.ctx.storage.put(key, { ...a, partien: a.partien + 1, games: a.games.includes(gameId) ? a.games : [...a.games, gameId] });
       }
     }

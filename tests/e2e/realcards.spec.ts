@@ -7,12 +7,12 @@ async function local(page: Page, gameId: string, names: string[], radios: RegExp
   await startLocal(page, gameId, names, { settings: pick(...radios) });
 }
 
-test("Flip 7 mit echten Karten: Karten antippen, die App rechnet", async ({ page }) => {
-  await local(page, "flip7", ["Anna", "Ben", "Cem"], [/Echte Karten/]);
+test("Glückssieben mit echten Karten: Karten antippen, die App rechnet", async ({ page }) => {
+  await local(page, "glueckssieben", ["Anna", "Ben", "Cem"], [/Echte Karten/]);
   await page.getByRole("button", { name: "Karten von Anna wählen" }).click();
   for (const c of ["5", "12", "×2", "+4"]) await page.getByTestId("hand-pick").getByRole("button", { name: c, exact: true }).click();
   await expect(page.getByTestId("hand-points")).toHaveText("38");
-  await shot(page, "75b-flip7-hand");
+  await shot(page, "75b-glueckssieben-hand");
   await page.getByRole("button", { name: "Eintragen", exact: true }).click();
   await expect(page.getByRole("button", { name: "Karten von Anna wählen" })).toHaveText("38 P.");
   for (const n of ["Ben", "Cem"]) {
@@ -23,13 +23,13 @@ test("Flip 7 mit echten Karten: Karten antippen, die App rechnet", async ({ page
   await expect(page.getByTestId("pad-info")).toHaveText("Runde 2 · bis 200");
 });
 
-test("Flip 7 mit echten Karten: Punkteblock bis zum Ziel", async ({ page }) => {
-  await local(page, "flip7", ["Anna", "Ben", "Cem"], [/Echte Karten/, /Punkte eintippen/]);
+test("Glückssieben mit echten Karten: Punkteblock bis zum Ziel", async ({ page }) => {
+  await local(page, "glueckssieben", ["Anna", "Ben", "Cem"], [/Echte Karten/, /Punkte eintippen/]);
   await expect(page.getByTestId("pad-info")).toHaveText("Runde 1 · bis 200");
   for (const [n, p] of [["Anna", "120"], ["Ben", "35"], ["Cem", "0"]]) await page.getByLabel(`Punkte ${n}`).fill(p);
   await page.getByLabel("Punkte Cem").blur();
   await expectNoScroll(page);
-  await shot(page, "75-flip7-table");
+  await shot(page, "75-glueckssieben-table");
   await page.getByRole("button", { name: "Runde 1 abschließen" }).click();
   await expect(page.getByTestId("pad-info")).toHaveText("Runde 2 · bis 200");
   // Negative Rundenpunkte (Minus-Karten bei Voll fies) gehen auch
@@ -74,23 +74,23 @@ test("Mau-Mau mit echten Karten: Siege zählen, Hausregeln ausgeblendet", async 
   await expect(page.getByText("hat 3 Runden gewonnen")).toBeVisible();
 });
 
-test("Tutto mit echten Karten: gezogene Karte antippen", async ({ page }) => {
-  await local(page, "tutto", ["Anna", "Ben"], [/Echte Karten/]);
+test("Alles oder nichts mit echten Karten: gezogene Karte antippen", async ({ page }) => {
+  await local(page, "alles", ["Anna", "Ben"], [/Echte Karten/]);
   await page.getByRole("button", { name: "Karte ziehen" }).first().click();
   await expect(page.getByRole("dialog", { name: "Gezogene Karte wählen" })).toBeVisible();
-  await shot(page, "77-tutto-realcards-picker");
+  await shot(page, "77-alles-realcards-picker");
   await page.getByRole("button", { name: "Bonus 300" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expectNoScroll(page);
-  await shot(page, "78-tutto-realcards");
+  await shot(page, "78-alles-realcards");
 });
 
-test("Tutto Plus/Minus: nach dem Tutto nur eintragen, kein Weiterzocken", async ({ page }) => {
-  await local(page, "tutto", ["Anna", "Ben"], [/Echte Karten/]);
+test("Alles oder nichts Plus/Minus: nach dem Alles oder nichts nur eintragen, kein Weiterzocken", async ({ page }) => {
+  await local(page, "alles", ["Anna", "Ben"], [/Echte Karten/]);
   await page.getByRole("button", { name: "Karte ziehen" }).first().click();
   await page.getByRole("button", { name: "Plus/Minus" }).click();
-  await page.getByRole("button", { name: /Tutto geschafft/ }).click();
-  await expect(page.getByTestId("tutto-banner")).toContainText("Zug ist vorbei");
+  await page.getByRole("button", { name: /Volltreffer geschafft/ }).click();
+  await expect(page.getByTestId("volltreffer-banner")).toContainText("Zug ist vorbei");
   await expect(page.getByRole("button", { name: /Weiterzocken/ })).toHaveCount(0);
   await page.getByRole("button", { name: /\+1\.000 eintragen/ }).click();
   await expect(page.getByTestId("current-player")).toHaveText("Ben");

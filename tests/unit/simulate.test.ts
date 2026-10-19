@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
 import { DECKS } from "@shared/cards/deck";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
-import type { P10State } from "@shared/games/phase10/logic";
-import type { SbState } from "@shared/games/skipbo/logic";
-import type { UnoState } from "@shared/games/uno/logic";
+import type { P10State } from "@shared/games/zehnphasen/logic";
+import type { SbState } from "@shared/games/stapelbau/logic";
+import type { EinsState } from "@shared/games/eins/logic";
 import type { HsState } from "@shared/games/hellseher/logic";
 import { candidates, shuffleInPlace } from "@shared/platform/bots";
 import { applyRoomAction, roomGame, skipLabel, type RoomState } from "@shared/platform/room";
@@ -24,28 +24,28 @@ function checkCards(r: RoomState) {
     expect(new Set(all).size).toBe(all.length);
     expect(all.length).toBe(DECKS[s.deck].suits.length * DECKS[s.deck].ranks.length);
   }
-  if (r.gameId === "uno" && (r.game as UnoState).mode === "app") {
-    const s = r.game as UnoState;
+  if (r.gameId === "eins" && (r.game as EinsState).mode === "app") {
+    const s = r.game as EinsState;
     expect(s.pile.length + s.discard.length + Object.values(s.hands).flat().length).toBe(108);
   }
-  if (r.gameId === "skipbo" && (r.game as SbState).mode === "app") {
+  if (r.gameId === "stapelbau" && (r.game as SbState).mode === "app") {
     const s = r.game as SbState;
     const n = s.pile.length + s.done.length + s.builds.flat().length + Object.values(s.hands).flat().length
       + Object.values(s.stocks).flat().length + Object.values(s.discards).flat(2).length;
     expect(n).toBe(162);
   }
-  if (r.gameId === "phase10" && (r.game as P10State).mode === "app") {
+  if (r.gameId === "zehnphasen" && (r.game as P10State).mode === "app") {
     const s = r.game as P10State;
     const laid = Object.values(s.laid).flat().reduce((t, gr) => t + gr.cards.length, 0);
     expect(s.pile.length + s.discard.length + Object.values(s.hands).flat().length + laid).toBe(108);
   }
-  if (r.gameId === "flip7") {
+  if (r.gameId === "glueckssieben") {
     const s = r.game as { deck: string[]; discard: string[]; lines: Record<string, { nums: string[]; mods: string[]; second: boolean }>; pending: { card: string } | null; queued: { card: string }[]; variant: string };
     const n = s.deck.length + s.discard.length + (s.pending ? 1 : 0) + s.queued.length
       + Object.values(s.lines).reduce((t, l) => t + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
     expect(n).toBe(s.variant === "fies" ? 112 : 94);
   }
-  if (r.gameId === "skyjo" && (r.game as { mode: string }).mode === "app") {
+  if (r.gameId === "himmelskarten" && (r.game as { mode: string }).mode === "app") {
     const s = r.game as { deck: number[]; discard: number[]; drawn: number | null; grids: Record<string, ({ v: number } | null)[]> };
     const n = s.deck.length + s.discard.length + (s.drawn !== null ? 1 : 0) + Object.values(s.grids).flat().filter(Boolean).length;
     expect(n).toBe(150);
@@ -113,36 +113,36 @@ function setupRoom(gameId: string, n: number, options: Record<string, unknown>, 
 }
 
 const SCENARIOS: [string, number, Record<string, unknown>][] = [
-  ["tutto", 3, { target: 1000 }],
-  ["tutto", 2, { target: 1000, diceMode: "app" }],
-  ["tutto", 3, { target: 1000, cards: "real" }],
-  ["kniffel", 3, {}],
-  ["kniffel", 2, { diceMode: "real", moreKniffel: "none" }],
+  ["alles", 3, { target: 1000 }],
+  ["alles", 2, { target: 1000, diceMode: "app" }],
+  ["alles", 3, { target: 1000, cards: "real" }],
+  ["fuenfwuerfel", 3, {}],
+  ["fuenfwuerfel", 2, { diceMode: "real", morePasch: "none" }],
   ["maumau", 4, {}],
   ["maumau", 2, { reverse9: true, againA: true, unterOnUnter: true, stack7: false, deck: "de32" }],
   ["maumau", 7, { deck: "fr52", hand: "6" }],
   ["schamlos", 3, {}],
   ["schamlos", 6, { set_schwarz: true }],
-  ["uno", 2, {}],
-  ["uno", 5, { stack: true, plus4: "any", uno: false, target: "round" }],
-  ["uno", 8, { target: "round" }],
-  ["uno", 4, { sevenZero: true, drawUntil: true, plus4: "strict" }],
-  ["uno", 4, { mode: "table" }],
-  ["skipbo", 2, {}],
-  ["skipbo", 6, { stock: "10" }],
-  ["skipbo", 5, { target: "500", stock: "10" }],
-  ["skipbo", 4, { mode: "table", target: "500" }],
-  ["phase10", 2, { goal: "5" }],
-  ["phase10", 5, { goal: "5" }],
-  ["phase10", 4, { mode: "table" }],
-  ["flip7", 4, { mode: "table", target: 100 }],
+  ["eins", 2, {}],
+  ["eins", 5, { stack: true, plus4: "any", eins: false, target: "round" }],
+  ["eins", 8, { target: "round" }],
+  ["eins", 4, { sevenZero: true, drawUntil: true, plus4: "strict" }],
+  ["eins", 4, { mode: "table" }],
+  ["stapelbau", 2, {}],
+  ["stapelbau", 6, { stock: "10" }],
+  ["stapelbau", 5, { target: "500", stock: "10" }],
+  ["stapelbau", 4, { mode: "table", target: "500" }],
+  ["zehnphasen", 2, { goal: "5" }],
+  ["zehnphasen", 5, { goal: "5" }],
+  ["zehnphasen", 4, { mode: "table" }],
+  ["glueckssieben", 4, { mode: "table", target: 100 }],
   ["maumau", 3, { mode: "table", goal: "3" }],
-  ["skyjo", 2, {}],
-  ["skyjo", 6, { target: 60 }],
-  ["skyjo", 4, { mode: "table" }],
-  ["codenames", 4, {}],
-  ["codenames", 7, {}],
-  ["codenames", 2, { mode: "key" }],
+  ["himmelskarten", 2, {}],
+  ["himmelskarten", 6, { target: 60 }],
+  ["himmelskarten", 4, { mode: "table" }],
+  ["decknamen", 4, {}],
+  ["decknamen", 7, {}],
+  ["decknamen", 2, { mode: "key" }],
   ["hellseher", 3, { length: "half" }],
   ["hellseher", 4, { noEven: true, length: "10" }],
   ["hellseher", 6, {}],
@@ -156,8 +156,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["fischen", 3, { cards: "table", afterFish: "asked", deck: "fr32" }],
   ["werwolf", 7, { seherin: true, hexe: true, jaeger: true, amor: true, beschuetzer: true }],
   ["werwolf", 5, { narrator: "human" }],
-  ["flip7", 3, { target: 100 }],
-  ["flip7", 6, { variant: "fies", target: 100 }],
+  ["glueckssieben", 3, { target: 100 }],
+  ["glueckssieben", 6, { variant: "fies", target: 100 }],
   ["einenacht", 9, { seherin: true, raeuber: true, unruhestifter: true, betrunkener: true, schlaflose: true, jaeger: true, gerber: true, guenstling: true, freimaurer: true }],
   ["einenacht", 3, { wolves: "1" }],
   ["einenacht", 5, { cards: "own", betrunkener: true }],

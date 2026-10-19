@@ -71,26 +71,26 @@ test("Blätter schließen mit der Zurück-Geste, Beitreten nimmt auch einen Link
 test("Spiele-Tab: Infoblatt mit Regeln, Raum mit diesem Spiel öffnen", async ({ page }) => {
   await page.getByTestId("tabbar-spiele").click();
   await page.getByRole("tab", { name: "Brett" }).click();
-  await expect(page.getByTestId("game-kniffel")).toHaveCount(0);
+  await expect(page.getByTestId("game-fuenfwuerfel")).toHaveCount(0);
   await expect(page.getByTestId("game-muehle")).toBeVisible();
   await page.getByRole("tab", { name: "Alle" }).click();
-  await page.getByTestId("game-kniffel").click();
+  await page.getByTestId("game-fuenfwuerfel").click();
   const sheet = page.getByTestId("game-sheet");
-  await expect(sheet.getByRole("heading", { name: "Kniffel" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Fünf Würfel" })).toBeVisible();
   await expect(sheet).toContainText("Spieler");
   await shot(page, "05c-spiel-info");
   await sheet.getByRole("button", { name: "Regeln lesen" }).click();
-  await expect(sheet.getByText(/Kniffel|Würf/).first()).toBeVisible();
+  await expect(sheet.getByText(/Fünf Würfel|Würf/).first()).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByTestId("game-uno").click();
+  await page.getByTestId("game-eins").click();
   await page.getByRole("button", { name: "Raum mit diesem Spiel öffnen" }).click();
-  await expect(page.getByTestId("create-room")).toContainText("Uno steht im Raum gleich bereit");
+  await expect(page.getByTestId("create-room")).toContainText("Eins! steht im Raum gleich bereit");
   await page.getByLabel(/PIN/).fill("4711");
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
   await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
   // Spiel ist gesetzt – keine Spielauswahl in der Lobby
-  await expect(page.getByTestId("game-card")).toContainText("Uno");
+  await expect(page.getByTestId("game-card")).toContainText("Eins!");
   await expect(page.getByRole("heading", { name: "Was spielt ihr?" })).toHaveCount(0);
 });
 

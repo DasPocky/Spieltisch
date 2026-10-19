@@ -1,0 +1,613 @@
+/**
+ * Spiellogik für Alles oder nichts – läuft im Browser (lokal) und im Durable Object (online).
+ * Spieler, Host und Zugreihenfolge verwaltet die Plattform; hier stehen nur Punkte, Karten und Würfel.
+ */
+import { rollDice, shuffle } from "../../platform/random";
+import { firstPlayerId, nextPlayerId } from "../../platform/turns";
+import { GameError, type GameContext, type GameLogic } from "../../platform/types";
+import { CARD_BY_ID, CARDS, POINT_STEPS, type CardId } from "./cards";
+
+export * from "./cards";
+
+const MAX_LOG = 200;
+const MAX_TURN = 100000;
+/** Kleinste Würfelsumme eines Volltreffer: alle sechs Würfel gewertet, jeder mindestens 50 */
+export const MIN_ALLES = 300;
+
+export interface LogEntry {
+  playerId: string;
+  name: string;
+  pts: number;
+  /** Spieler, denen durch Plus/Minus Punkte abgezogen wurden */
+  penalized: string[];
+  /** Abzug je Spieler (fehlt: je 1.000) – für „Geteilt“ und zum Zurücknehmen */
+  penalty?: Record<string, number>;
+  cards: CardId[];
+  clover?: boolean;
+}
+
+export type DiceMode = "real" | "app";
+
+/** Zustand des App-Würfels im laufenden Zug */
+export interface DiceState {
+  /** aktueller Wurf (Augenzahlen) */
+  roll: number[];
+  /** Auswahl im aktuellen Wurf */
+  sel: boolean[];
+  /** seit dem letzten Volltreffer beiseitegelegte Würfel */
+  aside: number[];
+  /** Wurf ohne wertbare Würfel */
+  bust: boolean;
+  /** gerade einen Volltreffer geschafft */
+  alles: boolean;
+  /** Volltreffer mit der aktuellen Karte (Kleeblatt) */
+  hits: number;
+  /** zählt Würfe hoch, damit die Oberfläche neu animieren kann */
+  n: number;
+}
+
+export interface AllesState {
+  v: 1;
+  /** Punkte je Spieler-ID (fehlt = 0, z. B. bei später Beigetretenen) */
+  scores: Record<string, number>;
+  curId: string | null;
+  /** Wer die Partie begonnen hat (für „Runde zu Ende spielen“) */
+  startId?: string | null;
+  pile: CardId[];
+  turnCards: CardId[];
+  turnPts: number;
+  /** Chancen in diesem Zug: so oft darf eine Niete neu geworfen werden */
+  chances?: number;
+  /** Punkte, die vor der aktuellen Karte schon sicher waren (durch einen Volltreffer) */
+  cardStart?: number;
+  /** Volltreffer mit der aktuellen Karte (Kleeblatt bei echten Würfeln) */
+  cardHits?: number;
+  /** Echte Würfel, ohne automatisches Aufdecken: Volltreffer geschafft, jetzt neue Karte oder eintragen */
+  afterAlles?: boolean;
+  /** Plus/Minus-Volltreffer in diesem Zug geschafft – beim Eintragen verliert der Führende 1.000, weiterzocken geht nicht */
+  pmOn: boolean;
+  /** Hausregel „Runde zu Ende spielen“: jemand hat das Ziel erreicht, die Runde läuft noch */
+  finalRound?: boolean;
+  log: LogEntry[];
+  winnerId: string | null;
+  /** Feuerwerk zählt als Chance-Karte (Einstellung „Feuerwerk“) */
+  fireChance?: boolean;
+  cloverWin: boolean;
+  dice: DiceState | null;
+}
+
+export type AllesAction =
+  /** `card`: bei echten Karten die Karte, die gezogen wurde */
+  | { type: "draw"; card?: CardId }
+  | { type: "addPts"; delta: number }
+  | { type: "clearPts" }
+  | { type: "alles" }
+  /** `victim`: bei Plus/Minus „Wählen“ – wer die 1.000 verliert */
+  | { type: "book"; zero?: boolean; victim?: string }
+  | { type: "roll" }
+  /** Niete mit Chance: die Niete-Würfel neu werfen (App-Würfel) bzw. einfach nochmal werfen (echte Würfel) */
+  | { type: "useChance" }
+  | { type: "toggleDie"; i: number }
+  | { type: "undo" }
+  | { type: "shuffle" };
+
+const TURN_ACTIONS = new Set<string>(["draw", "addPts", "clearPts", "alles", "book", "roll", "toggleDie", "useChance"]);
+const HOST_ACTIONS = new Set<string>(["undo", "shuffle"]);
+
+export const score = (s: AllesState, id: string) => s.scores[id] ?? 0;
+export const diceModeOf = (ctx: { options: GameContext["options"] }): DiceMode => (ctx.options.diceMode === "app" ? "app" : "real");
+export const targetOf = (ctx: { options: GameContext["options"] }) => Number(ctx.options.target) || 6000;
+/** Echte Karten: gezogen wird am Tisch, in der App wird die Karte nur angetippt */
+export const realCardsOf = (ctx: { options: GameContext["options"] }) => ctx.options.cards === "real";
+export const autoDrawOf = (ctx: { options: GameContext["options"] }) => ctx.options.autoDraw !== false && !realCardsOf(ctx);
+/** Hausregel: Wer das Ziel erreicht, gewinnt erst nach der laufenden Runde */
+export const endRoundOf = (ctx: { options: GameContext["options"] }) => ctx.options.endRound === true;
+
+/** Punkte einer Würfelauswahl nach den Regeln, null wenn ein Würfel nicht wertbar ist. */
+export function scoreDice(dice: number[]): number | null {
+  if (!dice.length) return null;
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of dice) counts[d]++;
+  let pts = 0;
+  for (let f = 1; f <= 6; f++) {
+    let c = counts[f];
+    while (c >= 3) { pts += f === 1 ? 1000 : f * 100; c -= 3; }
+    if (f === 1) pts += c * 100;
+    else if (f === 5) pts += c * 50;
+    else if (c > 0) return null;
+  }
+  return pts;
+}
+
+/** Passt die Würfelmenge noch in eine Torte (drei Gleiche, zwei Fünfen, eine Eins)? */
+export function fitsTorte(dice: number[]): boolean {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of dice) counts[d]++;
+  for (let x = 1; x <= 6; x++) {
+    const need = [0, 0, 0, 0, 0, 0, 0];
+    need[x] += 3; need[5] += 2; need[1] += 1;
+    if (counts.every((c, f) => c <= need[f])) return true;
+  }
+  return false;
+}
+
+/** Feuerwerk: alle wertbaren Würfel müssen raus – alle Einsen, Fünfen und Drillinge */
+export function allScoring(roll: number[]): boolean[] {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of roll) counts[d]++;
+  // je Augenzahl: wie viele Würfel herausmüssen
+  const take = counts.map((c, f) => (f === 1 || f === 5 ? c : c - (c % 3)));
+  return roll.map((d) => take[d]-- > 0);
+}
+
+/** Ist diese Auswahl für die Karte erlaubt? Liefert die Punkte (bei Straße/Torte 0) oder null. */
+function pickValue(picked: number[], card: CardId | undefined, aside: number[]): number | null {
+  if (!picked.length) return null;
+  if (card === "street") {
+    const set = new Set(picked);
+    return set.size !== picked.length || picked.some((x) => aside.includes(x)) ? null : 0;
+  }
+  const v = scoreDice(picked);
+  if (card === "torte") return v !== null && fitsTorte([...aside, ...picked]) ? 0 : null;
+  return v;
+}
+
+/** Enthält der Wurf überhaupt eine erlaubte Auswahl? */
+export function canScore(roll: number[], card: CardId | undefined, aside: number[]): boolean {
+  for (let m = 1; m < 1 << roll.length; m++) {
+    if (pickValue(roll.filter((_, i) => m & (1 << i)), card, aside) !== null) return true;
+  }
+  return false;
+}
+
+/** Spielhilfe: Welche Würfel des Wurfs können zu einer erlaubten Auswahl gehören, und was bringt die beste Auswahl? */
+export function scoringDice(roll: number[], card: CardId | undefined, aside: number[]): { dice: boolean[]; best: number | null } {
+  const dice = roll.map(() => false);
+  let best: number | null = null;
+  for (let m = 1; m < 1 << roll.length; m++) {
+    const v = pickValue(roll.filter((_, i) => m & (1 << i)), card, aside);
+    if (v === null) continue;
+    roll.forEach((_, i) => { if (m & (1 << i)) dice[i] = true; });
+    best = Math.max(best ?? 0, v);
+  }
+  return { dice, best };
+}
+
+/** Ist die Auswahl gültig? Liefert die Punkte (bei Straße und Torte 0) oder null. */
+export function selectionValue(d: DiceState, card: CardId | undefined): number | null {
+  return pickValue(d.roll.filter((_, i) => d.sel[i]), card, d.aside);
+}
+
+/** Karten, bei denen man nicht freiwillig aufhören darf, bevor Volltreffer oder Niete fällt */
+export const MUST_PLAY = new Set<CardId>(["fire", "street", "pm", "clover", "torte"]);
+/** Karten, bei denen die normalen Würfelpunkte nicht zählen */
+export const NO_DICE_POINTS = new Set<CardId>(["street", "pm", "clover", "torte", "stop"]);
+/** Karten, mit denen man nach einem Volltreffer ohne neue Karte weiterwürfelt */
+export const KEEP_CARD = new Set<CardId>(["fire", "clover"]);
+
+/**
+ * Die Karte, die gerade gilt. Feuerwerk hat zwei Bedeutungen (Einstellung, nie beide zugleich):
+ * Original „würfeln bis zur Niete“ oder als Chance-Karte – dann liegt die Feuerwerk-Karte offen daneben und wirkt wie „Chance“.
+ */
+export const latestCard = (s: AllesState): CardId | undefined => {
+  const c = s.turnCards[s.turnCards.length - 1];
+  return c === "fire" && s.fireChance ? "chance" : c;
+};
+const PM_DONE = "Plus/Minus geschafft – trag die 1.000 ein, weiterzocken geht nicht.";
+
+/** Stopp-Karte nach einem Volltreffer: wer weitergezockt hat, verliert alle Punkte dieses Zugs */
+export const stopAfterAlles = (s: AllesState): boolean => s.turnCards.length > 1 && s.turnCards[s.turnCards.length - 1] === "stop";
+
+/** Plus/Minus geschafft: nur noch eintragen, der Zug ist vorbei */
+export const pmDone = (s: AllesState): boolean => s.pmOn && latestCard(s) === "pm";
+
+/** Darf man jetzt aufhören und die Punkte eintragen? */
+export function canStop(s: AllesState): boolean {
+  const card = latestCard(s);
+  if (!card || s.afterAlles || card === "stop") return true;
+  if (s.dice?.alles && !KEEP_CARD.has(card)) return true;
+  return !MUST_PLAY.has(card);
+}
+
+function freshDice(): DiceState {
+  return { roll: [], sel: [], aside: [], bust: false, alles: false, hits: 0, n: 0 };
+}
+
+export function freshPile(options: GameContext["options"] = {}): CardId[] {
+  const pile: CardId[] = [];
+  for (const c of CARDS) {
+    if (c.promo && !options[c.id]) continue;
+    const n = c.id === "chance" ? Math.max(0, Math.min(10, Number(options.chance) || 0)) : c.count;
+    for (let i = 0; i < n; i++) pile.push(c.id);
+  }
+  return shuffle(pile);
+}
+
+/** Neue Karte aufdecken – der Punktestand davor ist ab jetzt sicher */
+function drawCard(s: AllesState, ctx: GameContext, pick?: CardId) {
+  if (!s.pile.length) s.pile = freshPile(ctx.options);
+  if (realCardsOf(ctx)) {
+    if (!pick || !CARD_BY_ID[pick] || (pick === "torte" && !ctx.options.torte) || (pick === "chance" && !(Number(ctx.options.chance) > 0))) throw new GameError("Welche Karte hast du gezogen?");
+    // Den Stapel in der App mitführen, damit „noch im Stapel“ zum echten Stapel passt
+    let i = s.pile.lastIndexOf(pick);
+    if (i < 0) { s.pile = freshPile(ctx.options); i = s.pile.lastIndexOf(pick); }
+    if (i >= 0) s.pile.splice(i, 1);
+    s.turnCards.push(pick);
+  } else s.turnCards.push(s.pile.pop()!);
+  s.cardStart = s.turnPts;
+  s.cardHits = 0;
+  s.afterAlles = false;
+  s.dice = diceModeOf(ctx) === "app" ? freshDice() : null;
+  // Chance: bleibt liegen, gibt einen Versuch mehr – mit App-Karten kommt die nächste Karte sofort
+  if (latestCard(s) === "chance") {
+    s.chances = (s.chances ?? 0) + 1;
+    if (!realCardsOf(ctx)) drawCard(s, ctx);
+  }
+}
+
+/** Zu Beginn eines Zugs die Karte gleich aufdecken, wenn so eingestellt */
+function startTurn(s: AllesState, ctx: GameContext) {
+  s.turnCards = [];
+  s.turnPts = 0;
+  s.chances = 0;
+  s.cardStart = 0;
+  s.cardHits = 0;
+  s.afterAlles = false;
+  s.pmOn = false;
+  s.dice = null;
+  if (autoDrawOf(ctx) && s.curId && !s.winnerId && ctx.players.some((p) => p.id === s.curId)) drawCard(s, ctx);
+}
+
+/** Zug beenden und zum nächsten Spieler wechseln */
+function endTurn(s: AllesState, ctx: GameContext) {
+  s.curId = nextPlayerId(ctx.players, s.curId);
+  // Hausregel „Runde zu Ende“: wieder beim ersten Spieler – wer jetzt vorn liegt, gewinnt
+  if (s.finalRound && s.curId === (ctx.players.some((p) => p.id === s.startId) ? s.startId : ctx.players[0]?.id)) return finishRound(s, ctx);
+  startTurn(s, ctx);
+}
+
+/** Ende der letzten Runde: höchster Punktestand gewinnt (bei Gleichstand der Erste in der Reihe) */
+function finishRound(s: AllesState, ctx: GameContext) {
+  let best = ctx.players[0];
+  for (const p of ctx.players) if (score(s, p.id) > score(s, best.id)) best = p;
+  s.winnerId = best.id;
+  s.finalRound = false;
+  s.turnCards = []; s.turnPts = 0; s.pmOn = false; s.dice = null; s.afterAlles = false;
+}
+
+function pushLog(s: AllesState, e: LogEntry) {
+  s.log.push(e);
+  if (s.log.length > MAX_LOG) s.log.shift();
+}
+
+function setup(ctx: GameContext): AllesState {
+  const s: AllesState = {
+    v: 1, scores: Object.fromEntries(ctx.players.map((p) => [p.id, 0])), curId: firstPlayerId(ctx), startId: firstPlayerId(ctx),
+    pile: freshPile(ctx.options), turnCards: [], turnPts: 0, cardStart: 0, cardHits: 0, afterAlles: false, pmOn: false, log: [],
+    winnerId: null, cloverWin: false, dice: null, fireChance: ctx.options.fire === "chance",
+  };
+  startTurn(s, ctx);
+  return s;
+}
+
+/**
+ * Plus/Minus: Wer verliert wie viel? Original der Führende (nicht man selbst),
+ * „Wählen“ ein beliebiger Mitspieler, „Alle“ jeder andere 1.000, „Geteilt“ die anderen zusammen 1.000.
+ */
+export function pmPenalty(s: AllesState, ctx: GameContext, me: string, victim?: string): Record<string, number> {
+  const others = ctx.players.filter((x) => x.id !== me).map((x) => x.id);
+  if (!others.length) return {};
+  switch (ctx.options.pmMode) {
+    case "choose": {
+      if (!victim || !others.includes(victim)) throw new GameError("Wähle, wer die 1.000 Punkte verliert.");
+      return { [victim]: 1000 };
+    }
+    case "all":
+      return Object.fromEntries(others.map((id) => [id, 1000]));
+    case "split": {
+      // Gerecht auf 10er gerundet, der Rest beim Ersten
+      const each = Math.floor(1000 / others.length / 10) * 10;
+      return Object.fromEntries(others.map((id, i) => [id, each + (i === 0 ? 1000 - each * others.length : 0)]));
+    }
+    default: {
+      const max = Math.max(...ctx.players.map((x) => score(s, x.id)));
+      if (score(s, me) >= max) return {};
+      return Object.fromEntries(others.filter((id) => score(s, id) === max).map((id) => [id, 1000]));
+    }
+  }
+}
+
+/** Wirkung eines Volltreffer je nach Karte – für echte und App-Würfel gleich. Liefert true, wenn die Karte bleibt. */
+function applyAlles(s: AllesState, card: CardId, ctx: GameContext): void {
+  const add = (n: number) => { s.turnPts = Math.min(MAX_TURN, s.turnPts + n); };
+  s.cardHits = (s.cardHits ?? 0) + 1;
+  switch (card) {
+    case "x2": s.turnPts = Math.min(MAX_TURN, s.turnPts * 2); break;
+    case "street": add(2000); break;
+    // Plus/Minus: genau 1.000, danach ist der Zug vorbei (nur noch eintragen)
+    case "pm": add(1000); s.pmOn = true; break;
+    case "torte": add(1500); break;
+    case "fire": return;
+    case "clover":
+      if (s.cardHits >= 2) {
+        const p = ctx.players.find((x) => x.id === s.curId)!;
+        winByClover(s, p.id, p.name);
+      }
+      return;
+    default: add(CARD_BY_ID[card].quick ?? 0);
+  }
+  // Nach dem Volltreffer entscheidet der Spieler: aufhören oder weiterzocken (erst dann kommt die neue Karte)
+  if (diceModeOf(ctx) === "real") s.afterAlles = true;
+}
+
+function apply(prev: AllesState, a: AllesAction, ctx: GameContext): AllesState {
+  const s = structuredClone(prev);
+  const appDice = diceModeOf(ctx) === "app";
+  const cur = ctx.players.find((p) => p.id === s.curId);
+  if (TURN_ACTIONS.has(a.type) && !cur) throw new GameError("Es ist niemand am Zug.");
+  const card = latestCard(s);
+
+  switch (a.type) {
+    case "draw": {
+      if (card && card !== "chance") {
+        if (card === "stop") throw new GameError("Stopp – der Zug ist vorbei.");
+        if (appDice) {
+          const d = s.dice;
+          if (d?.bust) throw new GameError("Niete – der Zug ist vorbei.");
+          if (!d?.alles) throw new GameError("Erst einen Volltreffer würfeln, dann gibt es eine neue Karte.");
+          if (pmDone(s)) throw new GameError(PM_DONE);
+          if (KEEP_CARD.has(card)) throw new GameError("Mit dieser Karte würfelst du weiter.");
+        } else if (!s.afterAlles) throw new GameError("Eine neue Karte gibt es erst nach einem Volltreffer.");
+        else if (pmDone(s)) throw new GameError(PM_DONE);
+      }
+      drawCard(s, ctx, a.card);
+      return s;
+    }
+    case "alles": {
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
+      if (appDice) throw new GameError("Den Volltreffer erkennt der App-Würfel selbst.");
+      if (!card) throw new GameError("Zieh zuerst eine Karte.");
+      if (card === "stop") throw new GameError("Stopp – in diesem Zug wird nicht gewürfelt.");
+      if (s.afterAlles) throw new GameError("Zieh eine neue Karte oder trag die Punkte ein.");
+      // Sechs gewertete Würfel bringen mindestens 300 Punkte (sechsmal eine einzelne Fünf) – weniger kann kein Volltreffer sein
+      if (!NO_DICE_POINTS.has(card) && s.turnPts - (s.cardStart ?? 0) < MIN_ALLES) throw new GameError(`Für einen Volltreffer erst die Würfelpunkte eintragen (mindestens ${MIN_ALLES}).`);
+      applyAlles(s, card, ctx);
+      return s;
+    }
+    case "useChance": {
+      if (!(s.chances ?? 0)) throw new GameError("Du hast keine Chance mehr.");
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
+      if (appDice) {
+        const d = s.dice;
+        if (!d?.bust) throw new GameError("Eine Chance gibt es nur bei einer Niete.");
+        // Genau die Niete-Würfel nochmal – die Punkte des Zugs bleiben
+        d.roll = rollDice(d.roll.length);
+        d.sel = card === "fire" ? allScoring(d.roll) : d.roll.map(() => false);
+        d.bust = !canScore(d.roll, card!, d.aside);
+        d.n++;
+      }
+      s.chances = (s.chances ?? 0) - 1;
+      return s;
+    }
+    case "roll": {
+      if (!appDice) throw new GameError("Der App-Würfel ist aus.");
+      if (!card) throw new GameError("Zieh zuerst eine Karte.");
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
+      if (card === "stop") throw new GameError("Stopp – in diesem Zug wird nicht gewürfelt.");
+      const d = s.dice ?? freshDice();
+      if (d.bust) throw new GameError("Niete – der Zug ist vorbei.");
+      if (d.alles) {
+        if (pmDone(s)) throw new GameError(PM_DONE);
+        if (!KEEP_CARD.has(card)) throw new GameError("Volltreffer! Zieh eine neue Karte oder trag die Punkte ein.");
+        d.alles = false;
+      } else if (d.roll.length) {
+        const v = selectionValue(d, card);
+        if (v === null) throw new GameError(card === "street" ? "Wähle mindestens eine neue Zahl für die Straße." : card === "torte" ? "Wähle Würfel, die in die Torte passen." : "Wähle mindestens einen wertbaren Würfel (1, 5 oder drei Gleiche).");
+        if (!NO_DICE_POINTS.has(card)) s.turnPts = Math.min(MAX_TURN, s.turnPts + v);
+        d.aside.push(...d.roll.filter((_, i) => d.sel[i]));
+        d.roll = []; d.sel = [];
+        if (d.aside.length >= 6) {
+          d.aside = [];
+          d.hits++;
+          d.n++;
+          d.alles = true;
+          s.dice = d;
+          applyAlles(s, card, ctx);
+          return s;
+        }
+      }
+      d.roll = rollDice(6 - d.aside.length);
+      d.sel = card === "fire" ? allScoring(d.roll) : d.roll.map(() => false);
+      d.bust = !canScore(d.roll, card, d.aside);
+      d.n++;
+      s.dice = d;
+      return s;
+    }
+    case "toggleDie": {
+      const d = s.dice;
+      if (!d || !d.roll.length || d.bust) throw new GameError("Gerade gibt es nichts auszuwählen.");
+      if (!Number.isInteger(a.i) || a.i < 0 || a.i >= d.roll.length) throw new GameError("Diesen Würfel gibt es nicht.");
+      if (latestCard(s) === "fire") throw new GameError("Beim Feuerwerk müssen alle wertbaren Würfel raus.");
+      d.sel[a.i] = !d.sel[a.i];
+      return s;
+    }
+    case "addPts": {
+      if (appDice) throw new GameError("Die Punkte zählt der App-Würfel.");
+      if (!(POINT_STEPS as readonly number[]).includes(a.delta)) throw new GameError("Ungültiger Punktwert.");
+      if (!card) throw new GameError("Zieh zuerst eine Karte.");
+      if (NO_DICE_POINTS.has(card)) throw new GameError(card === "stop" ? "Stopp – in diesem Zug wird nicht gewürfelt." : "Mit dieser Karte zählen die Würfelpunkte nicht.");
+      if (s.afterAlles) throw new GameError("Zieh erst eine neue Karte.");
+      s.turnPts = Math.min(MAX_TURN, Math.max(s.cardStart ?? 0, s.turnPts + a.delta));
+      return s;
+    }
+    case "clearPts":
+      if (appDice) throw new GameError("Die Punkte zählt der App-Würfel.");
+      s.turnPts = s.cardStart ?? 0;
+      return s;
+    case "book": {
+      const p = cur!;
+      if (card === "chance") throw new GameError("Zieh zuerst die nächste Karte.");
+      // Feuerwerk mit echten Würfeln: Eintragen heißt „Niete geworfen“, die kostet hier nichts
+      const fireEnd = card === "fire" && !appDice && !s.afterAlles;
+      let zero = !!a.zero && !fireEnd;
+      // Mit App-Würfel entscheidet der Wurf über die Niete, nicht der Spieler
+      if (zero && appDice && card && card !== "stop" && s.dice && !s.dice.bust) throw new GameError("Das ist keine Niete – würfle weiter oder trag ein.");
+      if (card && !zero && !fireEnd) {
+        const d = appDice ? s.dice : null;
+        if (d?.bust) zero = card !== "fire";
+        else if (!canStop(s)) throw new GameError("Mit dieser Karte darfst du nicht aufhören – spiel weiter.");
+        else if (d && !d.alles && d.roll.length) {
+          // offene Auswahl noch mitnehmen
+          const v = selectionValue(d, card);
+          if (v === null) throw new GameError("Wähle zuerst wertbare Würfel aus.");
+          if (!NO_DICE_POINTS.has(card)) s.turnPts = Math.min(MAX_TURN, s.turnPts + v);
+        }
+      }
+      // Stopp nach einem Volltreffer: alle Punkte des Zugs sind weg
+      const pts = zero || stopAfterAlles(s) ? 0 : s.turnPts;
+      const penalty = s.pmOn && pts > 0 ? pmPenalty(s, ctx, p.id, a.victim) : {};
+      for (const [id, n] of Object.entries(penalty)) s.scores[id] = score(s, id) - n;
+      const penalized = Object.keys(penalty);
+      s.scores[p.id] = score(s, p.id) + pts;
+      pushLog(s, { playerId: p.id, name: p.name, pts, penalized, penalty, cards: s.turnCards });
+      if (s.scores[p.id] >= targetOf(ctx) && endRoundOf(ctx)) {
+        // Hausregel: die Runde wird noch zu Ende gespielt
+        s.finalRound = true;
+        endTurn(s, ctx);
+      } else if (s.scores[p.id] >= targetOf(ctx)) {
+        s.winnerId = p.id;
+        s.turnCards = []; s.turnPts = 0; s.pmOn = false; s.dice = null; s.afterAlles = false;
+      } else endTurn(s, ctx);
+      return s;
+    }
+    case "undo": {
+      const e = s.log.pop();
+      if (!e) throw new GameError("Es gibt nichts zum Zurücknehmen.");
+      s.scores[e.playerId] = score(s, e.playerId) - e.pts;
+      if (ctx.players.some((p) => p.id === e.playerId)) s.curId = e.playerId;
+      for (const id of e.penalized) s.scores[id] = score(s, id) + (e.penalty?.[id] ?? 1000);
+      s.winnerId = null;
+      s.cloverWin = false;
+      s.finalRound = endRoundOf(ctx) && ctx.players.some((p) => score(s, p.id) >= targetOf(ctx));
+      startTurn(s, ctx);
+      return s;
+    }
+    case "shuffle":
+      s.pile = freshPile(ctx.options);
+      startTurn(s, ctx);
+      return s;
+    default:
+      throw new GameError("Unbekannte Aktion.");
+  }
+}
+
+function winByClover(s: AllesState, id: string, name: string) {
+  pushLog(s, { playerId: id, name, pts: 0, penalized: [], cards: s.turnCards, clover: true });
+  s.turnCards = []; s.turnPts = 0; s.dice = null; s.afterAlles = false;
+  s.winnerId = id; s.cloverWin = true;
+}
+
+export const alles: GameLogic<AllesState, AllesAction> = {
+  info: {
+    id: "alles",
+    name: "Alles oder nichts",
+    tagline: "Karte ziehen, würfeln, zocken – wer zuerst das Ziel erreicht, gewinnt.",
+    category: "Würfel",
+    minPlayers: 1,
+    maxPlayers: 12,
+    duration: "30–60 Min.",
+  },
+  version: 2,
+  turnBased: true,
+  joinMidGame: true,
+  settings: [
+    {
+      key: "diceMode", label: "Würfel", type: "choice", default: "real", inGame: true,
+      choices: [
+        { value: "real", label: "Echte Würfel", hint: "Punkte selbst eintippen" },
+        { value: "app", label: "App-Würfel", hint: "App würfelt und zählt" },
+      ],
+    },
+    {
+      key: "cards", label: "Karten", type: "choice", default: "app", inGame: true,
+      choices: [
+        { value: "app", label: "App-Karten", hint: "App mischt und deckt auf" },
+        { value: "real", label: "Echte Karten", hint: "gezogene Karte antippen" },
+      ],
+    },
+    { key: "target", label: "Spielziel", type: "number", default: 6000, min: 1000, max: 50000, step: 1000, inGame: true },
+    { key: "autoDraw", showIf: (o) => o.cards !== "real", label: "Karte zu Zugbeginn automatisch aufdecken", hint: "nach einem Volltreffer entscheidet ihr selbst: aufhören oder weiterzocken", type: "toggle", default: true, inGame: true },
+    {
+      key: "chance", label: "Chance-Karten im Stapel", type: "choice", default: "0", group: "Karten & Hausregeln",
+      choices: [
+        { value: "0", label: "Keine", hint: "wie im Original" },
+        { value: "3", label: "3 Karten", hint: "selten" },
+        { value: "5", label: "5 Karten", hint: "öfter" },
+      ],
+    },
+    {
+      key: "pmMode", label: "Plus/Minus: wer verliert?", type: "choice", default: "leader", group: "Karten & Hausregeln", inGame: true,
+      choices: [
+        { value: "leader", label: "Führender", hint: "Original: −1.000" },
+        { value: "choose", label: "Wählen", hint: "fies: du bestimmst" },
+        { value: "all", label: "Alle", hint: "fies: alle je −1.000" },
+        { value: "split", label: "Geteilt", hint: "alle teilen −1.000" },
+      ],
+    },
+    {
+      key: "fire", label: "Feuerwerk", type: "choice", default: "fire", group: "Karten & Hausregeln",
+      choices: [
+        { value: "fire", label: "Bis zur Niete", hint: "Original: alle Punkte zählen" },
+        { value: "chance", label: "Als Chance", hint: "Karte bleibt liegen: ein Rettungswurf bei Niete" },
+      ],
+    },
+    { key: "endRound", group: "Karten & Hausregeln", label: "Runde zu Ende spielen", hint: "Hausregel: alle kommen gleich oft dran, dann gewinnt der Höchste (Original: sofort)", type: "toggle", default: false },
+    { key: "torte", group: "Karten & Hausregeln", label: "Promokarte „Torte“", hint: "1× im Stapel: Drilling + zwei Fünfen + eine Eins = 1.500", type: "toggle", default: false },
+  ],
+  setup,
+  apply,
+  actionKind: (a) => (TURN_ACTIONS.has(a.type) ? "turn" : HOST_ACTIONS.has(a.type) ? "host" : null),
+  currentPlayerId: (s) => s.curId,
+  isOver: (s) => s.winnerId !== null,
+  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId, score: score(s, p.id) })),
+  skipLabel: (s, ctx) => {
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    return cur && !s.winnerId ? `Zug von ${cur.name} überspringen (Niete)` : null;
+  },
+  skipTurn(prev, ctx) {
+    const s = structuredClone(prev);
+    s.afterAlles = false;
+    const cur = ctx.players.find((p) => p.id === s.curId);
+    if (cur) pushLog(s, { playerId: cur.id, name: cur.name, pts: 0, penalized: [], cards: s.turnCards });
+    endTurn(s, ctx);
+    return s;
+  },
+  onPlayerRemoved(prev, id, ctx) {
+    const s = structuredClone(prev);
+    if (s.curId === id) {
+      endTurn(s, ctx);
+      if (s.curId === id) s.curId = null;
+    }
+    if (s.winnerId === id) { s.winnerId = null; s.cloverWin = false; }
+    return s;
+  },
+  onOptionsChanged(prev, before, ctx) {
+    if (before.diceMode === ctx.options.diceMode && before.autoDraw === ctx.options.autoDraw) return prev;
+    const s = structuredClone(prev);
+    if (before.diceMode !== ctx.options.diceMode) { s.dice = diceModeOf(ctx) === "app" && s.turnCards.length ? freshDice() : null; s.afterAlles = false; }
+    // Automatisch aufdecken gerade eingeschaltet: die offene Karte gleich ziehen
+    if (autoDrawOf(ctx) && !s.turnCards.length && !s.winnerId && s.curId) drawCard(s, ctx);
+    return s;
+  },
+  // Die Reihenfolge des Stapels bleibt geheim – die Clients sehen nur, welche Karten noch drin sind.
+  view: (s) => ({ ...s, pile: [...s.pile].sort() }),
+};
+
+/** Nur für Tests: gezielt eine Karte oben auf den Stapel legen */
+export function stackCard(s: AllesState, card: CardId): AllesState {
+  const i = s.pile.lastIndexOf(card);
+  const pile = s.pile.slice();
+  if (i >= 0) pile.splice(i, 1);
+  pile.push(card);
+  return { ...s, pile };
+}

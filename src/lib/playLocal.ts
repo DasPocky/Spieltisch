@@ -6,7 +6,7 @@ import { LAST_GAME_KEY, LOCAL_GAME_KEY, readStr, writeStr } from "./storage";
 export function defaultGame(ids: string[], locked: (id: string) => boolean): string {
   const free = ids.filter((id) => !locked(id));
   const last = readStr(LAST_GAME_KEY);
-  return last && free.includes(last) ? last : free[0] ?? ids[0] ?? "tutto";
+  return last && free.includes(last) ? last : free[0] ?? ids[0] ?? "alles";
 }
 
 /** Ein Handy für alle: gleich in die lokale Lobby – mit dem gewählten oder zuletzt lokal gespielten Spiel */

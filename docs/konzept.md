@@ -142,7 +142,7 @@ Ohne Räume zeigt der Bereich eine freundliche Leerstelle mit dem Hinweis, einen
 | Element | Beispiel |
 | --- | --- |
 | Raumname oder Host | „Donnerstagsrunde“ · „bei Anna“ |
-| Spiel und Status | „Kniffel · läuft“ · „Uno · Lobby“ · „Treffpunkt“ |
+| Spiel und Status | „Fünf Würfel · läuft“ · „Eins! · Lobby“ · „Treffpunkt“ |
 | Spieler | Avatar-Reihe mit Anzahl, z. B. 4/6; Gruppenmitglieder hervorgehoben |
 | Live-Zeichen | Symbol, wenn gerade jemand per Video oder Sprache verbunden ist |
 | Zugang | Schloss bei Anklopfen, Gruppen-Zeichen bei „Sichtbar für Gruppe“ |

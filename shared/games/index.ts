@@ -3,33 +3,33 @@
  * anlegen und hier eintragen – die Oberfläche kommt nach `src/games/<id>/`.
  */
 import type { GameLogic } from "../platform/types";
-import { codenames } from "./codenames/logic";
+import { decknamen } from "./decknamen/logic";
 import { einenacht } from "./einenacht/logic";
 import { fischen } from "./fischen/logic";
 import { hellseher } from "./hellseher/logic";
-import { flip7 } from "./flip7/logic";
-import { kniffel } from "./kniffel/logic";
+import { glueckssieben } from "./glueckssieben/logic";
+import { fuenfwuerfel } from "./fuenfwuerfel/logic";
 import { maumau } from "./maumau/logic";
-import { phase10 } from "./phase10/logic";
-import { skipbo } from "./skipbo/logic";
-import { skyjo } from "./skyjo/logic";
+import { zehnphasen } from "./zehnphasen/logic";
+import { stapelbau } from "./stapelbau/logic";
+import { himmelskarten } from "./himmelskarten/logic";
 import { spion } from "./spion/logic";
 import { maexchen } from "./maexchen/logic";
 import { ludo } from "./ludo/logic";
 import { vier } from "./vier/logic";
 import { muehle } from "./muehle/logic";
 import { dame } from "./dame/logic";
-import { tutto } from "./tutto/logic";
-import { uno } from "./uno/logic";
+import { alles } from "./alles/logic";
+import { eins } from "./eins/logic";
 import { werwolf } from "./werwolf/logic";
 import { schamlos } from "./schamlos/logic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const GAMES = { tutto, kniffel, flip7, skyjo, werwolf, einenacht, codenames, maumau, uno, skipbo, phase10, fischen, hellseher, spion, schamlos, maexchen, ludo, vier, muehle, dame } satisfies Record<string, GameLogic<any, any>>;
+export const GAMES = { alles, fuenfwuerfel, glueckssieben, himmelskarten, werwolf, einenacht, decknamen, maumau, eins, stapelbau, zehnphasen, fischen, hellseher, spion, schamlos, maexchen, ludo, vier, muehle, dame } satisfies Record<string, GameLogic<any, any>>;
 
 export type GameId = keyof typeof GAMES;
 export const GAME_IDS = Object.keys(GAMES) as GameId[];
-export const DEFAULT_GAME: GameId = "tutto";
+export const DEFAULT_GAME: GameId = "alles";
 
 export function isGameId(id: unknown): id is GameId {
   return typeof id === "string" && Object.hasOwn(GAMES, id);

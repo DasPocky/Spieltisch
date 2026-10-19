@@ -16,7 +16,7 @@ async function openRoom(page: Page, name: string, pin: string, extras?: (p: Page
   const code = page.url().split("/").pop()!;
   // Raum beginnt im Treffpunkt: Spiel wählen
   await page.getByTestId("meet-play").click();
-  await page.getByTestId("pick-uno").click();
+  await page.getByTestId("pick-eins").click();
   return code;
 }
 

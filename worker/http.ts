@@ -1,4 +1,5 @@
 /** Kleine Helfer für Anfragen und Antworten: JSON, Body lesen, Ratenbremse, Hashes, Codes */
+import { renameStored } from "../shared/games/renamed";
 import { randomCode } from "../shared/platform/group";
 import { ROOM_CODE_LENGTH } from "../shared/platform/protocol";
 
@@ -65,7 +66,8 @@ export async function readBody(request: Request, max = 8000): Promise<Record<str
   const text = await request.text();
   if (text.length > max) return null;
   try {
-    const body = text ? JSON.parse(text) : {};
+    // Ältere App-Stände schicken noch frühere Spielkennungen – hier gleich übernehmen
+    const body = renameStored(text ? JSON.parse(text) : {});
     return body && typeof body === "object" && !Array.isArray(body) ? body : null;
   } catch { return null; }
 }

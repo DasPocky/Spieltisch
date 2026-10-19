@@ -1,4 +1,5 @@
 /** Profile (Statistik je Gerät) und Übertragungs-Codes aufs neue Handy */
+import { renameStored } from "../shared/games/renamed";
 import { DurableObject } from "cloudflare:workers";
 import { addResult, emptyStats, MAX_PROFILE_GROUPS, PROFILE_ID_RE, PROFILE_KEY_RE, TRANSFER_MS, type ProfileStats, type RecentGame } from "../shared/platform/profile";
 import { GROUP_CODE_RE, sanitizeAvatar } from "../shared/platform/group";
@@ -15,7 +16,7 @@ export class ProfileStore extends DurableObject<Env> {
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => { this.stats = (await ctx.storage.get<ProfileStats>("stats")) ?? null; });
+    ctx.blockConcurrencyWhile(async () => { this.stats = renameStored((await ctx.storage.get<ProfileStats>("stats")) ?? null); });
   }
 
   async get(): Promise<ProfileStats> {

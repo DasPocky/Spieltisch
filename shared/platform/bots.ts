@@ -3,15 +3,15 @@
  * in tests/unit/simulate.test.ts – was dort viele tausend Partien ohne Hänger übersteht, taugt auch am echten Tisch.
  */
 import { DECKS } from "../cards/deck";
-import { ALL_CATS, type KniffelState } from "../games/kniffel/logic";
+import { ALL_CATS, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { MauMauState } from "../games/maumau/logic";
-import { extend as p10Extend, findPhase, type P10State } from "../games/phase10/logic";
-import { fits as sbFits, type SbState } from "../games/skipbo/logic";
-import { canPlay as unoCanPlay, COLORS, type UnoState } from "../games/uno/logic";
+import { extend as p10Extend, findPhase, type P10State } from "../games/zehnphasen/logic";
+import { fits as sbFits, type SbState } from "../games/stapelbau/logic";
+import { canPlay as einsCanPlay, COLORS, type EinsState } from "../games/eins/logic";
 import type { WerwolfState } from "../games/werwolf/logic";
 import { SUITS as HS_SUITS, type HsState } from "../games/hellseher/logic";
-import { POINT_STEPS } from "../games/tutto/logic";
+import { POINT_STEPS } from "../games/alles/logic";
 import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../games/maexchen/logic";
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
 import type { MuehleState } from "../games/muehle/logic";
@@ -36,8 +36,8 @@ export function candidates(r: RoomState, online: boolean): Move[] {
   const moves: Move[] = [];
   const add = (a: { type: string } & Record<string, unknown>) => moves.push(...anyone(g(a)));
   switch (r.gameId) {
-    case "tutto":
-      ["draw", "roll", "book", "clearPts", "tutto"].forEach((type) => add({ type }));
+    case "alles":
+      ["draw", "roll", "book", "clearPts", "alles"].forEach((type) => add({ type }));
       add({ type: "book", zero: true });
       add({ type: "draw", card: pick(["b200", "b300", "b500", "x2", "fire", "street", "pm", "stop", "stop", "clover"]) });
       {
@@ -50,8 +50,8 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       add({ type: "addPts", delta: pick(POINT_STEPS) });
       break;
-    case "kniffel": {
-      const s = r.game as KniffelState;
+    case "fuenfwuerfel": {
+      const s = r.game as FuenfWuerfelState;
       add({ type: "roll" });
       for (let i = 0; i < 5; i++) add({ type: "hold", i });
       for (const cat of ALL_CATS) for (const value of [0, 5, 10, 12, 20, 25, 30, 40, 50]) {
@@ -68,20 +68,20 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "pass" });
       break;
     }
-    case "uno": {
-      const s = r.game as UnoState;
+    case "eins": {
+      const s = r.game as EinsState;
       const hand = s.hands[s.curId ?? ""] ?? [];
-      for (const card of hand) for (const target of card.endsWith("-7") ? ids : [undefined]) add({ type: "play", card, color: pick(COLORS), uno: Math.random() < 0.9, target });
+      for (const card of hand) for (const target of card.endsWith("-7") ? ids : [undefined]) add({ type: "play", card, color: pick(COLORS), eins: Math.random() < 0.9, target });
       add({ type: "color", color: pick(COLORS) });
       if (Math.random() < 0.5) add({ type: "doubt" });
       // Wie echte Spieler: meist legen, wenn etwas passt – sonst wachsen die Hände endlos
-      if (s.phase !== "play" || !hand.some((c) => unoCanPlay(s, c, r.options, hand)) || Math.random() < 0.1) add({ type: "draw" });
+      if (s.phase !== "play" || !hand.some((c) => einsCanPlay(s, c, r.options, hand)) || Math.random() < 0.1) add({ type: "draw" });
       ["pass", "nextRound", "finishRound"].forEach((type) => add({ type }));
       for (const id of ids) add({ type: "enter", player: id, points: Math.floor(Math.random() * 120) });
       add({ type: "setWinner", player: pick(ids) });
       break;
     }
-    case "skipbo": {
+    case "stapelbau": {
       const s = r.game as SbState;
       const me = s.curId ?? "";
       const stockTop = s.stocks[me]?.[s.stocks[me].length - 1];
@@ -100,7 +100,7 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "setWinner", player: pick(ids) });
       break;
     }
-    case "phase10": {
+    case "zehnphasen": {
       const s = r.game as P10State;
       const me = s.curId ?? "";
       const hand = s.hands[me] ?? [];
@@ -114,7 +114,7 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       for (const id of ids) { add({ type: "enter", player: id, points: 5 * Math.floor(Math.random() * 20) }); add({ type: "setDone", player: id, done: Math.random() < 0.5 }); }
       break;
     }
-    case "skyjo": {
+    case "himmelskarten": {
       for (let i = 0; i < 12; i++) {
         for (const id of ids) add({ type: "flipStart", player: id, i });
         add({ type: "swap", i }); add({ type: "flip", i });
@@ -127,7 +127,7 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "finishRound" });
       break;
     }
-    case "codenames": {
+    case "decknamen": {
       for (const id of ids) for (const team of ["rot", "blau", null]) add({ type: "join", player: id, team, chief: Math.random() < 0.3 });
       ["shuffleTeams", "begin", "pass"].forEach((type) => add({ type }));
       add({ type: "clue", word: pick(["Tier", "Wasser", "Musik", "Reise"]), count: Math.floor(Math.random() * 4) });
@@ -145,7 +145,7 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       if (Math.random() < 0.05) add({ type: "undo" });
       break;
     }
-    case "flip7": {
+    case "glueckssieben": {
       const st = r.game as { lines: Record<string, { nums: string[]; mods: string[] }> };
       ["hit", "stay"].forEach((type) => add({ type }));
       for (const id of Object.keys(st.lines)) {

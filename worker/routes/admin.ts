@@ -185,7 +185,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
   if (path === "/api/admin/rooms/create" && request.method === "POST") {
     const pin = String(body.pin ?? "");
     if (!PIN_RE.test(pin)) return json({ error: "Die PIN muss 4 bis 8 Ziffern haben." }, 400);
-    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const gameId = isGameId(body.game) ? body.game : "alles";
     const config = await settings.config();
     const access = sanitizeAccess({ ...(body.room && typeof body.room === "object" ? body.room : {}), life: "forever" }, undefined, true);
     if (!access.name) return json({ error: "Bitte gib dem Raum einen Namen." }, 400);
@@ -198,7 +198,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
 
   // Entwickler-Modus: Testraum mit Bots – unsichtbar, zählt nicht; der Admin tritt als Erster bei und ist Host
   if (path === "/api/admin/test-room" && request.method === "POST") {
-    const gameId = isGameId(body.game) ? body.game : "tutto";
+    const gameId = isGameId(body.game) ? body.game : "alles";
     const n = Math.max(1, Math.min(10, Math.floor(Number(body.bots) || 3)));
     const pin = String(1000 + Math.floor(Math.random() * 9000));
     const config = await settings.config();

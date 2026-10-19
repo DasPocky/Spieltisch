@@ -78,9 +78,9 @@ export async function startLocal(page: Page, gameId: string, names: string[], op
 /** Einstellung „Echte Karten“ bzw. andere Auswahl per Name */
 export const pick = (...names: RegExp[]) => async (p: Page) => { for (const n of names) await p.getByRole("radio", { name: n }).click(); };
 
-/** Lokales Tutto mit Spielern starten */
-export async function startLocalTutto(page: Page, names: string[]) {
-  await openLocal(page, "tutto");
+/** Lokales Alles oder nichts mit Spielern starten */
+export async function startLocalAlles(page: Page, names: string[]) {
+  await openLocal(page, "alles");
   for (const n of names) {
     await page.getByLabel("Name des Spielers").fill(n);
     await page.getByRole("button", { name: "Hinzufügen" }).click();

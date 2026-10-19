@@ -21,13 +21,19 @@ export const MODE_STATES: { value: ModeState; label: string }[] = [
  * Neue Spielweisen starten als „beta“ und werden nach der Abnahme auf „on“ gesetzt.
  */
 export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = {
-  // Abgenommen: docs/abnahme/maumau.md, docs/abnahme/uno.md
+  // Abgenommen: docs/abnahme/maumau.md, docs/abnahme/eins.md
   maumau: { table: "on", desk: "on", stage: "beta" },
-  uno: { table: "on", desk: "on", stage: "beta" },
+  eins: { table: "on", desk: "on", stage: "beta" },
   schamlos: { table: "on", stage: "beta" },
-  // Bausteine Würfel und Spielfeld: abgenommen (docs/abnahme/kniffel.md, vier.md)
-  kniffel: { table: "on", stage: "beta" },
+  // Bausteine Würfel und Spielfeld: abgenommen (docs/abnahme/fuenfwuerfel.md, vier.md)
+  fuenfwuerfel: { table: "on", stage: "beta" },
   vier: { table: "on", stage: "beta" },
+  // Bausteine Stapel und Auslage am Platz – Beta bis zur Abnahme
+  stapelbau: { table: "beta" },
+  himmelskarten: { table: "beta" },
+  zehnphasen: { table: "beta" },
+  glueckssieben: { table: "beta" },
+  decknamen: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

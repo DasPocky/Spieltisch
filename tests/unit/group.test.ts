@@ -5,7 +5,7 @@ import {
 } from "@shared/platform/group";
 import { makeProfileId } from "@shared/platform/profile";
 
-const ids = ["tutto", "kniffel", "uno"];
+const ids = ["alles", "fuenfwuerfel", "eins"];
 
 function group3() {
   const g = newGroup("ABCDEF", "  Spiele   abend ", 0);
@@ -60,35 +60,35 @@ describe("Gruppen", () => {
   it("Ergebnisse prüfen: bekanntes Spiel, nur Mitglieder, keine Doppelten", () => {
     const { g, a, b } = group3();
     const members = g.members.map((m) => m.id);
-    expect(sanitizeGroupResult({ gameId: "tutto", players: [{ id: a, won: true }, { id: b }] }, ids, members))
-      .toEqual({ gameId: "tutto", players: [{ id: a, won: true }, { id: b, won: false }] });
+    expect(sanitizeGroupResult({ gameId: "alles", players: [{ id: a, won: true }, { id: b }] }, ids, members))
+      .toEqual({ gameId: "alles", players: [{ id: a, won: true }, { id: b, won: false }] });
     expect(sanitizeGroupResult({ gameId: "schach", players: [{ id: a, won: true }] }, ids, members)).toBeNull();
-    expect(sanitizeGroupResult({ gameId: "tutto", players: [{ id: "FREMDXYZ", won: true }] }, ids, members)).toBeNull();
-    expect(sanitizeGroupResult({ gameId: "tutto", players: [{ id: a }, { id: a }] }, ids, members)).toBeNull();
-    expect(sanitizeGroupResult({ gameId: "tutto", players: [] }, ids, members)).toBeNull();
+    expect(sanitizeGroupResult({ gameId: "alles", players: [{ id: "FREMDXYZ", won: true }] }, ids, members)).toBeNull();
+    expect(sanitizeGroupResult({ gameId: "alles", players: [{ id: a }, { id: a }] }, ids, members)).toBeNull();
+    expect(sanitizeGroupResult({ gameId: "alles", players: [] }, ids, members)).toBeNull();
     expect(sanitizeGroupResult(null, ids, members)).toBeNull();
   });
 
   it("Bestenliste: Siege je Spiel und gesamt, sortiert nach Siegen und Quote", () => {
     const { g, a, b, c } = group3();
-    addGroupResult(g, { gameId: "tutto", players: [{ id: a, won: true }, { id: b, won: false }] });
-    addGroupResult(g, { gameId: "tutto", players: [{ id: a, won: false }, { id: b, won: true }, { id: c, won: false }] });
-    addGroupResult(g, { gameId: "uno", players: [{ id: b, won: true }, { id: c, won: false }] });
-    addGroupResult(g, { gameId: "uno", players: [{ id: "WEGWEG22", won: true }] });
-    expect(g.stats[a]).toEqual({ tutto: { played: 2, won: 1 } });
+    addGroupResult(g, { gameId: "alles", players: [{ id: a, won: true }, { id: b, won: false }] });
+    addGroupResult(g, { gameId: "alles", players: [{ id: a, won: false }, { id: b, won: true }, { id: c, won: false }] });
+    addGroupResult(g, { gameId: "eins", players: [{ id: b, won: true }, { id: c, won: false }] });
+    addGroupResult(g, { gameId: "eins", players: [{ id: "WEGWEG22", won: true }] });
+    expect(g.stats[a]).toEqual({ alles: { played: 2, won: 1 } });
     const all = leaderboard(g, null);
     expect(all.map((r) => [r.member.name, r.played, r.won])).toEqual([["Ben", 3, 2], ["Anna", 2, 1], ["Cara", 2, 0]]);
     expect(all[0].rate).toBeCloseTo(2 / 3);
-    const tutto = leaderboard(g, "tutto");
+    const alles = leaderboard(g, "alles");
     // Gleich viele Siege, gleiche Quote: alphabetisch
-    expect(tutto.map((r) => r.member.name)).toEqual(["Anna", "Ben", "Cara"]);
-    expect(leaderboard(g, "kniffel").every((r) => r.played === 0)).toBe(true);
-    expect(playedGames(g)).toEqual(["tutto", "uno"]);
+    expect(alles.map((r) => r.member.name)).toEqual(["Anna", "Ben", "Cara"]);
+    expect(leaderboard(g, "fuenfwuerfel").every((r) => r.played === 0)).toBe(true);
+    expect(playedGames(g)).toEqual(["alles", "eins"]);
   });
 
   it("Mitglied entfernen löscht Statistik und Zuordnung", () => {
     const { g, a, b } = group3();
-    addGroupResult(g, { gameId: "tutto", players: [{ id: a, won: true }, { id: b, won: false }] });
+    addGroupResult(g, { gameId: "alles", players: [{ id: a, won: true }, { id: b, won: false }] });
     expect(removeMember(g, a)).toBe(true);
     expect(removeMember(g, a)).toBe(false);
     expect(g.stats[a]).toBeUndefined();

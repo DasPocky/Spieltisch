@@ -42,10 +42,10 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
   await setConfig(request, ALL_ON, null);
   await adminLogin(page);
   await section(page, "spiele");
-  await page.getByRole("radiogroup", { name: "Freigabe Kniffel" }).getByRole("radio", { name: "Aus" }).click();
-  await expect(page.getByText("Kniffel: Aus")).toBeVisible();
-  await page.getByRole("radiogroup", { name: "Freigabe Flip 7" }).getByRole("radio", { name: "Code" }).click();
-  await expect(page.getByText("Flip 7: Code")).toBeVisible();
+  await page.getByRole("radiogroup", { name: "Freigabe Fünf Würfel" }).getByRole("radio", { name: "Aus" }).click();
+  await expect(page.getByText("Fünf Würfel: Aus")).toBeVisible();
+  await page.getByRole("radiogroup", { name: "Freigabe Glückssieben" }).getByRole("radio", { name: "Code" }).click();
+  await expect(page.getByText("Glückssieben: Code")).toBeVisible();
   await shot(page, "99-admin");
   // Ohne Zugangscode weist der Admin-Start darauf hin – ein Tipp führt hin
   await page.goto("/admin");
@@ -54,35 +54,35 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
   await page.getByRole("button", { name: "Setzen" }).click();
   await expect(page.getByRole("status")).toHaveText("Zugangscode gespeichert.");
 
-  // Spielauswahl der Lobby: Kniffel weg, Flip 7 mit Schloss
+  // Spielauswahl der Lobby: Fünf Würfel weg, Glückssieben mit Schloss
   await page.goto("/");
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   await page.getByTestId("game-card").click();
-  await expect(page.getByRole("button", { name: /^Tutto/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Kniffel/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Flip 7/ })).toHaveAccessibleName(/Flip 7/);
-  await expect(page.getByRole("button", { name: /^Flip 7/ }).getByLabel("mit Zugangscode")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Alles oder nichts/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Fünf Würfel/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Glückssieben/ })).toHaveAccessibleName(/Glückssieben/);
+  await expect(page.getByRole("button", { name: /^Glückssieben/ }).getByLabel("mit Zugangscode")).toBeVisible();
 
-  // Kniffel über den alten Link: geschlossen
-  await page.goto("/spiel/kniffel");
-  await expect(page.getByTestId("closed")).toHaveText("Kniffel ist gerade geschlossen");
+  // Fünf Würfel über den alten Link: geschlossen
+  await page.goto("/spiel/fuenfwuerfel");
+  await expect(page.getByTestId("closed")).toHaveText("Fünf Würfel ist gerade geschlossen");
 
   // Server lehnt Online-Räume ab
-  const off = await request.post("/api/rooms", { data: { pin: "1234", game: "kniffel" } });
+  const off = await request.post("/api/rooms", { data: { pin: "1234", game: "fuenfwuerfel" } });
   expect(off.status()).toBe(403);
-  const noCode = await request.post("/api/rooms", { data: { pin: "1234", game: "flip7" } });
+  const noCode = await request.post("/api/rooms", { data: { pin: "1234", game: "glueckssieben" } });
   expect(noCode.status()).toBe(403);
-  const withCode = await request.post("/api/rooms", { data: { pin: "1234", game: "flip7", access: "spieleabend" } });
+  const withCode = await request.post("/api/rooms", { data: { pin: "1234", game: "glueckssieben", access: "spieleabend" } });
   expect(withCode.status()).toBe(201);
 
-  // Flip 7: erst Code, dann geht's
-  await page.goto("/spiel/flip7");
+  // Glückssieben: erst Code, dann geht's
+  await page.goto("/spiel/glueckssieben");
   await page.getByLabel("Zugangscode").fill("falsch1");
   await page.getByRole("button", { name: "Freischalten" }).click();
   await expect(page.getByRole("alert")).toHaveText("Der Code stimmt nicht.");
   await page.getByLabel("Zugangscode").fill("spieleabend");
   await page.getByRole("button", { name: "Freischalten" }).click();
-  await expect(page.getByTestId("game-card")).toContainText("Flip 7");
+  await expect(page.getByTestId("game-card")).toContainText("Glückssieben");
 });
 
 test("Admin: ganzer Spieltisch aus mit Hinweis", async ({ page, request }) => {
@@ -118,7 +118,7 @@ test("Admin: bleibt nach dem Neuladen angemeldet, Abmelden beendet die Sitzung",
 
 test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ page, browser }) => {
   const host = await newPhone(browser);
-  const code = await createRoom(host, "tutto", "Hanna", "4321");
+  const code = await createRoom(host, "alles", "Hanna", "4321");
   await expect(host.getByText(/Hanna/).first()).toBeVisible();
 
   // Achtmal falsche PIN: Raum gesperrt
@@ -139,7 +139,7 @@ test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ pa
   await section(page, "live");
   const card = page.getByTestId(`room-${code}`);
   await expect(card).toBeVisible();
-  await expect(card).toContainText("Tutto");
+  await expect(card).toContainText("Alles oder nichts");
   await expect(card).toContainText("Lobby");
   await expect(card).toContainText("1 Spieler, 1 online");
   await expect(card).toContainText("gesperrt");
@@ -164,24 +164,24 @@ test("Admin: Räume sehen, PIN-Sperre aufheben und Raum schließen", async ({ pa
 test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({ page, browser }) => {
   await adminLogin(page);
   await section(page, "spiele");
-  await page.getByRole("button", { name: "Standards Kniffel" }).click();
+  await page.getByRole("button", { name: "Standards Fünf Würfel" }).click();
   const sheet = page.getByTestId("defaults-sheet");
   await sheet.getByRole("radio", { name: /Ohne Extra/ }).click();
-  await expect(page.getByText(/^Kniffel: /)).toBeVisible();
+  await expect(page.getByText(/^Fünf Würfel: /)).toBeVisible();
   await adminShot(page, "3-standards");
   await sheet.getByRole("button", { name: "Fertig" }).click();
-  await expect(page.getByTestId("admin-game-kniffel")).toContainText("eigene Standards");
+  await expect(page.getByTestId("admin-game-fuenfwuerfel")).toContainText("eigene Standards");
 
   // Online: neuer Raum hat den Standard
   const host = await newPhone(browser);
-  await createRoom(host, "kniffel", "Hanna", "4321");
+  await createRoom(host, "fuenfwuerfel", "Hanna", "4321");
   await openSettings(host);
   await expect(host.getByRole("radio", { name: /Ohne Extra/ })).toBeChecked();
   await host.context().close();
 
   // Lokal: frischer Spielstand startet mit dem Standard, lässt sich aber ändern
   const local = await newPhone(browser);
-  await local.goto("/spiel/kniffel/lokal");
+  await local.goto("/spiel/fuenfwuerfel/lokal");
   await openSettings(local);
   const box = local.getByRole("radio", { name: /Ohne Extra/ });
   await expect(box).toBeChecked();
@@ -192,24 +192,24 @@ test("Admin: Standard-Einstellungen gelten für neue Räume und lokal", async ({
 
 test("Admin: Übersicht zählt Räume und Partien", async ({ page, request, browser }) => {
   const before = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": ADMIN_PW } })).json();
-  const rooms = (before.totals.kniffel?.rooms ?? 0) as number;
+  const rooms = (before.totals.fuenfwuerfel?.rooms ?? 0) as number;
 
   // Online-Raum anlegen und eine Partie starten
   const host = await newPhone(browser);
-  await createRoom(host, "kniffel", "Hanna", "4321");
+  await createRoom(host, "fuenfwuerfel", "Hanna", "4321");
   await host.getByRole("button", { name: "Spiel starten" }).click();
   await expect(host.getByRole("button", { name: "Spiel starten" })).toHaveCount(0);
   await host.context().close();
 
   const after = await (await request.get("/api/admin/stats", { headers: { "x-admin-password": ADMIN_PW } })).json();
-  expect(after.totals.kniffel.rooms).toBeGreaterThanOrEqual(rooms + 1);
+  expect(after.totals.fuenfwuerfel.rooms).toBeGreaterThanOrEqual(rooms + 1);
   // Spitzenzeit gezählt
   expect(Object.values(after.days[0].slots ?? {}).reduce((a: number, b) => a + (b as number), 0)).toBeGreaterThanOrEqual(1);
 
   await adminLogin(page);
   await section(page, "statistik");
   await page.getByRole("radio", { name: "Gesamt" }).click();
-  const row = page.getByTestId("stat-game-kniffel");
+  const row = page.getByTestId("stat-game-fuenfwuerfel");
   await expect(row).toBeVisible();
   await expect(row).toContainText(/[1-9]\d* online/);
   await expect(page.getByRole("heading", { name: "Partien pro Woche" })).toBeVisible();
@@ -334,7 +334,7 @@ test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich lösc
   const profile = Array.from({ length: 16 }, () => AB[Math.floor(Math.random() * AB.length)]).join("");
   // Profil spielt eine Partie, Gruppe wird angelegt (das Gerät weist sich mit dem Profil-Schlüssel aus)
   const headers = { "x-profile-key": "ab".repeat(24) };
-  expect((await request.post(`/api/profile/${profile}/result`, { headers, data: { gameId: "kniffel", won: true, score: 210, players: 2 } })).ok()).toBe(true);
+  expect((await request.post(`/api/profile/${profile}/result`, { headers, data: { gameId: "fuenfwuerfel", won: true, score: 210, players: 2 } })).ok()).toBe(true);
   const g = await (await request.post("/api/groups", { headers, data: { profile, member: "Ida", name: "Testrunde" } })).json();
   const code = g.group.code as string;
 

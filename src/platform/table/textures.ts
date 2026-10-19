@@ -1,18 +1,18 @@
 /**
- * Kartenbilder für den 3D-Tisch: dieselben Farbsymbole und Uno-Karten wie am Handy, als Bild in ein Canvas gezeichnet.
+ * Kartenbilder für den 3D-Tisch: dieselben Farbsymbole und Eins-Karten wie am Handy, als Bild in ein Canvas gezeichnet.
  * Jede Karte entsteht nur einmal und bleibt im Speicher.
  */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { rankOf, RANK_NAME, suitOf, type Card } from "@shared/cards/deck";
-import type { UnoCard } from "@shared/games/uno/logic";
+import type { EinsCard } from "@shared/games/eins/logic";
 import { SuitIcon, SUIT_COLOR } from "@/platform/cards/PlayingCard";
-import { UnoCardView } from "@/games/uno/Board";
+import { EinsCardView } from "@/games/eins/Board";
 import { cardText } from "@shared/games/schamlos/cards";
 import type { TableDeck } from "./model";
 
-/** Seitenverhältnis wie am Handy: Spielkarten 5:8, Uno 5:7 */
-export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, uno: 7 / 5, schamlos: 7 / 5 };
+/** Seitenverhältnis wie am Handy: Spielkarten 5:8, Eins! 5:7 */
+export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, eins: 7 / 5, schamlos: 7 / 5 };
 /** Breite der Kartenbilder in Pixeln – scharf auch auf 4K-Fernsehern */
 const W = 768;
 
@@ -80,12 +80,12 @@ async function drawPlaying(card: Card): Promise<HTMLCanvasElement> {
   return c;
 }
 
-/** Uno-Karte – das Bild von `UnoCardView` auf weißem Grund */
-async function drawUno(card: UnoCard): Promise<HTMLCanvasElement> {
-  const c = canvas("uno");
+/** Eins-Karte – das Bild von `EinsCardView` auf weißem Grund */
+async function drawEins(card: EinsCard): Promise<HTMLCanvasElement> {
+  const c = canvas("eins");
   const g = c.getContext("2d")!;
   g.fillStyle = "#ffffff"; rounded(g, 0, 0, c.width, c.height, c.width * 0.12); g.fill();
-  const img = await svgImage(renderToStaticMarkup(createElement(UnoCardView, { card })));
+  const img = await svgImage(renderToStaticMarkup(createElement(EinsCardView, { card })));
   g.drawImage(img, 0, 0, c.width, c.height);
   return c;
 }
@@ -130,7 +130,7 @@ async function drawWords(id: string): Promise<HTMLCanvasElement> {
   return c;
 }
 
-/** Rückseiten: Spielkarten im Marine-Muster, Uno schwarz mit rotem Oval, Textkarten weiß mit Schriftzug */
+/** Rückseiten: Spielkarten im Marine-Muster, Eins! schwarz mit rotem Oval, Textkarten weiß mit Schriftzug */
 export function drawBack(deck: TableDeck): HTMLCanvasElement {
   const c = canvas(deck);
   const g = c.getContext("2d")!;
@@ -141,11 +141,14 @@ export function drawBack(deck: TableDeck): HTMLCanvasElement {
     g.fillText("Schamlos", 0, 0); g.restore();
     return c;
   }
-  if (deck === "uno") {
+  if (deck === "eins") {
     g.fillStyle = "#ffffff"; rounded(g, 0, 0, w, h, 12 * u); g.fill();
     g.fillStyle = "#161616"; rounded(g, 5 * u, 5 * u, w - 10 * u, h - 10 * u, 9 * u); g.fill();
-    g.save(); g.translate(w / 2, h / 2); g.rotate(Math.PI / 6); g.fillStyle = "#d72600";
-    g.beginPath(); g.ellipse(0, 0, 31 * u, 54 * u, 0, 0, Math.PI * 2); g.fill(); g.restore();
+    // vier farbige Punkte im Quadrat (wie EinsBack)
+    ["#d72600", "#ecd407", "#379711", "#0956bf"].forEach((col, i) => {
+      g.fillStyle = col; g.strokeStyle = "#fff"; g.lineWidth = 2 * u;
+      g.beginPath(); g.arc(w / 2 + (i % 2 ? 12 : -12) * u, h / 2 + (i < 2 ? -12 : 12) * u, 11 * u, 0, Math.PI * 2); g.fill(); g.stroke();
+    });
     return c;
   }
   g.fillStyle = PAPER; rounded(g, 0, 0, w, h, 10 * u); g.fill();
@@ -165,6 +168,6 @@ const faces = new Map<string, Promise<HTMLCanvasElement>>();
 export function drawFace(deck: TableDeck, card: string): Promise<HTMLCanvasElement> {
   const key = `${deck}:${card}`;
   let p = faces.get(key);
-  if (!p) faces.set(key, (p = deck === "uno" ? drawUno(card as UnoCard) : deck === "schamlos" ? drawWords(card) : drawPlaying(card as Card)));
+  if (!p) faces.set(key, (p = deck === "eins" ? drawEins(card as EinsCard) : deck === "schamlos" ? drawWords(card) : drawPlaying(card as Card)));
   return p;
 }

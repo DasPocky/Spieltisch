@@ -42,12 +42,12 @@ describe("Raumverzeichnis", () => {
 
   it("Raumkarte vom Server wird geprüft", () => {
     expect(sanitizeCard(null)).toBeNull();
-    const c = sanitizeCard({ code: "ABCDE", gameId: "uno", players: [{ name: "Anna", online: true, avatar: { color: 1, emoji: 2 } }], online: 1, visibility: "x", admission: "knock" });
+    const c = sanitizeCard({ code: "ABCDE", gameId: "eins", players: [{ name: "Anna", online: true, avatar: { color: 1, emoji: 2 } }], online: 1, visibility: "x", admission: "knock" });
     expect(c).toMatchObject({ code: "ABCDE", phase: "lobby", visibility: "all", admission: "knock", players: [{ name: "Anna", online: true }] });
   });
 
   it("Host stellt den Zugang im Raum um, andere dürfen das nicht", () => {
-    let r = createRoom("uno");
+    let r = createRoom("eins");
     r = addPlayer(r, { id: "a", name: "Anna" });
     r = addPlayer(r, { id: "b", name: "Ben" });
     r = applyRoomAction(r, { type: "setAccess", access: { visibility: "none", admission: "knock", name: "Geheim" } }, "a");

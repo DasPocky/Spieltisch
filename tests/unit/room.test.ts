@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addPlayer, canPlayTurn, createRoom, playerLimits, sanitizeOption, viewRoom } from "@shared/platform/room";
 import { GAME_IDS, getGame } from "@shared/games";
-import { stackCard, type TuttoState } from "@shared/games/tutto/logic";
+import { stackCard, type AllesState } from "@shared/games/alles/logic";
 import { act, game, roomWith } from "./helpers";
 
 describe("Spieler & Host", () => {
@@ -21,8 +21,8 @@ describe("Spieler & Host", () => {
   it("begrenzt die Spielerzahl auf das Maximum des Spiels", () => {
     const r = roomWith(Array.from({ length: 12 }, (_, i) => `S${i}`));
     expect(() => addPlayer(r, { id: "x", name: "Zu viel" })).toThrow(/höchstens 12/);
-    // Kniffel geht nur bis 8: Wechsel erlaubt, Start nicht
-    const k = act(r, { type: "selectGame", gameId: "kniffel" });
+    // Fünf Würfel geht nur bis 8: Wechsel erlaubt, Start nicht
+    const k = act(r, { type: "selectGame", gameId: "fuenfwuerfel" });
     expect(() => act(k, { type: "start" })).toThrow(/höchstens 8/);
     expect(playerLimits(k)).toEqual({ min: 1, max: 8 });
   });
@@ -74,7 +74,7 @@ describe("Phasen & Einstellungen", () => {
 
   it("Spielwechsel nur in der Lobby", () => {
     const r = act(roomWith(["Anna"]), { type: "start" });
-    expect(() => act(r, { type: "selectGame", gameId: "tutto" })).toThrow(/Lobby/);
+    expect(() => act(r, { type: "selectGame", gameId: "alles" })).toThrow(/Lobby/);
     expect(() => act(roomWith(["Anna"]), { type: "selectGame", gameId: "gibtsnicht" })).toThrow(/gibt es nicht/);
   });
 
@@ -95,7 +95,7 @@ describe("Rechte bei Spielzügen", () => {
   it("Standard: nur wer dran ist (und der Host)", () => {
     const r = started();
     expect(canPlayTurn(r, "p1")).toBe(true); // Host
-    const cur = (r.game as TuttoState).curId;
+    const cur = (r.game as AllesState).curId;
     const other = ["p2", "p3"].find((id) => id !== cur)!;
     expect(canPlayTurn(r, other)).toBe(false);
     expect(() => game(r, { type: "draw" }, other)).toThrow(/ist am Zug/);
@@ -134,18 +134,18 @@ describe("Rechte bei Spielzügen", () => {
 describe("Sicht pro Spieler", () => {
   it("die Reihenfolge des Kartenstapels bleibt geheim", () => {
     const r = act(roomWith(["Anna"]), { type: "start" });
-    const pile = (r.game as TuttoState).pile;
-    const seen = (viewRoom(r, "p1").game as TuttoState).pile;
+    const pile = (r.game as AllesState).pile;
+    const seen = (viewRoom(r, "p1").game as AllesState).pile;
     expect(seen).toEqual([...pile].sort());
-    expect((r.game as TuttoState).pile).toBe(pile); // Original unverändert
+    expect((r.game as AllesState).pile).toBe(pile); // Original unverändert
   });
 });
 
 describe("Rückgängig", () => {
-  // Tutto mit Bonuskarte oben auf dem Stapel, damit Punkte eintragen sicher geht
+  // Alles oder nichts mit Bonuskarte oben auf dem Stapel, damit Punkte eintragen sicher geht
   const started = () => {
     let r = act(act(roomWith(["Anna", "Ben"]), { type: "setOption", key: "autoDraw", value: false }), { type: "start" });
-    r = { ...r, game: stackCard(r.game as TuttoState, "b200") };
+    r = { ...r, game: stackCard(r.game as AllesState, "b200") };
     return game(r, { type: "draw" });
   };
   it("nimmt die letzten Züge zurück – nur der Host, Spieler sehen nur die Anzahl", () => {

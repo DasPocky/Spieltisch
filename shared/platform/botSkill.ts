@@ -8,7 +8,7 @@
  */
 import { DECKS, rankOf, suitOf, type Card } from "../cards/deck";
 import type { MauMauState } from "../games/maumau/logic";
-import { colorOf, COLORS, isWild, valueOf, type UnoCard, type UnoState } from "../games/uno/logic";
+import { colorOf, COLORS, isWild, valueOf, type EinsCard, type EinsState } from "../games/eins/logic";
 import type { VierState } from "../games/vier/logic";
 import { botMove, candidates, type Move } from "./bots";
 import { applyRoomAction, roomGame, viewRoom, type RoomAction, type RoomState } from "./room";
@@ -67,10 +67,10 @@ function scoreMaumau(view: RoomState, a: { type: string } & Record<string, unkno
   return 0;
 }
 
-// ---------------------------------------------------------------- Uno
+// ---------------------------------------------------------------- Eins!
 
-function scoreUno(view: RoomState, a: { type: string } & Record<string, unknown>, _after: RoomState, me: string): number {
-  const s = view.game as UnoState;
+function scoreEins(view: RoomState, a: { type: string } & Record<string, unknown>, _after: RoomState, me: string): number {
+  const s = view.game as EinsState;
   const hand = s.hands[me] ?? [];
   const most = (skip?: string) => {
     const n: Record<string, number> = {};
@@ -78,8 +78,8 @@ function scoreUno(view: RoomState, a: { type: string } & Record<string, unknown>
     return n;
   };
   if (a.type === "play") {
-    const card = a.card as UnoCard;
-    let v = 10 + (a.uno ? 3 : 0);
+    const card = a.card as EinsCard;
+    let v = 10 + (a.eins ? 3 : 0);
     // Joker für später aufheben
     if (isWild(card) && hand.length > 2) v -= 5;
     const val = valueOf(card);
@@ -94,7 +94,7 @@ function scoreUno(view: RoomState, a: { type: string } & Record<string, unknown>
   return 0;
 }
 
-// ---------------------------------------------------------------- Vier gewinnt
+// ---------------------------------------------------------------- Vier in einer Reihe
 
 /** Steht für die Farbe ein Gewinnzug bereit? (offenes Brett, keine Geheimnisse) */
 function winsNext(room: RoomState, actor: string): boolean {
@@ -124,7 +124,7 @@ function scoreVier(view: RoomState, a: { type: string } & Record<string, unknown
   return v;
 }
 
-const SCORERS: Record<string, Scorer> = { maumau: scoreMaumau, uno: scoreUno, vier: scoreVier };
+const SCORERS: Record<string, Scorer> = { maumau: scoreMaumau, eins: scoreEins, vier: scoreVier };
 
 type A = { type: string } & Record<string, unknown>;
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
@@ -135,11 +135,11 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[]> = {
     for (const card of s.hands[me] ?? []) for (const wish of DECKS[s.deck].suits) for (const mau of [true, false]) out.push({ type: "play", card, wish, mau });
     return out;
   },
-  uno: (view, me) => {
-    const s = view.game as UnoState;
+  eins: (view, me) => {
+    const s = view.game as EinsState;
     const out: A[] = [{ type: "draw" }, { type: "pass" }, { type: "doubt" }, { type: "nextRound" }, { type: "finishRound" }, ...COLORS.map((color) => ({ type: "color", color }))];
-    for (const card of s.hands[me] ?? []) for (const color of COLORS) for (const uno of [true, false]) {
-      for (const target of card.endsWith("-7") ? view.players.map((p) => p.id) : [undefined]) out.push({ type: "play", card, color, uno, target });
+    for (const card of s.hands[me] ?? []) for (const color of COLORS) for (const eins of [true, false]) {
+      for (const target of card.endsWith("-7") ? view.players.map((p) => p.id) : [undefined]) out.push({ type: "play", card, color, eins, target });
     }
     return out;
   },

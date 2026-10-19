@@ -38,7 +38,7 @@ describe("Bots mit Spielstärke", () => {
     expect(m1?.action).toEqual(m2?.action);
   });
 
-  it("Vier gewinnt (schwer): nimmt den Sieg und blockt den des anderen", () => {
+  it("Vier in einer Reihe (schwer): nimmt den Sieg und blockt den des anderen", () => {
     let r = start("vier");
     const [x, o] = (r.game as VierState).colors;
     // x: Spalten 0,1,2 · o: Spalten 6,6 – x ist dran und gewinnt mit Spalte 3
@@ -57,7 +57,7 @@ describe("Bots mit Spielstärke", () => {
     expect(v.hands.p2 ?? []).toHaveLength(0);
   });
 
-  it("Schwer schlägt Zufall bei Vier gewinnt deutlich", () => {
+  it("Schwer schlägt Zufall bei Vier in einer Reihe deutlich", () => {
     let strong = 0;
     for (let k = 0; k < 20; k++) {
       // abwechselnd anfangen
@@ -83,7 +83,7 @@ describe("Bots mit Spielstärke", () => {
 describe("Bots ohne Bewertung", () => {
   it("Spiele ohne Spielstärke enden trotzdem (kein Hin und Her in derselben Lage)", async () => {
     const { playBot } = await import("@shared/platform/botSkill");
-    let r = start("tutto");
+    let r = start("alles");
     r = { ...r, bots: ["p1", "p2"], botLevels: { p1: "mittel", p2: "schwer" } };
     const seen = new Set<string>();
     for (let i = 0; i < 300 && !roomGame(r).isOver(r.game); i++) {
@@ -99,12 +99,12 @@ describe("Bots ohne Bewertung", () => {
 });
 
 describe("Abnahme: Bots", () => {
-  it.each([["maumau", [2, 3, 4]], ["uno", [2, 3, 4]], ["vier", [2]], ["kniffel", [2, 3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
+  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
     for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
       for (const n of counts) {
         let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));
-        // Uno: eine Runde reicht (sonst bis 500 Punkte)
-        if (gameId === "uno") r = { ...r, options: { ...r.options, target: "round" } };
+        // Eins!: eine Runde reicht (sonst bis 500 Punkte)
+        if (gameId === "eins") r = { ...r, options: { ...r.options, target: "round" } };
         let i = 0;
         for (; i < 3000 && !roomGame(r).isOver(r.game); i++) {
           const cur = roomGame(r).currentPlayerId(r.game)!;

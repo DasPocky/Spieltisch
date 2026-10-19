@@ -162,19 +162,19 @@ test("Handy als Begleiter: QR am Rechner, Handy wird zweites Gerät desselben Sp
   await expect(again.getByText(/Kopplungs-Code ist abgelaufen/)).toBeVisible();
 });
 
-test("Am Rechner am Tisch mitspielen (Uno): eigene Hand unter dem Tisch, Tastatur zum Ziehen und Passen", async ({ browser, request }) => {
-  await setConfig(request, { ...ALL_ON, modes: { uno: { desk: "on" } } });
+test("Am Rechner am Tisch mitspielen (Eins!): eigene Hand unter dem Tisch, Tastatur zum Ziehen und Passen", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { eins: { desk: "on" } } });
   try {
     const page = await desktop(browser);
     await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
     await page.goto("/");
-    await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "uno"));
+    await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "eins"));
     await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
     await page.getByLabel("Dein Name").fill("Anna");
     await page.getByLabel(/PIN/).fill("7171");
     await page.getByRole("button", { name: "Öffnen", exact: true }).click();
     await page.getByTestId("meet-play").click();
-    await page.getByTestId("pick-uno").click();
+    await page.getByTestId("pick-eins").click();
     const code = (await page.getByTestId("room-code").textContent())!.trim();
     const phone = await newPhone(browser);
     await phone.goto(`/r/${code}`);
@@ -187,7 +187,7 @@ test("Am Rechner am Tisch mitspielen (Uno): eigene Hand unter dem Tisch, Tastatu
     await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(7);
     await expect(page.getByTestId("table-seat")).toContainText("Ben");
     await expectNoScroll(page);
-    await shot(page, "g7-desk-uno");
+    await shot(page, "g7-desk-eins");
 
     // Startkarte Farbwahl möglich: dann zuerst eine Farbe mit 1
     const status = page.getByTestId("desk-hand").getByTestId("status");

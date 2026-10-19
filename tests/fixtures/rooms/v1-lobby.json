@@ -1,6 +1,6 @@
 {
  "v": 1,
- "gameId": "uno",
+ "gameId": "@alt:eins",
  "players": [
   {
    "id": "a",
@@ -20,7 +20,7 @@
  "options": {
   "mode": "app",
   "target": "500",
-  "uno": true,
+  "@alt:eins": true,
   "plus4": "challenge",
   "stack": false,
   "drawUntil": false,

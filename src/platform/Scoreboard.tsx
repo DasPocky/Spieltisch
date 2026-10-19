@@ -21,7 +21,7 @@ export function Scoreboard({ entries, currentId, me, online, selectedId, onSelec
   /** optional: antippbar, z. B. um den Block eines Spielers anzuzeigen */
   selectedId?: string | null;
   onSelect?: (id: string) => void;
-  /** Wenige Punkte sind gut (z. B. Skyjo): die Krone geht an den Niedrigsten */
+  /** Wenige Punkte sind gut (z. B. Himmelskarten): die Krone geht an den Niedrigsten */
   lowWins?: boolean;
 }) {
   const max = Math.max(...entries.map((p) => p.score));

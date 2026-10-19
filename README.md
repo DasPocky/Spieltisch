@@ -4,7 +4,7 @@ Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zus
 
 **Live:** https://spieltisch.bjoern-ef9.workers.dev/
 
-<p align="center"><img src="docs/images/banner.png" alt="Spieltisch – Startseite, Kniffel mit 3D-Würfeln und Uno"></p>
+<p align="center"><img src="docs/images/banner.png" alt="Spieltisch – Startseite, Fünf Würfel mit 3D-Würfeln und Eins!"></p>
 
 ## Funktionen
 
@@ -25,9 +25,9 @@ Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zus
 
 | Kategorie | Spiele |
 | --- | --- |
-| Würfel | Tutto, Kniffel, Mäxchen |
-| Karten | Uno, Mau-Mau, Skip-Bo, Phase 10, Skyjo, Flip 7, Fischen, Hellseher |
-| Party & Rollen | Werwolf (die App erzählt und liest vor), Eine Nacht, Codenames, Spion |
+| Würfel | Alles oder nichts, Fünf Würfel, Mäxchen |
+| Karten | Eins!, Mau-Mau, Stapelbau, Zehn Phasen, Himmelskarten, Glückssieben, Fischen, Hellseher |
+| Party & Rollen | Werwolf (die App erzählt und liest vor), Eine Nacht, Decknamen, Spion |
 | Brett | Ludo, Vier in einer Reihe, Mühle, Dame |
 
 ## Loslegen

@@ -104,9 +104,9 @@ test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ab
   const anna = await joinByLink(browser, code, pin, "Anna");
   await joinByLink(browser, code, pin, "Ben");
   await anna.getByTestId("meet-play").click();
-  await anna.getByTestId("pick-uno").click();
+  await anna.getByTestId("pick-eins").click();
   await anna.getByRole("button", { name: "Spiel starten" }).click();
-  await expect(screen.getByTestId("table-view")).toContainText("Uno");
+  await expect(screen.getByTestId("table-view")).toContainText("Eins!");
   await expect(screen.getByTestId("table-seat")).toHaveCount(2);
   await expect(screen.getByTestId("table-seat").first()).toContainText(/· \d/);
   await screen.waitForTimeout(600);
@@ -279,9 +279,9 @@ test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, 
   expect((await ben.request.get("/api/photo/r/../../wrangler.jsonc")).status()).toBe(404);
 });
 
-test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz", async ({ browser, request }) => {
+test("Bausteine am Tisch: Fünf Würfel-Würfel und Brett von Vier in einer Reihe erscheinen auf dem Filz", async ({ browser, request }) => {
   test.setTimeout(120_000);
-  await setConfig(request, { ...ALL_ON, modes: { kniffel: { table: "on" }, vier: { table: "on" } } });
+  await setConfig(request, { ...ALL_ON, modes: { fuenfwuerfel: { table: "on" }, vier: { table: "on" } } });
   try {
     const screen = await newScreen(browser);
     await screen.goto("/tisch");
@@ -292,9 +292,9 @@ test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf 
     const anna = await joinByLink(browser, code, pin, "Anna");
     const ben = await joinByLink(browser, code, pin, "Ben");
 
-    // Kniffel: wer dran ist, würfelt – fünf Würfel auf dem Filz, Punkte an den Plätzen
+    // Fünf Würfel: wer dran ist, würfelt – fünf Würfel auf dem Filz, Punkte an den Plätzen
     await anna.getByTestId("meet-play").click();
-    await anna.getByTestId("pick-kniffel").click();
+    await anna.getByTestId("pick-fuenfwuerfel").click();
     await anna.getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-dice")).toBeVisible();
     const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
@@ -304,9 +304,9 @@ test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf 
     await expect(screen.getByTestId("table-dice")).toContainText(/noch 2 Würfe/);
     await expect(screen.getByTestId("table-seat").first()).toContainText("0 Pkt.");
     await screen.waitForTimeout(600);
-    await shot(screen, "9a-tisch-kniffel");
+    await shot(screen, "9a-tisch-fuenfwuerfel");
 
-    // Vier gewinnt: zurück in die Lobby, Spiel wechseln
+    // Vier in einer Reihe: zurück in die Lobby, Spiel wechseln
     await anna.getByRole("button", { name: "Menü" }).click();
     await anna.getByRole("button", { name: "Spiel wechseln" }).click();
     await anna.getByRole("button", { name: "Spiel wählen" }).click();
@@ -517,6 +517,133 @@ test("Bühne bei Schamlos: schwarze Karte groß auf der Leinwand, Antworten eing
     await expect(screen.getByTestId("studio-words")).toContainText("Punkt für");
     await screen.waitForTimeout(500);
     await shot(screen, "95b-buehne-schamlos-punkt");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Stapelbau und Himmelskarten am Tisch: Stapel in der Mitte, offene Auslage an jedem Platz", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { stapelbau: { table: "on" }, himmelskarten: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    await joinByLink(browser, code, pin, "Ben");
+
+    // Stapelbau: vier Aufbaustapel und der Nachziehstapel, an jedem Platz Vorrat + vier Ablagen
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-stapelbau").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile")).toHaveCount(5);
+    await expect(screen.getByTestId("seat-board")).toHaveCount(2);
+    await expect(screen.getByTestId("seat-board").first().locator("span")).toHaveCount(5);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9c-tisch-stapelbau");
+
+    // Himmelskarten: Ziehen und Ablage in der Mitte, 12 Karten je Platz – anfangs verdeckt
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-himmelskarten").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile")).toHaveCount(2);
+    await expect(screen.getByTestId("seat-board").first().locator("span")).toHaveCount(12);
+    await expect(screen.getByTestId("seat-board").first()).toContainText("?");
+    await screen.waitForTimeout(500);
+    await shot(screen, "9d-tisch-himmelskarten");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. offene Reihe an jedem Platz", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { zehnphasen: { table: "on" }, glueckssieben: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const phones = [await joinByLink(browser, code, pin, "Anna"), await joinByLink(browser, code, pin, "Ben"), await joinByLink(browser, code, pin, "Cem")];
+    const anna = phones[0];
+
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-zehnphasen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile")).toHaveCount(2);
+    await expect(screen.getByTestId("table-seat").first()).toContainText("Phase 1");
+    await screen.waitForTimeout(500);
+    await shot(screen, "9e-tisch-zehnphasen");
+
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-glueckssieben").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
+    // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
+    for (let i = 0; i < 6 && !(await screen.getByTestId("seat-board").count()); i++) {
+      for (const p of phones) {
+        const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
+        if (await hit.isEnabled().catch(() => false)) { await hit.click(); break; }
+      }
+      await screen.waitForTimeout(400);
+    }
+    await expect(screen.getByTestId("seat-board").first()).toBeVisible();
+    await screen.waitForTimeout(500);
+    await shot(screen, "9f-tisch-glueckssieben");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Decknamen am Tisch: 25 Wörter in der Mitte, Hinweis darüber, aufgedeckte farbig – keine Schlüsselkarte", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { decknamen: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const names = ["Anna", "Ben", "Cem", "Dora"];
+    const phones = [];
+    for (const n of names) phones.push(await joinByLink(browser, code, pin, n));
+    const [anna, ben, cem, dora] = phones;
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-decknamen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    const pick = async (p: Page, name: string, team: string, chief: boolean) => {
+      await p.getByRole("button", { name: `${name}: Team ${team}` }).click();
+      if (chief) await p.getByRole("button", { name: `${name}: Chef` }).click();
+    };
+    await pick(anna, "Anna", "Rot", true);
+    await pick(ben, "Ben", "Rot", false);
+    await pick(cem, "Cem", "Blau", true);
+    await pick(dora, "Dora", "Blau", false);
+    await anna.getByRole("button", { name: "Los geht's" }).click();
+    await expect(screen.getByTestId("table-word")).toHaveCount(25);
+    // der Tisch kennt die Farben nicht: nichts ist aufgedeckt
+    await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(0);
+    await expect(screen.getByTestId("table-words")).toContainText("der Chef überlegt");
+
+    const redStarts = (await anna.getByTestId("score-rot").textContent())!.includes("▶");
+    const [chief, agent] = redStarts ? [anna, ben] : [cem, dora];
+    await chief.getByLabel("Hinweiswort").fill("Tier");
+    await chief.getByRole("button", { name: "Geben" }).click();
+    await expect(screen.getByTestId("table-words")).toContainText("Hinweis: TIER 1");
+    await agent.getByRole("group", { name: "Wörter" }).getByRole("button").first().click();
+    await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(1);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9g-tisch-decknamen");
   } finally {
     await setConfig(request, ALL_ON);
   }

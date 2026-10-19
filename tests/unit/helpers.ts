@@ -2,7 +2,7 @@ import { vi } from "vitest";
 import { addPlayer, applyRoomAction, createRoom, type RoomAction, type RoomState } from "@shared/platform/room";
 
 /** Raum mit Spielern anlegen; der erste ist Host. */
-export function roomWith(names: string[], gameId = "tutto"): RoomState {
+export function roomWith(names: string[], gameId = "alles"): RoomState {
   let r = createRoom(gameId);
   names.forEach((name, i) => { r = addPlayer(r, { id: `p${i + 1}`, name }); });
   return r;
