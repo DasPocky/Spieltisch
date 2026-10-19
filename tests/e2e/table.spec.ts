@@ -713,3 +713,67 @@ test("Alles oder nichts und Mäxchen am Tisch: Karte hinter den Würfeln, Becher
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Dame, Mühle und Ludo am Tisch: Brett in der Mitte, Steine und Figuren darauf, Würfel daneben", async ({ browser, request }) => {
+  test.setTimeout(180_000);
+  await setConfig(request, { ...ALL_ON, modes: { dame: { table: "on" }, muehle: { table: "on" }, ludo: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    const mover = async () => ((await screen.locator('[data-testid="table-seat"][data-turn="true"]').textContent())?.includes("Anna") ? anna : ben);
+    const pick = async (id: string, first = false) => {
+      if (!first) {
+        await anna.getByRole("button", { name: "Menü" }).click();
+        await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+        await anna.getByRole("button", { name: "Spiel wählen" }).click();
+      } else await anna.getByTestId("meet-play").click();
+      await anna.getByTestId(`pick-${id}`).click();
+      await anna.getByRole("button", { name: "Spiel starten" }).click();
+      await expect(screen.getByTestId("table-board")).toBeAttached();
+    };
+
+    // Dame: 24 Steine, ein Zug
+    await pick("dame", true);
+    await expect(screen.getByTestId("table-piece")).toHaveCount(24);
+    const d = await mover();
+    await d.getByRole("button", { name: /^Feld c3( |$)/ }).click();
+    await d.getByRole("button", { name: /^Feld d4( |$)/ }).click();
+    await expect(screen.getByTestId("table-news")).toContainText("d4");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9k-tisch-dame");
+
+    // Mühle: noch keine Steine auf dem Brett, 18 daneben – nach dem Setzen einer weniger daneben, einer drauf
+    await pick("muehle");
+    await expect(screen.getByTestId("table-piece")).toHaveCount(18);
+    const m1 = await mover();
+    await m1.getByRole("button", { name: /^Punkt d6( |$)/ }).click();
+    await expect(screen.getByTestId("table-seat").filter({ hasText: "8 zu setzen" })).toHaveCount(1);
+    const m2 = await mover();
+    await m2.getByRole("button", { name: /^Punkt f4( |$)/ }).click();
+    await screen.waitForTimeout(800);
+    await shot(screen, "9l-tisch-muehle");
+
+    // Ludo: Figuren auf dem Brett, gewürfelt wird am Handy – der Würfel liegt neben dem Brett
+    await pick("ludo");
+    await expect(screen.getByTestId("table-piece")).toHaveCount(8);
+    for (let i = 0; i < 3; i++) {
+      const p = await mover();
+      const roll = p.getByRole("button", { name: "Würfeln" });
+      await expect(roll).toBeEnabled();
+      await roll.click();
+      await p.waitForTimeout(200);
+      const glow = p.locator("[data-glow]");
+      if (await glow.count()) await glow.first().click();
+      await screen.waitForTimeout(900);
+    }
+    await shot(screen, "9m-tisch-ludo");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

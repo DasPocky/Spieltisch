@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { Die } from "@/platform/Die";
+import { drawBoard } from "./textures";
 import { cn } from "@/lib/utils";
 import type { TableModel } from "./model";
 
@@ -53,5 +55,25 @@ export function FeltGrid({ grid }: { grid: NonNullable<TableModel["grid"]> }) {
         );
       }))}
     </svg>
+  );
+}
+
+/** Brettspiel (Dame, Mühle, Ludo) von oben: dasselbe Brettbild wie in 3D, Steine als Kreise, Würfel daneben */
+export function FeltTabletop({ top }: { top: NonNullable<TableModel["tabletop"]> }) {
+  const img = useMemo(() => { try { return drawBoard(top.board).toDataURL(); } catch { return ""; } }, [top.board]);
+  const r = top.board === "dame:10" ? 0.08 : top.board === "dame:8" ? 0.1 : top.board === "muehle" ? 0.09 : 0.06;
+  return (
+    <div className="flex items-center gap-[3cqw]" data-testid="table-board">
+      <svg viewBox="-1.32 -1.05 2.64 2.1" className="h-[92cqh] drop-shadow-[0_10px_18px_rgb(0_0_0/0.45)]" role="img" aria-label="Spielbrett">
+        {img && <image href={img} x={-1} y={-1} width={2} height={2} />}
+        {top.pieces.map((p, i) => (
+          <g key={p.id ?? i} data-testid="table-piece">
+            <circle cx={p.x} cy={p.y} r={r} fill={p.color} stroke="rgb(0 0 0 / 0.45)" strokeWidth={0.012} />
+            {p.kind === "king" && <circle cx={p.x} cy={p.y} r={r * 0.5} fill="none" stroke="#e3b53c" strokeWidth={0.02} />}
+          </g>
+        ))}
+      </svg>
+      {top.die?.value ? <Die value={top.die.value} className="size-[min(14cqh,9cqw)] drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)]" /> : null}
+    </div>
   );
 }

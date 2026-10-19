@@ -6,10 +6,10 @@
 import {
   ACESFilmicToneMapping, BoxGeometry, CanvasTexture, CircleGeometry, CylinderGeometry, DirectionalLight, ExtrudeGeometry, Group, HemisphereLight,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, Shape, SpotLight,
-  SRGBColorSpace, Vector3, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, type Material, type Texture,
+  SRGBColorSpace, Vector3, Vector2, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { CARD_RATIO, drawBack, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSlot } from "./textures";
+import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
@@ -195,6 +195,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     if (model.words5) { wordGrid(model.words5); return; }
     if (model.dice) { diceRow(model, seats); return; }
     if (model.grid) { board(model.grid, model.n); return; }
+    if (model.tabletop) { tabletop(model, seats); return; }
 
     // Stapel: ein Block, so hoch wie die Karten
     if (model.pile > 0) {
@@ -587,6 +588,81 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     }));
     live.add(frame);
     last = { top: null, n, turn: null, seats: last.seats, played: [], shown: 0 };
+    render();
+  }
+
+
+  // ---------- Brettspiele: Dame, Mühle, Ludo ----------
+  const BOARD = 2.2;
+  const stoneMats = new Map<string, MeshStandardMaterial>();
+  const stoneMat = (c: string) => {
+    let m = stoneMats.get(c);
+    if (!m) stoneMats.set(c, (m = new MeshStandardMaterial({ color: c, roughness: 0.38 })));
+    return m;
+  };
+  const gold = new MeshStandardMaterial({ color: "#e3b53c", roughness: 0.3, metalness: 0.5 });
+  // Pöppel: Fuß, Körper, Kragen – Kopf als Kugel obendrauf
+  const pawnGeo = new LatheGeometry([[0, 0], [0.075, 0], [0.078, 0.02], [0.055, 0.04], [0.035, 0.12], [0.05, 0.135], [0.03, 0.15], [0, 0.15]].map(([x, y]) => new Vector2(x, y)), 28);
+  const headGeo = new SphereGeometry(0.045, 20, 14);
+
+  /** Brett flach in der Mitte, Steine bzw. Figuren darauf; der letzte Zug gleitet, der Würfel liegt rechts daneben */
+  function tabletop(model: TableModel, seats: string[]) {
+    const t = model.tabletop!;
+    const prev = seen;
+    seen = new Map();
+    const turn = seats.indexOf(model.turn ?? "");
+    if (turn >= 0) { const [x, z] = anchors[turn]; glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
+    const top = new MeshStandardMaterial({ map: plainTex(`board:${t.board}`, () => drawBoard(t.board)), roughness: 0.6 });
+    const slab = new Mesh(new BoxGeometry(BOARD, 0.06, BOARD), [wood, wood, top, wood, wood, wood]);
+    const by = SURFACE + 0.03;
+    slab.position.set(0, by, 0); slab.castShadow = slab.receiveShadow = true; live.add(slab);
+    contact(0, 0, BOARD, BOARD, 0);
+    const y0 = by + 0.03, half = BOARD / 2;
+    const n = t.board === "dame:10" ? 10 : 8;
+    const r = t.board.startsWith("dame") ? (BOARD / n) * 0.4 : 0.1;
+    const moved = fresh() && prev.get("move") !== String(model.n);
+    seen.set("move", String(model.n));
+    for (const p of t.pieces) {
+      const x = p.x * half, z = p.y * half;
+      let m: Mesh;
+      if (p.kind === "pawn") {
+        m = new Mesh(pawnGeo, stoneMat(p.color));
+        const head = new Mesh(headGeo, stoneMat(p.color)); head.position.y = 0.17; head.castShadow = true; m.add(head);
+        m.position.set(x, y0, z);
+      } else {
+        const h = 0.045;
+        m = new Mesh(new CylinderGeometry(r, r * 0.97, h, 36), stoneMat(p.color));
+        m.position.set(x, y0 + h / 2, z);
+        if (p.kind === "king") {
+          const second = new Mesh(m.geometry, stoneMat(p.color)); second.position.y = h; second.castShadow = true; m.add(second);
+          const crown = new Mesh(new TorusGeometry(r * 0.55, 0.012, 8, 30), gold); crown.rotation.x = Math.PI / 2; crown.position.y = h * 1.52; m.add(crown);
+        }
+      }
+      m.castShadow = m.receiveShadow = true;
+      live.add(m);
+      contact(x, z, r * 2.2, r * 2.2, 0);
+      // Wandern: Figur mit Kennung von ihrer alten Stelle, sonst der letzte Zug
+      if (p.id) {
+        const key = `p:${p.id}`, sig = `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+        const was = prev.get(key);
+        seen.set(key, sig);
+        if (fresh() && was && was !== sig) { const [wx, wy] = was.split(",").map(Number); fly(m, new Vector3(wx * half, m.position.y, wy * half), 0, false, 520, { arc: 0.18, spin: 0 }); }
+      } else if (moved && t.move && Math.abs(t.move.to[0] - p.x) < 1e-6 && Math.abs(t.move.to[1] - p.y) < 1e-6) {
+        fly(m, new Vector3(t.move.from[0] * half, m.position.y, t.move.from[1] * half), 0, false, 520, { arc: 0.15, spin: 0 });
+      }
+    }
+    if (t.die) {
+      const v = t.die.value ?? 1;
+      const d = dieMesh(v);
+      d.position.set(half + 0.45, SURFACE + DIE / 2, 0.35); d.rotation.y = 0.3;
+      if (t.die.value === null) d.visible = false;
+      live.add(d);
+      if (t.die.value !== null) contact(half + 0.45, 0.35, DIE * 1.1, DIE * 1.1, 0.3);
+      const key = `die:${t.die.n}`;
+      if (t.die.value !== null && fresh() && !prev.has(key)) fly(d, new Vector3(half + 0.2, SURFACE + 0.5, -0.4), 0, false, 650, { arc: 0.3, spin: 2.5, tumble: true });
+      seen.set(key, "1");
+    }
+    last = { top: null, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
     render();
   }
 

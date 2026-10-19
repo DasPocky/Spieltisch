@@ -9,7 +9,10 @@ import type { EinsCard } from "@shared/games/eins/logic";
 import { SuitIcon, SUIT_COLOR } from "@/platform/cards/PlayingCard";
 import { EinsCardView } from "@/games/eins/Board";
 import { cardText } from "@shared/games/schamlos/cards";
-import type { TableDeck } from "./model";
+import type { TableDeck, TableModel } from "./model";
+import { pointXY } from "@shared/games/muehle/logic";
+import { layout } from "@/games/ludo/geometry";
+import { PALETTE } from "@/games/ludo/colors";
 
 /** Seitenverhältnis wie am Handy: Spielkarten 5:8, Eins! 5:7 */
 export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, eins: 7 / 5, schamlos: 7 / 5, zahlen: 7 / 5 };
@@ -265,5 +268,61 @@ export function drawPips(v: number): HTMLCanvasElement {
   };
   g.fillStyle = "#1f1a16";
   for (const [x, y] of at[v] ?? []) { g.beginPath(); g.arc(128 + x * 64, 128 + y * 64, v === 1 ? 30 : 24, 0, Math.PI * 2); g.fill(); }
+  return c;
+}
+
+/**
+ * Spielbrett von oben (Dame, Mühle, Ludo) – Brett-Koordinaten -1 … 1 füllen das ganze Bild.
+ * Dieselben Farben wie am Handy.
+ */
+export function drawBoard(kind: NonNullable<TableModel["tabletop"]>["board"]): HTMLCanvasElement {
+  const S = 1024;
+  const c = document.createElement("canvas");
+  c.width = c.height = S;
+  const g = c.getContext("2d")!;
+  const px = (v: number) => ((v + 1) / 2) * S;
+  if (kind.startsWith("dame")) {
+    const n = kind === "dame:10" ? 10 : 8, cell = S / n;
+    for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) {
+      // Feld r (0 = vorn, Grundreihe von Weiß), dunkel wie im Spiel
+      g.fillStyle = (r + col) % 2 === 0 ? "#9a6a44" : "#efdcb8";
+      g.fillRect(col * cell, (n - 1 - r) * cell, cell, cell);
+    }
+    g.strokeStyle = "#5e3b22"; g.lineWidth = 10; g.strokeRect(5, 5, S - 10, S - 10);
+    return c;
+  }
+  if (kind === "muehle") {
+    g.fillStyle = "#dcb47e"; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 260; i++) {
+      g.strokeStyle = `rgba(120,80,40,${0.04 + Math.random() * 0.06})`; g.lineWidth = 1 + Math.random() * 3;
+      const y = Math.random() * S; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(S / 3, y + 8, (2 * S) / 3, y - 8, S, y + 3); g.stroke();
+    }
+    const at = (i: number) => { const [x, y] = pointXY(i); return [px((x - 3) * 0.293), px((y - 3) * 0.293)]; };
+    g.strokeStyle = "#5b3a1e"; g.lineWidth = 9; g.lineCap = "round";
+    for (let ring = 0; ring < 3; ring++) {
+      g.beginPath();
+      for (let k = 0; k <= 8; k++) { const [x, y] = at(ring * 8 + (k % 8)); if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.stroke();
+    }
+    for (const k of [1, 3, 5, 7]) { const [x1, y1] = at(k), [x2, y2] = at(16 + k); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+    g.fillStyle = "#5b3a1e";
+    for (let i = 0; i < 24; i++) { const [x, y] = at(i); g.beginPath(); g.arc(x, y, 16, 0, Math.PI * 2); g.fill(); }
+    return c;
+  }
+  // Ludo: Kreuz bzw. Stern mit Laufbahn, Zielfeldern und Häusern
+  const n = kind === "ludo:6" ? 6 : 4;
+  const L = layout(n, 0);
+  const u = (v: number) => px(v / L.half);
+  g.fillStyle = "#f3e2b4"; g.fillRect(0, 0, S, S);
+  g.strokeStyle = "#c9a96a"; g.lineWidth = 6; g.strokeRect(14, 14, S - 28, S - 28);
+  g.strokeStyle = "#5a4a2c"; g.lineWidth = 7;
+  g.beginPath(); L.track.forEach(([x, y], i) => (i ? g.lineTo(u(x), u(y)) : g.moveTo(u(x), u(y)))); g.closePath(); g.stroke();
+  const field = ([x, y]: [number, number], fill: string, stroke = "#2a2418") => {
+    g.beginPath(); g.arc(u(x), u(y), (L.r / L.half) * (S / 2), 0, Math.PI * 2); g.fillStyle = fill; g.fill(); g.lineWidth = 5; g.strokeStyle = stroke; g.stroke();
+  };
+  L.track.forEach((pt, i) => field(pt, i % 10 === 0 ? PALETTE[i / 10].fill : "#fffdf6"));
+  L.goal.forEach((gl, col) => gl.forEach((pt) => field(pt, PALETTE[col].light, PALETTE[col].dark)));
+  L.home.forEach((hs, col) => hs.forEach((pt) => field(pt, PALETTE[col].light, PALETTE[col].dark)));
+  g.beginPath(); g.arc(S / 2, S / 2, (0.45 / L.half) * (S / 2), 0, Math.PI * 2); g.fillStyle = "#c9a96a"; g.fill();
   return c;
 }
