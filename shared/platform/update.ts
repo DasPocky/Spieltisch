@@ -1,10 +1,13 @@
 /**
- * Updates: Wann geht eine neue Version live? Standard ist sofort – im Admin (oder per Variable UPDATE_MODE)
+ * Updates: Wann geht eine neue Version live? Standard ist „Sofort für alle“: live und jedes Gerät lädt gleich neu
+ * (laufende Partien gehen danach weiter). Im Admin (oder per Variable UPDATE_MODE)
  * lässt sich das ändern. Neue Versionen lädt der Build dann nur hoch; der Worker schaltet sie zum gewählten Zeitpunkt frei.
  */
 import type { BuildInfo } from "../build";
 
 export type UpdateMode =
+  /** sofort live, jedes Gerät lädt gleich neu – auch mitten in der Partie (sie läuft danach weiter) */
+  | "force"
   /** sofort live, Geräte laden an einem ruhigen Moment neu (spätestens nach 2 Minuten) */
   | "now"
   /** sofort live, aber jeder Raum wechselt erst nach seiner laufenden Partie (die läuft mit ihrer Version zu Ende) */
@@ -17,7 +20,8 @@ export type UpdateMode =
   | "manual";
 
 export const UPDATE_MODES: { value: UpdateMode; label: string; hint: string }[] = [
-  { value: "now", label: "Sofort", hint: "Neue Versionen gehen gleich live. Geräte laden an einem ruhigen Moment neu, spätestens nach 2 Minuten." },
+  { value: "force", label: "Sofort für alle", hint: "Neue Versionen gehen gleich live und jedes Gerät lädt sofort neu – auch mitten in der Partie, die danach einfach weiterläuft." },
+  { value: "now", label: "Am ruhigen Moment", hint: "Neue Versionen gehen gleich live. Geräte laden an einem ruhigen Moment neu, spätestens nach 2 Minuten." },
   { value: "round", label: "Nach Rundenende je Raum", hint: "Sofort live – laufende Partien spielen mit ihrer Version zu Ende, dann wechselt der Raum." },
   { value: "idle", label: "Wenn keine Partie läuft", hint: "Wartet, bis alle Partien vorbei sind – höchstens so viele Stunden." },
   { value: "time", label: "Feste Uhrzeit", hint: "Was bis dahin fertig ist, geht zur gewählten Uhrzeit live." },
@@ -32,7 +36,7 @@ export interface UpdateConfig {
   hour: number;
 }
 
-export const DEFAULT_UPDATE: UpdateConfig = { mode: "now", maxWaitHours: 3, hour: 4 };
+export const DEFAULT_UPDATE: UpdateConfig = { mode: "force", maxWaitHours: 3, hour: 4 };
 
 export const isUpdateMode = (x: unknown): x is UpdateMode => UPDATE_MODES.some((m) => m.value === x);
 
@@ -118,6 +122,7 @@ export function berlinHour(now: number): number {
  */
 export function releaseDue(p: PendingRelease, cfg: UpdateConfig, now: number, playing: number): ReleaseHow | null {
   switch (cfg.mode) {
+    case "force":
     case "now":
     case "round":
       return "sofort";

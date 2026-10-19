@@ -4,6 +4,9 @@ import { type SiteConfig } from "@shared/platform/access";
 import { WIPE_KINDS, type ArchivedRoom, type WipeKind } from "@shared/platform/admin";
 import { setSiteConfig } from "@/hooks/useSiteConfig";
 import { rememberEpoch } from "@/lib/freshStart";
+import { DEVICE_KEY, TOKEN_KEY } from "@/lib/admin";
+import { DEV_KEY } from "@/lib/dev";
+import { wipeLocal } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,8 +48,12 @@ export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) =
     setWhat([]); setConfirm("");
     // Einstellungen zurückgesetzt: Admin und App sofort auf den frischen Stand
     if (r.config) { setSiteConfig(r.config); onReset(r.config); }
-    // Dieses Gerät (der Admin) behält seine Daten; alle anderen Handys starten beim nächsten Öffnen frisch
-    if (r.config?.epoch) rememberEpoch(r.config.epoch);
+    // Kompletter Neustart: auch dieses Gerät startet als Spieler frisch (Name, Profil, Spielstände) –
+    // nur die Anmeldung in der Verwaltung bleibt. Alle anderen Handys löschen beim nächsten Öffnen alles.
+    if (r.config?.epoch) {
+      wipeLocal([TOKEN_KEY, DEVICE_KEY, DEV_KEY]);
+      rememberEpoch(r.config.epoch);
+    }
   }, "Gelöscht.");
 
   return (
@@ -70,7 +77,7 @@ export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) =
           ))}
           <button type="button" className="justify-self-start text-sm font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setWhat([...WIPE_KINDS])}>Alles auswählen</button>
           {what.length === WIPE_KINDS.length && (
-            <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm" data-testid="fresh-start">Kompletter Neustart: Jedes Handy löscht beim nächsten Öffnen einmal seine Daten (Name, Profil, Spielstände) und beginnt frisch mit dem Willkommen.</p>
+            <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm" data-testid="fresh-start">Kompletter Neustart: Jedes Handy löscht beim nächsten Öffnen einmal seine Daten (Name, Profil, Spielstände) und beginnt frisch mit dem Willkommen – auch dieses, nur die Anmeldung in der Verwaltung bleibt.</p>
           )}
         </div>
         <div className="grid gap-1.5">

@@ -299,6 +299,8 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await expect(wipe).toBeDisabled();
   await page.getByLabel(/LÖSCHEN/).fill("löschen");
   await adminShot(page, "9-daten");
+  await page.evaluate(() => localStorage.setItem("spieltisch:name", "Chef"));
+  const oldProfile = await page.evaluate(() => localStorage.getItem("spieltisch:profile"));
   await wipe.click();
   await expect(page.getByTestId("data").getByRole("status")).toHaveText("Gelöscht.");
   await expect(host.getByText(/geschlossen|beendet/i).first()).toBeVisible();
@@ -322,9 +324,11 @@ test("Admin: Verlauf zeigt, wer da war; Gruppen, Optionen, Export und Löschen",
   await phone.reload();
   await expect(phone.getByTestId("greeting")).toHaveText("Hallo, Oma!");
   await phone.context().close();
-  // Der Admin selbst bleibt angemeldet
+  // Der Admin selbst bleibt angemeldet – startet als Spieler aber auch frisch (kein Name, kein Profil)
   await page.reload();
   await expect(page.getByTestId("data")).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("spieltisch:name"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("spieltisch:profile"))).not.toBe(oldProfile);
   await host.context().close();
   await guest.context().close();
 });

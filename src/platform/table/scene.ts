@@ -9,6 +9,7 @@ import {
   SRGBColorSpace, Vector3, Vector2, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { feltMaterial, furnishRoom, woodMaterial } from "./room";
 import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSign, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
@@ -110,15 +111,17 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   renderer.toneMapping = ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = SRGBColorSpace;
   const scene = new Scene();
 
-  const wood = new MeshStandardMaterial({ map: woodTexture(), roughness: 0.45, color: "#c79a72" });
-  const felt = new MeshStandardMaterial({ map: feltTexture(), roughness: 0.95 });
+  // Lackiertes Holz und Filz mit Fasern; „einfach“ ohne Klarlack und Schimmer (spart Rechenzeit)
+  const rich = quality !== "einfach";
+  const wood = rich ? woodMaterial(aniso) : new MeshStandardMaterial({ map: woodTexture(), roughness: 0.45, color: "#c79a72" });
+  const felt = rich ? feltMaterial(aniso) : new MeshStandardMaterial({ map: feltTexture(), roughness: 0.95 });
   const top = slab(TOP_W, TOP_D, 0.25, 0.16, 0.04, wood); top.position.y = -0.16; scene.add(top);
   const cloth = slab(FELT_W, FELT_D, 0.1, 0.02, 0.004, felt); cloth.position.y = 0.036; scene.add(cloth);
   for (const [x, z] of [[-2.3, -1.4], [2.3, -1.4], [-2.3, 1.4], [2.3, 1.4]]) {
     const leg = new Mesh(new CylinderGeometry(0.09, 0.07, 1.6, 20), wood); leg.position.set(x, -1, z); leg.castShadow = true; scene.add(leg);
   }
-  const floor = new Mesh(new PlaneGeometry(30, 30), new MeshStandardMaterial({ color: "#2a1a0e", roughness: 1 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = -1.8; floor.receiveShadow = true; scene.add(floor);
+  // Raum: Dielen, Teppich, weiches Zimmerlicht zum Spiegeln, das Dunkle rundherum
+  const room = furnishRoom(scene, renderer, -1.8, aniso);
 
   const hemi = new HemisphereLight("#ffe9c9", "#3a2414", 0.7);
   scene.add(hemi);
@@ -190,11 +193,11 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     anims = [];
     anchors = seatAnchors(seats.length);
     glow.visible = false;
-    if (!model) { lamp.intensity = 42; hemi.intensity = 0.7; fill.intensity = 0.25; last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
+    if (!model) { lamp.intensity = 42; hemi.intensity = 0.7; fill.intensity = 0.25; scene.environmentIntensity = 0.32; last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
     deck = model.deck;
     // Nacht: Lampe gedimmt, kühles Licht von der Seite
     const night = !!model.night;
-    lamp.intensity = night ? 14 : 42; hemi.intensity = night ? 0.25 : 0.7; fill.intensity = night ? 0.7 : 0.25;
+    lamp.intensity = night ? 14 : 42; hemi.intensity = night ? 0.25 : 0.7; fill.intensity = night ? 0.7 : 0.25; scene.environmentIntensity = night ? 0.08 : 0.32;
     if (model.words) { updateWords(model, seats); return; }
     if (model.words5) { wordGrid(model.words5); return; }
     if (model.dice) { diceRow(model, seats); return; }
@@ -777,6 +780,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     dispose() {
       cancelAnimationFrame(raf);
       for (const t of textures.values()) t.dispose();
+      room.env.dispose();
       renderer.dispose();
     },
   };
