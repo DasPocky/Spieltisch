@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { F7State } from "@shared/games/flip7/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
-import type { RoomState } from "@shared/platform/room";
+import { planStatus, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
 
 function start(gameId: string, options: Record<string, string | number>, n = 3) {
@@ -75,5 +75,34 @@ describe("Spielabend", () => {
     expect(() => act(r, { type: "resetEvening" }, "p2")).toThrow(/Host/);
     r = act(r, { type: "resetEvening" });
     expect(r.evening).toBeUndefined();
+  });
+
+  it("Partyabend: Plan legt das erste Spiel fest, nach jeder Partie steht das nächste bereit, am Ende ist er durch", () => {
+    let r = roomWith(["Anna", "Ben", "Cem"]);
+    expect(() => act(r, { type: "setPlan", games: ["flip7", "kniffel"] }, "p2")).toThrow(/Host/);
+    expect(() => act(r, { type: "setPlan", games: ["gibtsnicht"] })).toThrow();
+    r = act(r, { type: "setPlan", games: ["flip7", "maumau"] });
+    expect(r.gameId).toBe("flip7");
+    expect(planStatus(r.evening)).toMatchObject({ played: 0, next: "flip7", done: false });
+    for (const [key, value] of Object.entries({ mode: "table", target: 100 })) r = act(r, { type: "setOption", key, value });
+    r = act(r, { type: "start" });
+    r = finishFlip7(r, [["p1", 0], ["p2", 120], ["p3", 0]]);
+    expect(planStatus(r.evening)).toMatchObject({ played: 1, next: "maumau" });
+    // Ende zurücknehmen: zählt auch für den Plan nicht
+    r = act(r, { type: "undo" });
+    expect(planStatus(r.evening)?.played).toBe(0);
+    r = game(r, { type: "padFinish" });
+    // Zurück in die Lobby: das nächste Spiel ist schon gewählt
+    r = act(r, { type: "toLobby" });
+    expect(r.gameId).toBe("maumau");
+    r = act(r, { type: "setOption", key: "mode", value: "table" });
+    r = act(r, { type: "start" });
+    for (let i = 0; i < 10 && !(r.game as MauMauState).winnerId; i++) r = game(r, { type: "padWin", player: "p1" });
+    expect(planStatus(r.evening)).toMatchObject({ played: 2, next: null, done: true });
+    expect(r.evening?.wins).toEqual({ p1: 1, p2: 1, p3: 0 });
+    // Plan beenden: Wertung bleibt
+    r = act(act(r, { type: "toLobby" }), { type: "setPlan", games: null });
+    expect(planStatus(r.evening)).toBeNull();
+    expect(r.evening?.log).toHaveLength(2);
   });
 });

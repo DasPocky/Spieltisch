@@ -1,7 +1,11 @@
 import { createContext, useContext, useState } from "react";
-import { ChevronRight, Trophy } from "lucide-react";
-import { getGame } from "@shared/games";
-import { eveningRanking, type RoomAction, type RoomState } from "@shared/platform/room";
+import { Check, ChevronRight, PartyPopper, Trophy } from "lucide-react";
+import { GAME_IDS, getGame } from "@shared/games";
+import { accessFor, orderGames } from "@shared/platform/access";
+import { eveningRanking, planStatus, PLAN_MAX, type RoomAction, type RoomState } from "@shared/platform/room";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
+import { gameIcon } from "@/games";
+import { IconTile } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/Confirm";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,30 +21,90 @@ export const EveningContext = createContext<{ room: RoomState; isHost: boolean; 
 export function EveningLine({ className }: { className?: string }) {
   const ctx = useContext(EveningContext);
   const [open, setOpen] = useState(false);
+  const [planning, setPlanning] = useState(false);
   const e = ctx?.room.evening;
-  if (!ctx || !e?.log.length) return null;
+  const plan = planStatus(e);
+  if (!ctx) return null;
+  // Noch nichts gespielt, kein Plan: der Host kann einen Partyabend planen
+  if (!e?.log.length && !plan) {
+    if (!ctx.isHost || ctx.room.phase !== "lobby") return null;
+    return (
+      <>
+        <button type="button" onClick={() => setPlanning(true)} data-testid="plan-open"
+          className={cn("flex w-full items-center justify-center gap-2 rounded-xl py-1.5 text-sm font-semibold text-primary", className)}>
+          <PartyPopper className="size-4" />Partyabend planen – mehrere Spiele mit Gesamtwertung
+        </button>
+        <PlanSheet open={planning} onOpenChange={setPlanning} />
+      </>
+    );
+  }
   const ranking = eveningRanking(e);
   const top = ranking.filter((r) => r.wins > 0).slice(0, 3);
+  const label = plan
+    ? plan.done ? "Partyabend · durch!" : `Partyabend · Spiel ${plan.played + 1} von ${plan.games.length}`
+    : `Spielabend · ${e!.log.length} ${e!.log.length === 1 ? "Partie" : "Partien"}`;
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} data-testid="evening"
         className={cn("glass flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring", className)}>
-        <Trophy className="size-4 shrink-0 text-primary" />
+        {plan ? <PartyPopper className="size-4 shrink-0 text-primary" /> : <Trophy className="size-4 shrink-0 text-primary" />}
         <span className="min-w-0 flex-1 truncate">
-          <b>Spielabend</b> <span className="text-muted-foreground">· {e.log.length} {e.log.length === 1 ? "Partie" : "Partien"}</span>
+          <b>{label.split(" · ")[0]}</b> <span className="text-muted-foreground">· {label.split(" · ").slice(1).join(" · ")}</span>
           {top.length > 0 && <span className="text-muted-foreground"> · {top.map((r) => `${r.name} ${r.wins}`).join(" · ")}</span>}
         </span>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
       </button>
-      <EveningSheet open={open} onOpenChange={setOpen} />
+      <EveningSheet open={open} onOpenChange={setOpen} onPlan={() => { setOpen(false); setPlanning(true); }} />
+      <PlanSheet open={planning} onOpenChange={setPlanning} />
     </>
   );
 }
 
-function EveningSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+/** Partyabend planen: Spiele antippen in der gewünschten Reihenfolge */
+function PlanSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const ctx = useContext(EveningContext);
+  const config = useSiteConfig();
+  const [picked, setPicked] = useState<string[]>([]);
+  if (!ctx) return null;
+  const ids = orderGames(GAME_IDS, config?.order ?? []).filter((id) => !config || accessFor(config, id) !== "off");
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < PLAN_MAX ? [...p, id] : p));
+  return (
+    <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setPicked([]); }}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Partyabend planen</SheetTitle>
+          <SheetDescription>Spiele in der gewünschten Reihenfolge antippen. Nach jeder Partie ist das nächste dran – am Ende gibt es eine Siegerehrung.</SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-1.5 overflow-y-auto px-5 pt-1" data-testid="plan-games">
+          {ids.map((id) => {
+            const n = picked.indexOf(id);
+            const GIcon = gameIcon(id);
+            return (
+              <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={n >= 0} data-testid={`plan-${id}`}
+                className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", n >= 0 ? "bg-primary/12 ring-1 ring-inset ring-primary/35" : "glass")}>
+                <IconTile className="size-9"><GIcon className="size-6" /></IconTile>
+                <span className="min-w-0 flex-1 font-semibold">{getGame(id).info.name}</span>
+                {n >= 0 && <span className="grid size-7 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{n + 1}</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <Button className="w-full" disabled={picked.length < 2} data-testid="plan-start"
+            onClick={() => { ctx.dispatch({ type: "setPlan", games: picked }); onOpenChange(false); setPicked([]); }}>
+            <PartyPopper />{picked.length < 2 ? "Mindestens 2 Spiele wählen" : `Partyabend starten · ${picked.length} Spiele`}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function EveningSheet({ open, onOpenChange, onPlan }: { open: boolean; onOpenChange: (o: boolean) => void; onPlan: () => void }) {
   const ctx = useContext(EveningContext);
   const e = ctx?.room.evening;
   if (!ctx || !e) return null;
+  const plan = planStatus(e);
   const ranking = eveningRanking(e);
   const places = ranking.map((r, i) => (i > 0 && ranking[i - 1].wins === r.wins ? -1 : i + 1));
   for (let i = 1; i < places.length; i++) if (places[i] === -1) places[i] = places[i - 1];
@@ -48,10 +112,19 @@ function EveningSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Spielabend</SheetTitle>
+          <SheetTitle>{plan ? "Partyabend" : "Spielabend"}</SheetTitle>
           <SheetDescription>Siege über alle Partien hier – auch über verschiedene Spiele.</SheetDescription>
         </SheetHeader>
         <div className="overflow-y-auto px-5 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          {plan && (
+            <ol className="mb-4 flex flex-wrap gap-1.5" data-testid="plan-progress">
+              {plan.games.map((id, i) => (
+                <li key={i} className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold", i < plan.played ? "bg-primary/14 text-primary" : i === plan.played ? "bg-primary text-primary-foreground" : "glass text-muted-foreground")}>
+                  {i < plan.played && <Check className="size-3" />}{i + 1}. {getGame(id).info.name}
+                </li>
+              ))}
+            </ol>
+          )}
           <ol className="grid gap-1.5" data-testid="evening-ranking">
             {ranking.map((r, i) => (
               <li key={r.id} className={cn("flex items-center gap-3 rounded-xl px-3 py-2", places[i] === 1 && r.wins > 0 ? "bg-primary/10 ring-1 ring-inset ring-primary/30" : "glass")}>
@@ -70,6 +143,12 @@ function EveningSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
               </li>
             ))}
           </ul>
+          {ctx.isHost && plan && (
+            <Button variant="secondary" className="mt-5 w-full" onClick={() => { ctx.dispatch({ type: "setPlan", games: null }); onOpenChange(false); }} data-testid="plan-end">Partyabend beenden</Button>
+          )}
+          {ctx.isHost && !plan && ctx.room.phase === "lobby" && (
+            <Button variant="secondary" className="mt-5 w-full" onClick={onPlan}><PartyPopper />Partyabend planen</Button>
+          )}
           {ctx.isHost && (
             <Confirm title="Spielabend neu beginnen?" description="Alle Siege dieses Abends werden auf 0 gesetzt." confirmLabel="Zurücksetzen"
               onConfirm={() => { ctx.dispatch({ type: "resetEvening" }); onOpenChange(false); }}>

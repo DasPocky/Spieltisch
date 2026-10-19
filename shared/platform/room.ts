@@ -72,6 +72,19 @@ export interface Evening {
   names: Record<string, string>;
   /** Beendete Partien, älteste zuerst (höchstens 50) */
   log: { gameId: string; winners: string[]; at: number }[];
+  /** Partyabend: geplante Spiele der Reihe nach; `played` zählt die seit dem Plan beendeten Partien */
+  plan?: { games: string[]; played: number };
+}
+
+/** Höchstens so viele Spiele in einem Partyabend */
+export const PLAN_MAX = 8;
+
+/** Stand des Partyabends: nächstes Spiel (null = durch) – null, wenn kein Plan */
+export function planStatus(e: Evening | undefined): { games: string[]; played: number; next: string | null; done: boolean } | null {
+  if (!e?.plan?.games.length) return null;
+  const { games, played } = e.plan;
+  const n = Math.min(played, games.length);
+  return { games, played: n, next: games[n] ?? null, done: n >= games.length };
 }
 
 /** Partie gerade zu Ende gegangen? Dann zählt sie für den Spielabend. */
@@ -87,6 +100,7 @@ function recordEvening(prev: RoomState, next: RoomState): RoomState {
     e.wins[r.id] = (e.wins[r.id] ?? 0) + (r.won ? 1 : 0);
   }
   e.log = [...e.log, { gameId: next.gameId, winners, at: Date.now() }].slice(-50);
+  if (e.plan && e.plan.played < e.plan.games.length) e.plan.played++;
   return { ...next, evening: e };
 }
 
@@ -137,6 +151,8 @@ export type RoomAction =
   | { type: "undo" }
   /** Host: Spielabend-Wertung auf null */
   | { type: "resetEvening" }
+  /** Host: Partyabend planen (Spiele der Reihe nach) oder beenden (null) */
+  | { type: "setPlan"; games: string[] | null }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
 
 export function cleanName(name: unknown): string {
@@ -313,6 +329,18 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       hostOnly();
       const s: RoomState = { ...structuredClone(prev), phase: "lobby", game: null, undo: [] };
       seatBench(s);
+      // Partyabend: das nächste geplante Spiel steht gleich bereit
+      const next = planStatus(s.evening)?.next;
+      if (next && next !== s.gameId && isGameId(next)) { s.gameId = next; s.options = defaultOptions(getGame(next).settings); }
+      return s;
+    }
+    case "setPlan": {
+      hostOnly();
+      const s = structuredClone(prev);
+      if (!a.games?.length) { if (s.evening) delete s.evening.plan; return s; }
+      if (!Array.isArray(a.games) || a.games.length > PLAN_MAX || !a.games.every((g) => typeof g === "string" && isGameId(g))) throw new GameError("Diesen Plan gibt es so nicht.");
+      s.evening = { ...(s.evening ?? { wins: {}, names: {}, log: [] }), plan: { games: [...a.games], played: 0 } };
+      if (s.phase === "lobby" && s.gameId !== a.games[0]) { s.gameId = a.games[0]; s.options = defaultOptions(getGame(a.games[0]).settings); }
       return s;
     }
     case "selectGame": {
@@ -433,6 +461,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
         const last = evening.log[evening.log.length - 1];
         evening = { ...evening, log: evening.log.slice(0, -1), wins: { ...evening.wins } };
         for (const id of last.winners) evening.wins[id] = Math.max(0, (evening.wins[id] ?? 0) - 1);
+        if (evening.plan && evening.plan.played > 0) evening.plan = { ...evening.plan, played: evening.plan.played - 1 };
       }
       return { ...prev, game, undo, undone: (prev.undone ?? 0) + 1, evening };
     }
