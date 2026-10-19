@@ -27,7 +27,7 @@ export function stapelbauTable(room: RoomState): TableModel | null {
     return [p.id, { cells, cols: 5 }];
   }));
   return {
-    deck: "cards", pile: 0, discard: [], counts: s.handCounts, turn: s.curId, n: s.n, log: s.log.slice(-6), scores: s.scores,
+    deck: "zahlen", pile: 0, discard: [], counts: s.handCounts, turn: s.curId, n: s.n, log: s.log.slice(-6), scores: s.scores,
     notes: Object.fromEntries(room.players.map((p) => [p.id, `Vorrat ${s.stockCounts[p.id] ?? 0}`])),
     piles: all, boards,
   };

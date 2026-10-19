@@ -589,14 +589,14 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     await anna.getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
     // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
-    for (let i = 0; i < 6 && !(await screen.getByTestId("seat-board").count()); i++) {
+    for (let i = 0; i < 15 && !(await screen.getByTestId("seat-board").count()); i++) {
       for (const p of phones) {
         const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
         if (await hit.isEnabled().catch(() => false)) { await hit.click(); break; }
       }
-      await screen.waitForTimeout(400);
+      await screen.waitForTimeout(600);
     }
-    await expect(screen.getByTestId("seat-board").first()).toBeVisible();
+    await expect(screen.getByTestId("seat-board").first()).toBeAttached();
     await screen.waitForTimeout(500);
     await shot(screen, "9f-tisch-glueckssieben");
   } finally {

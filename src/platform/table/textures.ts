@@ -12,7 +12,7 @@ import { cardText } from "@shared/games/schamlos/cards";
 import type { TableDeck } from "./model";
 
 /** Seitenverhältnis wie am Handy: Spielkarten 5:8, Eins! 5:7 */
-export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, eins: 7 / 5, schamlos: 7 / 5 };
+export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, eins: 7 / 5, schamlos: 7 / 5, zahlen: 7 / 5 };
 /** Breite der Kartenbilder in Pixeln – scharf auch auf 4K-Fernsehern */
 const W = 768;
 
@@ -151,7 +151,7 @@ export function drawBack(deck: TableDeck): HTMLCanvasElement {
     });
     return c;
   }
-  g.fillStyle = PAPER; rounded(g, 0, 0, w, h, 10 * u); g.fill();
+  g.fillStyle = PAPER; rounded(g, 0, 0, w, h, (deck === "zahlen" ? 14 : 10) * u); g.fill();
   const grad = g.createLinearGradient(0, 0, w, h); grad.addColorStop(0, "#2f6fb3"); grad.addColorStop(1, "#173a6b");
   g.fillStyle = grad; rounded(g, 5 * u, 5 * u, w - 10 * u, h - 10 * u, 6 * u); g.fill();
   g.save(); rounded(g, 5 * u, 5 * u, w - 10 * u, h - 10 * u, 6 * u); g.clip();
@@ -170,4 +170,83 @@ export function drawFace(deck: TableDeck, card: string): Promise<HTMLCanvasEleme
   let p = faces.get(key);
   if (!p) faces.set(key, (p = deck === "eins" ? drawEins(card as EinsCard) : deck === "schamlos" ? drawWords(card) : drawPlaying(card as Card)));
   return p;
+}
+
+/** Größte Schrift, mit der `text` in `maxW` passt */
+function fit(g: CanvasRenderingContext2D, text: string, maxW: number, start: number, weight = 700) {
+  let size = start;
+  for (; size > 12; size -= 2) { g.font = `${weight} ${size}px ${FONT}`; if (g.measureText(text).width <= maxW) break; }
+  return size;
+}
+
+/** Zahlenkarte (Stapelbau, Himmelskarten, Zehn Phasen, Glückssieben): weißes Feld, Farbe als Rand und Zahl – wie am Handy, mit kleiner Ecke */
+async function drawNum(text: string, tone: string): Promise<HTMLCanvasElement> {
+  await document.fonts?.ready;
+  const c = canvas("zahlen");
+  const g = c.getContext("2d")!;
+  const w = c.width, h = c.height, u = w / 100;
+  g.fillStyle = "#fbf7ef"; rounded(g, 0, 0, w, h, 14 * u); g.fill();
+  g.strokeStyle = tone; g.lineWidth = 7 * u; rounded(g, 5 * u, 5 * u, w - 10 * u, h - 10 * u, 10 * u); g.stroke();
+  g.fillStyle = tone; g.textAlign = "center"; g.textBaseline = "middle";
+  fit(g, text, 70 * u, 62 * u); g.fillText(text, w / 2, h / 2 + 2 * u);
+  g.font = `700 ${15 * u}px ${FONT}`; g.fillText(text, 17 * u, 19 * u);
+  g.save(); g.translate(w, h); g.rotate(Math.PI); g.fillText(text, 17 * u, 19 * u); g.restore();
+  return c;
+}
+
+/** Wortkarte (Decknamen): heller Karton, Wort groß, oben klein und kopfüber für die Gegenseite; aufgedeckt in der Teamfarbe */
+async function drawWordCard(text: string, tone: string | null): Promise<HTMLCanvasElement> {
+  await document.fonts?.ready;
+  const c = document.createElement("canvas");
+  c.width = 640; c.height = 400;
+  const g = c.getContext("2d")!;
+  const w = c.width, h = c.height, u = w / 100;
+  const word = text.toUpperCase();
+  g.fillStyle = tone ?? "#f3ead8"; rounded(g, 0, 0, w, h, 6 * u); g.fill();
+  g.fillStyle = tone ? "rgba(255,255,255,.16)" : "#fffaf0"; rounded(g, 5 * u, 34 * u, w - 10 * u, 28 * u, 3 * u); g.fill();
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = tone ? "#ffffff" : "#2b2118";
+  fit(g, word, 84 * u, 15 * u); g.fillText(word, w / 2, 48.5 * u);
+  g.save(); g.translate(w / 2, 18 * u); g.rotate(Math.PI); g.globalAlpha = 0.45;
+  fit(g, word, 60 * u, 7 * u, 600); g.fillText(word, 0, 0); g.restore();
+  return c;
+}
+
+/** Vorderseite einer Zahlen- oder Wortkarte (wird beim ersten Mal gezeichnet) */
+export function drawCard(kind: "num" | "word", text: string, tone: string | null): Promise<HTMLCanvasElement> {
+  const key = `${kind}:${text}:${tone}`;
+  let p = faces.get(key);
+  if (!p) faces.set(key, (p = kind === "num" ? drawNum(text, tone ?? "#8a6f4e") : drawWordCard(text, tone)));
+  return p;
+}
+
+/** Aufschrift auf dem Filz (z. B. „Ablage“): helle Schrift auf durchsichtigem Grund */
+export function drawLabel(text: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 96;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "rgba(255,255,255,.82)"; g.textAlign = "center"; g.textBaseline = "middle";
+  fit(g, text, 500, 64, 700); g.fillText(text, 256, 50);
+  return c;
+}
+
+/** Leerer Platz für einen Stapel: gestrichelter Rahmen */
+export function drawSlot(): HTMLCanvasElement {
+  const c = canvas("zahlen");
+  const g = c.getContext("2d")!;
+  const u = c.width / 100;
+  g.setLineDash([9 * u, 6 * u]); g.strokeStyle = "rgba(255,255,255,.4)"; g.lineWidth = 3.5 * u;
+  rounded(g, 3 * u, 3 * u, c.width - 6 * u, c.height - 6 * u, 12 * u); g.stroke();
+  return c;
+}
+
+/** Weicher Schatten unter einer Karte (ohne Schattenberechnung) */
+export function drawContact(): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d")!;
+  const grad = g.createRadialGradient(64, 64, 20, 64, 64, 64);
+  grad.addColorStop(0, "rgba(0,0,0,.55)"); grad.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+  return c;
 }

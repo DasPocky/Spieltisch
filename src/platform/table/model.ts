@@ -25,8 +25,8 @@ import { zehnphasenTable } from "../../games/zehnphasen/table";
 import { glueckssiebenTable } from "../../games/glueckssieben/table";
 import { decknamenTable } from "../../games/decknamen/table";
 
-/** Kartenart: französisch/deutsch („cards“), Eins! oder Textkarten (Schamlos) */
-export type TableDeck = "cards" | "eins" | "schamlos";
+/** Kartenart: französisch/deutsch („cards“), Eins!, Textkarten (Schamlos) oder Zahlenkarten (Rückseite blau, 5:7) */
+export type TableDeck = "cards" | "eins" | "schamlos" | "zahlen";
 
 export interface TableModel {
   deck: TableDeck;

@@ -8,7 +8,7 @@ import {
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, Shape, SpotLight,
   SRGBColorSpace, Vector3, WebGLRenderer, AdditiveBlending, type Material, type Texture,
 } from "three";
-import { CARD_RATIO, drawBack, drawFace } from "./textures";
+import { CARD_RATIO, drawBack, drawCard, drawContact, drawFace, drawLabel, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
@@ -188,6 +188,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     if (!model) { last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
     deck = model.deck;
     if (model.words) { updateWords(model, seats); return; }
+    if (model.words5) { wordGrid(model.words5); return; }
 
     // Stapel: ein Block, so hoch wie die Karten
     if (model.pile > 0) {
@@ -206,9 +207,9 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       if (i === model.discard.length - 1) newest = m;
     });
 
-    // Verdeckte Hände vor den Plätzen, zur Mitte gedreht
+    // Verdeckte Hände vor den Plätzen, zur Mitte gedreht – mit Auslage kleiner, damit davor Platz bleibt
     seats.forEach((id, i) => {
-      hand(i, model.counts[id] ?? 0, deck);
+      hand(i, model.counts[id] ?? 0, deck, model.boards ? HAND_SMALL : 1);
       const [x, z] = anchors[i];
       if (id === model.turn) { glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
     });
@@ -219,6 +220,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const [fx, fz] = anchors[from];
       fly(newest, new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92));
     }
+    if (model.piles || model.boards) laid(model, seats);
     last = { top: topCard, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
     render();
   }
@@ -297,6 +299,172 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       if (win) { glow.position.set(x0 + (cards.length - 1) * W * 0.28 * scale, SURFACE + 0.002, z0); glow.scale.setScalar(1.3); glow.visible = true; }
     });
     last = { top: null, n: model.n, turn: model.turn, seats, played: [...w.playedBy], shown: n };
+    render();
+  }
+
+
+  // ---------- Zahlen- und Wortkarten: Stapel in der Mitte, Auslage am Platz, Wortraster ----------
+  const contactTex = q.shadows ? null : new CanvasTexture(drawContact());
+  const contactMat = contactTex && new MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false, opacity: 0.7 });
+  const contactGeo = new PlaneGeometry(1, 1);
+  /** Ohne Schattenberechnung: ein weicher Fleck unter der Karte, damit sie aufliegt statt zu schweben */
+  const contact = (x: number, z: number, w: number, d: number, rot: number) => {
+    if (!contactMat) return;
+    const m = new Mesh(contactGeo, contactMat);
+    m.rotation.set(-Math.PI / 2, 0, rot); m.scale.set(w * 1.25, d * 1.18, 1); m.position.set(x, SURFACE + 0.0015, z);
+    live.add(m);
+  };
+  const plainTex = (key: string, make: () => HTMLCanvasElement) => {
+    let t = textures.get(key);
+    if (!t) { t = new CanvasTexture(make()); t.colorSpace = SRGBColorSpace; t.anisotropy = aniso; textures.set(key, t); }
+    return t;
+  };
+  const mats = new Map<string, MeshStandardMaterial>();
+  /** Gemeinsames Material je Karte (Text + Farbe) – das Bild wird einmal gezeichnet */
+  const cardMat = (kind: "num" | "word", text: string, tone: string | null) => {
+    const key = `${kind}:${text}:${tone}`;
+    let m = mats.get(key);
+    if (m) return m;
+    m = new MeshStandardMaterial({ roughness: 0.55, color: tone && kind === "word" ? tone : "#fbf7ef", transparent: true, alphaTest: 0.5 });
+    mats.set(key, m);
+    const mat = m;
+    void drawCard(kind, text, tone).then((c) => {
+      const t = plainTex(key, () => c);
+      mat.map = t; mat.color.set("#ffffff"); mat.needsUpdate = true; render();
+    });
+    return m;
+  };
+  const numBack = () => {
+    let m = mats.get("num:back");
+    if (!m) mats.set("num:back", (m = new MeshStandardMaterial({ map: backTex("zahlen"), roughness: 0.5, transparent: true, alphaTest: 0.5 })));
+    return m;
+  };
+  const numGeo = new BoxGeometry(1, 0.006, CARD_RATIO.zahlen);
+  /** Zahlenkarte der Breite `w`; `cell` null = verdeckt */
+  function numCard(cell: { text: string; tone?: string } | null, w: number, x: number, y: number, z: number, rot: number) {
+    const front = cell ? cardMat("num", cell.text, cell.tone ?? null) : numBack();
+    const m = new Mesh(numGeo, [edge, edge, front, numBack(), edge, edge]);
+    m.scale.set(w, 1, w); m.position.set(x, y, z); m.rotation.y = rot; m.castShadow = m.receiveShadow = true;
+    live.add(m);
+    if (y < SURFACE + 0.02) contact(x, z, w, w * CARD_RATIO.zahlen, rot);
+    return m;
+  }
+  /** Aufschrift auf dem Filz */
+  function label(text: string, x: number, z: number, w: number) {
+    const m = new Mesh(new PlaneGeometry(w, w * 96 / 512), new MeshBasicMaterial({ map: plainTex(`label:${text}`, () => drawLabel(text)), transparent: true, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, SURFACE + 0.002, z);
+    live.add(m);
+  }
+
+  /** zuletzt gezeigte Karten (Stapel, Auslage, Wörter) – Neues fliegt herein oder dreht sich um */
+  let seen = new Map<string, string>();
+  const turnSeat = (seats: string[]) => { const i = last.turn ? seats.indexOf(last.turn) : -1; return i >= 0 ? anchors[i] : null; };
+  const fresh = () => last.n >= 0;
+
+  const NUM_W = 0.42, HAND_SMALL = 0.6, MARGIN = 0.05;
+  const SEAT_X = (FELT_W - 0.5) / 2, SEAT_Z = (FELT_D - 0.35) / 2;
+
+  /** Stapel in der Mitte und Auslagen vor den Plätzen */
+  function laid(model: TableModel, seats: string[]) {
+    const prev = seen;
+    seen = new Map();
+    const from = turnSeat(seats);
+    const flyIn = (m: Mesh, key: string, sig: string) => {
+      const was = prev.get(key);
+      seen.set(key, sig);
+      if (!fresh() || was === sig) return;
+      // Verdeckt → offen: umdrehen; sonst kommt die Karte vom Platz dessen, der eben dran war
+      if (was === "?") fly(m, m.position.clone(), 0, true, 420);
+      else if (from) fly(m, new Vector3(from[0] * 0.92, SURFACE + 0.3, from[1] * 0.92));
+      else fly(m, m.position.clone().setY(SURFACE + 0.4));
+    };
+
+    // Mitte: Stapel nebeneinander, Aufschrift darunter
+    const piles = model.piles ?? [];
+    const step = NUM_W + 0.16, pz = -0.06, pd = NUM_W * CARD_RATIO.zahlen;
+    const x0 = -((piles.length - 1) / 2) * step;
+    piles.forEach((p, i) => {
+      const x = x0 + i * step;
+      const h = hash(p.label);
+      if (p.top !== null) {
+        // ein paar Karten darunter, leicht verschoben – wie ein echter Stapel
+        for (let k = 0; k < 3; k++) numCard({ text: p.top, tone: p.tone }, NUM_W, x + ((h >> k) % 5 - 2) * 0.006, SURFACE + 0.003 + k * 0.006, pz + ((h >> (k + 3)) % 5 - 2) * 0.006, ((h >> (k + 6)) % 9 - 4) / 90);
+        const top = numCard({ text: p.top, tone: p.tone }, NUM_W, x, SURFACE + 0.003 + 3 * 0.006, pz, ((h % 7) - 3) / 120);
+        flyIn(top, `pile:${i}`, `${p.top}:${p.tone}`);
+      } else if (p.count !== undefined && p.count > 0) {
+        const hgt = Math.max(0.006, Math.min(p.count, 60) * 0.0014);
+        const block = new Mesh(new BoxGeometry(NUM_W, hgt, pd), [edge, edge, numBack(), edge, edge, edge]);
+        block.position.set(x, SURFACE + hgt / 2, pz); block.rotation.y = 0.03; block.castShadow = block.receiveShadow = true;
+        live.add(block); contact(x, pz, NUM_W, pd, 0.03);
+      } else {
+        const slot = new Mesh(new PlaneGeometry(NUM_W, pd), new MeshBasicMaterial({ map: plainTex("slot", drawSlot), transparent: true, depthWrite: false }));
+        slot.rotation.x = -Math.PI / 2; slot.position.set(x, SURFACE + 0.002, pz); live.add(slot);
+      }
+      label(p.count !== undefined ? `${p.label} · ${p.count}` : p.label, x, pz + pd / 2 + 0.09, step * 0.95);
+    });
+    const hx = piles.length ? -x0 + NUM_W / 2 : 0, hz = piles.length ? pd / 2 + 0.06 : 0;
+
+    // Auslage je Platz: zwischen Hand und Mitte, Ausrichtung immer zum Bildschirm (lesbar für alle)
+    const bw = 0.3, bd = bw * CARD_RATIO.zahlen, gap = 0.035;
+    seats.forEach((id, i) => {
+      const board = model.boards?.[id];
+      if (!board) return;
+      const [ax, az] = anchors[i];
+      const onX = Math.abs(ax) / SEAT_X >= Math.abs(az) / SEAT_Z - 1e-6;
+      const handCards = (model.counts[id] ?? 0) > 0;
+      const hd = CARD_W * CARD_RATIO[deck] * HAND_SMALL;
+      // äußere Grenze: Filzrand bzw. Innenkante der Hand
+      const outer = onX ? (handCards ? Math.abs(ax) * 0.92 - hd / 2 : FELT_W / 2) - MARGIN : (handCards ? Math.abs(az) * 0.92 - hd / 2 : FELT_D / 2) - MARGIN;
+      // hinten mehr Abstand: von schräg vorn ragen die Stapel in der Mitte dorthin
+      const inner = (onX ? hx : hz + (az < 0 ? 0.1 : 0)) + MARGIN;
+      const rows = Math.ceil(board.cells.length / board.cols);
+      const W = board.cols * bw + (board.cols - 1) * gap, D = rows * bd + (rows - 1) * gap;
+      // Breite entlang der Kante: bis zum nächsten Platz auf derselben Seite
+      const side = anchors.filter(([x, z], k) => k !== i && (Math.abs(x) / SEAT_X >= Math.abs(z) / SEAT_Z - 1e-6) === onX && Math.sign(onX ? x : z) === Math.sign(onX ? ax : az));
+      const along = onX ? FELT_D - 2 * MARGIN : FELT_W - 2 * MARGIN;
+      const room = Math.min(along, ...side.map(([x, z]) => Math.abs(onX ? z - az : x - ax) - 0.08));
+      const sc = Math.max(0.3, Math.min(1, (outer - inner) / (onX ? W : D), room / (onX ? D : W)));
+      const w = W * sc, d = D * sc;
+      const cx = onX ? Math.sign(ax) * (outer - w / 2) : Math.max(-FELT_W / 2 + MARGIN + w / 2, Math.min(FELT_W / 2 - MARGIN - w / 2, ax));
+      const cz = onX ? Math.max(-FELT_D / 2 + MARGIN + d / 2, Math.min(FELT_D / 2 - MARGIN - d / 2, az)) : Math.sign(az) * (outer - d / 2);
+      board.cells.forEach((cell, k) => {
+        if (cell === null) return;
+        const c = k % board.cols, r = Math.floor(k / board.cols);
+        const h = hash(`${id}:${k}`);
+        const m = numCard(cell === "?" ? null : cell, bw * sc, cx - w / 2 + (c * (bw + gap) + bw / 2) * sc, SURFACE + 0.004, cz - d / 2 + (r * (bd + gap) + bd / 2) * sc, ((h % 9) - 4) / 110);
+        flyIn(m, `cell:${id}:${k}`, cell === "?" ? "?" : `${cell.text}:${cell.tone}`);
+      });
+    });
+  }
+
+  /** Wortraster (Decknamen): 25 Kartons, aufgedeckte bekommen ein Plättchen in der Teamfarbe obendrauf */
+  function wordGrid(words: NonNullable<TableModel["words5"]>) {
+    const prev = seen;
+    seen = new Map();
+    const rows = Math.ceil(words.cells.length / words.cols);
+    const cw = 0.66, cd = cw * 0.625, gap = 0.07;
+    const W = words.cols * cw + (words.cols - 1) * gap, D = rows * cd + (rows - 1) * gap;
+    const sc = Math.min(1, (FELT_W - 0.3) / W, (FELT_D - 0.2) / D);
+    const geo = new BoxGeometry(1, 0.008, 0.625);
+    words.cells.forEach((cell, k) => {
+      const c = k % words.cols, r = Math.floor(k / words.cols);
+      const x = (-W / 2 + c * (cw + gap) + cw / 2) * sc, z = (-D / 2 + r * (cd + gap) + cd / 2) * sc;
+      const h = hash(cell.text);
+      const rot = ((h % 9) - 4) / 220;
+      const card = new Mesh(geo, [edge, edge, cardMat("word", cell.text, null), edge, edge, edge]);
+      card.scale.set(cw * sc, 1, cw * sc); card.position.set(x, SURFACE + 0.004, z); card.rotation.y = rot; card.castShadow = card.receiveShadow = true;
+      live.add(card); contact(x, z, cw * sc, cd * sc, rot);
+      if (!cell.tone) return;
+      const tile = new Mesh(geo, [edge, edge, cardMat("word", cell.text, cell.tone), edge, edge, edge]);
+      const trot = rot + ((h >> 4) % 9 - 4) / 70;
+      tile.scale.set(cw * sc * 0.94, 1.6, cw * sc * 0.94); tile.position.set(x + ((h >> 8) % 5 - 2) * 0.008, SURFACE + 0.016, z); tile.rotation.y = trot;
+      tile.castShadow = true; live.add(tile);
+      const key = `word:${k}`;
+      seen.set(key, cell.tone);
+      // Gerade aufgedeckt: das Plättchen fällt von oben auf die Karte
+      if (fresh() && prev.get(key) !== cell.tone) fly(tile, tile.position.clone().setY(SURFACE + 0.45), 0, false, 480);
+    });
+    last = { top: null, n: 0, turn: null, seats: last.seats, played: [], shown: 0 };
     render();
   }
 
