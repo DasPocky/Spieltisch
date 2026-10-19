@@ -18,7 +18,7 @@ export function zehnphasenTable(room: RoomState): TableModel | null {
     return [[p.id, { cells, cols: Math.min(10, cells.length) }]];
   }));
   return {
-    deck: "cards", pile: 0, discard: [], counts: s.counts, turn: s.curId, n: s.n, log: s.log.slice(-6), scores: s.scores,
+    deck: "zahlen", pile: 0, discard: [], counts: s.counts, turn: s.curId, n: s.n, log: s.log.slice(-6), scores: s.scores,
     notes: Object.fromEntries(room.players.map((p) => [p.id, `Phase ${Math.min(s.phase[p.id] ?? 1, s.goal)}${s.laid[p.id]?.length ? " ✓" : ""}`])),
     piles: [{ label: "Ziehen", top: null, count: s.pileCount }, { label: "Ablage", ...(top ? (({ text, tone }) => ({ top: text, tone }))(cell(top)) : { top: null }) }],
     boards,

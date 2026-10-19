@@ -34,6 +34,19 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   zehnphasen: { table: "beta" },
   glueckssieben: { table: "beta" },
   decknamen: { table: "beta" },
+  // Würfel mit Karten bzw. Becher – Beta bis zur Abnahme
+  alles: { table: "beta" },
+  maexchen: { table: "beta" },
+  // Baustein Brett – Beta bis zur Abnahme
+  dame: { table: "beta" },
+  muehle: { table: "beta" },
+  ludo: { table: "beta" },
+  fischen: { table: "beta" },
+  hellseher: { table: "beta" },
+  // Baustein Aufsteller (Partyspiele) – Beta bis zur Abnahme
+  werwolf: { table: "beta" },
+  einenacht: { table: "beta" },
+  spion: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

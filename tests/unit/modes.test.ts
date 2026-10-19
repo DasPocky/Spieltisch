@@ -12,7 +12,7 @@ describe("Spielweisen je Spiel", () => {
     expect(modeState({ eins: { table: "off" } }, "eins", "table")).toBe("off");
     expect(modeState({}, "fuenfwuerfel", "table")).toBe("on");
     expect(modeState({}, "fuenfwuerfel", "stage")).toBe("beta");
-    expect(modeState({}, "alles", "table")).toBe("none");
+    expect(modeState({}, "werwolf", "stage")).toBe("none");
     expect(modeState({}, "eins", "stage")).toBe("beta");
     expect(modeState({}, "alles", "stage")).toBe("none");
   });
@@ -23,7 +23,7 @@ describe("Spielweisen je Spiel", () => {
     expect(modeAllowed({ eins: { table: "off" } }, "eins", "table", true)).toBe(false);
   });
   it("Tisch-Spiele sind echte Spiele", () => {
-    expect(TABLE_GAMES).toEqual(["maumau", "eins", "schamlos", "fuenfwuerfel", "vier", "stapelbau", "himmelskarten", "zehnphasen", "glueckssieben", "decknamen"]);
+    expect(TABLE_GAMES).toEqual(["maumau", "eins", "schamlos", "fuenfwuerfel", "vier", "stapelbau", "himmelskarten", "zehnphasen", "glueckssieben", "decknamen", "alles", "maexchen", "dame", "muehle", "ludo", "fischen", "hellseher", "werwolf", "einenacht", "spion"]);
     for (const id of Object.keys(GAME_MODES)) expect(id in GAMES).toBe(true);
   });
 });

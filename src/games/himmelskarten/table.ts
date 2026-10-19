@@ -17,7 +17,7 @@ export function himmelskartenTable(room: RoomState): TableModel | null {
   }));
   const open = (id: string) => (s.grids[id] ?? []).reduce((n, c) => n + (c?.up && c.v !== null ? c.v : 0), 0);
   return {
-    deck: "cards", pile: 0, discard: [], counts: {}, turn: s.curId, n: s.log.length, log: s.log.slice(-6), scores: s.scores,
+    deck: "zahlen", pile: 0, discard: [], counts: {}, turn: s.curId, n: s.log.length, log: s.log.slice(-6), scores: s.scores,
     notes: Object.fromEntries(room.players.map((p) => [p.id, `offen ${open(p.id)} · gesamt ${s.scores[p.id] ?? 0}`])),
     piles: [
       { label: "Ziehen", top: null, count: s.deckCount },

@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { ALL_ON, FAKE_RTC, newPhone, setConfig, shot } from "./util";
+import { ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
@@ -589,14 +589,14 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     await anna.getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
     // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
-    for (let i = 0; i < 6 && !(await screen.getByTestId("seat-board").count()); i++) {
+    for (let i = 0; i < 15 && !(await screen.getByTestId("seat-board").count()); i++) {
       for (const p of phones) {
         const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
         if (await hit.isEnabled().catch(() => false)) { await hit.click(); break; }
       }
-      await screen.waitForTimeout(400);
+      await screen.waitForTimeout(600);
     }
-    await expect(screen.getByTestId("seat-board").first()).toBeVisible();
+    await expect(screen.getByTestId("seat-board").first()).toBeAttached();
     await screen.waitForTimeout(500);
     await shot(screen, "9f-tisch-glueckssieben");
   } finally {
@@ -644,6 +644,259 @@ test("Decknamen am Tisch: 25 Wörter in der Mitte, Hinweis darüber, aufgedeckte
     await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(1);
     await screen.waitForTimeout(500);
     await shot(screen, "9g-tisch-decknamen");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Alles oder nichts und Mäxchen am Tisch: Karte hinter den Würfeln, Becher mit Ansage, beim Aufdecken liegen die Würfel offen", async ({ browser, request }) => {
+  test.setTimeout(150_000);
+  await setConfig(request, { ...ALL_ON, modes: { alles: { table: "on" }, maexchen: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    const phones = [anna, ben];
+
+    // Alles oder nichts mit App-Würfeln: wer dran ist, würfelt – Karte und Stapel hinten, Würfel davor
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-alles").click();
+    await openSettings(anna);
+    await anna.getByRole("radio", { name: /App-Würfel/ }).click();
+    await closeSettings(anna);
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-dice")).toBeAttached();
+    await expect(screen.getByTestId("table-pile").first()).toContainText("Karten");
+    for (let i = 0; i < 20 && !(await screen.getByTestId("table-dice").getByRole("img").count()); i++) {
+      for (const p of phones) {
+        const roll = p.getByRole("button", { name: /Würfeln/ });
+        if (await roll.isVisible().catch(() => false)) { await roll.click(); break; }
+        const on = p.getByRole("button", { name: /Weiter|eintragen|ächster Spieler/ });
+        if (await on.first().isVisible().catch(() => false)) { await on.first().click(); break; }
+      }
+      await screen.waitForTimeout(500);
+    }
+    await expect(screen.getByTestId("table-dice").getByRole("img").first()).toBeAttached();
+    await expect(screen.getByTestId("table-seat").first()).toContainText("Pkt.");
+    await screen.waitForTimeout(900);
+    await shot(screen, "9h-tisch-alles");
+
+    // Mäxchen: Becher in der Mitte, Ansage groß – der Tisch sieht den Wurf nicht
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-maexchen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-dice")).toContainText("würfelt");
+    const t = screen.locator('[data-testid="table-seat"][data-turn="true"]');
+    const [first, second] = (await t.textContent())?.includes("Anna") ? [anna, ben] : [ben, anna];
+    await first.getByRole("button", { name: "Würfeln" }).click();
+    await first.getByRole("button", { name: /Becher anheben/ }).click();
+    await first.getByRole("radio", { name: "Sechserpasch" }).click();
+    await first.getByTestId("announce").click();
+    await expect(screen.getByTestId("table-dice")).toContainText("sagt: Sechserpasch");
+    await expect(screen.getByTestId("table-cup")).toBeAttached();
+    await expect(screen.getByTestId("table-dice").getByRole("img", { name: /Würfel/ })).toHaveCount(0);
+    await screen.waitForTimeout(700);
+    await shot(screen, "9i-tisch-maexchen-becher");
+    await second.getByTestId("reveal-btn").click();
+    await expect(screen.getByTestId("table-dice")).toContainText(/stimmt|gelogen/);
+    await expect(screen.getByTestId("table-dice").getByRole("img", { name: /Würfel/ })).toHaveCount(2);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9j-tisch-maexchen-offen");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Dame, Mühle und Ludo am Tisch: Brett in der Mitte, Steine und Figuren darauf, Würfel daneben", async ({ browser, request }) => {
+  test.setTimeout(180_000);
+  await setConfig(request, { ...ALL_ON, modes: { dame: { table: "on" }, muehle: { table: "on" }, ludo: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    const mover = async () => ((await screen.locator('[data-testid="table-seat"][data-turn="true"]').textContent())?.includes("Anna") ? anna : ben);
+    const pick = async (id: string, first = false) => {
+      if (!first) {
+        await anna.getByRole("button", { name: "Menü" }).click();
+        await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+        await anna.getByRole("button", { name: "Spiel wählen" }).click();
+      } else await anna.getByTestId("meet-play").click();
+      await anna.getByTestId(`pick-${id}`).click();
+      await anna.getByRole("button", { name: "Spiel starten" }).click();
+      await expect(screen.getByTestId("table-board")).toBeAttached();
+    };
+
+    // Dame: 24 Steine, ein Zug
+    await pick("dame", true);
+    await expect(screen.getByTestId("table-piece")).toHaveCount(24);
+    const d = await mover();
+    await d.getByRole("button", { name: /^Feld c3( |$)/ }).click();
+    await d.getByRole("button", { name: /^Feld d4( |$)/ }).click();
+    await expect(screen.getByTestId("table-news")).toContainText("d4");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9k-tisch-dame");
+
+    // Mühle: noch keine Steine auf dem Brett, 18 daneben – nach dem Setzen einer weniger daneben, einer drauf
+    await pick("muehle");
+    await expect(screen.getByTestId("table-piece")).toHaveCount(18);
+    const m1 = await mover();
+    await m1.getByRole("button", { name: /^Punkt d6( |$)/ }).click();
+    await expect(screen.getByTestId("table-seat").filter({ hasText: "8 zu setzen" })).toHaveCount(1);
+    const m2 = await mover();
+    await m2.getByRole("button", { name: /^Punkt f4( |$)/ }).click();
+    await screen.waitForTimeout(800);
+    await shot(screen, "9l-tisch-muehle");
+
+    // Ludo: Figuren auf dem Brett, gewürfelt wird am Handy – der Würfel liegt neben dem Brett
+    await pick("ludo");
+    await expect(screen.getByTestId("table-piece")).toHaveCount(8);
+    for (let i = 0; i < 3; i++) {
+      const p = await mover();
+      const roll = p.getByRole("button", { name: "Würfeln" });
+      await expect(roll).toBeEnabled();
+      await roll.click();
+      await p.waitForTimeout(200);
+      const glow = p.locator("[data-glow]");
+      if (await glow.count()) await glow.first().click();
+      await screen.waitForTimeout(900);
+    }
+    await shot(screen, "9m-tisch-ludo");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Fischen und Hellseher am Tisch: Teich und Quartette bzw. Trumpf und Stich in der Mitte, Ansagen am Platz", async ({ browser, request }) => {
+  test.setTimeout(180_000);
+  await setConfig(request, { ...ALL_ON, modes: { fischen: { table: "on" }, hellseher: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    const cem = await joinByLink(browser, code, pin, "Cem");
+    const phones = [anna, ben, cem];
+
+    // Fischen: wer dran ist, fragt – die Frage steht oben, der Teich liegt in der Mitte
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-fischen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile").first()).toContainText("Teich");
+    for (const p of phones) {
+      const who = p.getByRole("group", { name: "Mitspieler" }).locator("button:not([disabled])");
+      if (await who.count()) {
+        await who.first().click();
+        await p.getByRole("group", { name: "Wert" }).getByRole("button").first().click();
+        await p.getByRole("button", { name: /hast du/ }).click();
+        break;
+      }
+    }
+    await expect(screen.getByTestId("table-news")).toContainText("fragt");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9n-tisch-fischen");
+
+    // Hellseher: Trumpf und Stich in der Mitte, jede Karte mit Namen
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-hellseher").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    for (let i = 0; i < 40 && (await screen.getByTestId("table-pile").count()) < 4; i++) {
+      for (const p of phones) {
+        const trump = p.getByRole("group", { name: "Trumpf wählen" });
+        if (await trump.isVisible().catch(() => false)) { await trump.getByRole("button").first().click(); break; }
+        const bids = p.getByRole("group", { name: "Ansage" }).locator("button:not([disabled])");
+        if (await bids.count()) { await bids.first().click(); break; }
+        const cards = p.getByTestId("hand").locator("button:not([disabled])");
+        if (await cards.count()) { await cards.first().click(); break; }
+      }
+      await screen.waitForTimeout(400);
+    }
+    await expect(screen.getByTestId("table-seat").first()).toContainText("Ansage");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9o-tisch-hellseher");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Werwolf, Eine Nacht und Spion am Tisch: Aufsteller mit Phase, Nachtlicht, Uhr, verdeckte Karten an den Plätzen", async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await setConfig(request, { ...ALL_ON, modes: { werwolf: { table: "on" }, einenacht: { table: "on" }, spion: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const phones: Page[] = [];
+    for (const n of ["Anna", "Ben", "Cem", "Dora", "Emil"]) phones.push(await joinByLink(browser, code, pin, n));
+    const [anna] = phones;
+    const pick = async (id: string, first = false) => {
+      if (!first) {
+        await anna.getByRole("button", { name: "Menü" }).click();
+        await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+        await anna.getByRole("button", { name: "Spiel wählen" }).click();
+      } else await anna.getByTestId("meet-play").click();
+      await anna.getByTestId(`pick-${id}`).click();
+      await anna.getByRole("button", { name: "Spiel starten" }).click();
+    };
+
+    // Werwolf: Karten ansehen, dann Nacht – Licht gedimmt, jede Karte liegt verdeckt am Platz
+    await pick("werwolf", true);
+    await expect(screen.getByTestId("table-sign")).toContainText("Schaut eure Karte an");
+    await expect(screen.getByTestId("seat-board")).toHaveCount(5);
+    for (const p of phones) {
+      const card = p.getByRole("button", { name: /Rolle aufdecken|Deine Rolle/ }).first();
+      if ((await card.getAttribute("aria-label"))?.includes("aufdecken")) await card.click();
+      await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+    }
+    await expect(screen.getByTestId("table-sign")).toContainText("Nacht 1");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9p-tisch-werwolf-nacht");
+
+    // Eine Nacht: drei Karten in der Mitte, nach der Nacht läuft die Uhr
+    await pick("einenacht");
+    for (const p of phones) await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+    await expect(screen.getByTestId("table-sign")).toContainText("Die Nacht");
+    await expect(screen.getByTestId("table-pile")).toHaveCount(3);
+    for (const p of phones) {
+      const drunk = p.getByRole("group", { name: "Karten in der Mitte" }).getByRole("button", { name: "Karte 1" });
+      if (await p.getByText("Tausche mit einer Karte aus der Mitte").isVisible()) await drunk.click();
+      else await p.getByRole("button", { name: "Fertig" }).click();
+    }
+    await expect(screen.getByTestId("table-sign")).toContainText("Wer ist der Werwolf?");
+    await expect(screen.getByTestId("table-clock")).toContainText(/\d:\d\d/);
+    await screen.waitForTimeout(800);
+    await shot(screen, "9q-tisch-einenacht-tag");
+
+    // Spion: Karte ansehen, dann fragt der Erste – Uhr läuft
+    await pick("spion");
+    for (const p of phones) {
+      await p.getByRole("button", { name: "Karte ansehen" }).click();
+      await p.getByRole("button", { name: "Gesehen – bereit" }).click();
+    }
+    await expect(screen.getByTestId("table-sign")).toContainText("fragt");
+    await expect(screen.getByTestId("table-clock")).toBeVisible();
+    await screen.waitForTimeout(800);
+    await shot(screen, "9r-tisch-spion");
   } finally {
     await setConfig(request, ALL_ON);
   }

@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from "react";
 import { Die } from "@/platform/Die";
+import { drawBoard } from "./textures";
 import { cn } from "@/lib/utils";
 import type { TableModel } from "./model";
 
@@ -12,7 +14,14 @@ export function FeltDice({ dice }: { dice: NonNullable<TableModel["dice"]> }) {
   return (
     <div className="flex flex-col items-center gap-[3cqh]" data-testid="table-dice">
       <div className="flex items-end gap-[2.2cqw]">
-        {dice.values.length
+        {dice.cup
+          ? (
+            // Becher (Mäxchen): der Wurf bleibt verdeckt
+            <svg viewBox="0 0 40 44" className="h-[30cqh] drop-shadow-[0_8px_12px_rgb(0_0_0/0.4)]" role="img" aria-label="Becher" data-testid="table-cup">
+              <path d="M8 4h24l4 36H4z" fill="#5a2a1c" /><rect x="3" y="37" width="34" height="5" rx="1.5" fill="#c9a25e" />
+            </svg>
+          )
+          : dice.values.length
           ? dice.values.map((v, i) => (
             <div key={`${dice.n}-${i}`} className={cn("flex flex-col items-center gap-[1.2cqh] transition-transform", dice.held[i] ? "translate-y-[4cqh]" : "dice-in")}
               style={dice.held[i] ? undefined : { animationDelay: `${i * 60}ms` }} data-held={!!dice.held[i]}>
@@ -46,5 +55,47 @@ export function FeltGrid({ grid }: { grid: NonNullable<TableModel["grid"]> }) {
         );
       }))}
     </svg>
+  );
+}
+
+/** Brettspiel (Dame, Mühle, Ludo) von oben: dasselbe Brettbild wie in 3D, Steine als Kreise, Würfel daneben */
+export function FeltTabletop({ top }: { top: NonNullable<TableModel["tabletop"]> }) {
+  const img = useMemo(() => { try { return drawBoard(top.board).toDataURL(); } catch { return ""; } }, [top.board]);
+  const r = top.board === "dame:10" ? 0.08 : top.board === "dame:8" ? 0.1 : top.board === "muehle" ? 0.09 : 0.06;
+  return (
+    <div className="flex items-center gap-[3cqw]" data-testid="table-board">
+      <svg viewBox="-1.32 -1.05 2.64 2.1" className="h-[92cqh] drop-shadow-[0_10px_18px_rgb(0_0_0/0.45)]" role="img" aria-label="Spielbrett">
+        {img && <image href={img} x={-1} y={-1} width={2} height={2} />}
+        {top.pieces.map((p, i) => (
+          <g key={p.id ?? i} data-testid="table-piece">
+            <circle cx={p.x} cy={p.y} r={r} fill={p.color} stroke="rgb(0 0 0 / 0.45)" strokeWidth={0.012} />
+            {p.kind === "king" && <circle cx={p.x} cy={p.y} r={r * 0.5} fill="none" stroke="#e3b53c" strokeWidth={0.02} />}
+          </g>
+        ))}
+      </svg>
+      {top.die?.value ? <Die value={top.die.value} className="size-[min(14cqh,9cqw)] drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)]" /> : null}
+    </div>
+  );
+}
+
+/** Aufsteller (Partyspiele) ohne 3D: Karton mit Phase und Hinweis */
+export function FeltSign({ sign }: { sign: NonNullable<TableModel["sign"]> }) {
+  return (
+    <div className="paper-note grid place-items-center gap-[1.5cqh] px-[5cqw] py-[4cqh] text-center" data-testid="table-sign">
+      <span className="text-[9cqh] leading-tight font-bold">{sign.title}</span>
+      {sign.sub && <span className="text-[4.5cqh] font-semibold opacity-75">{sign.sub}</span>}
+    </div>
+  );
+}
+
+/** Uhr für Partyspiele: läuft bis `endsAt` herunter (bei 0 bleibt sie stehen, das Spiel entscheidet) */
+export function SignClock({ endsAt }: { endsAt: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const left = Math.max(0, Math.round((endsAt - now) / 1000));
+  return (
+    <span className={cn("table-banner tabular-nums text-4xl", left <= 30 && "text-[#ff9b85]")} role="timer" aria-label={`noch ${Math.floor(left / 60)} Minuten ${left % 60} Sekunden`} data-testid="table-clock">
+      {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
+    </span>
   );
 }

@@ -6,9 +6,10 @@
 import {
   ACESFilmicToneMapping, BoxGeometry, CanvasTexture, CircleGeometry, CylinderGeometry, DirectionalLight, ExtrudeGeometry, Group, HemisphereLight,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, Shape, SpotLight,
-  SRGBColorSpace, Vector3, WebGLRenderer, AdditiveBlending, type Material, type Texture,
+  SRGBColorSpace, Vector3, Vector2, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
 } from "three";
-import { CARD_RATIO, drawBack, drawFace } from "./textures";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSign, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
@@ -119,7 +120,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   const floor = new Mesh(new PlaneGeometry(30, 30), new MeshStandardMaterial({ color: "#2a1a0e", roughness: 1 }));
   floor.rotation.x = -Math.PI / 2; floor.position.y = -1.8; floor.receiveShadow = true; scene.add(floor);
 
-  scene.add(new HemisphereLight("#ffe9c9", "#3a2414", 0.7));
+  const hemi = new HemisphereLight("#ffe9c9", "#3a2414", 0.7);
+  scene.add(hemi);
   const lamp = new SpotLight("#ffd9a0", 42, 16, 0.8, 0.6, 1.6);
   lamp.position.set(-0.4, 6, 0.6); lamp.castShadow = q.shadows; lamp.shadow.mapSize.set(q.shadowSize, q.shadowSize); lamp.shadow.bias = -0.0004;
   scene.add(lamp, lamp.target);
@@ -164,12 +166,15 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   let anchors: [number, number][] = [];
   let last: { top: string | null; n: number; turn: string | null; seats: string[]; played: string[]; shown: number } = { top: null, n: -1, turn: null, seats: [], played: [], shown: 0 };
   /** Laufende Bewegungen: Karte fliegt (von → nach, mit Bogen) und dreht sich dabei ggf. um */
-  type Anim = { mesh: Mesh; from: Vector3; to: Vector3; rot: number; flip: boolean; start: number; ms: number };
+  /** `arc`: Höhe des Bogens, `spin`: Drehung um die Hochachse beim Anflug, `tumble`: Würfel kullert (dreht sich um alle Achsen) */
+  type Fly = { arc?: number; spin?: number; tumble?: boolean };
+  type Anim = { mesh: Mesh; from: Vector3; to: Vector3; rot: number; flip: boolean; start: number; ms: number; arc: number; spin: number; tumble: boolean };
   let anims: Anim[] = [];
-  const fly = (mesh: Mesh, from: Vector3, delay = 0, flip = false, ms = 520) => {
+  const fly = (mesh: Mesh, from: Vector3, delay = 0, flip = false, ms = 520, o: Fly = {}) => {
     // Reduzierte Bewegung: Karten liegen sofort da
     if (still) return;
-    anims.push({ mesh, from, to: mesh.position.clone(), rot: mesh.rotation.y, flip, start: performance.now() + delay, ms });
+    anims.push({ mesh, from, to: mesh.position.clone(), rot: mesh.rotation.y, flip, start: performance.now() + delay, ms,
+      arc: o.arc ?? (flip ? 0.25 : 0.35), spin: o.spin ?? (flip ? 0 : 1.2), tumble: !!o.tumble });
     mesh.position.copy(from);
     if (flip) mesh.rotation.z = Math.PI;
   };
@@ -185,9 +190,16 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     anims = [];
     anchors = seatAnchors(seats.length);
     glow.visible = false;
-    if (!model) { last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
+    if (!model) { lamp.intensity = 42; hemi.intensity = 0.7; fill.intensity = 0.25; last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
     deck = model.deck;
+    // Nacht: Lampe gedimmt, kühles Licht von der Seite
+    const night = !!model.night;
+    lamp.intensity = night ? 14 : 42; hemi.intensity = night ? 0.25 : 0.7; fill.intensity = night ? 0.7 : 0.25;
     if (model.words) { updateWords(model, seats); return; }
+    if (model.words5) { wordGrid(model.words5); return; }
+    if (model.dice) { diceRow(model, seats); return; }
+    if (model.grid) { board(model.grid, model.n); return; }
+    if (model.tabletop) { tabletop(model, seats); return; }
 
     // Stapel: ein Block, so hoch wie die Karten
     if (model.pile > 0) {
@@ -206,9 +218,9 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       if (i === model.discard.length - 1) newest = m;
     });
 
-    // Verdeckte Hände vor den Plätzen, zur Mitte gedreht
+    // Verdeckte Hände vor den Plätzen, zur Mitte gedreht – mit Auslage kleiner, damit davor Platz bleibt
     seats.forEach((id, i) => {
-      hand(i, model.counts[id] ?? 0, deck);
+      hand(i, model.counts[id] ?? 0, deck, model.boards ? HAND_SMALL : 1);
       const [x, z] = anchors[i];
       if (id === model.turn) { glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
     });
@@ -219,6 +231,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const [fx, fz] = anchors[from];
       fly(newest, new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92));
     }
+    if (model.sign) sign(model.sign);
+    if (model.piles || model.boards) laid(model, seats, model.sign ? 0.3 : -0.06);
     last = { top: topCard, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
     render();
   }
@@ -300,6 +314,395 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     render();
   }
 
+
+  // ---------- Zahlen- und Wortkarten: Stapel in der Mitte, Auslage am Platz, Wortraster ----------
+  const contactTex = q.shadows ? null : new CanvasTexture(drawContact());
+  const contactMat = contactTex && new MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false, opacity: 0.7 });
+  const contactGeo = new PlaneGeometry(1, 1);
+  /** Ohne Schattenberechnung: ein weicher Fleck unter der Karte, damit sie aufliegt statt zu schweben */
+  const contact = (x: number, z: number, w: number, d: number, rot: number) => {
+    if (!contactMat) return;
+    const m = new Mesh(contactGeo, contactMat);
+    m.rotation.set(-Math.PI / 2, 0, rot); m.scale.set(w * 1.25, d * 1.18, 1); m.position.set(x, SURFACE + 0.0015, z);
+    live.add(m);
+  };
+  const plainTex = (key: string, make: () => HTMLCanvasElement) => {
+    let t = textures.get(key);
+    if (!t) { t = new CanvasTexture(make()); t.colorSpace = SRGBColorSpace; t.anisotropy = aniso; textures.set(key, t); }
+    return t;
+  };
+  const mats = new Map<string, MeshStandardMaterial>();
+  /** Gemeinsames Material je Karte (Text + Farbe) – das Bild wird einmal gezeichnet */
+  const cardMat = (kind: "num" | "word", text: string, tone: string | null) => {
+    const key = `${kind}:${text}:${tone}`;
+    let m = mats.get(key);
+    if (m) return m;
+    m = new MeshStandardMaterial({ roughness: 0.55, color: tone && kind === "word" ? tone : "#fbf7ef", transparent: true, alphaTest: 0.5 });
+    mats.set(key, m);
+    const mat = m;
+    void drawCard(kind, text, tone).then((c) => {
+      const t = plainTex(key, () => c);
+      mat.map = t; mat.color.set("#ffffff"); mat.needsUpdate = true; render();
+    });
+    return m;
+  };
+  const numBack = () => {
+    let m = mats.get("num:back");
+    if (!m) mats.set("num:back", (m = new MeshStandardMaterial({ map: backTex("zahlen"), roughness: 0.5, transparent: true, alphaTest: 0.5 })));
+    return m;
+  };
+  const numGeo = new BoxGeometry(1, 0.006, CARD_RATIO.zahlen);
+  /** Zahlenkarte der Breite `w`; `cell` null = verdeckt */
+  function numCard(cell: { text: string; tone?: string } | null, w: number, x: number, y: number, z: number, rot: number) {
+    const front = cell ? cardMat("num", cell.text, cell.tone ?? null) : numBack();
+    const m = new Mesh(numGeo, [edge, edge, front, numBack(), edge, edge]);
+    m.scale.set(w, 1, w); m.position.set(x, y, z); m.rotation.y = rot; m.castShadow = m.receiveShadow = true;
+    live.add(m);
+    if (y < SURFACE + 0.02) contact(x, z, w, w * CARD_RATIO.zahlen, rot);
+    return m;
+  }
+  /** Aufschrift auf dem Filz: Schrifthöhe `h`, höchstens `maxW` breit */
+  function label(text: string, x: number, z: number, maxW: number, h = 0.085) {
+    const t = plainTex(`label:${text}`, () => drawLabel(text));
+    const img = t.image as HTMLCanvasElement;
+    const w = Math.min(maxW, (h * 1.5 * img.width) / img.height);
+    const m = new Mesh(new PlaneGeometry(w, (w * img.height) / img.width), new MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, SURFACE + 0.002, z);
+    live.add(m);
+  }
+
+  /** zuletzt gezeigte Karten (Stapel, Auslage, Wörter) – Neues fliegt herein oder dreht sich um */
+  let seen = new Map<string, string>();
+  const turnSeat = (seats: string[]) => { const i = last.turn ? seats.indexOf(last.turn) : -1; return i >= 0 ? anchors[i] : null; };
+  const fresh = () => last.n >= 0;
+
+  const NUM_W = 0.42, HAND_SMALL = 0.6, MARGIN = 0.05;
+  const SEAT_X = (FELT_W - 0.5) / 2, SEAT_Z = (FELT_D - 0.35) / 2;
+
+  /** Stapel in der Mitte und Auslagen vor den Plätzen */
+  function laid(model: TableModel, seats: string[], pz = -0.06) {
+    const prev = seen;
+    seen = new Map();
+    const from = turnSeat(seats);
+    const flyIn = (m: Mesh, key: string, sig: string) => {
+      const was = prev.get(key);
+      seen.set(key, sig);
+      if (!fresh() || was === sig) return;
+      // Verdeckt → offen: umdrehen; sonst kommt die Karte vom Platz dessen, der eben dran war
+      if (was === "?") fly(m, m.position.clone(), 0, true, 420);
+      else if (from) fly(m, new Vector3(from[0] * 0.92, SURFACE + 0.3, from[1] * 0.92));
+      else fly(m, m.position.clone().setY(SURFACE + 0.4));
+    };
+
+    // Mitte: Stapel nebeneinander, Aufschrift darunter
+    const piles = model.piles ?? [];
+    // Viele Stapel (z. B. ein Stich mit sechs Karten): schmaler, damit alle auf den Filz passen
+    const pw = Math.min(NUM_W, (FELT_W - 0.4) / Math.max(1, piles.length) - 0.16);
+    const step = pw + 0.16, pd = pw * CARD_RATIO.zahlen;
+    const x0 = -((piles.length - 1) / 2) * step;
+    piles.forEach((p, i) => {
+      const x = x0 + i * step;
+      const h = hash(p.label);
+      if (p.top === "?") {
+        numCard(null, pw, x, SURFACE + 0.004, pz, ((h % 9) - 4) / 90);
+      } else if (p.top !== null) {
+        // ein paar Karten darunter, leicht verschoben – wie ein echter Stapel
+        if (!p.single) for (let k = 0; k < 3; k++) numCard({ text: p.top, tone: p.tone }, pw, x + ((h >> k) % 5 - 2) * 0.006, SURFACE + 0.003 + k * 0.006, pz + ((h >> (k + 3)) % 5 - 2) * 0.006, ((h >> (k + 6)) % 9 - 4) / 90);
+        const top = numCard({ text: p.top, tone: p.tone }, pw, x, SURFACE + 0.003 + 3 * 0.006, pz, ((h % 7) - 3) / 120);
+        flyIn(top, `pile:${i}`, `${p.top}:${p.tone}`);
+      } else if (p.count !== undefined && p.count > 0) {
+        const hgt = Math.max(0.006, Math.min(p.count, 60) * 0.0014);
+        const block = new Mesh(new BoxGeometry(pw, hgt, pd), [edge, edge, numBack(), edge, edge, edge]);
+        block.position.set(x, SURFACE + hgt / 2, pz); block.rotation.y = 0.03; block.castShadow = block.receiveShadow = true;
+        live.add(block); contact(x, pz, pw, pd, 0.03);
+      } else {
+        const slot = new Mesh(new PlaneGeometry(pw, pd), new MeshBasicMaterial({ map: plainTex("slot", drawSlot), transparent: true, depthWrite: false }));
+        slot.rotation.x = -Math.PI / 2; slot.position.set(x, SURFACE + 0.002, pz); live.add(slot);
+      }
+      label(p.count !== undefined ? `${p.label} · ${p.count}` : p.label, x, pz + pd / 2 + 0.09, step * 0.95);
+    });
+    const hx = piles.length ? -x0 + pw / 2 : 0, hz = piles.length ? pd / 2 + 0.06 : 0;
+
+    // Auslage je Platz: zwischen Hand und Mitte, Ausrichtung immer zum Bildschirm (lesbar für alle)
+    const bw = 0.3, bd = bw * CARD_RATIO.zahlen, gap = 0.035;
+    seats.forEach((id, i) => {
+      const board = model.boards?.[id];
+      if (!board) return;
+      const [ax, az] = anchors[i];
+      const onX = Math.abs(ax) / SEAT_X >= Math.abs(az) / SEAT_Z - 1e-6;
+      const handCards = (model.counts[id] ?? 0) > 0;
+      const hd = CARD_W * CARD_RATIO[deck] * HAND_SMALL;
+      // äußere Grenze: Filzrand bzw. Innenkante der Hand
+      const outer = onX ? (handCards ? Math.abs(ax) * 0.92 - hd / 2 : FELT_W / 2) - MARGIN : (handCards ? Math.abs(az) * 0.92 - hd / 2 : FELT_D / 2) - MARGIN;
+      // hinten mehr Abstand: von schräg vorn ragen die Stapel in der Mitte dorthin
+      // Stapel liegen ggf. versetzt (pz); hinten mehr Abstand – von schräg vorn ragen sie dorthin, ein Aufsteller erst recht
+      let inner = (onX ? hx : az > 0 ? hz + pz : hz - pz + 0.1) + MARGIN;
+      if (model.sign && !onX && az < 0) inner = Math.max(inner, 0.85);
+      const rows = Math.ceil(board.cells.length / board.cols);
+      const W = board.cols * bw + (board.cols - 1) * gap, D = rows * bd + (rows - 1) * gap;
+      // Breite entlang der Kante: bis zum nächsten Platz auf derselben Seite
+      const side = anchors.filter(([x, z], k) => k !== i && (Math.abs(x) / SEAT_X >= Math.abs(z) / SEAT_Z - 1e-6) === onX && Math.sign(onX ? x : z) === Math.sign(onX ? ax : az));
+      const along = onX ? FELT_D - 2 * MARGIN : FELT_W - 2 * MARGIN;
+      const room = Math.min(along, ...side.map(([x, z]) => Math.abs(onX ? z - az : x - ax) - 0.08));
+      const sc = Math.max(0.3, Math.min(1, (outer - inner) / (onX ? W : D), room / (onX ? D : W)));
+      const w = W * sc, d = D * sc;
+      const cx = onX ? Math.sign(ax) * (outer - w / 2) : Math.max(-FELT_W / 2 + MARGIN + w / 2, Math.min(FELT_W / 2 - MARGIN - w / 2, ax));
+      const cz = onX ? Math.max(-FELT_D / 2 + MARGIN + d / 2, Math.min(FELT_D / 2 - MARGIN - d / 2, az)) : Math.sign(az) * (outer - d / 2);
+      board.cells.forEach((cell, k) => {
+        if (cell === null) return;
+        const c = k % board.cols, r = Math.floor(k / board.cols);
+        const h = hash(`${id}:${k}`);
+        const m = numCard(cell === "?" ? null : cell, bw * sc, cx - w / 2 + (c * (bw + gap) + bw / 2) * sc, SURFACE + 0.004, cz - d / 2 + (r * (bd + gap) + bd / 2) * sc, ((h % 9) - 4) / 110);
+        flyIn(m, `cell:${id}:${k}`, cell === "?" ? "?" : `${cell.text}:${cell.tone}`);
+      });
+    });
+  }
+
+  /** Wortraster (Decknamen): 25 Kartons, aufgedeckte bekommen ein Plättchen in der Teamfarbe obendrauf */
+  function wordGrid(words: NonNullable<TableModel["words5"]>) {
+    const prev = seen;
+    seen = new Map();
+    const rows = Math.ceil(words.cells.length / words.cols);
+    const cw = 0.66, cd = cw * 0.625, gap = 0.07;
+    const W = words.cols * cw + (words.cols - 1) * gap, D = rows * cd + (rows - 1) * gap;
+    const sc = Math.min(1, (FELT_W - 0.3) / W, (FELT_D - 0.2) / D);
+    const geo = new BoxGeometry(1, 0.008, 0.625);
+    words.cells.forEach((cell, k) => {
+      const c = k % words.cols, r = Math.floor(k / words.cols);
+      const x = (-W / 2 + c * (cw + gap) + cw / 2) * sc, z = (-D / 2 + r * (cd + gap) + cd / 2) * sc;
+      const h = hash(cell.text);
+      const rot = ((h % 9) - 4) / 220;
+      const card = new Mesh(geo, [edge, edge, cardMat("word", cell.text, null), edge, edge, edge]);
+      card.scale.set(cw * sc, 1, cw * sc); card.position.set(x, SURFACE + 0.004, z); card.rotation.y = rot; card.castShadow = card.receiveShadow = true;
+      live.add(card); contact(x, z, cw * sc, cd * sc, rot);
+      if (!cell.tone) return;
+      const tile = new Mesh(geo, [edge, edge, cardMat("word", cell.text, cell.tone), edge, edge, edge]);
+      const trot = rot + ((h >> 4) % 9 - 4) / 70;
+      tile.scale.set(cw * sc * 0.94, 1.6, cw * sc * 0.94); tile.position.set(x + ((h >> 8) % 5 - 2) * 0.008, SURFACE + 0.016, z); tile.rotation.y = trot;
+      tile.castShadow = true; live.add(tile);
+      const key = `word:${k}`;
+      seen.set(key, cell.tone);
+      // Gerade aufgedeckt: das Plättchen fällt von oben auf die Karte
+      if (fresh() && prev.get(key) !== cell.tone) fly(tile, tile.position.clone().setY(SURFACE + 0.45), 0, false, 480);
+    });
+    last = { top: null, n: 0, turn: null, seats: last.seats, played: [], shown: 0 };
+    render();
+  }
+
+
+  // ---------- Würfel und Spielbrett ----------
+  const DIE = 0.3;
+  const dieGeo = new RoundedBoxGeometry(DIE, DIE, DIE, 4, DIE * 0.16);
+  const pipMats = new Map<number, MeshStandardMaterial>();
+  const pip = (v: number) => {
+    let m = pipMats.get(v);
+    if (!m) pipMats.set(v, (m = new MeshStandardMaterial({ map: plainTex(`pips:${v}`, () => drawPips(v)), roughness: 0.35 })));
+    return m;
+  };
+  // Seiten eines Würfels: oben die Augenzahl, gegenüber 7 minus diese – wie bei echten Würfeln
+  const SIDES: Record<number, [number, number, number, number]> = { 1: [2, 5, 3, 4], 2: [1, 6, 3, 4], 3: [1, 6, 2, 5], 4: [1, 6, 2, 5], 5: [1, 6, 3, 4], 6: [2, 5, 3, 4] };
+  function dieMesh(v: number) {
+    const [a, b, c, d] = SIDES[v] ?? SIDES[1];
+    const m = new Mesh(dieGeo, [pip(a), pip(b), pip(v), pip(7 - v), pip(c), pip(d)]);
+    m.castShadow = m.receiveShadow = true;
+    return m;
+  }
+
+  /**
+   * Würfel in der Mitte: gehaltene liegen vorn mit Lichtschein, neue Würfe kullern vom Platz dessen herein, der dran ist.
+   * Mit Karten (Alles oder nichts) liegen Stapel und aufgedeckte Karte dahinter; mit Becher (Mäxchen) sind die Würfel verdeckt.
+   */
+  function diceRow(model: TableModel, seats: string[]) {
+    const dice = model.dice!;
+    const turn = seats.indexOf(model.turn ?? "");
+    if (turn >= 0) { const [x, z] = anchors[turn]; glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
+    const prev = seen;
+    // Stapel legt `laid` (merkt sich ihre Karten selbst), die Würfel kommen dazu
+    if (model.piles) laid({ ...model, boards: undefined }, seats, -0.72);
+    else seen = new Map();
+    const back = model.piles ? 0.26 : -0.12, front = model.piles ? 0.66 : 0.42;
+    const n = dice.values.length || 5, step = DIE + (n > 5 ? 0.12 : 0.2);
+    const from = turn >= 0 ? anchors[turn] : null;
+    if (dice.cup) cup(prev.get("cup") !== String(dice.n) && fresh());
+    seen.set("cup", String(dice.n));
+    if (!dice.cup) dice.values.forEach((v, i) => {
+      const x = (i - (n - 1) / 2) * step, held = !!dice.held[i];
+      const h = hash(`${dice.n}:${i}`);
+      const z = held ? front : back + ((h % 7) - 3) * 0.02;
+      const m = dieMesh(v);
+      m.position.set(x, SURFACE + DIE / 2, z); m.rotation.y = ((h >> 3) % 21 - 10) / 60;
+      live.add(m); contact(x, z, DIE * 1.1, DIE * 1.1, m.rotation.y);
+      if (held) {
+        const ring = new Mesh(glow.geometry, glow.material); ring.rotation.x = -Math.PI / 2; ring.scale.setScalar(0.42); ring.position.set(x, SURFACE + 0.002, z); live.add(ring);
+      }
+      const key = `die:${i}`, sig = `${dice.n}:${v}:${held}`;
+      seen.set(key, sig);
+      if (!fresh() || prev.get(key) === sig || held || dice.still) return;
+      // Neu gewürfelt: kullert herein
+      const start = from ? new Vector3(from[0] * 0.7, SURFACE + 0.5, from[1] * 0.7) : new Vector3(x, SURFACE + 0.9, z - 0.6);
+      fly(m, start, i * 70, false, 700, { arc: 0.3, spin: 2.5, tumble: true });
+    });
+    if (dice.note) label(dice.note, 0, model.piles ? 1.02 : 0.6, 3.4, 0.16);
+    last = { top: null, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
+    render();
+  }
+
+  /** Würfelbecher (Leder, Öffnung nach unten); `shake`: wird gerade auf den Tisch geknallt */
+  function cup(shake: boolean) {
+    const leather = new MeshStandardMaterial({ color: "#5a2a1c", roughness: 0.75 });
+    const rim = new MeshStandardMaterial({ color: "#c9a25e", roughness: 0.4, metalness: 0.3 });
+    const body = new Mesh(new CylinderGeometry(0.3, 0.38, 0.55, 40), leather);
+    body.position.set(0, SURFACE + 0.275, -0.05); body.castShadow = body.receiveShadow = true;
+    const band = new Mesh(new CylinderGeometry(0.385, 0.385, 0.05, 40), rim);
+    band.position.set(0, -0.24, 0); body.add(band);
+    live.add(body); contact(0, -0.05, 0.85, 0.85, 0);
+    if (shake) fly(body, body.position.clone().setY(SURFACE + 0.6), 0, false, 420, { arc: 0.15, spin: 0.8 });
+  }
+
+  const BOARD_TILT = 0.92;
+  /**
+   * Spielbrett (Vier in einer Reihe): steht schräg zurückgelehnt auf dem Tisch, zum Bildschirm gewandt – Steine stecken in den Löchern,
+   * der neue fällt von oben in seine Spalte; die Gewinnreihe bekommt weiße Ringe.
+   */
+  function board(grid: NonNullable<TableModel["grid"]>, n: number) {
+    const rows = grid.cells.length, cols = grid.cells[0]?.length ?? 0;
+    const cell = Math.min(0.25, 2.0 / cols, 1.5 / rows), r = cell * 0.39;
+    const W = cols * cell + cell * 0.4, H = rows * cell + cell * 0.4;
+    const shape = roundedShape(W, H, cell * 0.25);
+    for (let c = 0; c < cols; c++) for (let k = 0; k < rows; k++) {
+      const hole = new Path(); hole.absarc(-W / 2 + cell * 0.2 + (c + 0.5) * cell, -H / 2 + cell * 0.2 + (k + 0.5) * cell, r, 0, Math.PI * 2, true); shape.holes.push(hole);
+    }
+    const geo = new ExtrudeGeometry(shape, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 2, curveSegments: 18 });
+    geo.translate(0, 0, -0.035);
+    const frame = new Group();
+    // Unterkante vorn auf dem Filz, oben nach hinten gelehnt (senkrecht zur Blickrichtung)
+    frame.rotation.x = -(Math.PI / 2 - BOARD_TILT);
+    frame.position.set(0, SURFACE + (H / 2) * Math.sin(BOARD_TILT) + 0.04, 0.9 - (H / 2) * Math.cos(BOARD_TILT));
+    const blue = new MeshStandardMaterial({ color: "#2456a6", roughness: 0.4 });
+    const plate = new Mesh(geo, blue); plate.castShadow = plate.receiveShadow = true; frame.add(plate);
+    // Füße
+    for (const sx of [-1, 1]) {
+      const foot = new Mesh(new BoxGeometry(0.1, 0.06, 0.5), blue);
+      foot.position.set(sx * (W / 2 - 0.05), -H / 2 - 0.02, 0.05); foot.rotation.x = Math.PI / 2 - BOARD_TILT; frame.add(foot);
+    }
+    const coinGeo = new CylinderGeometry(r * 0.96, r * 0.96, 0.05, 32);
+    const coinMats = grid.colors.map((c) => new MeshStandardMaterial({ color: c, roughness: 0.35 }));
+    const ringGeo = new TorusGeometry(r * 1.05, 0.012, 8, 40);
+    const white = new MeshBasicMaterial({ color: "#ffffff" });
+    grid.cells.forEach((row, rr) => row.forEach((v, c) => {
+      if (v === null) return;
+      const x = -W / 2 + cell * 0.2 + (c + 0.5) * cell, y = H / 2 - cell * 0.2 - (rr + 0.5) * cell;
+      const coin = new Mesh(coinGeo, coinMats[v]); coin.rotation.x = Math.PI / 2; coin.position.set(x, y, 0); coin.castShadow = true; frame.add(coin);
+      if (grid.line?.some(([lc, lr]) => lc === c && lr === rr)) { const ring = new Mesh(ringGeo, white); ring.position.set(x, y, 0.045); frame.add(ring); }
+      // Neuer Stein: fällt von oben durch seine Spalte
+      if (fresh() && n !== last.n && grid.last && grid.last[0] === c && grid.last[1] === rr) fly(coin, new Vector3(x, H / 2 + cell, 0), 0, false, 380 + rr * 40, { arc: 0, spin: 0 });
+    }));
+    live.add(frame);
+    last = { top: null, n, turn: null, seats: last.seats, played: [], shown: 0 };
+    render();
+  }
+
+
+  // ---------- Brettspiele: Dame, Mühle, Ludo ----------
+  const BOARD = 2.2;
+  const stoneMats = new Map<string, MeshStandardMaterial>();
+  const stoneMat = (c: string) => {
+    let m = stoneMats.get(c);
+    if (!m) stoneMats.set(c, (m = new MeshStandardMaterial({ color: c, roughness: 0.38 })));
+    return m;
+  };
+  const gold = new MeshStandardMaterial({ color: "#e3b53c", roughness: 0.3, metalness: 0.5 });
+  // Pöppel: Fuß, Körper, Kragen – Kopf als Kugel obendrauf
+  const pawnGeo = new LatheGeometry([[0, 0], [0.075, 0], [0.078, 0.02], [0.055, 0.04], [0.035, 0.12], [0.05, 0.135], [0.03, 0.15], [0, 0.15]].map(([x, y]) => new Vector2(x, y)), 28);
+  const headGeo = new SphereGeometry(0.045, 20, 14);
+
+  /** Brett flach in der Mitte, Steine bzw. Figuren darauf; der letzte Zug gleitet, der Würfel liegt rechts daneben */
+  function tabletop(model: TableModel, seats: string[]) {
+    const t = model.tabletop!;
+    const prev = seen;
+    seen = new Map();
+    const turn = seats.indexOf(model.turn ?? "");
+    if (turn >= 0) { const [x, z] = anchors[turn]; glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
+    const top = new MeshStandardMaterial({ map: plainTex(`board:${t.board}`, () => drawBoard(t.board)), roughness: 0.6 });
+    const slab = new Mesh(new BoxGeometry(BOARD, 0.06, BOARD), [wood, wood, top, wood, wood, wood]);
+    const by = SURFACE + 0.03;
+    slab.position.set(0, by, 0); slab.castShadow = slab.receiveShadow = true; live.add(slab);
+    contact(0, 0, BOARD, BOARD, 0);
+    const y0 = by + 0.03, half = BOARD / 2;
+    const n = t.board === "dame:10" ? 10 : 8;
+    const r = t.board.startsWith("dame") ? (BOARD / n) * 0.4 : 0.1;
+    const moved = fresh() && prev.get("move") !== String(model.n);
+    seen.set("move", String(model.n));
+    for (const p of t.pieces) {
+      const x = p.x * half, z = p.y * half;
+      let m: Mesh;
+      if (p.kind === "pawn") {
+        m = new Mesh(pawnGeo, stoneMat(p.color));
+        const head = new Mesh(headGeo, stoneMat(p.color)); head.position.y = 0.17; head.castShadow = true; m.add(head);
+        m.position.set(x, y0, z);
+      } else {
+        const h = 0.045;
+        m = new Mesh(new CylinderGeometry(r, r * 0.97, h, 36), stoneMat(p.color));
+        m.position.set(x, y0 + h / 2, z);
+        if (p.kind === "king") {
+          const second = new Mesh(m.geometry, stoneMat(p.color)); second.position.y = h; second.castShadow = true; m.add(second);
+          const crown = new Mesh(new TorusGeometry(r * 0.55, 0.012, 8, 30), gold); crown.rotation.x = Math.PI / 2; crown.position.y = h * 1.52; m.add(crown);
+        }
+      }
+      m.castShadow = m.receiveShadow = true;
+      live.add(m);
+      contact(x, z, r * 2.2, r * 2.2, 0);
+      // Wandern: Figur mit Kennung von ihrer alten Stelle, sonst der letzte Zug
+      if (p.id) {
+        const key = `p:${p.id}`, sig = `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+        const was = prev.get(key);
+        seen.set(key, sig);
+        if (fresh() && was && was !== sig) { const [wx, wy] = was.split(",").map(Number); fly(m, new Vector3(wx * half, m.position.y, wy * half), 0, false, 520, { arc: 0.18, spin: 0 }); }
+      } else if (moved && t.move && Math.abs(t.move.to[0] - p.x) < 1e-6 && Math.abs(t.move.to[1] - p.y) < 1e-6) {
+        fly(m, new Vector3(t.move.from[0] * half, m.position.y, t.move.from[1] * half), 0, false, 520, { arc: 0.15, spin: 0 });
+      }
+    }
+    if (t.die) {
+      const v = t.die.value ?? 1;
+      const d = dieMesh(v);
+      d.position.set(half + 0.45, SURFACE + DIE / 2, 0.35); d.rotation.y = 0.3;
+      if (t.die.value === null) d.visible = false;
+      live.add(d);
+      if (t.die.value !== null) contact(half + 0.45, 0.35, DIE * 1.1, DIE * 1.1, 0.3);
+      const key = `die:${t.die.n}`;
+      if (t.die.value !== null && fresh() && !prev.has(key)) fly(d, new Vector3(half + 0.2, SURFACE + 0.5, -0.4), 0, false, 650, { arc: 0.3, spin: 2.5, tumble: true });
+      seen.set(key, "1");
+    }
+    last = { top: null, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
+    render();
+  }
+
+
+  // ---------- Aufsteller (Partyspiele) ----------
+  let signTex: Texture | null = null;
+  let signKey = "";
+  /** Karton steht schräg in der Mitte, zum Bildschirm gewandt – Phase groß, Hinweis darunter */
+  function sign(sg: NonNullable<TableModel["sign"]>) {
+    const key = `${sg.title}|${sg.sub ?? ""}`;
+    if (key !== signKey || !signTex) {
+      signTex?.dispose();
+      signTex = new CanvasTexture(drawSign(sg.title, sg.sub)); signTex.colorSpace = SRGBColorSpace; signTex.anisotropy = aniso;
+      signKey = key;
+    }
+    const W = 2.0, H = W * 0.39;
+    const face = new MeshStandardMaterial({ map: signTex, roughness: 0.7 });
+    const board = new Mesh(new BoxGeometry(W, H, 0.03), [edge, edge, edge, edge, face, edge]);
+    const group = new Group();
+    group.rotation.x = -(Math.PI / 2 - BOARD_TILT);
+    group.position.set(0, SURFACE + (H / 2) * Math.sin(BOARD_TILT) + 0.01, -0.32);
+    board.castShadow = true; group.add(board);
+    // Stütze hinten
+    const prop = new Mesh(new BoxGeometry(0.5, H * 0.9, 0.02), edge);
+    prop.position.set(0, -H * 0.05, -0.2); prop.rotation.x = 0.5; group.add(prop);
+    live.add(group);
+    contact(0, -0.25, W, 0.5, 0);
+  }
+
   // ---------- Zeichnen ----------
   let raf = 0;
   let lastFrame = 0;
@@ -313,9 +716,10 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const t = Math.max(0, Math.min(1, (now - a.start) / a.ms));
       const e = 1 - (1 - t) ** 3;
       a.mesh.position.lerpVectors(a.from, a.to, e);
-      a.mesh.position.y += Math.sin(Math.PI * t) * (a.flip ? 0.25 : 0.35);
-      a.mesh.rotation.y = a.rot + (a.flip ? 0 : (1 - e) * 1.2);
+      a.mesh.position.y += Math.sin(Math.PI * t) * a.arc;
+      a.mesh.rotation.y = a.rot + (1 - e) * a.spin;
       if (a.flip) a.mesh.rotation.z = Math.PI * (1 - e);
+      if (a.tumble) { a.mesh.rotation.x = (1 - e) * Math.PI * 4; a.mesh.rotation.z = (1 - e) * Math.PI * 2; }
     }
     anims = anims.filter((a) => now - a.start < a.ms);
     renderer.render(scene, camera);

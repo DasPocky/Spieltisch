@@ -18,7 +18,7 @@ export function glueckssiebenTable(room: RoomState): TableModel | null {
   }));
   const top = s.discard[s.discard.length - 1];
   return {
-    deck: "cards", pile: 0, discard: [], counts: {}, turn: s.curId, n: s.n, log: s.log.slice(-6), scores: s.scores,
+    deck: "zahlen", pile: 0, discard: [], counts: {}, turn: s.curId, n: s.n, log: s.log.slice(-6), scores: s.scores,
     notes: Object.fromEntries(room.players.map((p) => {
       const line = s.lines[p.id];
       return [p.id, line ? `${linePoints(line)} Pkt. · ${STATUS[line.status] ?? ""}` : `${s.scores[p.id] ?? 0} gesamt`];

@@ -5,8 +5,10 @@
  *
  * Bausteine, aus denen ein Modell besteht (jedes Spiel nimmt, was es braucht):
  *  - Karten: Stapel, Ablage, verdeckte Hände (Anzahl je Platz), Lückensatz
- *  - Würfel: Augen, gehaltene, Hinweis („noch 2 Würfe“)
+ *  - Würfel: Augen, gehaltene, Hinweis („noch 2 Würfe“), Becher (Mäxchen)
  *  - Spielfeld: Raster mit Steinen zweier Farben, letzter Zug, Gewinnreihe
+ *  - Brett: Dame, Mühle, Ludo – Brett mit Steinen bzw. Figuren, Würfel daneben
+ *  - Aufsteller: Phase und Hinweis groß in der Mitte, Uhr, Nachtlicht (Partyspiele)
  *  - Stapel: offene Zahlenkarten in der Mitte (Aufbau, Ablage)
  *  - Auslage: offene Karten je Platz im Raster (Himmelskarten, Stapelbau-Ablagen)
  *  - Plätze: wer dran ist, Punkte, eine kurze Notiz je Platz
@@ -24,9 +26,19 @@ import { himmelskartenTable } from "../../games/himmelskarten/table";
 import { zehnphasenTable } from "../../games/zehnphasen/table";
 import { glueckssiebenTable } from "../../games/glueckssieben/table";
 import { decknamenTable } from "../../games/decknamen/table";
+import { allesTable } from "../../games/alles/table";
+import { maexchenTable } from "../../games/maexchen/table";
+import { dameTable } from "../../games/dame/table";
+import { muehleTable } from "../../games/muehle/table";
+import { ludoTable } from "../../games/ludo/table";
+import { fischenTable } from "../../games/fischen/table";
+import { hellseherTable } from "../../games/hellseher/table";
+import { werwolfTable } from "../../games/werwolf/table";
+import { einenachtTable } from "../../games/einenacht/table";
+import { spionTable } from "../../games/spion/table";
 
-/** Kartenart: französisch/deutsch („cards“), Eins! oder Textkarten (Schamlos) */
-export type TableDeck = "cards" | "eins" | "schamlos";
+/** Kartenart: französisch/deutsch („cards“), Eins!, Textkarten (Schamlos) oder Zahlenkarten (Rückseite blau, 5:7) */
+export type TableDeck = "cards" | "eins" | "schamlos" | "zahlen";
 
 export interface TableModel {
   deck: TableDeck;
@@ -49,15 +61,38 @@ export interface TableModel {
   /** kurze Notiz je Platz (z. B. Farbe oder Punkte) */
   notes?: Record<string, string>;
   /** Würfel in der Mitte */
-  dice?: { values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string };
+  dice?: {
+    values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string;
+    /** Würfel liegen unter dem Becher (Mäxchen) */
+    cup?: boolean;
+    /** Würfel liegen ruhig da (aufgedeckt statt geworfen) */
+    still?: boolean;
+  };
   /** Spielfeld: Zeilen von oben nach unten, je Feld Farbe 0/1 oder leer */
   grid?: { cells: (0 | 1 | null)[][]; colors: [string, string]; last?: [number, number] | null; line?: [number, number][] };
   /** offene Stapel in der Mitte (Zahlenkarten): Aufbaustapel, Ablage, Nachziehstapel – `top` als Text, `tone` färbt */
-  piles?: { label: string; top: string | null; tone?: string; count?: number }[];
+  piles?: { label: string; /** offene Karte; "?" = eine verdeckte Karte */ top: string | null; tone?: string; count?: number; /** einzelne Karte statt Stapel (z. B. im Stich) */ single?: boolean }[];
   /** offene Auslage je Platz (unter dem Platz): Karten im Raster, `null` = leer/abgeräumt, "?" = verdeckt */
   boards?: Record<string, { cells: ({ text: string; tone?: string } | "?" | null)[]; cols: number }>;
   /** Wortraster in der Mitte (z. B. Decknamen): Karten mit Text, aufgedeckte farbig; `title` steht darüber */
   words5?: { cells: { text: string; tone?: string }[]; cols: number; title?: string };
+  /**
+   * Brettspiel auf dem Tisch (Dame, Mühle, Ludo): Brettbild nach `board`, Steine und Figuren in Brett-Koordinaten
+   * (-1 … 1, x nach rechts, y zum Bildschirm hin). `id` je Figur: wandert sie, gleitet sie von der alten Stelle;
+   * `move` für Spiele ohne feste Figuren (letzter Zug von → nach).
+   */
+  tabletop?: {
+    board: "dame:8" | "dame:10" | "muehle" | "ludo:4" | "ludo:6";
+    pieces: { x: number; y: number; color: string; kind: "stone" | "king" | "pawn"; id?: string }[];
+    move?: { from: [number, number]; to: [number, number] } | null;
+    /** Würfel neben dem Brett (Ludo) */
+    die?: { value: number | null; n: number };
+    note?: string;
+  };
+  /** Aufsteller in der Mitte (Partyspiele): Phase groß, Hinweis darunter; `endsAt` zeigt eine Uhr (Zeitpunkt in ms) */
+  sign?: { title: string; sub?: string; endsAt?: number | null };
+  /** Nacht: Licht gedimmt, kühler */
+  night?: boolean;
   /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */
   words?: {
     prompt: string;
@@ -75,7 +110,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

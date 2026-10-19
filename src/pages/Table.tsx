@@ -33,7 +33,7 @@ import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
-import { FeltDice, FeltGrid } from "@/platform/table/blocks";
+import { FeltDice, FeltGrid, FeltSign, FeltTabletop, SignClock } from "@/platform/table/blocks";
 import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
@@ -303,16 +303,18 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
   }, [room.players, me]);
   const seats = players.map((p) => p.id);
   const shown = useMemo(() => (model && me ? { ...model, counts: { ...model.counts, [me]: 0 } } : model), [model, me]);
+  // In 3D liegen Stapel, Auslagen und Wortkarten echt auf dem Tisch – die HTML-Fassung bleibt nur für Vorleseprogramme
+  const [real, setReal] = useState(false);
 
   return (
     <>
-      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} />
+      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} onReal={setReal} />
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
           video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
-          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} />
+          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} />
       ))}
       {reacts.map((r) => {
         const i = players.findIndex((p) => p.id === r.from);
@@ -320,14 +322,16 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
-      {(model?.dice || model?.grid || model?.piles || model?.words5) && (
-        <OnFelt rect={felt}>
-          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice ? <FeltDice dice={model.dice} />
+      {(model?.dice || model?.grid || model?.piles || model?.words5 || model?.tabletop || model?.sign) && (
+        <OnFelt rect={felt} className={cn(real && "sr-only")}>
+          {model.sign ? <div className="flex flex-col items-center gap-[3cqh]"><FeltSign sign={model.sign} />{model.piles && <FeltPiles piles={model.piles} small />}</div> : model.grid ? <FeltGrid grid={model.grid} /> : model.tabletop ? <FeltTabletop top={model.tabletop} /> : model.dice
+            ? <div className="flex flex-col items-center gap-[3cqh]">{model.piles && <FeltPiles piles={model.piles} small />}<FeltDice dice={model.dice} /></div>
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
+      {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
-      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.log.at(-1)}</p> : null}
+      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
     </>
   );
@@ -337,7 +341,11 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
  * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
  * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
  */
-function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean }) {
+function TableCanvas({ model, seats, onSeats, forceFlat, onReal }: {
+  model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
+  /** meldet, ob gerade in 3D gezeichnet wird */
+  onReal?: (real: boolean) => void;
+}) {
   const scene = useRef<TableScene | null>(null);
   const holder = useRef<HTMLDivElement>(null);
   const seatKey = seats.join();
@@ -358,7 +366,9 @@ function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel |
     canvas.dataset.testid = flat ? "table-flat" : "table-3d";
     box.replaceChildren(canvas);
     let s: TableScene;
-    try { s = flat ? createFlatScene(canvas) : createTableScene(canvas, level); } catch { s = createFlatScene(canvas); }
+    let real = !flat;
+    try { s = flat ? createFlatScene(canvas) : createTableScene(canvas, level); } catch { s = createFlatScene(canvas); real = false; }
+    onReal?.(real);
     scene.current = s;
     const onLost = (e: Event) => { e.preventDefault(); setLost(true); };
     canvas.addEventListener("webglcontextlost", onLost);
@@ -366,7 +376,7 @@ function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel |
     ro.observe(canvas);
     s.update(latest.current.model, latest.current.seats);
     return () => { ro.disconnect(); canvas.removeEventListener("webglcontextlost", onLost); s.dispose(); scene.current = null; };
-  }, [onSeats, flat, level]);
+  }, [onSeats, flat, level, onReal]);
 
   useEffect(() => {
     const s = scene.current;
@@ -378,13 +388,15 @@ function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel |
   return <div ref={holder} className="absolute inset-0" />;
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoHidden, onToggleVideo, board, boardAbove }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
   video?: MediaStream; videoHidden?: boolean; onToggleVideo?: () => void;
   /** offene Auslage des Spielers (z. B. Raster) unter dem Platz */
   board?: NonNullable<TableModel["boards"]>[string];
   /** Platz unten am Tisch: Auslage über dem Platz statt darunter (sonst ragt sie aus dem Bild) */
   boardAbove?: boolean;
+  /** Auslage liegt in 3D auf dem Tisch – hier nur für Vorleseprogramme */
+  boardHidden?: boolean;
 }) {
   const showVideo = !!video && !videoHidden;
   const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
@@ -403,7 +415,7 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoH
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
       {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
-      {board && <div className={cn(boardAbove && "order-first")}><SeatBoard board={board} /></div>}
+      {board && <div className={cn(boardAbove && "order-first", boardHidden && "sr-only")}><SeatBoard board={board} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
     </div>
   );
