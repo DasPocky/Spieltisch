@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Rocket, Sparkles } from "lucide-react";
 import { NEWS, MAX_NEWS_ITEM, MAX_NEWS_TITLE, type NewsOverrides } from "@shared/news";
-import { RELEASE_HOW, UPDATE_MODES, type ReleaseStatus } from "@shared/platform/update";
+import { DEFAULT_UPDATE, RELEASE_HOW, UPDATE_MODES, type ReleaseStatus } from "@shared/platform/update";
 import type { HealthDay } from "@shared/platform/admin";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,13 +32,13 @@ export function UpdatesPanel() {
   };
 
   return (
-    <Panel title="Updates" hint="Wann neue Versionen live gehen. Laufende Partien spielen immer mit ihrer Version zu Ende." wide>
+    <Panel title="Updates" hint="Wann neue Versionen live gehen und wann die Geräte neu laden. Laufende Partien gehen nach dem Neuladen weiter." wide>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Update-Zeitpunkt" data-testid="update-modes">
         {UPDATE_MODES.map((m) => (
           <button key={m.value} type="button" role="radio" aria-checked={mode === m.value} disabled={locked}
             onClick={() => u.mode !== m.value && void save({ update: { ...u, mode: m.value } }, `Updates: ${m.label}`)}
             className={cn("rounded-xl p-2.5 text-left outline-none ring-1 ring-inset ring-border focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60", mode === m.value && "bg-primary/10 ring-2 ring-primary")}>
-            <span className="block text-sm font-semibold">{m.label}{m.value === "now" && <span className="font-normal text-muted-foreground"> · Standard</span>}</span>
+            <span className="block text-sm font-semibold">{m.label}{m.value === DEFAULT_UPDATE.mode && <span className="font-normal text-muted-foreground"> · Standard</span>}</span>
             <span className="block text-xs leading-snug text-muted-foreground">{m.hint}</span>
           </button>
         ))}

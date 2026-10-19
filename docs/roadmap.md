@@ -16,7 +16,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 | Vier Versionen getrennt: Build, Nachrichtenformat (`PROTOCOL`, bei Abweichung sofort neu), Raum-Format (`ROOM_SCHEMA` + Übernahmen + Fixtures), Spielstand je Spiel | ✅ |
 | Laufende Partie: mit gesicherter alter Version zu Ende (`scripts/legacy.mjs`), sonst umrechnen (`migrate`), sonst sanftes Ende mit Hinweis | ✅ |
 | Raum-Revision `rev` in Stand und Bestätigung, ältere Stände verwerfen | ✅ |
-| Update-Zeitpunkt im Admin (sofort · nach Rundenende je Raum · wenn keine Partie läuft · Uhrzeit · Knopf), `UPDATE_MODE` überschreibt, „Jetzt live“, Verlauf | ✅ (Warten braucht noch `RELEASE_SECRET` + `DEPLOY_TOKEN` + Deploy-Befehl, siehe Betrieb) |
+| Update-Zeitpunkt im Admin (Standard „Sofort für alle“: jedes Gerät lädt gleich neu, die Partie läuft weiter ✅ · am ruhigen Moment · nach Rundenende je Raum · wenn keine Partie läuft · Uhrzeit · Knopf), `UPDATE_MODE` überschreibt, „Jetzt live“, Verlauf | ✅ (Warten braucht noch `RELEASE_SECRET` + `DEPLOY_TOKEN` + Deploy-Befehl, siehe Betrieb) |
 | Hinweis im Raum, „Was ist neu?“ einmal pro Gerät, Neuigkeiten im Profil, im Admin bearbeitbar | ✅ |
 | Analyse F-01: Beitritts-Nonce nur 2 Min. und nur mit PIN | ✅ |
 | Analyse F-02/F-03: Geräteschlüssel für Profile, Gruppen und Profil im Raum; Übertragung gibt eigenen Schlüssel | ✅ |

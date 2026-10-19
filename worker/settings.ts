@@ -26,6 +26,8 @@ export interface SettingsData {
   defaults?: GameDefaults;
   /** Kennung des letzten kompletten Neustarts */
   epoch?: string;
+  /** Neuer Standard „Sofort für alle“ schon übernommen (früher war „Am ruhigen Moment“ Standard) */
+  forceUpdate?: boolean;
 }
 /** Eintrag im Protokoll der Verwaltung */
 export interface AuditEntry { at: number; what: string }
@@ -55,6 +57,12 @@ export class SiteSettings extends DurableObject<Env> {
       // renameStored: Spiele mit früheren Kennungen (vor der Umbenennung) übernehmen
       const saved = await ctx.storage.get<SettingsData>("settings");
       if (saved) this.data = renameStored(saved);
+      // Einmalig: wer den alten Standard („Am ruhigen Moment“) hatte, bekommt den neuen („Sofort für alle“)
+      if (saved && !this.data.forceUpdate) {
+        if (!this.data.config.update || this.data.config.update.mode === "now") this.data.config = { ...this.data.config, update: { ...(this.data.config.update ?? DEFAULT_UPDATE), mode: "force" } };
+        this.data.forceUpdate = true;
+        await ctx.storage.put("settings", this.data);
+      }
       this.stats = renameStored((await ctx.storage.get<SiteStats>("stats")) ?? this.stats);
     });
   }

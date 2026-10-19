@@ -79,6 +79,7 @@ describe("Update-Zeitpunkt", () => {
   const p = { versionId: "x", sha: "abc1234", time: "", at: 0 };
   const H = 3_600_000;
   it("sofort und je Raum: gleich live", () => {
+    expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "force" }, 1, 5)).toBe("sofort");
     expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "now" }, 1, 5)).toBe("sofort");
     expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "round" }, 1, 5)).toBe("sofort");
   });
@@ -100,7 +101,7 @@ describe("Update-Zeitpunkt", () => {
     expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "manual" }, 99 * H, 0)).toBeNull();
   });
   it("Einstellungen werden geprüft", () => {
-    expect(sanitizeUpdate({ mode: "quatsch", maxWaitHours: 999, hour: -3 })).toEqual({ mode: "now", maxWaitHours: 48, hour: 0 });
+    expect(sanitizeUpdate({ mode: "quatsch", maxWaitHours: 999, hour: -3 })).toEqual({ mode: "force", maxWaitHours: 48, hour: 0 });
   });
 });
 

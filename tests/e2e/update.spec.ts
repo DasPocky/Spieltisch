@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { createRoom, joinRoom, newPhone, shot } from "./util";
 
 /** Server meldet eine neuere Version (wie nach einem Deploy) – nur für diese Seite */
-async function newerServer(page: Page) {
-  await page.route("**/api/version", (r) => r.fulfill({ json: { build: { sha: "f".repeat(40), branch: "main", time: "2999-01-01T00:00:00.000Z" }, mode: "now", pending: null } }));
+async function newerServer(page: Page, mode = "now") {
+  await page.route("**/api/version", (r) => r.fulfill({ json: { build: { sha: "f".repeat(40), branch: "main", time: "2999-01-01T00:00:00.000Z" }, mode, pending: null } }));
 }
 /** Merker im Fenster – nach einem Neuladen ist er weg */
 const mark = (page: Page) => page.evaluate(() => { (window as unknown as { __mark?: boolean }).__mark = true; });
@@ -58,6 +58,23 @@ test("Update im Spiel: wer dran ist, wird nicht unterbrochen – die anderen lad
   expect(loads).toBe(1);
   await expect(guest).toHaveURL(new RegExp(`/r/${code}$`));
   await shot(guest, "92-update-im-spiel");
+});
+
+test("Update „Sofort für alle“ (Standard): auch wer dran ist, lädt nach kurzem Hinweis neu und spielt im selben Raum weiter", async ({ browser }) => {
+  const host = await newPhone(browser);
+  const guest = await newPhone(browser);
+  const code = await createRoom(host, "maumau", "Anna", "3232");
+  await joinRoom(guest, code, "Ben", "3232");
+  await host.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(host.getByTestId("hand")).toBeVisible();
+  // Anna ist dran – trotzdem: Hinweis, dann neu laden
+  await newerServer(host, "force");
+  await mark(host);
+  await poke(host);
+  await expect(host.getByText("Neue Version – die App lädt kurz neu")).toBeVisible();
+  await expect.poll(() => marked(host).catch(() => false), { timeout: 10_000 }).toBe(false);
+  await expect(host.getByTestId("hand")).toBeVisible();
+  await expect(host).toHaveURL(new RegExp(`/r/${code}$`));
 });
 
 test("Was ist neu: einmal pro Gerät, danach im Profil", async ({ browser }) => {
