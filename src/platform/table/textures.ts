@@ -220,13 +220,15 @@ export function drawCard(kind: "num" | "word", text: string, tone: string | null
   return p;
 }
 
-/** Aufschrift auf dem Filz (z. B. „Ablage“): helle Schrift auf durchsichtigem Grund */
+/** Aufschrift auf dem Filz (z. B. „Ablage“): helle Schrift auf durchsichtigem Grund, so breit wie der Text */
 export function drawLabel(text: string): HTMLCanvasElement {
   const c = document.createElement("canvas");
-  c.width = 512; c.height = 96;
+  const g0 = c.getContext("2d")!;
+  g0.font = `700 64px ${FONT}`;
+  c.width = Math.ceil(g0.measureText(text).width + 24); c.height = 96;
   const g = c.getContext("2d")!;
-  g.fillStyle = "rgba(255,255,255,.82)"; g.textAlign = "center"; g.textBaseline = "middle";
-  fit(g, text, 500, 64, 700); g.fillText(text, 256, 50);
+  g.font = `700 64px ${FONT}`; g.fillStyle = "rgba(255,255,255,.82)"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(text, c.width / 2, 50);
   return c;
 }
 

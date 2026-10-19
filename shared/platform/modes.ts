@@ -34,6 +34,9 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   zehnphasen: { table: "beta" },
   glueckssieben: { table: "beta" },
   decknamen: { table: "beta" },
+  // Würfel mit Karten bzw. Becher – Beta bis zur Abnahme
+  alles: { table: "beta" },
+  maexchen: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

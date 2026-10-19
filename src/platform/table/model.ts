@@ -5,7 +5,7 @@
  *
  * Bausteine, aus denen ein Modell besteht (jedes Spiel nimmt, was es braucht):
  *  - Karten: Stapel, Ablage, verdeckte Hände (Anzahl je Platz), Lückensatz
- *  - Würfel: Augen, gehaltene, Hinweis („noch 2 Würfe“)
+ *  - Würfel: Augen, gehaltene, Hinweis („noch 2 Würfe“), Becher (Mäxchen)
  *  - Spielfeld: Raster mit Steinen zweier Farben, letzter Zug, Gewinnreihe
  *  - Stapel: offene Zahlenkarten in der Mitte (Aufbau, Ablage)
  *  - Auslage: offene Karten je Platz im Raster (Himmelskarten, Stapelbau-Ablagen)
@@ -24,6 +24,8 @@ import { himmelskartenTable } from "../../games/himmelskarten/table";
 import { zehnphasenTable } from "../../games/zehnphasen/table";
 import { glueckssiebenTable } from "../../games/glueckssieben/table";
 import { decknamenTable } from "../../games/decknamen/table";
+import { allesTable } from "../../games/alles/table";
+import { maexchenTable } from "../../games/maexchen/table";
 
 /** Kartenart: französisch/deutsch („cards“), Eins!, Textkarten (Schamlos) oder Zahlenkarten (Rückseite blau, 5:7) */
 export type TableDeck = "cards" | "eins" | "schamlos" | "zahlen";
@@ -49,7 +51,13 @@ export interface TableModel {
   /** kurze Notiz je Platz (z. B. Farbe oder Punkte) */
   notes?: Record<string, string>;
   /** Würfel in der Mitte */
-  dice?: { values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string };
+  dice?: {
+    values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string;
+    /** Würfel liegen unter dem Becher (Mäxchen) */
+    cup?: boolean;
+    /** Würfel liegen ruhig da (aufgedeckt statt geworfen) */
+    still?: boolean;
+  };
   /** Spielfeld: Zeilen von oben nach unten, je Feld Farbe 0/1 oder leer */
   grid?: { cells: (0 | 1 | null)[][]; colors: [string, string]; last?: [number, number] | null; line?: [number, number][] };
   /** offene Stapel in der Mitte (Zahlenkarten): Aufbaustapel, Ablage, Nachziehstapel – `top` als Text, `tone` färbt */
@@ -75,7 +83,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

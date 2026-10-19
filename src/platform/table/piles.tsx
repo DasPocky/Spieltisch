@@ -17,11 +17,11 @@ function NumCard({ text, tone, className }: { text: string; tone?: string; class
 }
 
 /** Stapel in der Mitte – leere als gestrichelter Platz, verdeckte (nur Anzahl) als Rückseite */
-export function FeltPiles({ piles }: { piles: NonNullable<TableModel["piles"]> }) {
+export function FeltPiles({ piles, small }: { piles: NonNullable<TableModel["piles"]>; /** kleiner, z. B. über den Würfeln */ small?: boolean }) {
   return (
     <div className="flex items-end justify-center gap-[2.4cqw]" data-testid="table-piles">
       {piles.map((p, i) => (
-        <div key={i} className="flex flex-col items-center gap-[1.4cqh]" data-testid="table-pile">
+        <div key={i} className={cn("flex flex-col items-center gap-[1.4cqh]", small && "[zoom:0.55]")} data-testid="table-pile">
           {p.top !== null ? <NumCard text={p.top} tone={p.tone} className="h-[30cqh] w-[21cqh] text-[13cqh]" />
             : p.count !== undefined ? (
               <span className="grid h-[30cqh] w-[21cqh] place-items-center rounded-[14%] border-[0.6cqh] border-white bg-gradient-to-br from-[#2f6fb3] to-[#173a6b] text-[6cqh] font-bold text-white shadow-[0_4px_10px_rgb(0_0_0/0.35)]">{p.count}</span>

@@ -324,7 +324,8 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
       {(model?.dice || model?.grid || model?.piles || model?.words5) && (
         <OnFelt rect={felt} className={cn(real && "sr-only")}>
-          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice ? <FeltDice dice={model.dice} />
+          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice
+            ? <div className="flex flex-col items-center gap-[3cqh]">{model.piles && <FeltPiles piles={model.piles} small />}<FeltDice dice={model.dice} /></div>
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}

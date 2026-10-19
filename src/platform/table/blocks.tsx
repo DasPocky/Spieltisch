@@ -12,7 +12,14 @@ export function FeltDice({ dice }: { dice: NonNullable<TableModel["dice"]> }) {
   return (
     <div className="flex flex-col items-center gap-[3cqh]" data-testid="table-dice">
       <div className="flex items-end gap-[2.2cqw]">
-        {dice.values.length
+        {dice.cup
+          ? (
+            // Becher (Mäxchen): der Wurf bleibt verdeckt
+            <svg viewBox="0 0 40 44" className="h-[30cqh] drop-shadow-[0_8px_12px_rgb(0_0_0/0.4)]" role="img" aria-label="Becher" data-testid="table-cup">
+              <path d="M8 4h24l4 36H4z" fill="#5a2a1c" /><rect x="3" y="37" width="34" height="5" rx="1.5" fill="#c9a25e" />
+            </svg>
+          )
+          : dice.values.length
           ? dice.values.map((v, i) => (
             <div key={`${dice.n}-${i}`} className={cn("flex flex-col items-center gap-[1.2cqh] transition-transform", dice.held[i] ? "translate-y-[4cqh]" : "dice-in")}
               style={dice.held[i] ? undefined : { animationDelay: `${i * 60}ms` }} data-held={!!dice.held[i]}>

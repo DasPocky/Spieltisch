@@ -23,7 +23,7 @@ describe("Spielweisen je Spiel", () => {
     expect(modeAllowed({ eins: { table: "off" } }, "eins", "table", true)).toBe(false);
   });
   it("Tisch-Spiele sind echte Spiele", () => {
-    expect(TABLE_GAMES).toEqual(["maumau", "eins", "schamlos", "fuenfwuerfel", "vier", "stapelbau", "himmelskarten", "zehnphasen", "glueckssieben", "decknamen"]);
+    expect(TABLE_GAMES).toEqual(["maumau", "eins", "schamlos", "fuenfwuerfel", "vier", "stapelbau", "himmelskarten", "zehnphasen", "glueckssieben", "decknamen", "alles", "maexchen"]);
     for (const id of Object.keys(GAME_MODES)) expect(id in GAMES).toBe(true);
   });
 });

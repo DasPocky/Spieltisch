@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { ALL_ON, FAKE_RTC, newPhone, setConfig, shot } from "./util";
+import { ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
@@ -644,6 +644,71 @@ test("Decknamen am Tisch: 25 Wörter in der Mitte, Hinweis darüber, aufgedeckte
     await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(1);
     await screen.waitForTimeout(500);
     await shot(screen, "9g-tisch-decknamen");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Alles oder nichts und Mäxchen am Tisch: Karte hinter den Würfeln, Becher mit Ansage, beim Aufdecken liegen die Würfel offen", async ({ browser, request }) => {
+  test.setTimeout(150_000);
+  await setConfig(request, { ...ALL_ON, modes: { alles: { table: "on" }, maexchen: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    const phones = [anna, ben];
+
+    // Alles oder nichts mit App-Würfeln: wer dran ist, würfelt – Karte und Stapel hinten, Würfel davor
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-alles").click();
+    await openSettings(anna);
+    await anna.getByRole("radio", { name: /App-Würfel/ }).click();
+    await closeSettings(anna);
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-dice")).toBeAttached();
+    await expect(screen.getByTestId("table-pile").first()).toContainText("Karten");
+    for (let i = 0; i < 20 && !(await screen.getByTestId("table-dice").getByRole("img").count()); i++) {
+      for (const p of phones) {
+        const roll = p.getByRole("button", { name: /Würfeln/ });
+        if (await roll.isVisible().catch(() => false)) { await roll.click(); break; }
+        const on = p.getByRole("button", { name: /Weiter|eintragen|ächster Spieler/ });
+        if (await on.first().isVisible().catch(() => false)) { await on.first().click(); break; }
+      }
+      await screen.waitForTimeout(500);
+    }
+    await expect(screen.getByTestId("table-dice").getByRole("img").first()).toBeAttached();
+    await expect(screen.getByTestId("table-seat").first()).toContainText("Pkt.");
+    await screen.waitForTimeout(900);
+    await shot(screen, "9h-tisch-alles");
+
+    // Mäxchen: Becher in der Mitte, Ansage groß – der Tisch sieht den Wurf nicht
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-maexchen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-dice")).toContainText("würfelt");
+    const t = screen.locator('[data-testid="table-seat"][data-turn="true"]');
+    const [first, second] = (await t.textContent())?.includes("Anna") ? [anna, ben] : [ben, anna];
+    await first.getByRole("button", { name: "Würfeln" }).click();
+    await first.getByRole("button", { name: /Becher anheben/ }).click();
+    await first.getByRole("radio", { name: "Sechserpasch" }).click();
+    await first.getByTestId("announce").click();
+    await expect(screen.getByTestId("table-dice")).toContainText("sagt: Sechserpasch");
+    await expect(screen.getByTestId("table-cup")).toBeAttached();
+    await expect(screen.getByTestId("table-dice").getByRole("img", { name: /Würfel/ })).toHaveCount(0);
+    await screen.waitForTimeout(700);
+    await shot(screen, "9i-tisch-maexchen-becher");
+    await second.getByTestId("reveal-btn").click();
+    await expect(screen.getByTestId("table-dice")).toContainText(/stimmt|gelogen/);
+    await expect(screen.getByTestId("table-dice").getByRole("img", { name: /Würfel/ })).toHaveCount(2);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9j-tisch-maexchen-offen");
   } finally {
     await setConfig(request, ALL_ON);
   }
