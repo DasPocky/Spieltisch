@@ -484,3 +484,40 @@ test("Bühne: Showstudio mit Leinwand und Pulten – Lobby auf der Leinwand, dan
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Bühne bei Schamlos: schwarze Karte groß auf der Leinwand, Antworten eingesetzt, Punkt hervorgehoben", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { schamlos: { stage: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const all = [await joinByLink(browser, code, pin, "Anna"), await joinByLink(browser, code, pin, "Ben"), await joinByLink(browser, code, pin, "Cem")];
+    await all[0].getByTestId("meet-play").click();
+    await all[0].getByTestId("pick-schamlos").click();
+    await screen.getByTestId("view-stage").click();
+    await all[0].getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("studio-prompt")).toBeVisible();
+
+    let czar = all[0];
+    for (const p of all) if ((await p.getByTestId("schamlos-czar").textContent())?.includes("Du bist Zar")) czar = p;
+    for (const p of all.filter((x) => x !== czar)) {
+      const button = p.getByRole("button", { name: /^Wähle|legen$/ });
+      const need = /2 Karten/.test((await button.textContent()) ?? "") ? 2 : 1;
+      for (let i = 0; i < need; i++) await p.getByTestId("hand").getByRole("button").nth(i).click();
+      await p.getByRole("button", { name: /legen$/ }).click();
+    }
+    await expect(screen.getByTestId("studio-answer")).toHaveCount(2);
+    await screen.waitForTimeout(800);
+    await shot(screen, "95-buehne-schamlos");
+    await czar.getByTestId("schamlos-subs").getByRole("button").first().click();
+    await expect(screen.getByTestId("studio-words")).toContainText("Punkt für");
+    await screen.waitForTimeout(500);
+    await shot(screen, "95b-buehne-schamlos-punkt");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

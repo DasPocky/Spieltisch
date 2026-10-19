@@ -23,6 +23,7 @@ import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
+import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 import { createFlatScene } from "@/platform/table/flat";
 import { createStudioScene, type StudioScene } from "@/platform/table/studio";
@@ -473,6 +474,7 @@ function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, 
       {screen && (
         <div className="absolute overflow-hidden rounded-md bg-[#0e2a2c]" style={{ left: screen.x, top: screen.y, width: screen.w, height: screen.h, containerType: "size" }} data-testid="studio-screen">
           {children ? <div className="absolute inset-0 flex items-center justify-center p-[3cqh]">{children}</div>
+            : model?.words ? <WordsScreen words={model.words} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />
             : <TableStage room={room} online={online} model={model} sham={sham} showSeats={false} flat />}
         </div>
       )}
@@ -486,6 +488,35 @@ function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, 
         const at = points[room.players.findIndex((p) => p.id === r.from)];
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y - 60 }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
+    </div>
+  );
+}
+
+/**
+ * Lückensatz-Spiele auf der Leinwand: die schwarze Karte groß zum Mitlesen, beim Wählen die Antworten schon eingesetzt,
+ * danach die gewählte hervorgehoben – wie in einer Spielshow. Wer gelegt hat, steht nicht dabei (anonym bis zum Punkt).
+ */
+function WordsScreen({ words, name, count }: { words: NonNullable<TableModel["words"]>; name: (id: string) => string; count: number }) {
+  const prompt = cardText(words.prompt);
+  return (
+    <div className="absolute inset-0 flex flex-col gap-[3cqh] p-[4cqh] text-white" data-testid="studio-words">
+      <div className="rounded-[2cqh] bg-[#141018] p-[3.5cqh] text-[6cqh] leading-tight font-bold shadow-[0_0_6cqh_rgb(255_122_89/0.25)] ring-1 ring-white/15" data-testid="studio-prompt">
+        {prompt.split(BLANK).map((part, i, all) => <span key={i}>{part}{i < all.length - 1 && <span className="inline-block w-[14cqh] border-b-[0.6cqh] border-white/80 align-baseline" />}</span>)}
+      </div>
+      {words.subs.length === 0 ? (
+        <p className="text-center text-[4.5cqh] font-semibold opacity-85">{words.playedBy.length} von {count - 1} haben gelegt …</p>
+      ) : (
+        <ol className="grid min-h-0 flex-1 auto-rows-fr gap-[2cqh]" style={{ gridTemplateColumns: `repeat(${Math.min(3, words.subs.length)}, minmax(0, 1fr))` }}>
+          {words.subs.map((cards, i) => (
+            <li key={i} data-testid="studio-answer"
+              className={cn("flex flex-col justify-center gap-[1.5cqh] rounded-[2cqh] bg-[#fbf7ef] p-[3cqh] text-[4.8cqh] leading-snug font-semibold text-[#141018] transition-[transform,opacity]",
+                words.pick !== null && (words.pick === i ? "scale-105 ring-[0.8cqh] ring-[#ff7a59]" : "opacity-45"))}>
+              <span>{fillIn(words.prompt, cards).map((p, k) => <span key={k} className={p.fill ? "text-[#c2492e]" : "opacity-60"}>{p.text}</span>)}</span>
+              {words.pick === i && words.pickBy && <span className="text-[4cqh] font-bold text-[#c2492e]">Punkt für {name(words.pickBy)}!</span>}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
