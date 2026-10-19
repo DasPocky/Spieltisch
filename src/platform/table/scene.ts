@@ -391,28 +391,30 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
 
     // Mitte: Stapel nebeneinander, Aufschrift darunter
     const piles = model.piles ?? [];
-    const step = NUM_W + 0.16, pd = NUM_W * CARD_RATIO.zahlen;
+    // Viele Stapel (z. B. ein Stich mit sechs Karten): schmaler, damit alle auf den Filz passen
+    const pw = Math.min(NUM_W, (FELT_W - 0.4) / Math.max(1, piles.length) - 0.16);
+    const step = pw + 0.16, pd = pw * CARD_RATIO.zahlen;
     const x0 = -((piles.length - 1) / 2) * step;
     piles.forEach((p, i) => {
       const x = x0 + i * step;
       const h = hash(p.label);
       if (p.top !== null) {
         // ein paar Karten darunter, leicht verschoben – wie ein echter Stapel
-        for (let k = 0; k < 3; k++) numCard({ text: p.top, tone: p.tone }, NUM_W, x + ((h >> k) % 5 - 2) * 0.006, SURFACE + 0.003 + k * 0.006, pz + ((h >> (k + 3)) % 5 - 2) * 0.006, ((h >> (k + 6)) % 9 - 4) / 90);
-        const top = numCard({ text: p.top, tone: p.tone }, NUM_W, x, SURFACE + 0.003 + 3 * 0.006, pz, ((h % 7) - 3) / 120);
+        if (!p.single) for (let k = 0; k < 3; k++) numCard({ text: p.top, tone: p.tone }, pw, x + ((h >> k) % 5 - 2) * 0.006, SURFACE + 0.003 + k * 0.006, pz + ((h >> (k + 3)) % 5 - 2) * 0.006, ((h >> (k + 6)) % 9 - 4) / 90);
+        const top = numCard({ text: p.top, tone: p.tone }, pw, x, SURFACE + 0.003 + 3 * 0.006, pz, ((h % 7) - 3) / 120);
         flyIn(top, `pile:${i}`, `${p.top}:${p.tone}`);
       } else if (p.count !== undefined && p.count > 0) {
         const hgt = Math.max(0.006, Math.min(p.count, 60) * 0.0014);
-        const block = new Mesh(new BoxGeometry(NUM_W, hgt, pd), [edge, edge, numBack(), edge, edge, edge]);
+        const block = new Mesh(new BoxGeometry(pw, hgt, pd), [edge, edge, numBack(), edge, edge, edge]);
         block.position.set(x, SURFACE + hgt / 2, pz); block.rotation.y = 0.03; block.castShadow = block.receiveShadow = true;
-        live.add(block); contact(x, pz, NUM_W, pd, 0.03);
+        live.add(block); contact(x, pz, pw, pd, 0.03);
       } else {
-        const slot = new Mesh(new PlaneGeometry(NUM_W, pd), new MeshBasicMaterial({ map: plainTex("slot", drawSlot), transparent: true, depthWrite: false }));
+        const slot = new Mesh(new PlaneGeometry(pw, pd), new MeshBasicMaterial({ map: plainTex("slot", drawSlot), transparent: true, depthWrite: false }));
         slot.rotation.x = -Math.PI / 2; slot.position.set(x, SURFACE + 0.002, pz); live.add(slot);
       }
       label(p.count !== undefined ? `${p.label} · ${p.count}` : p.label, x, pz + pd / 2 + 0.09, step * 0.95);
     });
-    const hx = piles.length ? -x0 + NUM_W / 2 : 0, hz = piles.length ? pd / 2 + 0.06 : 0;
+    const hx = piles.length ? -x0 + pw / 2 : 0, hz = piles.length ? pd / 2 + 0.06 : 0;
 
     // Auslage je Platz: zwischen Hand und Mitte, Ausrichtung immer zum Bildschirm (lesbar für alle)
     const bw = 0.3, bd = bw * CARD_RATIO.zahlen, gap = 0.035;

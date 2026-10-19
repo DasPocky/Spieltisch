@@ -30,6 +30,8 @@ import { maexchenTable } from "../../games/maexchen/table";
 import { dameTable } from "../../games/dame/table";
 import { muehleTable } from "../../games/muehle/table";
 import { ludoTable } from "../../games/ludo/table";
+import { fischenTable } from "../../games/fischen/table";
+import { hellseherTable } from "../../games/hellseher/table";
 
 /** Kartenart: französisch/deutsch („cards“), Eins!, Textkarten (Schamlos) oder Zahlenkarten (Rückseite blau, 5:7) */
 export type TableDeck = "cards" | "eins" | "schamlos" | "zahlen";
@@ -65,7 +67,7 @@ export interface TableModel {
   /** Spielfeld: Zeilen von oben nach unten, je Feld Farbe 0/1 oder leer */
   grid?: { cells: (0 | 1 | null)[][]; colors: [string, string]; last?: [number, number] | null; line?: [number, number][] };
   /** offene Stapel in der Mitte (Zahlenkarten): Aufbaustapel, Ablage, Nachziehstapel – `top` als Text, `tone` färbt */
-  piles?: { label: string; top: string | null; tone?: string; count?: number }[];
+  piles?: { label: string; top: string | null; tone?: string; count?: number; /** einzelne Karte statt Stapel (z. B. im Stich) */ single?: boolean }[];
   /** offene Auslage je Platz (unter dem Platz): Karten im Raster, `null` = leer/abgeräumt, "?" = verdeckt */
   boards?: Record<string, { cells: ({ text: string; tone?: string } | "?" | null)[]; cols: number }>;
   /** Wortraster in der Mitte (z. B. Decknamen): Karten mit Text, aufgedeckte farbig; `title` steht darüber */
@@ -100,7 +102,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

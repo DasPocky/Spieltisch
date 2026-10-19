@@ -777,3 +777,61 @@ test("Dame, Mühle und Ludo am Tisch: Brett in der Mitte, Steine und Figuren dar
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Fischen und Hellseher am Tisch: Teich und Quartette bzw. Trumpf und Stich in der Mitte, Ansagen am Platz", async ({ browser, request }) => {
+  test.setTimeout(180_000);
+  await setConfig(request, { ...ALL_ON, modes: { fischen: { table: "on" }, hellseher: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    const cem = await joinByLink(browser, code, pin, "Cem");
+    const phones = [anna, ben, cem];
+
+    // Fischen: wer dran ist, fragt – die Frage steht oben, der Teich liegt in der Mitte
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-fischen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile").first()).toContainText("Teich");
+    for (const p of phones) {
+      const who = p.getByRole("group", { name: "Mitspieler" }).locator("button:not([disabled])");
+      if (await who.count()) {
+        await who.first().click();
+        await p.getByRole("group", { name: "Wert" }).getByRole("button").first().click();
+        await p.getByRole("button", { name: /hast du/ }).click();
+        break;
+      }
+    }
+    await expect(screen.getByTestId("table-news")).toContainText("fragt");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9n-tisch-fischen");
+
+    // Hellseher: Trumpf und Stich in der Mitte, jede Karte mit Namen
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-hellseher").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    for (let i = 0; i < 40 && (await screen.getByTestId("table-pile").count()) < 4; i++) {
+      for (const p of phones) {
+        const trump = p.getByRole("group", { name: "Trumpf wählen" });
+        if (await trump.isVisible().catch(() => false)) { await trump.getByRole("button").first().click(); break; }
+        const bids = p.getByRole("group", { name: "Ansage" }).locator("button:not([disabled])");
+        if (await bids.count()) { await bids.first().click(); break; }
+        const cards = p.getByTestId("hand").locator("button:not([disabled])");
+        if (await cards.count()) { await cards.first().click(); break; }
+      }
+      await screen.waitForTimeout(400);
+    }
+    await expect(screen.getByTestId("table-seat").first()).toContainText("Ansage");
+    await screen.waitForTimeout(800);
+    await shot(screen, "9o-tisch-hellseher");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

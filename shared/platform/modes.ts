@@ -41,6 +41,8 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   dame: { table: "beta" },
   muehle: { table: "beta" },
   ludo: { table: "beta" },
+  fischen: { table: "beta" },
+  hellseher: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */
