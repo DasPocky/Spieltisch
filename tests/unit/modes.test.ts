@@ -12,7 +12,7 @@ describe("Spielweisen je Spiel", () => {
     expect(modeState({ eins: { table: "off" } }, "eins", "table")).toBe("off");
     expect(modeState({}, "fuenfwuerfel", "table")).toBe("on");
     expect(modeState({}, "fuenfwuerfel", "stage")).toBe("beta");
-    expect(modeState({}, "alles", "table")).toBe("none");
+    expect(modeState({}, "werwolf", "table")).toBe("none");
     expect(modeState({}, "eins", "stage")).toBe("beta");
     expect(modeState({}, "alles", "stage")).toBe("none");
   });
