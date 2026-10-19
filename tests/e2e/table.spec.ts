@@ -4,7 +4,10 @@ import { ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, sho
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
-  return ctx.newPage();
+  const page = await ctx.newPage();
+  // Vorschaubilder in voller Qualität (langsam ohne Grafikchip): TABLE_HQ=1 npx playwright test table …
+  if (process.env.TABLE_HQ) await page.addInitScript(() => localStorage.setItem("spieltisch:diceHQ", "1"));
+  return page;
 }
 
 async function joinByLink(browser: Browser, code: string, pin: string, name: string): Promise<Page> {

@@ -38,12 +38,18 @@ export function setQualityPref(v: QualityPref) {
 }
 
 let gl: boolean | null = null;
-/** Kann dieses Gerät WebGL (und läuft es nicht nur in Software)? */
+let soft = false;
+/** Kann dieses Gerät WebGL? (Merkt sich dabei, ob es nur in Software läuft – siehe `guess`) */
 export function webglOk(): boolean {
   if (gl !== null) return gl;
   try {
     const c = document.createElement("canvas");
-    gl = !!(c.getContext("webgl2") ?? c.getContext("webgl"));
+    const ctx = (c.getContext("webgl2") ?? c.getContext("webgl")) as WebGLRenderingContext | null;
+    gl = !!ctx;
+    if (ctx) {
+      const ext = ctx.getExtension("WEBGL_debug_renderer_info");
+      soft = /swiftshader|llvmpipe|software|softpipe/i.test(String(ext ? ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ctx.getParameter(ctx.RENDERER)));
+    }
   } catch { gl = false; }
   return gl;
 }
@@ -51,6 +57,8 @@ export function webglOk(): boolean {
 /** Startwert nach Gerät */
 function guess(): Quality {
   if (!webglOk()) return "flach";
+  // Ohne Grafikchip (Software-Zeichnung): jedes Bild dauert lange – schlicht, aber flüssig. Für Vorschaubilder lässt sich das abschalten.
+  if (soft) { try { if (localStorage.getItem("spieltisch:diceHQ") !== "1") return "einfach"; } catch { return "einfach"; } }
   const nav = navigator as Navigator & { deviceMemory?: number };
   const mem = nav.deviceMemory ?? 8;
   const cores = navigator.hardwareConcurrency ?? 8;

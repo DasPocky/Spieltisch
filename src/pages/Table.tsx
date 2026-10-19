@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Armchair, Camera, Expand, Loader2, LogOut, Sparkles, Tv, Video, VideoOff } from "lucide-react";
+import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Sparkles, Tv, Video, VideoOff } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { prefs, setPref, usePrefs } from "@/lib/prefs";
@@ -25,6 +25,7 @@ import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
+import { RESET_VIEW } from "@/platform/table/camera";
 import { createFlatScene } from "@/platform/table/flat";
 import { createStudioScene, type StudioScene } from "@/platform/table/studio";
 import { useQuality } from "@/lib/quality";
@@ -267,6 +268,9 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
         <SoundPanel />
         <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={toggleFullscreen}><Expand className="size-4" />Vollbild</Button>
+          {/* Kamera: ziehen dreht, Rad zoomt – hier (oder Doppelklick) zurück zur Grundansicht */}
+          <Button variant="ghost" size="icon" className="text-[#f7ecd6] hover:bg-white/10" onClick={() => window.dispatchEvent(new Event(RESET_VIEW))}
+            aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen (Tisch ziehen dreht, Rad zoomt)" data-testid="view-reset"><RotateCcw className="size-4" /></Button>
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={() => { remove(tableKey(code)); navigate("/"); }}><LogOut className="size-4" />Verlassen</Button>
         </div>
       </aside>
@@ -308,7 +312,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
 
   return (
     <>
-      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} onReal={setReal} />
+      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} onReal={setReal} follow={!me} />
       {/* Wie durch ein Objektiv: der Rand dunkelt ab, der Blick geht zur Mitte */}
       {real && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_70%_at_50%_52%,transparent_55%,rgb(0_0_0/0.5))]" />}
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
@@ -325,7 +329,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       })}
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
       {(model?.dice || model?.grid || model?.piles || model?.words5 || model?.tabletop || model?.sign) && (
-        <OnFelt rect={felt} className={cn(real && "sr-only")}>
+        <OnFelt rect={real ? null : felt} className={cn(real && "sr-only")}>
           {model.sign ? <div className="flex flex-col items-center gap-[3cqh]"><FeltSign sign={model.sign} />{model.piles && <FeltPiles piles={model.piles} small />}</div> : model.grid ? <FeltGrid grid={model.grid} /> : model.tabletop ? <FeltTabletop top={model.tabletop} /> : model.dice
             ? <div className="flex flex-col items-center gap-[3cqh]">{model.piles && <FeltPiles piles={model.piles} small />}<FeltDice dice={model.dice} /></div>
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
@@ -343,10 +347,12 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
  * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
  * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
  */
-function TableCanvas({ model, seats, onSeats, forceFlat, onReal }: {
+function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
   model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
   /** meldet, ob gerade in 3D gezeichnet wird */
   onReal?: (real: boolean) => void;
+  /** Partyspiele: Kamera dreht sich zu dem, der dran ist */
+  follow?: boolean;
 }) {
   const scene = useRef<TableScene | null>(null);
   const holder = useRef<HTMLDivElement>(null);
@@ -369,7 +375,9 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal }: {
     box.replaceChildren(canvas);
     let s: TableScene;
     let real = !flat;
-    try { s = flat ? createFlatScene(canvas) : createTableScene(canvas, level); } catch { s = createFlatScene(canvas); real = false; }
+    // Kamera fährt: Plätze und Schilder wandern mit
+    const onView = () => { const c = scene.current; if (c) onSeats(c.seatPoints(), c.feltRect()); };
+    try { s = flat ? createFlatScene(canvas) : createTableScene(canvas, level, { follow, onView }); } catch { s = createFlatScene(canvas); real = false; }
     onReal?.(real);
     scene.current = s;
     const onLost = (e: Event) => { e.preventDefault(); setLost(true); };
@@ -378,7 +386,7 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal }: {
     ro.observe(canvas);
     s.update(latest.current.model, latest.current.seats);
     return () => { ro.disconnect(); canvas.removeEventListener("webglcontextlost", onLost); s.dispose(); scene.current = null; };
-  }, [onSeats, flat, level, onReal]);
+  }, [onSeats, flat, level, onReal, follow]);
 
   useEffect(() => {
     const s = scene.current;
