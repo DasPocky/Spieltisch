@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { viewRoom } from "@shared/platform/room";
 import { WATCH_ID } from "@shared/platform/protocol";
 import { tableModel } from "../../src/platform/table/model";
-import { act, roomWith } from "./helpers";
+import { act, game, roomWith } from "./helpers";
 
 describe("Großer Tisch: Modell aus der Sicht ohne eigene Karten", () => {
   it("Lobby: kein Modell (leerer Tisch)", () => {
@@ -84,5 +84,14 @@ describe("Großer Tisch: Modell aus der Sicht ohne eigene Karten", () => {
     expect(gm.piles?.[0].label).toBe("Ziehen");
     expect(Object.keys(gm.notes ?? {})).toEqual(["p1", "p2", "p3"]);
   });
+  it("Decknamen: 25 Wörter in der Mitte, verdeckte ohne Farbe – die Schlüsselkarte erreicht den Tisch nicht", () => {
+    let r = act(roomWith(["Anna", "Ben", "Cem", "Dora"], "decknamen"), { type: "start" }, "p1");
+    // Teams aufstellen: noch kein Raster am Tisch
+    expect(tableModel(viewRoom(r, WATCH_ID))).toBeNull();
+    r = game(game(r, { type: "shuffleTeams" }, "p1"), { type: "begin" }, "p1");
+    const m = tableModel(viewRoom(r, WATCH_ID))!;
+    expect(m.words5?.cells).toHaveLength(25);
+    expect(m.words5?.cells.every((c) => !c.tone)).toBe(true);
+    expect(m.words5?.title).toMatch(/ist dran/);
+  });
 });
-

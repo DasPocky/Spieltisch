@@ -43,3 +43,19 @@ export function SeatBoard({ board }: { board: NonNullable<TableModel["boards"]>[
     </div>
   );
 }
+
+/** Wortraster in der Mitte: Wortkarten, aufgedeckte in ihrer Farbe (weißer Text), darüber eine Zeile wie „Rot ist dran …“ */
+export function FeltWords({ words }: { words: NonNullable<TableModel["words5"]> }) {
+  return (
+    <div className="flex flex-col items-center gap-[2.4cqh]" data-testid="table-words">
+      {words.title && <span className="table-banner !static !translate-x-0 text-[4cqh]">{words.title}</span>}
+      <div className="grid gap-[1.4cqh]" style={{ gridTemplateColumns: `repeat(${words.cols}, 17cqw)` }}>
+        {words.cells.map((c, i) => (
+          <span key={i} data-testid="table-word" data-open={!!c.tone}
+            className="grid h-[11cqh] place-items-center truncate rounded-[1.2cqh] px-[0.8cqw] text-[3.6cqh] font-bold uppercase shadow-[0_3px_8px_rgb(0_0_0/0.3)]"
+            style={c.tone ? { background: c.tone, color: "#fff" } : { background: "#fbf7ef", color: "#2b2118" }}>{c.text}</span>
+        ))}
+      </div>
+    </div>
+  );
+}

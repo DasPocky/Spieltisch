@@ -603,3 +603,48 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Decknamen am Tisch: 25 Wörter in der Mitte, Hinweis darüber, aufgedeckte farbig – keine Schlüsselkarte", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { decknamen: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const names = ["Anna", "Ben", "Cem", "Dora"];
+    const phones = [];
+    for (const n of names) phones.push(await joinByLink(browser, code, pin, n));
+    const [anna, ben, cem, dora] = phones;
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-decknamen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    const pick = async (p: Page, name: string, team: string, chief: boolean) => {
+      await p.getByRole("button", { name: `${name}: Team ${team}` }).click();
+      if (chief) await p.getByRole("button", { name: `${name}: Chef` }).click();
+    };
+    await pick(anna, "Anna", "Rot", true);
+    await pick(ben, "Ben", "Rot", false);
+    await pick(cem, "Cem", "Blau", true);
+    await pick(dora, "Dora", "Blau", false);
+    await anna.getByRole("button", { name: "Los geht's" }).click();
+    await expect(screen.getByTestId("table-word")).toHaveCount(25);
+    // der Tisch kennt die Farben nicht: nichts ist aufgedeckt
+    await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(0);
+    await expect(screen.getByTestId("table-words")).toContainText("der Chef überlegt");
+
+    const redStarts = (await anna.getByTestId("score-rot").textContent())!.includes("▶");
+    const [chief, agent] = redStarts ? [anna, ben] : [cem, dora];
+    await chief.getByLabel("Hinweiswort").fill("Tier");
+    await chief.getByRole("button", { name: "Geben" }).click();
+    await expect(screen.getByTestId("table-words")).toContainText("Hinweis: TIER 1");
+    await agent.getByRole("group", { name: "Wörter" }).getByRole("button").first().click();
+    await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(1);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9g-tisch-decknamen");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

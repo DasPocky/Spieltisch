@@ -34,7 +34,7 @@ import { modeAllowed } from "@shared/platform/modes";
 import { SoundPanel, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
 import { FeltDice, FeltGrid } from "@/platform/table/blocks";
-import { FeltPiles, SeatBoard } from "@/platform/table/piles";
+import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
@@ -320,9 +320,10 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
       {/* Bausteine auf dem Filz: Würfel, Spielfeld */}
-      {(model?.dice || model?.grid || model?.piles) && (
+      {(model?.dice || model?.grid || model?.piles || model?.words5) && (
         <OnFelt rect={felt}>
-          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice ? <FeltDice dice={model.dice} /> : model.piles && <FeltPiles piles={model.piles} />}
+          {model.grid ? <FeltGrid grid={model.grid} /> : model.dice ? <FeltDice dice={model.dice} />
+            : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}

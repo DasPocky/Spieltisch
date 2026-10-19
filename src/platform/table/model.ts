@@ -23,6 +23,7 @@ import { stapelbauTable } from "../../games/stapelbau/table";
 import { himmelskartenTable } from "../../games/himmelskarten/table";
 import { zehnphasenTable } from "../../games/zehnphasen/table";
 import { glueckssiebenTable } from "../../games/glueckssieben/table";
+import { decknamenTable } from "../../games/decknamen/table";
 
 /** Kartenart: französisch/deutsch („cards“), Eins! oder Textkarten (Schamlos) */
 export type TableDeck = "cards" | "eins" | "schamlos";
@@ -55,6 +56,8 @@ export interface TableModel {
   piles?: { label: string; top: string | null; tone?: string; count?: number }[];
   /** offene Auslage je Platz (unter dem Platz): Karten im Raster, `null` = leer/abgeräumt, "?" = verdeckt */
   boards?: Record<string, { cells: ({ text: string; tone?: string } | "?" | null)[]; cols: number }>;
+  /** Wortraster in der Mitte (z. B. Decknamen): Karten mit Text, aufgedeckte farbig; `title` steht darüber */
+  words5?: { cells: { text: string; tone?: string }[]; cols: number; title?: string };
   /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */
   words?: {
     prompt: string;
@@ -72,7 +75,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {
