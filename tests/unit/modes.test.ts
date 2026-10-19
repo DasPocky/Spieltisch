@@ -10,7 +10,8 @@ describe("Spielweisen je Spiel", () => {
   it("Zustand: eingebaut, von der Verwaltung überschrieben, „none“ wenn das Spiel es nicht kann", () => {
     expect(modeState({}, "uno", "table")).toBe("on");
     expect(modeState({ uno: { table: "off" } }, "uno", "table")).toBe("off");
-    expect(modeState({}, "kniffel", "table")).toBe("beta");
+    expect(modeState({}, "kniffel", "table")).toBe("on");
+    expect(modeState({}, "kniffel", "stage")).toBe("beta");
     expect(modeState({}, "tutto", "table")).toBe("none");
     expect(modeState({}, "uno", "stage")).toBe("beta");
     expect(modeState({}, "tutto", "stage")).toBe("none");

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoScroll, shot, startLocal, pick } from "./util";
+import { createRoom, expectNoScroll, joinRoom, newPhone, shot, startLocal, pick } from "./util";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -90,4 +90,25 @@ test("Kniffel lokal mit echten Würfeln (Block) auf kleinem Handy", async ({ pag
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expectNoScroll(page);
   await shot(page, "35-kniffel-full-view");
+});
+
+test("Kniffel online mit zwei Handys: nur wer dran ist würfelt, beide sehen Würfel und Punkte", async ({ browser }) => {
+  const [anna, ben] = await Promise.all([newPhone(browser), newPhone(browser)]);
+  const code = await createRoom(anna, "kniffel", "Anna", "5151");
+  await joinRoom(ben, code, "Ben", "5151");
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  // Wer dran ist, sieht „Du“ – der andere den Namen und keinen Würfel-Knopf
+  await expect(anna.getByTestId("current-player")).not.toBeEmpty();
+  const [me, other] = (await anna.getByTestId("current-player").textContent()) === "Du" ? [anna, ben] : [ben, anna];
+  await expect(other.getByRole("button", { name: /Würfeln/ })).toHaveCount(0);
+  await me.getByRole("button", { name: /Würfeln/ }).click();
+  const kept = await me.getByRole("button", { name: /^Würfel \d/ }).first().getAttribute("aria-label");
+  // der andere sieht dieselben Augen
+  await expect(other.getByRole("button", { name: /^Würfel \d/ }).first()).toHaveAttribute("aria-label", kept!);
+  await me.getByRole("button", { name: /Chance/ }).click();
+  await me.getByRole("button", { name: /eintragen/ }).click();
+  await expect(other.getByTestId("current-player")).toHaveText("Du");
+  await expect(other.getByRole("button", { name: /Würfeln/ })).toBeVisible();
+  await expectNoScroll(other);
+  await shot(other, "34-kniffel-online");
 });

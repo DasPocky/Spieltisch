@@ -279,7 +279,7 @@ test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, 
   expect((await ben.request.get("/api/photo/r/../../wrangler.jsonc")).status()).toBe(404);
 });
 
-test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz (Beta eingeschaltet)", async ({ browser, request }) => {
+test("Bausteine am Tisch: Kniffel-Würfel und Vier-gewinnt-Brett erscheinen auf dem Filz", async ({ browser, request }) => {
   test.setTimeout(120_000);
   await setConfig(request, { ...ALL_ON, modes: { kniffel: { table: "on" }, vier: { table: "on" } } });
   try {

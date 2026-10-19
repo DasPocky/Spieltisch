@@ -98,10 +98,10 @@ describe("Bots ohne Bewertung", () => {
   });
 });
 
-describe("Abnahme Mau-Mau und Uno: Bots", () => {
-  it.each(["maumau", "uno"])("%s: jede Stufe, 2–4 Spieler, nur erlaubte Züge, jede Partie endet", (gameId) => {
+describe("Abnahme: Bots", () => {
+  it.each([["maumau", [2, 3, 4]], ["uno", [2, 3, 4]], ["vier", [2]], ["kniffel", [2, 3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
     for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
-      for (const n of [2, 3, 4]) {
+      for (const n of counts) {
         let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));
         // Uno: eine Runde reicht (sonst bis 500 Punkte)
         if (gameId === "uno") r = { ...r, options: { ...r.options, target: "round" } };
@@ -116,5 +116,5 @@ describe("Abnahme Mau-Mau und Uno: Bots", () => {
         expect(roomGame(r).isOver(r.game), `${level}/${n} endet`).toBe(true);
       }
     }
-  });
+  }, 60_000);
 });
