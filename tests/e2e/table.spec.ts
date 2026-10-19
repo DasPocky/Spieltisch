@@ -1,10 +1,15 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type Browser, type Page } from "@playwright/test";
+/** Vorschaubilder in voller Qualität (TABLE_HQ=1) zeichnen ohne Grafikchip langsam – dann länger warten */
+const expect = process.env.TABLE_HQ ? baseExpect.configure({ timeout: 30_000 }) : baseExpect;
 import { ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
-  return ctx.newPage();
+  const page = await ctx.newPage();
+  // Vorschaubilder in voller Qualität (langsam ohne Grafikchip): TABLE_HQ=1 npx playwright test table …
+  if (process.env.TABLE_HQ) await page.addInitScript(() => localStorage.setItem("spieltisch:diceHQ", "1"));
+  return page;
 }
 
 async function joinByLink(browser: Browser, code: string, pin: string, name: string): Promise<Page> {
@@ -114,6 +119,7 @@ test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ab
 });
 
 test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, ausschaltbar – ohne Fehler", async ({ browser }) => {
+  test.setTimeout(120_000);
   const screen = await newScreen(browser);
   const errors: string[] = [];
   screen.on("pageerror", (e) => errors.push(e.message));
@@ -137,7 +143,8 @@ test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, aussc
   // Neu geladen (ohne Klick): Ton wieder an → „Ton einschalten“, bis jemand klickt
   await screen.getByTestId("sound-toggle").click();
   await screen.reload();
-  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible();
+  // Nach dem Neuladen baut sich der Tisch erst auf (ohne Grafikchip dauert das)
+  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible({ timeout: 20_000 });
   if (await screen.getByTestId("sound-unlock").isVisible()) {
     await screen.getByTestId("sound-unlock").click();
     await expect(screen.getByTestId("sound-panel")).toBeVisible();
@@ -592,7 +599,8 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     for (let i = 0; i < 15 && !(await screen.getByTestId("seat-board").count()); i++) {
       for (const p of phones) {
         const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
-        if (await hit.isEnabled().catch(() => false)) { await hit.click(); break; }
+        // Knopf kann zwischen Prüfen und Tippen gesperrt werden (Zug vorbei) – nicht ewig warten
+        if (await hit.isEnabled().catch(() => false)) { await hit.click({ timeout: 3000 }).catch(() => {}); break; }
       }
       await screen.waitForTimeout(600);
     }
