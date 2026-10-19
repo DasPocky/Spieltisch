@@ -55,7 +55,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 3. **Moderator-MVP:** Leuchtkugel am großen Tisch für alle Tischspiele (Begrüßung, wer dran ist, Kartenzar, Rundenpunkt, Sieg), Gerätestimme, abschaltbar, Charakter wählbar ✅ – reine Darstellung, keine Regelinstanz.
 4. **3D-Showstudio** ✅ (Beta: Mau-Mau, Uno, Schamlos, Kniffel, Vier gewinnt): Bühne mit Leinwand, Pult je Spieler mit Leuchtstreifen, schwenkende Scheinwerfer, Spotlicht und Kamerafahrt zu dem, der dran ist; am Fernseher „Tisch | Bühne“ umschaltbar (je Gerät gemerkt). Später: eigene Bühnen-Ansichten je Spiel (Quiz, Zeichnen), Abnahme → „an“.
 5. **KI-Sprüche** über Cloudflare Workers AI ✅ (Schalter in der Verwaltung, 400 am Tag, Filter, Rückfall auf feste Texte); später KI-Stimme. Charakter je Runde (charmant/frech/böse) – „frech/böse“ nur mit Zustimmung der Runde und passendem Set.
-6. **Partyabend:** Host plant die Reihenfolge (2–8 Spiele), nach jeder Partie ist das nächste gewählt, Gesamtwertung über die Abendliste, Zwischenstand und Siegerehrung mit Podest am Fernseher, Moderator ruft den Abendsieger aus ✅; später: abstimmen, Mini-Runden.
+6. **Partyabend:** Host plant die Reihenfolge (2–8 Spiele), nach jeder Partie ist das nächste gewählt, Gesamtwertung über die Abendliste, Zwischenstand und Siegerehrung mit Podest am Fernseher, Moderator ruft den Abendsieger aus ✅, Auswahl als Raster ohne Scrollen ✅; später: abstimmen, Mini-Runden.
 
 ## Phase 3 – Spiel für Spiel komplett ⏳
 

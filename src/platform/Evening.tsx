@@ -75,16 +75,17 @@ function PlanSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bo
           <SheetTitle>Partyabend planen</SheetTitle>
           <SheetDescription>Spiele in der gewünschten Reihenfolge antippen. Nach jeder Partie ist das nächste dran – am Ende gibt es eine Siegerehrung.</SheetDescription>
         </SheetHeader>
-        <div className="grid gap-1.5 overflow-y-auto px-5 pt-1" data-testid="plan-games">
+        {/* Kacheln im Raster: alle Spiele auf einen Blick, ohne Scrollen */}
+        <div className="grid grid-cols-4 gap-1.5 overflow-y-auto px-5 pt-1" data-testid="plan-games">
           {ids.map((id) => {
             const n = picked.indexOf(id);
             const GIcon = gameIcon(id);
             return (
               <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={n >= 0} data-testid={`plan-${id}`}
-                className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", n >= 0 ? "bg-primary/12 ring-1 ring-inset ring-primary/35" : "glass")}>
+                className={cn("relative flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring", n >= 0 ? "bg-primary/12 ring-1 ring-inset ring-primary/35" : "glass")}>
                 <IconTile className="size-9"><GIcon className="size-6" /></IconTile>
-                <span className="min-w-0 flex-1 font-semibold">{getGame(id).info.name}</span>
-                {n >= 0 && <span className="grid size-7 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{n + 1}</span>}
+                <span className="line-clamp-2 w-full text-[0.7rem] leading-tight font-semibold">{getGame(id).info.name}</span>
+                {n >= 0 && <span className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{n + 1}</span>}
               </button>
             );
           })}
