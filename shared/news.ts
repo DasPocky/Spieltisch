@@ -22,6 +22,8 @@ export const NEWS: NewsEntry[] = [
       "Partyabend: Der Host plant mehrere Spiele hintereinander – der Fernseher zeigt den Zwischenstand und am Ende das Siegerpodest.",
       "Mau-Mau am Rechner ist fertig: Tisch aus deiner Sicht, Karten darunter, alles auch per Tastatur.",
       "Mit gekoppeltem Handy bleiben deine Karten auf Wunsch nur dort – der Rechner zeigt allen nur den Tisch.",
+      "Am großen Bildschirm: Wer die Kamera anhat, ist an seinem Platz zu sehen – und das Sofa kann per Kamera mitspielen.",
+      "Ohne Handy dabei? Der Bildschirm macht ein Foto für deinen Platz.",
     ],
   },
   {

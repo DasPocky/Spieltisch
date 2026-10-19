@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef } from "react";
 import { Dices, Mic, MicOff, Video } from "lucide-react";
+import { TABLE_CALL_ID } from "@shared/platform/protocol";
 import type { RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,8 +21,9 @@ export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel 
 }) {
   const avatars = useContext(AvatarContext) ?? roomAvatars(room);
   const inCall = call?.phase === "on";
-  const ids = room.players.map((p) => p.id);
-  const n = ids.length;
+  // Couch-Kamera des Großen Tischs: eigene Kachel, solange sie sendet
+  const couch = inCall && !!call?.peers[TABLE_CALL_ID];
+  const n = room.players.length + (couch ? 1 : 0);
   const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
 
   return (
@@ -31,6 +33,7 @@ export function Meet({ room, me, online, call, chat, onPlay, playLabel = "Spiel 
           <MeetTile key={p.id} id={p.id} name={p.id === me ? `${p.name} (du)` : p.name} call={call} me={me}
             online={!online || online.has(p.id)} avatar={avatars[p.id]} onPhoto={p.id === me ? onPhoto : undefined} />
         ))}
+        {couch && <MeetTile id={TABLE_CALL_ID} name="Couch" call={call} me={me} online />}
       </div>
       {call && !inCall && (
         <div className="grid shrink-0 grid-cols-2 gap-2">

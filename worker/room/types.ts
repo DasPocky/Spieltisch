@@ -32,6 +32,8 @@ export interface RoomData {
   /** Sprach-/Videochat: wer drin ist, und welche SFU-Sitzung wem gehört */
   call?: Record<string, CallPeer>;
   callSessions?: Record<string, string>;
+  /** Schlüssel der Großen Tische für den Videochat (Videos an den Plätzen, Couch-Kamera) – die letzten paar */
+  tableKeys?: string[];
   /** Text-Chat: die letzten Nachrichten */
   chat?: ChatMsg[];
   /** Eigener Raumcode (für die Admin-Übersicht) und letzte Änderung */

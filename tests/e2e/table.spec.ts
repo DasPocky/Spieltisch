@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { ALL_ON, newPhone, setConfig, shot } from "./util";
+import { ALL_ON, FAKE_RTC, newPhone, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
@@ -380,4 +380,68 @@ test("Partyabend: Host plant zwei Spiele, nach der Partie ist das nächste dran,
   } finally {
     await setConfig(request, ALL_ON);
   }
+});
+
+test("Video am Tisch: Kamera-Bild an Annas Platz (einzeln und ganz abschaltbar), Couch-Kamera bei Ben, Selfie für Opa ohne Handy", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
+  await ctx.addInitScript(FAKE_RTC);
+  const screen = await ctx.newPage();
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  const join = async (name: string) => {
+    const phone = await newPhone(browser);
+    await phone.context().addInitScript(FAKE_RTC);
+    await phone.goto(`/r/${code}#pin=${pin}`);
+    await phone.getByLabel("Dein Name").fill(name);
+    await phone.getByRole("button", { name: "Beitreten" }).click();
+    return phone;
+  };
+  const anna = await join("Anna");
+  const ben = await join("Ben");
+  await expect(screen.getByTestId("table-seat")).toHaveCount(2);
+
+  // Anna kommt mit Video in den Chat: ihr Bild erscheint an ihrem Platz
+  // Treffpunkt: Kamera an
+  await anna.getByRole("button", { name: "Video an" }).click();
+  const annaSeat = screen.getByTestId("table-seat").filter({ hasText: "Anna" });
+  await expect(annaSeat.getByTestId("seat-video")).toBeAttached();
+  await shot(screen, "93-tisch-video");
+  // einzeln aus- und wieder einblenden
+  await annaSeat.getByTestId("seat-video-toggle").click();
+  await expect(annaSeat.getByTestId("seat-video")).toHaveCount(0);
+  await expect(annaSeat).toContainText("Video aus");
+  await annaSeat.getByTestId("seat-video-toggle").click();
+  await expect(annaSeat.getByTestId("seat-video")).toBeAttached();
+  // alle Videos aus
+  await screen.getByTestId("table-video-toggle").click();
+  await expect(screen.getByTestId("seat-video")).toHaveCount(0);
+  await screen.getByTestId("table-video-toggle").click();
+  await expect(annaSeat.getByTestId("seat-video")).toBeAttached();
+
+  // Couch-Kamera: Ben (im Chat) sieht die Kachel „Couch“
+  await ben.getByRole("button", { name: "Nur Sprache" }).click();
+  await screen.getByTestId("couch-cam").click();
+  await expect(screen.getByTestId("couch-cam")).toContainText("Kamera aus");
+  await expect(ben.getByTestId("meet").getByText("Couch", { exact: true })).toBeVisible();
+  await shot(ben, "93d-handy-couch");
+  await screen.getByTestId("couch-cam").click();
+  await expect(ben.getByTestId("meet").getByText("Couch", { exact: true })).toHaveCount(0);
+
+  // Opa ohne Handy: Foto mit der Kamera am Bildschirm
+  await screen.getByTestId("couch-add").click();
+  await screen.getByLabel("Name für den Platz am Fernseher").fill("Opa");
+  await screen.getByTestId("couch-add-ok").click();
+  await expect(screen.getByTestId("table-seat")).toHaveCount(3);
+  await screen.getByTestId("couch-photo").click();
+  await expect(screen.getByTestId("table-camera-video")).toBeVisible();
+  await shot(screen, "93b-tisch-selfie");
+  await screen.getByTestId("table-camera-shoot").click();
+  await expect(screen.getByTestId("table-camera-count")).toHaveText("3");
+  await expect(screen.getByTestId("table-camera")).toHaveCount(0, { timeout: 10_000 });
+  await expect(screen.getByTestId("table-seat").filter({ hasText: "Opa" }).locator("img")).toBeVisible({ timeout: 10_000 });
+  await shot(screen, "93c-tisch-opa-foto");
 });

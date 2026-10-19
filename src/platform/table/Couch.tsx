@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { EyeOff, UserPlus, X } from "lucide-react";
+import { Camera, EyeOff, UserPlus, X } from "lucide-react";
 import { cleanName, currentPlayerId, MAX_NAME, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoom } from "@/hooks/useRoom";
 import { readJSON, writeJSON } from "@/lib/storage";
 import { RoomScreen } from "@/platform/RoomScreen";
+import { TableCamera } from "./Camera";
 
 /**
  * Mitspielen ohne Handy: der Fernseher meldet Spieler als ganz normale Mitspieler an (eigener Zugang je Platz)
@@ -63,6 +64,8 @@ export function CouchPlayers({ code, pin, room, couch, onOpen, cover }: { code: 
   useEffect(() => { onOpen?.(open !== null); }, [open, onOpen]);
   useEffect(() => { if (cover) setOpen(null); }, [cover]);
   const [revealed, setRevealed] = useState(false);
+  // Selfie für einen Platz (Kamera am Bildschirm)
+  const [snap, setSnap] = useState<string | null>(null);
   const cur = currentPlayerId(room);
   const curSlot = couch.list.find((c) => ids[c.slot] && ids[c.slot] === cur)?.slot ?? null;
 
@@ -90,6 +93,8 @@ export function CouchPlayers({ code, pin, room, couch, onOpen, cover }: { code: 
                 <span className="truncate">{c.name}{ids[c.slot] === room.hostId ? " · Host" : ""}</span>
                 <span className="ml-auto pl-2 text-xs opacity-75">{open === c.slot ? "zu" : room.phase === "playing" ? "Hand" : "öffnen"}</span>
               </button>
+              <button type="button" aria-label={`Foto für ${c.name}`} title="Foto mit der Kamera am Bildschirm" onClick={() => setSnap(c.slot)} data-testid="couch-photo"
+                className="grid size-9 place-items-center rounded-lg text-[#f7ecd6]/70 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#f7ecd6]"><Camera className="size-4" /></button>
               {room.phase !== "playing" && (
                 <button type="button" aria-label={`${c.name} entfernen`} onClick={() => { if (open === c.slot) setOpen(null); couch.remove(c.slot); }}
                   className="grid size-9 place-items-center rounded-lg text-[#f7ecd6]/70 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#f7ecd6]"><X className="size-4" /></button>
@@ -99,15 +104,15 @@ export function CouchPlayers({ code, pin, room, couch, onOpen, cover }: { code: 
         </div>
       )}
       {couch.list.map((c) => (
-        <CouchConnection key={c.slot} code={code} pin={pin} seat={c} shown={open === c.slot} revealed={revealed}
+        <CouchConnection key={c.slot} code={code} pin={pin} seat={c} shown={open === c.slot} revealed={revealed} snapping={snap === c.slot} onSnapped={() => setSnap(null)}
           onReveal={() => setRevealed(true)} onClose={() => setOpen(null)} onId={(id) => setIds((m) => (m[c.slot] === id ? m : { ...m, [c.slot]: id }))} />
       ))}
     </>
   );
 }
 
-function CouchConnection({ code, pin, seat, shown, revealed, onReveal, onClose, onId }: {
-  code: string; pin: string; seat: CouchSeat; shown: boolean; revealed: boolean; onReveal: () => void; onClose: () => void; onId: (id: string) => void;
+function CouchConnection({ code, pin, seat, shown, revealed, snapping, onSnapped, onReveal, onClose, onId }: {
+  code: string; pin: string; seat: CouchSeat; shown: boolean; revealed: boolean; snapping: boolean; onSnapped: () => void; onReveal: () => void; onClose: () => void; onId: (id: string) => void;
 }) {
   const [join] = useState(() => ({ name: seat.name, pin }));
   const room = useRoom(code, join, 0, { slot: seat.slot });
@@ -122,9 +127,11 @@ function CouchConnection({ code, pin, seat, shown, revealed, onReveal, onClose, 
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [shown, revealed, onReveal, onClose]);
-  if (!shown) return null;
+  const camera = snapping ? <TableCamera name={seat.name} onShot={(data) => room.photo(data)} onClose={onSnapped} /> : null;
+  if (!shown) return camera;
 
   return (
+    <>{camera}
     <div className="couch-hand fixed inset-y-0 left-0 z-30 flex w-[min(30rem,100vw)] flex-col bg-background text-foreground shadow-2xl" data-testid="couch-hand">
       <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
         <b className="min-w-0 flex-1 truncate">{seat.name} am Fernseher</b>
@@ -148,5 +155,6 @@ function CouchConnection({ code, pin, seat, shown, revealed, onReveal, onClose, 
         <p className="grid flex-1 place-items-center text-muted-foreground">{room.error ?? "Verbinde …"}</p>
       )}
     </div>
+    </>
   );
 }
