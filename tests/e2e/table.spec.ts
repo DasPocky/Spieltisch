@@ -445,3 +445,42 @@ test("Video am Tisch: Kamera-Bild an Annas Platz (einzeln und ganz abschaltbar),
   await expect(screen.getByTestId("table-seat").filter({ hasText: "Opa" }).locator("img")).toBeVisible({ timeout: 10_000 });
   await shot(screen, "93c-tisch-opa-foto");
 });
+
+test("Bühne: Showstudio mit Leinwand und Pulten – Lobby auf der Leinwand, dann Mau-Mau, Spotlicht auf dem, der dran ist", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { maumau: { stage: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-maumau").click();
+
+    await screen.getByTestId("view-stage").click();
+    await expect(screen.getByTestId("studio-3d")).toBeAttached();
+    await expect(screen.getByTestId("studio-screen").getByTestId("table-lobby")).toBeVisible();
+    await expect(screen.getByTestId("table-seat")).toHaveCount(2);
+    await screen.waitForTimeout(800);
+    await shot(screen, "94-buehne-lobby");
+
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("studio-screen").getByTestId("table-flat")).toBeAttached();
+    await expect(screen.locator('[data-testid="table-seat"][data-turn="true"]')).toHaveCount(1);
+    await expect(screen.getByTestId("table-seat").first()).toContainText(/· 5/);
+    await screen.waitForTimeout(1500);
+    await shot(screen, "94b-buehne-maumau");
+
+    // zurück zum Tisch – gemerkt je Gerät
+    await screen.getByTestId("view-table").click();
+    await expect(screen.getByTestId("studio")).toHaveCount(0);
+    await expect(screen.getByTestId("table-3d")).toBeAttached();
+    void ben;
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

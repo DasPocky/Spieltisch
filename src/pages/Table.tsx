@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Expand, Loader2, LogOut, Tv, Video, VideoOff } from "lucide-react";
+import { Armchair, Camera, Expand, Loader2, LogOut, Sparkles, Tv, Video, VideoOff } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { prefs, setPref, usePrefs } from "@/lib/prefs";
@@ -25,6 +25,7 @@ import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 import { createFlatScene } from "@/platform/table/flat";
+import { createStudioScene, type StudioScene } from "@/platform/table/studio";
 import { useQuality } from "@/lib/quality";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
@@ -215,14 +216,26 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   const p = usePrefs();
   const videos = useSeatVideos(code, callReady ? callKey : null, call, p.tableVideo);
   const couchCam = useCouchCam(code, callReady ? callKey : null, announce);
+  // Ansicht am Fernseher: Tisch oder Bühne (Showstudio) – je Gerät gemerkt, nur mit 3D und wenn das Spiel die Bühne kann
+  const [tvView, setTvView] = useState<"table" | "stage">(() => (readStr(TV_VIEW_KEY) === "stage" ? "stage" : "table"));
+  const level = useQuality();
+  const stagePossible = level !== "flach" && webglOk() && modeAllowed(config?.modes, room.gameId, "stage", admin) && (!playing || !!model || !!sham);
+  const stage = tvView === "stage" && stagePossible;
+  const pickView = (v: "table" | "stage") => { writeStr(TV_VIEW_KEY, v); setTvView(v); };
   const [hiddenVideos, setHiddenVideos] = useState<Set<string>>(new Set());
   const toggleVideo = useCallback((id: string) => setHiddenVideos((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
       <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
-        <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} reacts={reacts}
-          videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo} />
+        {stage ? (
+          <StudioStage room={room} online={online} model={model} sham={sham} reacts={reacts} videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo}>
+            {!playing && (plan && plan.played > 0 ? <PartyBoard room={room} /> : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />)}
+          </StudioStage>
+        ) : (
+          <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} reacts={reacts}
+            videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo} />
+        )}
 
         <header className="absolute top-6 left-7 flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#3e9a92] to-[#1f5f5b] shadow-lg">{game ? <game.Icon className="size-6 text-white" /> : <Tv className="size-5 text-white" />}</span>
@@ -233,7 +246,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
         </header>
 
         {moderator.on && <HostCorner say={moderator.say} mood={mood} />}
-        {!playing && <OnFelt rect={felt}>{plan && plan.played > 0
+        {!playing && !stage && <OnFelt rect={felt}>{plan && plan.played > 0
           ? <PartyBoard room={room} />
           : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />}</OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
@@ -246,6 +259,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
         <div className="mt-auto" />
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
         <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
+        {stagePossible && <ViewPanel view={stage ? "stage" : "table"} onView={pickView} />}
         {callReady && <VideoPanel cam={couchCam} />}
         <HostPanel mood={mood} onMood={setMood} />
         <SoundPanel />
@@ -263,10 +277,12 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
  * Am Fernseher für alle (`me` fehlt) – oder am Rechner aus eigener Sicht: der eigene Platz ist vorn,
  * die eigene Hand liegt nicht verdeckt auf dem Tisch (sie steht offen darunter).
  */
-export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt, reacts = [], videos, hiddenVideos, onToggleVideo }: {
+export function TableStage({ room, online, model, sham, me, showSeats = true, onFelt, reacts = [], videos, hiddenVideos, onToggleVideo, flat }: {
   room: RoomState; online: Set<string>; model: TableModel | null; sham?: SchamlosState | null; me?: string | null; showSeats?: boolean; onFelt?: (f: FeltRect) => void; reacts?: TableReact[];
   /** Videos der Mitspieler (Kamera an) – erscheinen statt des Bilds am Platz */
   videos?: Record<string, MediaStream>; hiddenVideos?: Set<string>; onToggleVideo?: (id: string) => void;
+  /** immer der flache Tisch (z. B. auf der Leinwand der Bühne) */
+  flat?: boolean;
 }) {
   const avatars = useMemo(() => roomAvatars(room), [room]);
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
@@ -288,7 +304,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
 
   return (
     <>
-      <TableCanvas model={shown} seats={seats} onSeats={onSeats} />
+      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} />
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
@@ -317,14 +333,14 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
  * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
  * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
  */
-function TableCanvas({ model, seats, onSeats }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void }) {
+function TableCanvas({ model, seats, onSeats, forceFlat }: { model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean }) {
   const scene = useRef<TableScene | null>(null);
   const holder = useRef<HTMLDivElement>(null);
   const seatKey = seats.join();
   const level = useQuality();
   // WebGL verloren (Grafiktreiber, zu wenig Speicher): ab jetzt flach
   const [lost, setLost] = useState(false);
-  const flat = level === "flach" || lost || !webglOk();
+  const flat = forceFlat || level === "flach" || lost || !webglOk();
   const latest = useRef({ model, seats });
   latest.current = { model, seats };
 
@@ -380,6 +396,96 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoH
       </span>
       {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
+    </div>
+  );
+}
+
+const TV_VIEW_KEY = "spieltisch:tvView";
+
+/** Am Fernseher umschalten: Tisch oder Bühne */
+function ViewPanel({ view, onView }: { view: "table" | "stage"; onView: (v: "table" | "stage") => void }) {
+  const btn = "flex h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#f7ecd6]";
+  return (
+    <div className="flex gap-1 rounded-xl bg-white/10 p-1" role="group" aria-label="Ansicht" data-testid="view-panel">
+      {(["table", "stage"] as const).map((v) => (
+        <button key={v} type="button" aria-pressed={view === v} onClick={() => onView(v)} data-testid={`view-${v}`}
+          className={cn(btn, view === v ? "bg-[#f7ecd6] text-[#2b2118]" : "text-[#f7ecd6] hover:bg-white/10")}>
+          {v === "table" ? <><Armchair className="size-4" />Tisch</> : <><Sparkles className="size-4" />Bühne</>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Showstudio: 3D-Bühne mit Leinwand und Pulten. Auf der Leinwand läuft das Spiel (flacher Tisch, Würfel, Brett, Schamlos)
+ * oder – vor der Partie – die Lobby; an den Pulten stehen Bild bzw. Video, Name und Kartenzahl/Punkte.
+ */
+function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, onToggleVideo, children }: {
+  room: RoomState; online: Set<string>; model: TableModel | null; sham: SchamlosState | null; reacts: TableReact[];
+  videos: Record<string, MediaStream>; hiddenVideos: Set<string>; onToggleVideo: (id: string) => void; children?: React.ReactNode;
+}) {
+  const avatars = useMemo(() => roomAvatars(room), [room]);
+  const holder = useRef<HTMLDivElement>(null);
+  const scene = useRef<StudioScene | null>(null);
+  const level = useQuality();
+  const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
+  const [screen, setScreen] = useState<FeltRect | null>(null);
+  const seats = room.players.map((p) => p.id);
+  const seatKey = seats.join();
+  const turn = model?.turn ?? sham?.czar ?? null;
+  const measure = useCallback(() => {
+    const s = scene.current;
+    if (!s) return;
+    const near = (a: number, b: number) => Math.abs(a - b) < 0.5;
+    const next = s.podiumPoints(), r = s.screenRect();
+    setPoints((prev) => (prev.length === next.length && prev.every((p, i) => near(p.x, next[i].x) && near(p.y, next[i].y)) ? prev : next));
+    setScreen((prev) => (prev && near(prev.x, r.x) && near(prev.y, r.y) && near(prev.w, r.w) && near(prev.h, r.h) ? prev : r));
+  }, []);
+  const latest = useRef({ seats, turn });
+  latest.current = { seats, turn };
+
+  useEffect(() => {
+    const box = holder.current;
+    if (!box) return;
+    const canvas = document.createElement("canvas");
+    canvas.className = "absolute inset-0 size-full";
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.dataset.testid = "studio-3d";
+    box.replaceChildren(canvas);
+    const s = createStudioScene(canvas, level, measure);
+    scene.current = s;
+    const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); measure(); });
+    ro.observe(canvas);
+    s.update(latest.current.seats, latest.current.turn);
+    return () => { ro.disconnect(); s.dispose(); scene.current = null; };
+  }, [level, measure]);
+
+  useEffect(() => {
+    scene.current?.update(seatKey ? seatKey.split(",") : [], turn);
+    measure();
+  }, [seatKey, turn, measure]);
+
+  return (
+    <div className="absolute inset-0" data-testid="studio">
+      <div ref={holder} className="absolute inset-0" />
+      {/* Leinwand: das Spiel flach – oder Lobby/Siegerehrung */}
+      {screen && (
+        <div className="absolute overflow-hidden rounded-md bg-[#0e2a2c]" style={{ left: screen.x, top: screen.y, width: screen.w, height: screen.h, containerType: "size" }} data-testid="studio-screen">
+          {children ? <div className="absolute inset-0 flex items-center justify-center p-[3cqh]">{children}</div>
+            : <TableStage room={room} online={online} model={model} sham={sham} showSeats={false} flat />}
+        </div>
+      )}
+      {room.players.map((p, i) => points[i] && (
+        <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
+          turn={turn === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
+          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : ""}` : model?.notes?.[p.id]}
+          video={videos[p.id]} videoHidden={hiddenVideos.has(p.id)} onToggleVideo={() => onToggleVideo(p.id)} />
+      ))}
+      {reacts.map((r) => {
+        const at = points[room.players.findIndex((p) => p.id === r.from)];
+        return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y - 60 }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
+      })}
     </div>
   );
 }

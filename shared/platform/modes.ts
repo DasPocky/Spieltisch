@@ -22,12 +22,12 @@ export const MODE_STATES: { value: ModeState; label: string }[] = [
  */
 export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = {
   // Referenzspiel: abgenommen (docs/abnahme/maumau.md)
-  maumau: { table: "on", desk: "on" },
-  uno: { table: "on", desk: "beta" },
-  schamlos: { table: "on" },
+  maumau: { table: "on", desk: "on", stage: "beta" },
+  uno: { table: "on", desk: "beta", stage: "beta" },
+  schamlos: { table: "on", stage: "beta" },
   // Bausteine Würfel und Spielfeld – Beta bis zur Abnahme
-  kniffel: { table: "beta" },
-  vier: { table: "beta" },
+  kniffel: { table: "beta", stage: "beta" },
+  vier: { table: "beta", stage: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

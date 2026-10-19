@@ -24,6 +24,7 @@ export const NEWS: NewsEntry[] = [
       "Mit gekoppeltem Handy bleiben deine Karten auf Wunsch nur dort – der Rechner zeigt allen nur den Tisch.",
       "Am großen Bildschirm: Wer die Kamera anhat, ist an seinem Platz zu sehen – und das Sofa kann per Kamera mitspielen.",
       "Ohne Handy dabei? Der Bildschirm macht ein Foto für deinen Platz.",
+      "Neu zum Ausprobieren: die Bühne – ein Showstudio mit Pulten und Scheinwerfern statt des Tischs.",
     ],
   },
   {
