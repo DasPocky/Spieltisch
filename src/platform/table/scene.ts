@@ -6,9 +6,10 @@
 import {
   ACESFilmicToneMapping, BoxGeometry, CanvasTexture, CircleGeometry, CylinderGeometry, DirectionalLight, ExtrudeGeometry, Group, HemisphereLight,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, Shape, SpotLight,
-  SRGBColorSpace, Vector3, WebGLRenderer, AdditiveBlending, type Material, type Texture,
+  SRGBColorSpace, Vector3, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, type Material, type Texture,
 } from "three";
-import { CARD_RATIO, drawBack, drawCard, drawContact, drawFace, drawLabel, drawSlot } from "./textures";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { CARD_RATIO, drawBack, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
@@ -164,12 +165,15 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   let anchors: [number, number][] = [];
   let last: { top: string | null; n: number; turn: string | null; seats: string[]; played: string[]; shown: number } = { top: null, n: -1, turn: null, seats: [], played: [], shown: 0 };
   /** Laufende Bewegungen: Karte fliegt (von → nach, mit Bogen) und dreht sich dabei ggf. um */
-  type Anim = { mesh: Mesh; from: Vector3; to: Vector3; rot: number; flip: boolean; start: number; ms: number };
+  /** `arc`: Höhe des Bogens, `spin`: Drehung um die Hochachse beim Anflug, `tumble`: Würfel kullert (dreht sich um alle Achsen) */
+  type Fly = { arc?: number; spin?: number; tumble?: boolean };
+  type Anim = { mesh: Mesh; from: Vector3; to: Vector3; rot: number; flip: boolean; start: number; ms: number; arc: number; spin: number; tumble: boolean };
   let anims: Anim[] = [];
-  const fly = (mesh: Mesh, from: Vector3, delay = 0, flip = false, ms = 520) => {
+  const fly = (mesh: Mesh, from: Vector3, delay = 0, flip = false, ms = 520, o: Fly = {}) => {
     // Reduzierte Bewegung: Karten liegen sofort da
     if (still) return;
-    anims.push({ mesh, from, to: mesh.position.clone(), rot: mesh.rotation.y, flip, start: performance.now() + delay, ms });
+    anims.push({ mesh, from, to: mesh.position.clone(), rot: mesh.rotation.y, flip, start: performance.now() + delay, ms,
+      arc: o.arc ?? (flip ? 0.25 : 0.35), spin: o.spin ?? (flip ? 0 : 1.2), tumble: !!o.tumble });
     mesh.position.copy(from);
     if (flip) mesh.rotation.z = Math.PI;
   };
@@ -189,6 +193,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     deck = model.deck;
     if (model.words) { updateWords(model, seats); return; }
     if (model.words5) { wordGrid(model.words5); return; }
+    if (model.dice) { diceRow(model, seats); return; }
+    if (model.grid) { board(model.grid, model.n); return; }
 
     // Stapel: ein Block, so hoch wie die Karten
     if (model.pile > 0) {
@@ -468,6 +474,100 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     render();
   }
 
+
+  // ---------- Würfel und Spielbrett ----------
+  const DIE = 0.3;
+  const dieGeo = new RoundedBoxGeometry(DIE, DIE, DIE, 4, DIE * 0.16);
+  const pipMats = new Map<number, MeshStandardMaterial>();
+  const pip = (v: number) => {
+    let m = pipMats.get(v);
+    if (!m) pipMats.set(v, (m = new MeshStandardMaterial({ map: plainTex(`pips:${v}`, () => drawPips(v)), roughness: 0.35 })));
+    return m;
+  };
+  // Seiten eines Würfels: oben die Augenzahl, gegenüber 7 minus diese – wie bei echten Würfeln
+  const SIDES: Record<number, [number, number, number, number]> = { 1: [2, 5, 3, 4], 2: [1, 6, 3, 4], 3: [1, 6, 2, 5], 4: [1, 6, 2, 5], 5: [1, 6, 3, 4], 6: [2, 5, 3, 4] };
+  function dieMesh(v: number) {
+    const [a, b, c, d] = SIDES[v] ?? SIDES[1];
+    const m = new Mesh(dieGeo, [pip(a), pip(b), pip(v), pip(7 - v), pip(c), pip(d)]);
+    m.castShadow = m.receiveShadow = true;
+    return m;
+  }
+
+  /** Würfel in der Mitte: gehaltene liegen vorn mit Lichtschein, neue Würfe kullern vom Platz dessen herein, der dran ist */
+  function diceRow(model: TableModel, seats: string[]) {
+    const dice = model.dice!;
+    const prev = seen;
+    seen = new Map();
+    const turn = seats.indexOf(model.turn ?? "");
+    if (turn >= 0) { const [x, z] = anchors[turn]; glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.scale.setScalar(1); glow.visible = true; }
+    const n = dice.values.length || 5, step = DIE + 0.2;
+    const from = turn >= 0 ? anchors[turn] : null;
+    dice.values.forEach((v, i) => {
+      const x = (i - (n - 1) / 2) * step, held = !!dice.held[i];
+      const h = hash(`${dice.n}:${i}`);
+      const z = held ? 0.42 : -0.12 + ((h % 7) - 3) * 0.02;
+      const m = dieMesh(v);
+      m.position.set(x, SURFACE + DIE / 2, z); m.rotation.y = ((h >> 3) % 21 - 10) / 60;
+      live.add(m); contact(x, z, DIE * 1.1, DIE * 1.1, m.rotation.y);
+      if (held) {
+        const ring = new Mesh(glow.geometry, glow.material); ring.rotation.x = -Math.PI / 2; ring.scale.setScalar(0.42); ring.position.set(x, SURFACE + 0.002, z); live.add(ring);
+      }
+      const key = `die:${i}`, sig = `${dice.n}:${v}:${held}`;
+      seen.set(key, sig);
+      const was = prev.get(key);
+      if (!fresh() || was === sig || held) return;
+      // Neu gewürfelt: kullert herein
+      const start = from ? new Vector3(from[0] * 0.7, SURFACE + 0.5, from[1] * 0.7) : new Vector3(x, SURFACE + 0.9, z - 0.6);
+      fly(m, start, i * 70, false, 700, { arc: 0.3, spin: 2.5, tumble: true });
+    });
+    if (dice.note) label(dice.note, 0, 0.55, 1.5);
+    last = { top: null, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
+    render();
+  }
+
+  const BOARD_TILT = 0.92;
+  /**
+   * Spielbrett (Vier in einer Reihe): steht schräg zurückgelehnt auf dem Tisch, zum Bildschirm gewandt – Steine stecken in den Löchern,
+   * der neue fällt von oben in seine Spalte; die Gewinnreihe bekommt weiße Ringe.
+   */
+  function board(grid: NonNullable<TableModel["grid"]>, n: number) {
+    const rows = grid.cells.length, cols = grid.cells[0]?.length ?? 0;
+    const cell = Math.min(0.25, 2.0 / cols, 1.5 / rows), r = cell * 0.39;
+    const W = cols * cell + cell * 0.4, H = rows * cell + cell * 0.4;
+    const shape = roundedShape(W, H, cell * 0.25);
+    for (let c = 0; c < cols; c++) for (let k = 0; k < rows; k++) {
+      const hole = new Path(); hole.absarc(-W / 2 + cell * 0.2 + (c + 0.5) * cell, -H / 2 + cell * 0.2 + (k + 0.5) * cell, r, 0, Math.PI * 2, true); shape.holes.push(hole);
+    }
+    const geo = new ExtrudeGeometry(shape, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 2, curveSegments: 18 });
+    geo.translate(0, 0, -0.035);
+    const frame = new Group();
+    // Unterkante vorn auf dem Filz, oben nach hinten gelehnt (senkrecht zur Blickrichtung)
+    frame.rotation.x = -(Math.PI / 2 - BOARD_TILT);
+    frame.position.set(0, SURFACE + (H / 2) * Math.sin(BOARD_TILT) + 0.04, 0.9 - (H / 2) * Math.cos(BOARD_TILT));
+    const blue = new MeshStandardMaterial({ color: "#2456a6", roughness: 0.4 });
+    const plate = new Mesh(geo, blue); plate.castShadow = plate.receiveShadow = true; frame.add(plate);
+    // Füße
+    for (const sx of [-1, 1]) {
+      const foot = new Mesh(new BoxGeometry(0.1, 0.06, 0.5), blue);
+      foot.position.set(sx * (W / 2 - 0.05), -H / 2 - 0.02, 0.05); foot.rotation.x = Math.PI / 2 - BOARD_TILT; frame.add(foot);
+    }
+    const coinGeo = new CylinderGeometry(r * 0.96, r * 0.96, 0.05, 32);
+    const coinMats = grid.colors.map((c) => new MeshStandardMaterial({ color: c, roughness: 0.35 }));
+    const ringGeo = new TorusGeometry(r * 1.05, 0.012, 8, 40);
+    const white = new MeshBasicMaterial({ color: "#ffffff" });
+    grid.cells.forEach((row, rr) => row.forEach((v, c) => {
+      if (v === null) return;
+      const x = -W / 2 + cell * 0.2 + (c + 0.5) * cell, y = H / 2 - cell * 0.2 - (rr + 0.5) * cell;
+      const coin = new Mesh(coinGeo, coinMats[v]); coin.rotation.x = Math.PI / 2; coin.position.set(x, y, 0); coin.castShadow = true; frame.add(coin);
+      if (grid.line?.some(([lc, lr]) => lc === c && lr === rr)) { const ring = new Mesh(ringGeo, white); ring.position.set(x, y, 0.045); frame.add(ring); }
+      // Neuer Stein: fällt von oben durch seine Spalte
+      if (fresh() && n !== last.n && grid.last && grid.last[0] === c && grid.last[1] === rr) fly(coin, new Vector3(x, H / 2 + cell, 0), 0, false, 380 + rr * 40, { arc: 0, spin: 0 });
+    }));
+    live.add(frame);
+    last = { top: null, n, turn: null, seats: last.seats, played: [], shown: 0 };
+    render();
+  }
+
   // ---------- Zeichnen ----------
   let raf = 0;
   let lastFrame = 0;
@@ -481,9 +581,10 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const t = Math.max(0, Math.min(1, (now - a.start) / a.ms));
       const e = 1 - (1 - t) ** 3;
       a.mesh.position.lerpVectors(a.from, a.to, e);
-      a.mesh.position.y += Math.sin(Math.PI * t) * (a.flip ? 0.25 : 0.35);
-      a.mesh.rotation.y = a.rot + (a.flip ? 0 : (1 - e) * 1.2);
+      a.mesh.position.y += Math.sin(Math.PI * t) * a.arc;
+      a.mesh.rotation.y = a.rot + (1 - e) * a.spin;
       if (a.flip) a.mesh.rotation.z = Math.PI * (1 - e);
+      if (a.tumble) { a.mesh.rotation.x = (1 - e) * Math.PI * 4; a.mesh.rotation.z = (1 - e) * Math.PI * 2; }
     }
     anims = anims.filter((a) => now - a.start < a.ms);
     renderer.render(scene, camera);

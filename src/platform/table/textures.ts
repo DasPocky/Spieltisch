@@ -250,3 +250,18 @@ export function drawContact(): HTMLCanvasElement {
   g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
   return c;
 }
+
+/** Würfelseite: elfenbeinfarben, dunkle Augen (die Ecken rundet der Würfel selbst) */
+export function drawPips(v: number): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#fbf6ea"; g.fillRect(0, 0, 256, 256);
+  const at: Record<number, [number, number][]> = {
+    1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
+    5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
+  };
+  g.fillStyle = "#1f1a16";
+  for (const [x, y] of at[v] ?? []) { g.beginPath(); g.arc(128 + x * 64, 128 + y * 64, v === 1 ? 30 : 24, 0, Math.PI * 2); g.fill(); }
+  return c;
+}
