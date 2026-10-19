@@ -4,7 +4,7 @@ import { Seats } from "@/platform/Seats";
 import { Check, ChevronLeft, SkipForward } from "lucide-react";
 import {
   cardLabel, colorOf, extend, findPhase, isSkip, skipTargets, isWild, leaders, needLabel, PHASES, phaseLabel, valueOf,
-  type Group, type P10Action, type P10Card, type P10Color, type P10State,
+  type Group, type P10Action, type P10Card, type P10State,
 } from "@shared/games/zehnphasen/logic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +17,9 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
+import { P10_INK } from "./colors";
 
 /** Kräftige Kartenfarben wie im Original */
-export const P10_INK: Record<P10Color, string> = { r: "#e0261d", b: "#1062c4", g: "#1e9a3c", y: "#f4b000" };
 const FONT = { fontFamily: "system-ui, sans-serif", letterSpacing: "-0.05em" } as const;
 
 /** Zahl mit dunkler Kontur (Gelb braucht sie auf Weiß) */

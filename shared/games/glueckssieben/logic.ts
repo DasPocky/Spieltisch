@@ -51,7 +51,7 @@ export interface F7State {
   dealQueue: string[];
   curId: string | null;
   pending: Pending | null;
-  /** Aktionen, die nach „Flip 3/4“ noch ausgeführt werden */
+  /** Aktionen, die nach „3/4 aufdecken“ noch ausgeführt werden */
   queued: { card: F7Card; by: string }[];
   lastRound: { round: number; points: Record<string, number>; glueckssieben: string | null } | null;
   winners: string[];
@@ -75,7 +75,7 @@ const isMod = (c: F7Card) => c.startsWith("m:");
 export const numValue = (c: F7Card) => parseInt(c.slice(2), 10);
 
 export const CARD_NAME: Record<string, string> = {
-  "a:freeze": "Einfrieren", "a:flip3": "Flip 3", "a:second": "Zweite Chance", "a:flip4": "Flip 4", "a:one": "Nur noch eine!",
+  "a:freeze": "Einfrieren", "a:flip3": "3 aufdecken", "a:second": "Zweite Chance", "a:flip4": "4 aufdecken", "a:one": "Nur noch eine!",
   "a:swap": "Tauschen", "a:steal": "Klauen", "a:discard": "Abwerfen", "n:13L": "Glücks-13", "n:7U": "Unglücks-7",
 };
 export const cardLabel = (c: F7Card) => CARD_NAME[c] ?? (isMod(c) ? c.slice(2).replace("x", "×").replace("/", "÷") : String(numValue(c)));
@@ -144,7 +144,7 @@ export function linePoints(line: Line): number {
   return sum;
 }
 
-/** Punkte aus den Karten, die jemand mit echten Karten vor sich liegen hat (Zahlen, Plus/Minus, ×2/÷2, Flip-7-Bonus) */
+/** Punkte aus den Karten, die jemand mit echten Karten vor sich liegen hat (Zahlen, Plus/Minus, ×2/÷2, Sieben-Bonus) */
 export function handPoints(cards: F7Card[]): number {
   const nums = cards.filter((c) => c.startsWith("n:"));
   return linePoints({ nums, mods: cards.filter(isMod), second: false, status: "stayed", glueckssieben: new Set(nums.map(numValue)).size >= 7 });
@@ -184,7 +184,7 @@ function startRound(s: F7State, players: Player[]) {
   for (let i = 0; i < players.length; i++) { id = nextPlayerId(players, id); if (id) order.push(id); }
   s.dealQueue = order;
   s.curId = null;
-  // Offene oder zurückgelegte Aktionen (z. B. nach Glückssieben mitten in Flip 4) kommen auf den Ablagestapel
+  // Offene oder zurückgelegte Aktionen (z. B. nach Glückssieben mitten in „4 aufdecken“) kommen auf den Ablagestapel
   if (s.pending) s.discard.push(s.pending.card);
   s.discard.push(...s.queued.map((q) => q.card));
   s.pending = null;
@@ -217,7 +217,7 @@ function endRound(s: F7State, ctx: GameContext, glueckssieben: string | null) {
 
 /**
  * Nimmt eine Karte in die Reihe von `id` auf. Gibt false zurück, wenn die Runde dadurch endet (Glückssieben).
- * `forced`: während Flip 3/4 – Aktionen werden zurückgelegt und danach ausgeführt.
+ * `forced`: während „3/4 aufdecken“ – Aktionen werden zurückgelegt und danach ausgeführt.
  */
 function receive(s: F7State, ctx: GameContext, id: string, card: F7Card, forced: boolean): boolean {
   const line = s.lines[id];
@@ -289,7 +289,7 @@ function startAction(s: F7State, ctx: GameContext, by: string, card: F7Card) {
   } else s.discard.push(card);
 }
 
-/** Erzwungenes Ziehen (Flip 3/4, Nur noch eine) */
+/** Erzwungenes Ziehen (3/4 aufdecken, Nur noch eine) */
 function forceDraw(s: F7State, ctx: GameContext, id: string, count: number): boolean {
   for (let i = 0; i < count; i++) {
     if (s.lines[id].status !== "active") break;
@@ -518,7 +518,7 @@ export const glueckssieben: GameLogic<F7State, F7Action> = {
     {
       key: "variant", label: "Variante", type: "choice", default: "classic",
       choices: [
-        { value: "classic", label: "Klassisch", hint: "Einfrieren, Flip 3, zweite Chance" },
+        { value: "classic", label: "Klassisch", hint: "Einfrieren, 3 aufdecken, zweite Chance" },
         { value: "fies", label: "Voll fies", hint: "gemeinere Hausvariante – bis 13, Klauen, Tauschen, Minus" },
       ],
     },

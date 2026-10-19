@@ -69,5 +69,20 @@ describe("Großer Tisch: Modell aus der Sicht ohne eigene Karten", () => {
     expect(h.boards?.p1.cells.every((c) => c === "?")).toBe(true);
     expect(h.piles?.[1].top).not.toBeNull();
   });
+
+  it("Zehn Phasen und Glückssieben: Stapel und Ablage in der Mitte, ausgelegte bzw. offene Karten am Platz", () => {
+    const z = viewRoom(act(roomWith(["Anna", "Ben"], "zehnphasen"), { type: "start" }), WATCH_ID);
+    const zm = tableModel(z)!;
+    expect(zm.piles?.map((p) => p.label)).toEqual(["Ziehen", "Ablage"]);
+    expect(zm.counts.p1).toBe(10);
+    expect(zm.notes?.p1).toBe("Phase 1");
+    // noch nichts ausgelegt
+    expect(zm.boards).toEqual({});
+
+    const g = viewRoom(act(roomWith(["Anna", "Ben", "Cem"], "glueckssieben"), { type: "start" }), WATCH_ID);
+    const gm = tableModel(g)!;
+    expect(gm.piles?.[0].label).toBe("Ziehen");
+    expect(Object.keys(gm.notes ?? {})).toEqual(["p1", "p2", "p3"]);
+  });
 });
 

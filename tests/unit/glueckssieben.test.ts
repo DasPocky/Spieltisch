@@ -71,7 +71,7 @@ describe("Glückssieben", () => {
     expect(g(r).round).toBe(2);
   });
 
-  it("Einfrieren und Flip 3 mit Ziel", () => {
+  it("Einfrieren und „3 aufdecken“ mit Ziel", () => {
     let r = start(3);
     r = stack(r, ["a:freeze"], { p1: { nums: ["n:4"] }, p2: { nums: ["n:6"] }, p3: { nums: ["n:2"] } });
     r = { ...r, game: { ...g(r), curId: "p1" } };
@@ -87,7 +87,7 @@ describe("Glückssieben", () => {
     expect(g(q).lines.p3.nums).toEqual(["n:2", "n:10", "n:11", "n:12"]);
   });
 
-  it("Glückssieben mitten in Flip 3: zurückgelegte Aktion geht nicht verloren", () => {
+  it("Glückssieben mitten in „3 aufdecken“: zurückgelegte Aktion geht nicht verloren", () => {
     const count = (st: F7State) => st.deck.length + st.discard.length + (st.pending ? 1 : 0) + st.queued.length
       + Object.values(st.lines).reduce((t, l) => t + l.nums.length + l.mods.length + (l.second ? 1 : 0), 0);
     let q = start(3);

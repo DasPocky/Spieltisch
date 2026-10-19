@@ -560,3 +560,46 @@ test("Stapelbau und Himmelskarten am Tisch: Stapel in der Mitte, offene Auslage 
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. offene Reihe an jedem Platz", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { zehnphasen: { table: "on" }, glueckssieben: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const phones = [await joinByLink(browser, code, pin, "Anna"), await joinByLink(browser, code, pin, "Ben"), await joinByLink(browser, code, pin, "Cem")];
+    const anna = phones[0];
+
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-zehnphasen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile")).toHaveCount(2);
+    await expect(screen.getByTestId("table-seat").first()).toContainText("Phase 1");
+    await screen.waitForTimeout(500);
+    await shot(screen, "9e-tisch-zehnphasen");
+
+    await anna.getByRole("button", { name: "Menü" }).click();
+    await anna.getByRole("button", { name: "Spiel wechseln" }).click();
+    await anna.getByRole("button", { name: "Spiel wählen" }).click();
+    await anna.getByTestId("pick-glueckssieben").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
+    // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
+    for (let i = 0; i < 6 && !(await screen.getByTestId("seat-board").count()); i++) {
+      for (const p of phones) {
+        const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
+        if (await hit.isEnabled().catch(() => false)) { await hit.click(); break; }
+      }
+      await screen.waitForTimeout(400);
+    }
+    await expect(screen.getByTestId("seat-board").first()).toBeVisible();
+    await screen.waitForTimeout(500);
+    await shot(screen, "9f-tisch-glueckssieben");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

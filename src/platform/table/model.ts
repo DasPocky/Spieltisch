@@ -21,6 +21,8 @@ import { fuenfwuerfelTable } from "../../games/fuenfwuerfel/table";
 import { vierTable } from "../../games/vier/table";
 import { stapelbauTable } from "../../games/stapelbau/table";
 import { himmelskartenTable } from "../../games/himmelskarten/table";
+import { zehnphasenTable } from "../../games/zehnphasen/table";
+import { glueckssiebenTable } from "../../games/glueckssieben/table";
 
 /** Kartenart: französisch/deutsch („cards“), Eins! oder Textkarten (Schamlos) */
 export type TableDeck = "cards" | "eins" | "schamlos";
@@ -70,7 +72,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

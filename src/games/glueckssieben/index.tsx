@@ -43,7 +43,7 @@ function Rules() {
       <h3 className="mt-5 mb-2 font-semibold">Klassisch</h3>
       <ul className="grid gap-2">
         <Row cards={["a:freeze"]} title="Einfrieren" text="Du wählst einen aktiven Spieler (auch dich). Er muss sofort aufhören und behält seine Punkte." />
-        <Row cards={["a:flip3"]} title="Flip 3" text="Ein aktiver Spieler (auch du) muss drei Karten ziehen. Aktionen, die dabei kommen, werden danach ausgeführt." />
+        <Row cards={["a:flip3"]} title="3 aufdecken" text="Ein aktiver Spieler (auch du) muss drei Karten ziehen. Aktionen, die dabei kommen, werden danach ausgeführt." />
         <Row cards={["a:second"]} title="Zweite Chance" text="Rettet dich einmal vor einer doppelten Zahl. Hast du schon eine, gibst du sie einem anderen aktiven Spieler." />
         <Row cards={["m:+4", "m:x2"]} title="Modifikatoren" text="+2 bis +10 und ×2 (verdoppelt nur die Zahlen)." />
       </ul>
@@ -53,7 +53,7 @@ function Rules() {
         <Row cards={["n:13L"]} title="Glücks-13" text="Mit ihr darfst du eine zweite 13 haben, ohne rauszufliegen." />
         <Row cards={["n:7U"]} title="Unglücks-7" text="Alles andere vor dir wird abgeworfen – nur die 7 bleibt liegen." />
         <Row cards={["a:one"]} title="Nur noch eine!" text="Ein aktiver Spieler muss genau noch eine Karte ziehen und ist danach fertig." />
-        <Row cards={["a:flip4"]} title="Flip 4" text="Ein aktiver Spieler muss vier Karten ziehen – ohne Pause." />
+        <Row cards={["a:flip4"]} title="4 aufdecken" text="Ein aktiver Spieler muss vier Karten ziehen – ohne Pause." />
         <Row cards={["a:swap"]} title="Tauschen" text="Tausche zwei offene Zahlenkarten zweier Spieler – auch eine eigene. Wer dadurch eine doppelte Zahl hat, fliegt raus." />
         <Row cards={["a:steal"]} title="Klauen" text="Nimm dir eine offene Karte eines anderen – doppelte Zahl heißt auch für dich: raus." />
         <Row cards={["a:discard"]} title="Abwerfen" text="Eine beliebige offene Karte auf dem Tisch kommt weg." />
