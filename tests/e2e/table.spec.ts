@@ -1,4 +1,6 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type Browser, type Page } from "@playwright/test";
+/** Vorschaubilder in voller Qualität (TABLE_HQ=1) zeichnen ohne Grafikchip langsam – dann länger warten */
+const expect = process.env.TABLE_HQ ? baseExpect.configure({ timeout: 30_000 }) : baseExpect;
 import { ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
@@ -117,6 +119,7 @@ test("Großer Tisch ohne 3D: einfacher flacher Tisch mit Karten, Plätzen und Ab
 });
 
 test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, ausschaltbar – ohne Fehler", async ({ browser }) => {
+  test.setTimeout(120_000);
   const screen = await newScreen(browser);
   const errors: string[] = [];
   screen.on("pageerror", (e) => errors.push(e.message));
@@ -140,7 +143,8 @@ test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, aussc
   // Neu geladen (ohne Klick): Ton wieder an → „Ton einschalten“, bis jemand klickt
   await screen.getByTestId("sound-toggle").click();
   await screen.reload();
-  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible();
+  // Nach dem Neuladen baut sich der Tisch erst auf (ohne Grafikchip dauert das)
+  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible({ timeout: 20_000 });
   if (await screen.getByTestId("sound-unlock").isVisible()) {
     await screen.getByTestId("sound-unlock").click();
     await expect(screen.getByTestId("sound-panel")).toBeVisible();

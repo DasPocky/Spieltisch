@@ -6,7 +6,7 @@
 import {
   ACESFilmicToneMapping, BoxGeometry, CanvasTexture, CircleGeometry, CylinderGeometry, DirectionalLight, ExtrudeGeometry, Group, HemisphereLight,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, Shape, SpotLight,
-  SRGBColorSpace, Vector3, Vector2, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
+  SRGBColorSpace, Vector3, Vector2, type Object3D, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { feltMaterial, furnishRoom, woodMaterial } from "./room";
@@ -111,7 +111,7 @@ function seatAnchors(n: number): [number, number][] {
 const hash = (s: string) => { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) | 0; return h; };
 
 export interface SceneOptions {
-  /** Partyspiele: die Kamera dreht sich zu dem, der dran ist (Fernseher, nicht am eigenen Platz) */
+  /** Die Kamera dreht sich zu dem, der dran ist (Fernseher – nicht, wer am eigenen Platz am Rechner sitzt) */
   follow?: boolean;
   /** Kamera bewegt sich – Schilder und Plätze neu ausrichten */
   onView?: () => void;
@@ -139,7 +139,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const leg = new Mesh(new CylinderGeometry(0.09, 0.07, 1.6, 20), wood); leg.position.set(x, -1, z); leg.castShadow = true; scene.add(leg);
   }
   // Raum: Dielen, Teppich, weiches Zimmerlicht zum Spiegeln, das Dunkle rundherum
-  const room = furnishRoom(scene, renderer, -1.8, aniso);
+  const room = furnishRoom(scene, renderer, -1.8, aniso, rich);
 
   const hemi = new HemisphereLight("#ffe9c9", "#3a2414", 0.7);
   scene.add(hemi);
@@ -185,6 +185,23 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   }
 
   const live = new Group(); scene.add(live);
+  /**
+   * Mitte (Stapel, Würfel, Schrift, Aufsteller): dreht sich mit der Kamera, damit sie immer lesbar zum Bildschirm zeigt.
+   * Hände, Auslagen und Bretter bleiben, wo sie am Tisch liegen.
+   */
+  let mid = new Group();
+  let viewYaw = 0;
+  /** wohin gerade gelegt wird (Tisch oder Mitte) */
+  let into: Group = live;
+  const put = (o: Object3D) => { into.add(o); };
+  /** Punkt am Tisch (z. B. ein Platz) in Koordinaten der Ebene, in die gerade gelegt wird */
+  const here = (v: Vector3) => (into === mid ? mid.worldToLocal(v.clone()) : v);
+  /** Bereich der Mitte (in ihren Koordinaten) als Bereich am Tisch – für die Kamera */
+  const turned = (r: Rect): Rect => {
+    const c = Math.cos(viewYaw), sn = Math.sin(viewYaw);
+    const pts = [[r.x0, r.z0], [r.x1, r.z0], [r.x0, r.z1], [r.x1, r.z1]].map(([x, z]) => [x * c + z * sn, -x * sn + z * c]);
+    return { x0: Math.min(...pts.map((q) => q[0])), z0: Math.min(...pts.map((q) => q[1])), x1: Math.max(...pts.map((q) => q[0])), z1: Math.max(...pts.map((q) => q[1])) };
+  };
   const glow = new Mesh(new CircleGeometry(0.3, 48), new MeshBasicMaterial({ color: "#ffd2a0", transparent: true, opacity: 0.22, blending: AdditiveBlending, depthWrite: false }));
   glow.rotation.x = -Math.PI / 2; glow.visible = false; scene.add(glow);
 
@@ -213,17 +230,21 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   /** Partie zeigen und die Kamera auf ihren Bereich ausrichten */
   function update(model: TableModel | null, seats: string[]) {
     homeRect = FULL;
+    anchors = seatAnchors(seats.length);
+    // Am Fernseher wie eine Übertragung: von der gegenüberliegenden Seite auf den, der dran ist (nicht über seine Schulter).
+    // Bretter bleiben fest – dort verwirrt Hin- und Herdrehen bei jedem Zug.
+    const i = opts.follow && model?.turn && !model.grid && !model.tabletop ? seats.indexOf(model.turn) : -1;
+    viewYaw = i >= 0 ? Math.atan2(-anchors[i][0], -anchors[i][1]) : 0;
     draw(model, seats);
-    // Partyspiele am Fernseher: von der gegenüberliegenden Seite auf den, der dran ist
-    const i = opts.follow && model?.sign && model.turn ? seats.indexOf(model.turn) : -1;
-    const yaw = i >= 0 ? Math.atan2(-anchors[i][0], -anchors[i][1]) : 0;
-    rig.setHome(homeRect, i >= 0 ? yaw : 0);
+    into = live;
+    rig.setHome(homeRect, viewYaw);
   }
 
   function draw(model: TableModel | null, seats: string[]) {
     live.clear();
     anims = [];
-    anchors = seatAnchors(seats.length);
+    into = live;
+    mid = new Group(); mid.rotation.y = viewYaw; live.add(mid); mid.updateMatrixWorld(true);
     glow.visible = false;
     if (!model) { lamp.intensity = 42; hemi.intensity = 0.7; fill.intensity = 0.25; scene.environmentIntensity = 0.32; last = { top: null, n: -1, turn: null, seats, played: [], shown: 0 }; render(); return; }
     deck = model.deck;
@@ -237,10 +258,11 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     if (model.tabletop) { tabletop(model, seats); return; }
 
     // Stapel: ein Block, so hoch wie die Karten
+    into = mid;
     if (model.pile > 0) {
       const h = Math.max(0.006, Math.min(model.pile, 40) * 0.0035);
       const pile = new Mesh(new BoxGeometry(CARD_W, h, CARD_W * CARD_RATIO[deck]), [edge, edge, new MeshStandardMaterial({ map: backTex(deck), roughness: 0.5 }), edge, edge, edge]);
-      pile.position.set(PILE_X, SURFACE + h / 2, 0); pile.rotation.y = 0.04; pile.castShadow = pile.receiveShadow = true; live.add(pile);
+      pile.position.set(PILE_X, SURFACE + h / 2, 0); pile.rotation.y = 0.04; pile.castShadow = pile.receiveShadow = true; put(pile);
     }
 
     // Ablage: die obersten Karten leicht verdreht übereinander
@@ -249,10 +271,11 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     model.discard.forEach((card, i) => {
       const m = cardMesh(deck, card);
       const { pos, rot } = discardPos(i, card);
-      m.position.copy(pos); m.rotation.y = rot; live.add(m);
+      m.position.copy(pos); m.rotation.y = rot; put(m);
       if (i === model.discard.length - 1) newest = m;
     });
 
+    into = live;
     // Verdeckte Hände vor den Plätzen, zur Mitte gedreht – mit Auslage kleiner, damit davor Platz bleibt
     seats.forEach((id, i) => {
       hand(i, model.counts[id] ?? 0, deck, model.boards ? HAND_SMALL : 1);
@@ -264,8 +287,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const from = last.turn ? seats.indexOf(last.turn) : -1;
     if (newest && topCard && topCard !== last.top && model.n > last.n && last.n >= 0 && from >= 0) {
       const [fx, fz] = anchors[from];
-      fly(newest, new Vector3(fx * 0.92, SURFACE + 0.2, fz * 0.92));
-      rig.focus(CENTER, 2600);
+      fly(newest, mid.worldToLocal(new Vector3(fx * 0.92, SURFACE + 0.2, fz * 0.92)));
+      rig.focus(turned(CENTER), 2600);
     }
     if (model.sign) sign(model.sign);
     if (model.piles || model.boards) laid(model, seats, model.sign ? 0.3 : -0.06);
@@ -284,7 +307,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       m.scale.setScalar(scale);
       m.position.set(x * 0.92 + Math.cos(ang) * off * 0.04 * scale, SURFACE + 0.003 + k * 0.004, z * 0.92 - Math.sin(ang) * off * 0.04 * scale);
       m.rotation.y = ang + off * 0.05;
-      live.add(m);
+      put(m);
     }
   }
 
@@ -300,7 +323,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const black = cardMesh(d, w.prompt);
     black.scale.set(1.9 * K, 1.9, 1.9 * K);
     black.position.set(-1.3, SURFACE + 0.006, 0.15); black.rotation.y = 0.05;
-    live.add(black);
+    put(black);
     seats.forEach((id, i) => hand(i, model.counts[id] ?? 0, d, 0.8));
     const czar = seats.indexOf(model.turn ?? "");
     if (czar >= 0) { const [x, z] = anchors[czar]; glow.position.set(x * 0.92, SURFACE + 0.002, z * 0.92); glow.visible = true; }
@@ -314,7 +337,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
         const h = hash(id);
         m.position.set(0.0 + (i % 4) * 0.5, SURFACE + 0.004 + i * 0.007, -0.15 + Math.floor(i / 4) * 0.5 + ((h % 5) - 2) * 0.02);
         m.rotation.y = ((h % 21) - 10) / 60;
-        live.add(m);
+        put(m);
         if (!last.played.includes(id) && last.n === model.n) {
           const from = seats.indexOf(id);
           if (from >= 0) { const [fx, fz] = anchors[from]; fly(m, new Vector3(fx * 0.92, SURFACE + 0.3, fz * 0.92)); }
@@ -342,7 +365,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
         m.scale.set(scale * K, scale, scale * K);
         m.position.set(x0 + k * W * 0.55 * scale / 1.5, SURFACE + 0.006 + k * 0.007 + (win ? 0.05 : 0), z0 + k * 0.06);
         m.rotation.y = ((hash(c) % 11) - 5) / 100;
-        live.add(m);
+        put(m);
         // Erstes Aufdecken dieser Runde: eine Karte nach der anderen umdrehen
         if (last.shown === 0) fly(m, m.position.clone().setY(SURFACE + 0.006), (i * cards.length + k) * 260, true, 420);
       });
@@ -362,7 +385,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     if (!contactMat) return;
     const m = new Mesh(contactGeo, contactMat);
     m.rotation.set(-Math.PI / 2, 0, rot); m.scale.set(w * 1.25, d * 1.18, 1); m.position.set(x, SURFACE + 0.0015, z);
-    live.add(m);
+    put(m);
   };
   const plainTex = (key: string, make: () => HTMLCanvasElement) => {
     let t = textures.get(key);
@@ -395,7 +418,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const front = cell ? cardMat("num", cell.text, cell.tone ?? null) : numBack();
     const m = new Mesh(numGeo, [edge, edge, front, numBack(), edge, edge]);
     m.scale.set(w, 1, w); m.position.set(x, y, z); m.rotation.y = rot; m.castShadow = m.receiveShadow = true;
-    live.add(m);
+    put(m);
     if (y < SURFACE + 0.02) contact(x, z, w, w * CARD_RATIO.zahlen, rot);
     return m;
   }
@@ -406,7 +429,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const w = Math.min(maxW, (h * 1.5 * img.width) / img.height);
     const m = new Mesh(new PlaneGeometry(w, (w * img.height) / img.width), new MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
     m.rotation.x = -Math.PI / 2; m.position.set(x, SURFACE + 0.002, z);
-    live.add(m);
+    put(m);
   }
 
   /** zuletzt gezeigte Karten (Stapel, Auslage, Wörter) – Neues fliegt herein oder dreht sich um */
@@ -428,11 +451,12 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       if (!fresh() || was === sig) return;
       // Verdeckt → offen: umdrehen; sonst kommt die Karte vom Platz dessen, der eben dran war
       if (was === "?") fly(m, m.position.clone(), 0, true, 420);
-      else if (from) fly(m, new Vector3(from[0] * 0.92, SURFACE + 0.3, from[1] * 0.92));
+      else if (from) fly(m, here(new Vector3(from[0] * 0.92, SURFACE + 0.3, from[1] * 0.92)));
       else fly(m, m.position.clone().setY(SURFACE + 0.4));
     };
 
     let pileMoved = false;
+    into = mid;
     // Mitte: Stapel nebeneinander, Aufschrift darunter
     const piles = model.piles ?? [];
     // Viele Stapel (z. B. ein Stich mit sechs Karten): schmaler, damit alle auf den Filz passen
@@ -454,16 +478,24 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
         const hgt = Math.max(0.006, Math.min(p.count, 60) * 0.0014);
         const block = new Mesh(new BoxGeometry(pw, hgt, pd), [edge, edge, numBack(), edge, edge, edge]);
         block.position.set(x, SURFACE + hgt / 2, pz); block.rotation.y = 0.03; block.castShadow = block.receiveShadow = true;
-        live.add(block); contact(x, pz, pw, pd, 0.03);
+        put(block); contact(x, pz, pw, pd, 0.03);
       } else {
         const slot = new Mesh(new PlaneGeometry(pw, pd), new MeshBasicMaterial({ map: plainTex("slot", drawSlot), transparent: true, depthWrite: false }));
-        slot.rotation.x = -Math.PI / 2; slot.position.set(x, SURFACE + 0.002, pz); live.add(slot);
+        slot.rotation.x = -Math.PI / 2; slot.position.set(x, SURFACE + 0.002, pz); put(slot);
       }
       label(p.count !== undefined ? `${p.label} · ${p.count}` : p.label, x, pz + pd / 2 + 0.045, step * 0.95);
     });
     // Eine Karte kam auf einen Stapel: kurz heranfahren
-    if (pileMoved) rig.focus({ x0: x0 - pw, z0: pz - pd, x1: -x0 + pw, z1: pz + pd }, 2600);
-    const hx = piles.length ? -x0 + pw / 2 : 0, hz = piles.length ? pd / 2 + 0.06 : 0;
+    if (pileMoved) rig.focus(turned({ x0: x0 - pw, z0: pz - pd, x1: -x0 + pw, z1: pz + pd }), 2600);
+    into = live;
+    // Was die Mitte (mit der Kamera gedreht) am Tisch belegt – Stapel samt Aufschrift, ggf. der Aufsteller dahinter
+    const pr = piles.length ? turned({ x0: x0 - pw / 2, z0: pz - pd / 2 - 0.1, x1: -x0 + pw / 2, z1: pz + pd / 2 + 0.06 }) : { x0: 0, z0: 0, x1: 0, z1: 0 };
+    if (model.sign) {
+      const sr = turned({ x0: -0.6, z0: -0.8, x1: 0.6, z1: -0.05 });
+      pr.x0 = Math.min(pr.x0, sr.x0); pr.z0 = Math.min(pr.z0, sr.z0); pr.x1 = Math.max(pr.x1, sr.x1); pr.z1 = Math.max(pr.z1, sr.z1);
+    }
+    // Karten am Platz zeigen zum Bildschirm – von hinten gesehen einmal umgedreht
+    const flipB = Math.cos(viewYaw) < -0.7 ? Math.PI : 0;
 
     // Auslage je Platz: zwischen Hand und Mitte, Ausrichtung immer zum Bildschirm (lesbar für alle)
     const bw = 0.18, bd = bw * CARD_RATIO.zahlen, gap = 0.02;
@@ -476,10 +508,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const hd = CARD_W * CARD_RATIO[deck] * HAND_SMALL;
       // äußere Grenze: Filzrand bzw. Innenkante der Hand
       const outer = onX ? (handCards ? Math.abs(ax) * 0.92 - hd / 2 : FELT_W / 2) - MARGIN : (handCards ? Math.abs(az) * 0.92 - hd / 2 : FELT_D / 2) - MARGIN;
-      // hinten mehr Abstand: von schräg vorn ragen die Stapel in der Mitte dorthin
-      // Stapel liegen ggf. versetzt (pz); hinten mehr Abstand – von schräg vorn ragen sie dorthin, ein Aufsteller erst recht
-      let inner = (onX ? hx : az > 0 ? hz + pz : hz - pz + 0.1) + MARGIN;
-      if (model.sign && !onX && az < 0) inner = Math.max(inner, 0.85);
+      const inner = (onX ? (ax > 0 ? pr.x1 : -pr.x0) : az > 0 ? pr.z1 : -pr.z0) + MARGIN;
       const rows = Math.ceil(board.cells.length / board.cols);
       const W = board.cols * bw + (board.cols - 1) * gap, D = rows * bd + (rows - 1) * gap;
       // Breite entlang der Kante: bis zum nächsten Platz auf derselben Seite
@@ -494,7 +523,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
         if (cell === null) return;
         const c = k % board.cols, r = Math.floor(k / board.cols);
         const h = hash(`${id}:${k}`);
-        const m = numCard(cell === "?" ? null : cell, bw * sc, cx - w / 2 + (c * (bw + gap) + bw / 2) * sc, SURFACE + 0.004, cz - d / 2 + (r * (bd + gap) + bd / 2) * sc, ((h % 9) - 4) / 110);
+        const m = numCard(cell === "?" ? null : cell, bw * sc, cx - w / 2 + (c * (bw + gap) + bw / 2) * sc, SURFACE + 0.004, cz - d / 2 + (r * (bd + gap) + bd / 2) * sc, flipB + ((h % 9) - 4) / 110);
         flyIn(m, `cell:${id}:${k}`, cell === "?" ? "?" : `${cell.text}:${cell.tone}`);
       });
     });
@@ -517,12 +546,12 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const rot = ((h % 9) - 4) / 220;
       const card = new Mesh(geo, [edge, edge, cardMat("word", cell.text, null), edge, edge, edge]);
       card.scale.set(cw * sc, 1, cw * sc); card.position.set(x, SURFACE + 0.004, z); card.rotation.y = rot; card.castShadow = card.receiveShadow = true;
-      live.add(card); contact(x, z, cw * sc, cd * sc, rot);
+      put(card); contact(x, z, cw * sc, cd * sc, rot);
       if (!cell.tone) return;
       const tile = new Mesh(geo, [edge, edge, cardMat("word", cell.text, cell.tone), edge, edge, edge]);
       const trot = rot + ((h >> 4) % 9 - 4) / 70;
       tile.scale.set(cw * sc * 0.94, 1.6, cw * sc * 0.94); tile.position.set(x + ((h >> 8) % 5 - 2) * 0.008, SURFACE + 0.016, z); tile.rotation.y = trot;
-      tile.castShadow = true; live.add(tile);
+      tile.castShadow = true; put(tile);
       const key = `word:${k}`;
       seen.set(key, cell.tone);
       // Gerade aufgedeckt: das Plättchen fällt von oben auf die Karte
@@ -563,6 +592,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     // Stapel legt `laid` (merkt sich ihre Karten selbst), die Würfel kommen dazu
     if (model.piles) laid({ ...model, boards: undefined }, seats, -0.22);
     else seen = new Map();
+    into = mid;
+    let rolled = false;
     const back = model.piles ? 0.08 : -0.03, front = model.piles ? 0.2 : 0.1;
     const n = dice.values.length || 5, step = DIE + (n > 5 ? 0.03 : 0.045);
     const from = turn >= 0 ? anchors[turn] : null;
@@ -574,20 +605,24 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const z = held ? front : back + ((h % 7) - 3) * 0.006;
       const m = dieMesh(v);
       m.position.set(x, SURFACE + DIE / 2, z); m.rotation.y = ((h >> 3) % 21 - 10) / 60;
-      live.add(m); contact(x, z, DIE * 1.1, DIE * 1.1, m.rotation.y);
+      put(m); contact(x, z, DIE * 1.1, DIE * 1.1, m.rotation.y);
       if (held) {
-        const ring = new Mesh(glow.geometry, glow.material); ring.rotation.x = -Math.PI / 2; ring.scale.setScalar(0.22); ring.position.set(x, SURFACE + 0.002, z); live.add(ring);
+        const ring = new Mesh(glow.geometry, glow.material); ring.rotation.x = -Math.PI / 2; ring.scale.setScalar(0.22); ring.position.set(x, SURFACE + 0.002, z); put(ring);
       }
       const key = `die:${i}`, sig = `${dice.n}:${v}:${held}`;
       seen.set(key, sig);
       if (!fresh() || prev.get(key) === sig || held || dice.still) return;
       // Neu gewürfelt: kullert herein
-      const start = from ? new Vector3(from[0] * 0.5, SURFACE + 0.25, from[1] * 0.5) : new Vector3(x, SURFACE + 0.3, z - 0.3);
+      const start = from ? here(new Vector3(from[0] * 0.5, SURFACE + 0.25, from[1] * 0.5)) : new Vector3(x, SURFACE + 0.3, z - 0.3);
       fly(m, start, i * 70, false, 700, { arc: 0.1, spin: 2.5, tumble: true });
+      rolled = true;
     });
     if (dice.note) label(dice.note, 0, model.piles ? 0.32 : 0.2, 1.1, 0.045);
     // Grundansicht: die Würfel (und Karten) füllen das Bild
-    homeRect = { x0: -(n * step) / 2 - 0.2, z0: model.piles ? -0.5 : -0.2, x1: (n * step) / 2 + 0.2, z1: model.piles ? 0.4 : 0.28 };
+    const area: Rect = { x0: -(n * step) / 2 - 0.2, z0: model.piles ? -0.5 : -0.2, x1: (n * step) / 2 + 0.2, z1: model.piles ? 0.4 : 0.28 };
+    homeRect = turned(area);
+    // Gerade gewürfelt: nah an die Würfel, bis man die Augen gut sieht
+    if (rolled) rig.focus(turned({ x0: -(n * step) / 2 - 0.08, z0: back - 0.12, x1: (n * step) / 2 + 0.08, z1: front + 0.1 }), 3200);
     last = { top: null, n: model.n, turn: model.turn, seats, played: [], shown: 0 };
     render();
   }
@@ -600,7 +635,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     body.position.set(0, SURFACE + 0.135, -0.02); body.castShadow = body.receiveShadow = true;
     const band = new Mesh(new CylinderGeometry(0.137, 0.137, 0.02, 40), rim);
     band.position.set(0, -0.12, 0); body.add(band);
-    live.add(body); contact(0, -0.02, 0.32, 0.32, 0);
+    put(body); contact(0, -0.02, 0.32, 0.32, 0);
     if (shake) fly(body, body.position.clone().setY(SURFACE + 0.3), 0, false, 420, { arc: 0.06, spin: 0.8 });
   }
 
@@ -644,7 +679,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       // Neuer Stein: fällt von oben durch seine Spalte
       if (fresh() && n !== last.n && grid.last && grid.last[0] === c && grid.last[1] === rr) fly(coin, new Vector3(x, H / 2 + cell, 0), 0, false, 380 + rr * 40, { arc: 0, spin: 0 });
     }));
-    live.add(frame);
+    put(frame);
     last = { top: null, n, turn: null, seats: last.seats, played: [], shown: 0 };
     render();
   }
@@ -674,7 +709,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const top = new MeshStandardMaterial({ map: plainTex(`board:${t.board}`, () => drawBoard(t.board)), roughness: 0.6 });
     const slab = new Mesh(new BoxGeometry(BOARD, 0.06, BOARD), [wood, wood, top, wood, wood, wood]);
     const by = SURFACE + 0.03;
-    slab.position.set(0, by, 0); slab.castShadow = slab.receiveShadow = true; live.add(slab);
+    slab.position.set(0, by, 0); slab.castShadow = slab.receiveShadow = true; put(slab);
     contact(0, 0, BOARD, BOARD, 0);
     const y0 = by + 0.03, half = BOARD / 2;
     const n = t.board === "dame:10" ? 10 : 8;
@@ -700,7 +735,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
         }
       }
       m.castShadow = m.receiveShadow = true;
-      live.add(m);
+      put(m);
       contact(x, z, r * 2.2, r * 2.2, 0);
       // Wandern: Figur mit Kennung von ihrer alten Stelle, sonst der letzte Zug
       if (p.id) {
@@ -717,7 +752,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const d = dieMesh(v);
       d.position.set(half + 0.16, SURFACE + DIE / 2, 0.15); d.rotation.y = 0.3;
       if (t.die.value === null) d.visible = false;
-      live.add(d);
+      put(d);
       if (t.die.value !== null) contact(half + 0.16, 0.15, DIE * 1.1, DIE * 1.1, 0.3);
       const key = `die:${t.die.n}`;
       if (t.die.value !== null && fresh() && !prev.has(key)) fly(d, new Vector3(half + 0.1, SURFACE + 0.25, -0.2), 0, false, 650, { arc: 0.1, spin: 2.5, tumble: true });
@@ -733,6 +768,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   let signKey = "";
   /** Karton steht schräg in der Mitte, zum Bildschirm gewandt – Phase groß, Hinweis darunter */
   function sign(sg: NonNullable<TableModel["sign"]>) {
+    into = mid;
     const key = `${sg.title}|${sg.sub ?? ""}`;
     if (key !== signKey || !signTex) {
       signTex?.dispose();
@@ -749,8 +785,9 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     // Stütze hinten
     const prop = new Mesh(new BoxGeometry(0.3, H * 0.9, 0.012), edge);
     prop.position.set(0, -H * 0.05, -0.1); prop.rotation.x = 0.5; group.add(prop);
-    live.add(group);
+    put(group);
     contact(0, -0.2, W, 0.3, 0);
+    into = live;
   }
 
   // ---------- Zeichnen ----------

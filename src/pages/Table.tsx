@@ -351,7 +351,7 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
   model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
   /** meldet, ob gerade in 3D gezeichnet wird */
   onReal?: (real: boolean) => void;
-  /** Partyspiele: Kamera dreht sich zu dem, der dran ist */
+  /** Fernseher: Kamera dreht sich zu dem, der dran ist */
   follow?: boolean;
 }) {
   const scene = useRef<TableScene | null>(null);

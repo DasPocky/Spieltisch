@@ -142,12 +142,16 @@ function rugTexture(aniso: number): Texture {
  * Raum um den Tisch: Umgebungslicht, Boden, Teppich, Nebel ins Dunkle. `floorY`: Höhe des Bodens.
  * Gibt die neuen Meshes zurück (zum Aufräumen bleibt alles an der Szene).
  */
-export function furnishRoom(scene: Scene, renderer: WebGLRenderer, floorY: number, aniso: number) {
-  const pmrem = new PMREMGenerator(renderer);
-  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  pmrem.dispose();
-  scene.environment = env;
-  scene.environmentIntensity = 0.32;
+export function furnishRoom(scene: Scene, renderer: WebGLRenderer, floorY: number, aniso: number, reflections = true) {
+  // Spiegelungen kosten beim Start Rechenzeit – auf „einfach“ ohne
+  let env: Texture | null = null;
+  if (reflections) {
+    const pmrem = new PMREMGenerator(renderer);
+    env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    scene.environment = env;
+    scene.environmentIntensity = 0.32;
+  }
   scene.fog = new Fog("#120b07", 9, 20);
 
   const floor = new Mesh(new PlaneGeometry(40, 40), new MeshStandardMaterial({ map: floorTexture(aniso), roughness: 0.62 }));
@@ -155,5 +159,5 @@ export function furnishRoom(scene: Scene, renderer: WebGLRenderer, floorY: numbe
   const rug = new Mesh(new PlaneGeometry(7.6, 5.7), new MeshStandardMaterial({ map: rugTexture(aniso), roughness: 1 }));
   rug.rotation.x = -Math.PI / 2; rug.position.y = floorY + 0.01; rug.receiveShadow = true;
   scene.add(floor, rug);
-  return { env };
+  return { env: { dispose: () => env?.dispose() } };
 }
