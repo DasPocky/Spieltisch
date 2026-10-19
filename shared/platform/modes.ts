@@ -21,9 +21,9 @@ export const MODE_STATES: { value: ModeState; label: string }[] = [
  * Neue Spielweisen starten als „beta“ und werden nach der Abnahme auf „on“ gesetzt.
  */
 export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = {
-  // Referenzspiel: abgenommen (docs/abnahme/maumau.md)
+  // Abgenommen: docs/abnahme/maumau.md, docs/abnahme/uno.md
   maumau: { table: "on", desk: "on", stage: "beta" },
-  uno: { table: "on", desk: "beta", stage: "beta" },
+  uno: { table: "on", desk: "on", stage: "beta" },
   schamlos: { table: "on", stage: "beta" },
   // Bausteine Würfel und Spielfeld – Beta bis zur Abnahme
   kniffel: { table: "beta", stage: "beta" },
