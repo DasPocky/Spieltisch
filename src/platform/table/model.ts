@@ -7,6 +7,8 @@
  *  - Karten: Stapel, Ablage, verdeckte Hände (Anzahl je Platz), Lückensatz
  *  - Würfel: Augen, gehaltene, Hinweis („noch 2 Würfe“)
  *  - Spielfeld: Raster mit Steinen zweier Farben, letzter Zug, Gewinnreihe
+ *  - Stapel: offene Zahlenkarten in der Mitte (Aufbau, Ablage)
+ *  - Auslage: offene Karten je Platz im Raster (Skyjo, Skip-Bo-Ablagen)
  *  - Plätze: wer dran ist, Punkte, eine kurze Notiz je Platz
  * Das Modell baut jedes Spiel selbst (src/games/<id>/table.ts) aus seiner öffentlichen Sicht.
  */
@@ -17,6 +19,8 @@ import { unoTable } from "../../games/uno/table";
 import { schamlosTable } from "../../games/schamlos/table";
 import { kniffelTable } from "../../games/kniffel/table";
 import { vierTable } from "../../games/vier/table";
+import { skipboTable } from "../../games/skipbo/table";
+import { skyjoTable } from "../../games/skyjo/table";
 
 /** Kartenart: französisch/deutsch („cards“), Uno oder Textkarten (Schamlos) */
 export type TableDeck = "cards" | "uno" | "schamlos";
@@ -45,6 +49,10 @@ export interface TableModel {
   dice?: { values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string };
   /** Spielfeld: Zeilen von oben nach unten, je Feld Farbe 0/1 oder leer */
   grid?: { cells: (0 | 1 | null)[][]; colors: [string, string]; last?: [number, number] | null; line?: [number, number][] };
+  /** offene Stapel in der Mitte (Zahlenkarten): Aufbaustapel, Ablage, Nachziehstapel – `top` als Text, `tone` färbt */
+  piles?: { label: string; top: string | null; tone?: string; count?: number }[];
+  /** offene Auslage je Platz (unter dem Platz): Karten im Raster, `null` = leer/abgeräumt, "?" = verdeckt */
+  boards?: Record<string, { cells: ({ text: string; tone?: string } | "?" | null)[]; cols: number }>;
   /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */
   words?: {
     prompt: string;
@@ -62,7 +70,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, uno: unoTable, schamlos: schamlosTable, kniffel: kniffelTable, vier: vierTable,
+  maumau: maumauTable, uno: unoTable, schamlos: schamlosTable, kniffel: kniffelTable, vier: vierTable, skipbo: skipboTable, skyjo: skyjoTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {
