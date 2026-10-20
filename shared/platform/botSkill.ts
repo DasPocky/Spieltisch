@@ -17,6 +17,7 @@ import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/f
 import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf as maexValue, type MaexState } from "../games/maexchen/logic";
 import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
 import type { FischenState } from "../games/fischen/logic";
+import { fits as sbFits, JOKER, needs as sbNeeds, type SbCard, type SbState } from "../games/stapelbau/logic";
 import { canStop, latestCard, selectionValue, type AllesState, type DiceState } from "../games/alles/logic";
 import { botMove, candidates, type Move } from "./bots";
 import { applyRoomAction, roomGame, viewRoom, type RoomAction, type RoomState } from "./room";
@@ -361,11 +362,59 @@ const scoreHellseher: Scorer = (view, a, _after, me) => {
   return wins ? -100 - p : p;
 };
 
-const SCORERS: Record<string, Scorer> = { fischen: scoreFischen, hellseher: scoreHellseher, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+// ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
+
+const scoreStapelbau: Scorer = (view, a, after, me) => {
+  const s = view.game as SbState;
+  const n = after.game as SbState;
+  if (a.type === "nextRound" || a.type === "finishRound") return 0;
+  // oberste Vorratskarten der anderen (offen) – was sie als Nächstes bräuchten, legen wir ihnen nicht hin
+  const theirs = Object.entries(n.stocks).filter(([id]) => id !== me).map(([, st]) => st[st.length - 1]).filter((c): c is SbCard => c !== undefined);
+  const helps = n.builds.some((b) => theirs.some((c) => c !== JOKER && c === sbNeeds(b)));
+  if (a.type === "play") {
+    if (a.from === "stock") return 100;
+    let v = 40 + (a.from === "discard" ? 5 : 0);
+    const myTop = n.stocks[me]?.[n.stocks[me].length - 1];
+    if (myTop !== undefined && n.builds.some((b) => sbFits(b, myTop))) v += 30;
+    const card = a.from === "hand" ? (a.card as SbCard) : s.discards[me]?.[a.i as number]?.at(-1);
+    if (card === JOKER) v -= 15;
+    if (helps) v -= 20;
+    return v;
+  }
+  if (a.type === "discard") {
+    const card = a.card as SbCard;
+    if (card < 0) return -15;
+    const pile = s.discards[me]?.[a.to as number] ?? [];
+    const top = pile[pile.length - 1];
+    // absteigend stapeln (später rückwärts wieder aufbauen), Joker nie ablegen
+    let v = -10 + card / 12;
+    if (card === JOKER) v -= 20;
+    else if (top === card + 1) v += 5;
+    else if (top === card) v += 4;
+    else if (top === undefined) v += 2;
+    return v;
+  }
+  return -50;
+};
+
+const SCORERS: Record<string, Scorer> = { stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
   // echte Würfel: Augen tippt der Mensch ein – dann wie die Testspieler
+  stapelbau: (view, me) => {
+    const s = view.game as SbState;
+    if (s.mode !== "app") return null;
+    const hand = [...new Set(s.hands[me] ?? [])];
+    const out: A[] = [{ type: "nextRound" }, { type: "finishRound" }];
+    for (let to = 0; to < 4; to++) {
+      out.push({ type: "play", from: "stock", to });
+      for (const card of hand) out.push({ type: "play", from: "hand", card, to }, { type: "discard", card, to });
+      out.push({ type: "discard", card: -1, to });
+      for (let i = 0; i < 4; i++) out.push({ type: "play", from: "discard", i, to });
+    }
+    return out;
+  },
   fischen: (view, me) => {
     const s = view.game as FischenState;
     if (s.table) return null;

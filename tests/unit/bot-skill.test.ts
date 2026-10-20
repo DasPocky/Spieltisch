@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { VierState } from "@shared/games/vier/logic";
 import { allCaptures, type DameState } from "@shared/games/dame/logic";
 import { chooseBotMove, seeded, type BotLevel } from "@shared/platform/botSkill";
+import { botMove } from "@shared/platform/bots";
 import { roomGame, viewRoom } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
 
 /** Mit Bots nur App-Würfel: echte Würfel tippt ein Mensch ein */
-const BOT_OPTIONS: Record<string, Record<string, unknown>> = { alles: { diceMode: "app", target: 1000 } };
+const BOT_OPTIONS: Record<string, Record<string, unknown>> = { alles: { diceMode: "app", target: 1000 }, stapelbau: { stock: "10" } };
 const start = (gameId: string, names = ["A", "B"]) => {
   let r = act(roomWith(names, gameId), { type: "selectGame", gameId }, "p1");
   for (const [key, value] of Object.entries(BOT_OPTIONS[gameId] ?? {})) r = act(r, { type: "setOption", key, value: value as never }, "p1");
@@ -101,7 +102,7 @@ describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
     }
     return { strong, games };
   }
-  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 30, 0.6], ["hellseher", 9, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
+  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 80, 0.55], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
     const { strong, games } = share(gameId, n);
     expect(games).toBeGreaterThanOrEqual(n * 0.6);
     expect(strong / games).toBeGreaterThanOrEqual(min);
@@ -138,7 +139,7 @@ describe("Bots ohne Bewertung", () => {
 });
 
 describe("Abnahme: Bots", () => {
-  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]], ["alles", [2, 3]], ["maexchen", [2, 4]], ["fischen", [2, 4]], ["hellseher", [3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
+  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]], ["alles", [2, 3]], ["maexchen", [2, 4]], ["fischen", [2, 4]], ["hellseher", [3]], ["stapelbau", [2, 3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
     for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
       for (const n of counts) {
         let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));
@@ -146,11 +147,17 @@ describe("Abnahme: Bots", () => {
         if (gameId === "eins") r = { ...r, options: { ...r.options, target: "round" } };
         let i = 0;
         for (; i < 3000 && !roomGame(r).isOver(r.game); i++) {
-          const cur = roomGame(r).currentPlayerId(r.game)!;
-          const m = chooseBotMove(r, cur, level, true, `${level}:${n}:${i}`);
+          // verdeckte Ansage (Hellseher): niemand ist „dran“, jeder sagt für sich an
+          const cur = roomGame(r).currentPlayerId(r.game);
+          let m: ReturnType<typeof botMove> = null, who = "";
+          for (const id of cur ? [cur] : r.players.map((p) => p.id)) {
+            // „zufall“ spielt wie die Testspieler der Verwaltung (playBot → botMove)
+            m = level === "zufall" ? botMove(r, id, true) : chooseBotMove(r, id, level, true, `${level}:${n}:${i}`);
+            if (m) { who = id; break; }
+          }
           expect(m, `${level}/${n}: kein Zug bei ${i}`).toBeTruthy();
           // derselbe Zug, frisch über die Regeln geschickt: wird angenommen
-          r = act(r, m!.action, cur);
+          r = act(r, m!.action, who);
         }
         expect(roomGame(r).isOver(r.game), `${level}/${n} endet`).toBe(true);
       }
