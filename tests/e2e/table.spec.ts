@@ -980,3 +980,43 @@ test("Stirnraten am Tisch: Fernseher zeigt wer rät, Uhr und Punkte – nie den 
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Zeichnen & Raten am Tisch: das Blatt groß und live über dem Tisch, Lücken statt Begriff – danach die Auflösung", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { zeichnen: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-zeichnen").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    const pick = (p: typeof anna) => p.getByRole("group", { name: "Begriff wählen" });
+    await expect.poll(async () => (await pick(anna).isVisible()) || (await pick(ben).isVisible())).toBe(true);
+    const drawer = (await pick(anna).isVisible()) ? anna : ben;
+    await expect(screen.getByTestId("table-sign")).toContainText("ist dran");
+    const word = (await pick(drawer).getByRole("button").first().textContent())!;
+    await pick(drawer).getByRole("button").first().click();
+    const box = (await drawer.getByTestId("paper").boundingBox())!;
+    await drawer.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5);
+    await drawer.mouse.down();
+    for (let i = 1; i <= 6; i++) await drawer.mouse.move(box.x + box.width * (0.2 + i * 0.1), box.y + box.height * (i % 2 ? 0.3 : 0.7), { steps: 3 });
+    await drawer.mouse.up();
+    const tv = screen.getByTestId("table-drawing");
+    await expect.poll(async () => Number(await tv.getByTestId("paper").getAttribute("data-strokes"))).toBeGreaterThan(0);
+    await expect(tv).toContainText("zeichnet");
+    await expect(screen.locator("body")).not.toContainText(word);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9t-tisch-zeichnen");
+    await drawer.getByTestId("who").click();
+    await drawer.getByRole("button", { name: "Keiner" }).click();
+    await expect(tv).toContainText(word);
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-zeichnen",
+    date: "2026-10-20",
+    title: "Neu: Zeichnen & Raten",
+    items: [
+      "Einer malt am Handy, alle anderen raten – laut rufen oder ins Handy tippen (kleine Tippfehler zählen).",
+      "Drei Begriffe zur Wahl, von Kinder bis Ab 18. Online, an einem Handy und am Fernseher.",
+    ],
+  },
+  {
     id: "2026-10-fernseher",
     date: "2026-10-20",
     title: "Der Fernseher zeigt nur noch den Tisch",
