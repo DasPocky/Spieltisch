@@ -69,6 +69,10 @@ test("Zeichnen & Raten online, ins Handy tippen: falscher Tipp steht da, richtig
   await guesser.getByLabel("Dein Tipp").fill("Quatschwort");
   await guesser.getByRole("button", { name: "Tipp abschicken" }).click();
   await expect(drawer.getByTestId("solved")).toContainText("Noch hat es keiner");
+  // Nah dran: nur wer getippt hat, sieht den Hinweis
+  await guesser.getByLabel("Dein Tipp").fill(`${word}haus`);
+  await guesser.getByRole("button", { name: "Tipp abschicken" }).click();
+  await expect(guesser.getByTestId("near")).toBeVisible();
   await shot(guesser, "z5-tippen");
   await guesser.getByLabel("Dein Tipp").fill(word.toLowerCase());
   await guesser.getByRole("button", { name: "Tipp abschicken" }).click();

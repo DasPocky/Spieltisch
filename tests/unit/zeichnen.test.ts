@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodePoints, drawableCats, encodePoints, matches, type ZState } from "@shared/games/zeichnen/logic";
+import { closeness, decodePoints, drawableCats, encodePoints, matches, type ZState } from "@shared/games/zeichnen/logic";
 import { wordText } from "@shared/games/stirnraten/cards";
 import { viewRoom, type RoomState } from "@shared/platform/room";
 import { WATCH_ID } from "@shared/platform/protocol";
@@ -27,6 +27,17 @@ describe("Zeichnen & Raten", () => {
     expect(matches("Schmeterling", "Schmetterling")).toBe(true);
     expect(matches("Hand", "Hund")).toBe(false);
     expect(matches("Katze", "Hund")).toBe(false);
+  });
+
+  it("Nah dran: knapp daneben, ein Teil stimmt – ganz anderes nicht", () => {
+    expect(closeness("Schmaterlinc", "Schmetterling")).toBe("fast");
+    expect(closeness("Katzr", "Katze")).toBe(null); // ein Tippfehler zählt schon als richtig
+    expect(closeness("Kazte", "Katze")).toBe("fast");
+    expect(closeness("Schrank", "Kühlschrank")).toBe("teil");
+    expect(closeness("Hundehütte", "Hund")).toBe("teil");
+    expect(closeness("Turm", "Eiffel Turm")).toBe("teil");
+    expect(closeness("Auto", "Katze")).toBe(null);
+    expect(closeness("Hund", "Hund")).toBe(null);
   });
 
   it("Nur malbare Begriffe: keine Lieder, Geräusche, Pantomime oder Länder", () => {

@@ -170,8 +170,8 @@ function GuesserView({ room, game: s, me, act }: P) {
         <>
           <ul className="grid shrink-0 gap-0.5 text-sm" aria-label="Tipps" data-testid="guesses">
             {recent.map((g, i) => (
-              <li key={`${i}-${g.by}-${g.text}`} className={cn("truncate", g.ok && "font-semibold text-ok")}>
-                {nameIn(players, g.by, me)}: {g.ok ? (g.text || "hat es! ✓") : g.text}
+              <li key={`${i}-${g.by}-${g.text}`} className={cn("truncate", g.ok && "font-semibold text-ok", g.near && "font-semibold text-[#b7791f]")}>
+                {nameIn(players, g.by, me)}: {g.ok ? (g.text || "hat es! ✓") : g.text}{g.near && <span data-testid="near"> – {g.near === "fast" ? "ganz nah dran!" : "ein Teil stimmt!"}</span>}
               </li>
             ))}
           </ul>

@@ -18,7 +18,9 @@ export type Phase = "pick" | "draw" | "reveal" | "over";
 
 /** Ein Strich: Farbe (Index), Breite (1–4), Punkte als Text (je Punkt 4 Zeichen: x und y in 0–4095) */
 export interface Stroke { c: number; w: number; p: string }
-export interface Guess { by: string; text: string; ok: boolean }
+/** `near`: knapp daneben („fast“) oder ein Teil stimmt („teil“) – sieht nur, wer getippt hat (und wer den Begriff kennt) */
+export interface Guess { by: string; text: string; ok: boolean; near?: Near }
+export type Near = "fast" | "teil";
 export interface Turn { drawer: string; word: string; solved: string[] }
 
 export interface ZState {
@@ -109,6 +111,23 @@ export function matches(guess: string, word: string): boolean {
   if (g === w) return true;
   const allowed = w.length >= 9 ? 2 : w.length >= 5 ? 1 : 0;
   return allowed > 0 && Math.abs(g.length - w.length) <= allowed && distance(g, w) <= allowed;
+}
+
+/**
+ * Nah dran? „fast“: nur wenige Buchstaben falsch (ab 5 Buchstaben zwei, bei langen Wörtern gut ein Viertel);
+ * „teil“: ein Wort eines mehrteiligen Begriffs, ein Teil eines zusammengesetzten Worts (ab 4 Buchstaben)
+ * oder der Begriff steckt im Tipp („Hundehütte“ bei „Hund“).
+ */
+export function closeness(guess: string, word: string): Near | null {
+  const g = normalizeGuess(guess), w = normalizeGuess(word);
+  if (!g || !w || matches(guess, word)) return null;
+  const near = Math.max(w.length >= 5 ? 2 : 1, Math.round(w.length * 0.28));
+  if (w.length >= 3 && Math.abs(g.length - w.length) <= near && distance(g, w) <= near) return "fast";
+  const parts = word.split(/[\s-]+/).map(normalizeGuess).filter((x) => x.length >= 3);
+  if (parts.length > 1 && parts.some((x) => x === g || matches(guess, x))) return "teil";
+  if (g.length >= 4 && w.includes(g)) return "teil";
+  if (w.length >= 3 && g.includes(w)) return "teil";
+  return null;
 }
 
 /**
@@ -221,7 +240,8 @@ function apply(prev: ZState, a: ZAction, ctx: GameContext): ZState {
       const text = typeof a.text === "string" ? a.text.trim().slice(0, 40) : "";
       if (!text) throw new GameError("Was ist es?");
       const ok = !!s.word && matches(text, wordText(s.word));
-      s.guesses.push({ by: me, text, ok });
+      const near = !ok && s.word ? closeness(text, wordText(s.word)) : null;
+      s.guesses.push(near ? { by: me, text, ok, near } : { by: me, text, ok });
       if (s.guesses.length > MAX_GUESSES) s.guesses.splice(0, s.guesses.length - MAX_GUESSES);
       if (ok) {
         // Wer früh rät, bekommt mehr
@@ -342,8 +362,13 @@ export const zeichnen: GameLogic<ZState, ZAction> = {
       ...s,
       choices: viewer === null || viewer === s.drawer ? s.choices : [],
       word: knows ? s.word : null,
-      // Richtige Tipps der anderen verraten den Begriff nicht
-      guesses: s.guesses.map((g) => (g.ok && !knows && g.by !== viewer ? { ...g, text: "" } : g)),
+      // Richtige Tipps der anderen verraten den Begriff nicht, „nah dran“ sieht nur, wer getippt hat
+      guesses: s.guesses.map((g) => {
+        if (knows || g.by === viewer) return g;
+        if (g.ok) return { ...g, text: "" };
+        if (g.near) { const { near: _, ...rest } = g; return rest; }
+        return g;
+      }),
       used: [],
     };
   },
