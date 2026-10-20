@@ -1,0 +1,31 @@
+name: Quiz-Belege
+
+# Prüft, ob jede Quizfrage eine Quelle hat und die Antwort dort steht (Wikipedia & Co. brauchen Netz – darum hier).
+# Ergebnis in der Zusammenfassung des Laufs und als Datei quiz-belege.md.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "shared/games/quiz/fragen/**"
+      - "scripts/quiz-belege.mjs"
+  push:
+    branches: [main]
+    paths:
+      - "shared/games/quiz/fragen/**"
+
+jobs:
+  belege:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/quiz-belege.mjs --streng
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-belege
+          path: quiz-belege.md

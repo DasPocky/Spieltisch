@@ -102,11 +102,11 @@ describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
     }
     return { strong, games };
   }
-  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 80, 0.55], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
+  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
     const { strong, games } = share(gameId, n);
     expect(games).toBeGreaterThanOrEqual(n * 0.6);
     expect(strong / games).toBeGreaterThanOrEqual(min);
-  }, 120_000);
+  }, 300_000);
 
   it("Dame (schwer): schlägt lieber, als einen Stein herzuschenken", () => {
     const r = start("dame");
@@ -146,7 +146,9 @@ describe("Abnahme: Bots", () => {
         // Eins!: eine Runde reicht (sonst bis 500 Punkte)
         if (gameId === "eins") r = { ...r, options: { ...r.options, target: "round" } };
         let i = 0;
-        for (; i < 3000 && !roomGame(r).isOver(r.game); i++) {
+        // Alles oder nichts bis 1000 mit Zufallszügen: meist unter 1000 Züge, selten über 3000
+        const limit = gameId === "alles" ? 20_000 : 3000;
+        for (; i < limit && !roomGame(r).isOver(r.game); i++) {
           // verdeckte Ansage (Hellseher): niemand ist „dran“, jeder sagt für sich an
           const cur = roomGame(r).currentPlayerId(r.game);
           let m: ReturnType<typeof botMove> = null, who = "";

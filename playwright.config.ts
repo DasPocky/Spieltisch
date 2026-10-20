@@ -29,7 +29,9 @@ export default defineConfig({
   // In der CI läuft er auf einem eigenen Rechner (mit eigenem Server), die Spiele-Tests verteilt auf vier (siehe .github/workflows/ci.yml).
   projects: [
     { name: "setup", testMatch: /\.setup\.ts$/ },
-    { name: "spiele", testIgnore: [/admin\.spec\.ts/, /geraete\.spec\.ts/, /\.setup\.ts$/], dependencies: ["setup"] },
+    // fullyParallel: die CI verteilt einzelne Tests statt ganzer Dateien auf die Rechner; table.spec läuft dort getrennt (PW_NO_TABLE);
+    // mit workers: 1 laufen sie auf jedem Rechner trotzdem nacheinander
+    { name: "spiele", testIgnore: [/admin\.spec\.ts/, /geraete\.spec\.ts/, /\.setup\.ts$/, ...(process.env.PW_NO_TABLE ? [/table\.spec\.ts/] : [])], dependencies: ["setup"], fullyParallel: true },
     // Desktop und Fernseher: kleine eigene Reihe (Viewport je Test)
     { name: "geraete", testMatch: /geraete\.spec\.ts/, use: { isMobile: false, hasTouch: false, deviceScaleFactor: 1 } },
     { name: "admin", testMatch: /admin\.spec\.ts/, dependencies: ["spiele"] },

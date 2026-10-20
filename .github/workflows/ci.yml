@@ -39,10 +39,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "Spiele 1/4", args: "--project=spiele --no-deps --shard=1/4", setup: true }
-          - { name: "Spiele 2/4", args: "--project=spiele --no-deps --shard=2/4", setup: true }
-          - { name: "Spiele 3/4", args: "--project=spiele --no-deps --shard=3/4", setup: true }
-          - { name: "Spiele 4/4", args: "--project=spiele --no-deps --shard=4/4", setup: true }
+          # Die schweren Fernseher-Tests (table.spec) laufen auf eigenen Rechnern, damit kein Teil viel länger braucht als die anderen
+          - { name: "Spiele 1/4", args: "--project=spiele --no-deps --shard=1/4", setup: true, notable: "1" }
+          - { name: "Spiele 2/4", args: "--project=spiele --no-deps --shard=2/4", setup: true, notable: "1" }
+          - { name: "Spiele 3/4", args: "--project=spiele --no-deps --shard=3/4", setup: true, notable: "1" }
+          - { name: "Spiele 4/4", args: "--project=spiele --no-deps --shard=4/4", setup: true, notable: "1" }
+          - { name: "Tisch 1/2", args: "table.spec --project=spiele --no-deps --shard=1/2", setup: true }
+          - { name: "Tisch 2/2", args: "table.spec --project=spiele --no-deps --shard=2/2", setup: true }
           - { name: "Verwaltung", args: "--project=admin --no-deps", setup: false }
           - { name: "Desktop & Fernseher", args: "--project=geraete --no-deps", setup: false }
     steps:
@@ -60,6 +63,7 @@ jobs:
           CI: true
       - run: npx playwright test ${{ matrix.args }}
         env:
+          PW_NO_TABLE: ${{ matrix.notable }}
           CI: true
       - uses: actions/upload-artifact@v4
         if: always()
