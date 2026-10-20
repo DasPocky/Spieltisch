@@ -50,8 +50,6 @@ export const KINDER: FragenKategorie = {
     ["Welche Farbe hat der Himmel an einem sonnigen Tag?", "Blau", "Grün", "Braun", "Rot"], // Quelle: https://de.wikipedia.org/wiki/Rayleigh-Streuung
     ["Welche Farbe hat Schnee?", "Weiß", "Grün", "Rot", "Gelb"], // Quelle: https://de.wikipedia.org/wiki/Schnee
     ["Welche Farbe entsteht aus Blau und Gelb?", "Grün", "Lila", "Orange", "Braun"], // Quelle: https://de.wikipedia.org/wiki/Subtraktive_Farbmischung
-    ["Welche Farbe entsteht aus Rot und Gelb?", "Orange", "Grün", "Lila", "Blau"], // Quelle: https://de.wikipedia.org/wiki/Subtraktive_Farbmischung
-    ["Welche Farbe entsteht aus Rot und Blau?", "Lila", "Grün", "Orange", "Gelb"], // Quelle: https://de.wikipedia.org/wiki/Subtraktive_Farbmischung
     ["Welche Farbe entsteht aus Schwarz und Weiß?", "Grau", "Braun", "Rosa", "Gelb"], // Quelle: https://de.wikipedia.org/wiki/Grau
     ["Welche Farbe entsteht aus Rot und Weiß?", "Rosa", "Lila", "Orange", "Grau"], // Quelle: https://de.wikipedia.org/wiki/Rosa
     ["Wie sieht ein Marienkäfer meistens aus?", "Rot mit schwarzen Punkten", "Blau mit gelben Punkten", "Grün mit weißen Streifen", "Lila mit roten Streifen"], // Quelle: https://de.wikipedia.org/wiki/Siebenpunkt-Marienkäfer
@@ -64,7 +62,6 @@ export const KINDER: FragenKategorie = {
     ["Welche Zahl ist die größte?", "12", "9", "7", "10"], // Quelle: https://de.wikipedia.org/wiki/Natürliche_Zahl
     ["Was ist die Hälfte von 10?", "5", "2", "4", "6"], // Quelle: https://de.wikipedia.org/wiki/Division_(Mathematik)
     ["Wie viel ist 3 + 3 + 3?", "9", "6", "8", "12"], // Quelle: https://de.wikipedia.org/wiki/Addition
-    ["Welche Zahl ist gerade?", "8", "3", "5", "7"], // Quelle: https://de.wikipedia.org/wiki/Gerade_und_ungerade_Zahlen
     ["Welche Form hat keine Ecken?", "Kreis", "Dreieck", "Quadrat", "Rechteck"], // Quelle: https://de.wikipedia.org/wiki/Kreis
     ["Welche Jahreszeit kommt nach dem Winter?", "Frühling", "Sommer", "Herbst", "Winter"], // Quelle: https://de.wikipedia.org/wiki/Jahreszeit
     ["Welche Jahreszeit kommt nach dem Sommer?", "Herbst", "Frühling", "Winter", "Sommer"], // Quelle: https://de.wikipedia.org/wiki/Jahreszeit
@@ -88,7 +85,6 @@ export const KINDER: FragenKategorie = {
     ["Wer beißt in einen giftigen Apfel?", "Schneewittchen", "Rapunzel", "Dornröschen", "Rotkäppchen"], // Quelle: https://de.wikipedia.org/wiki/Schneewittchen
     ["Wer lässt ihr langes Haar aus dem Turm herunter?", "Rapunzel", "Schneewittchen", "Aschenputtel", "Gretel"], // Quelle: https://de.wikipedia.org/wiki/Rapunzel
     ["In welchem Märchen ist das Hexenhaus aus Brot und Kuchen?", "Hänsel und Gretel", "Rotkäppchen", "Frau Holle", "Rapunzel"], // Quelle: https://de.wikipedia.org/wiki/Hänsel_und_Gretel
-    ["Welche Tiere sind die Bremer Stadtmusikanten?", "Esel, Hund, Katze, Hahn", "Pferd, Hund, Katze, Huhn", "Esel, Schaf, Katze, Hahn", "Esel, Hund, Maus, Gans"], // Quelle: https://de.wikipedia.org/wiki/Die_Bremer_Stadtmusikanten
     ["Wer wohnt bei Schneewittchen hinter den Bergen?", "Die sieben Zwerge", "Die drei Bären", "Die sieben Geißlein", "Die drei Riesen"], // Quelle: https://de.wikipedia.org/wiki/Schneewittchen
     ["Was spinnt die Müllerstochter mit Rumpelstilzchens Hilfe aus Stroh?", "Gold", "Silber", "Seide", "Wolle"], // Quelle: https://de.wikipedia.org/wiki/Rumpelstilzchen
     ["In welchem Märchen schüttelt jemand die Betten, damit es schneit?", "Frau Holle", "Dornröschen", "Rapunzel", "Schneewittchen"], // Quelle: https://de.wikipedia.org/wiki/Frau_Holle
@@ -97,7 +93,6 @@ export const KINDER: FragenKategorie = {
     ["Welches Fahrzeug fährt auf Schienen?", "Zug", "Bus", "Lastwagen", "Fahrrad"], // Quelle: https://de.wikipedia.org/wiki/Eisenbahn
     ["Welches Fahrzeug fliegt durch die Luft?", "Flugzeug", "Schiff", "Zug", "Bus"], // Quelle: https://de.wikipedia.org/wiki/Flugzeug
     ["Welches Fahrzeug fährt auf dem Wasser?", "Schiff", "Auto", "Zug", "Traktor"], // Quelle: https://de.wikipedia.org/wiki/Schiff
-    ["Welches Auto hat eine lange Leiter und löscht Feuer?", "Feuerwehrauto", "Krankenwagen", "Polizeiauto", "Müllauto"], // Quelle: https://de.wikipedia.org/wiki/Drehleiter
     ["Welches Fahrzeug bringt Kranke schnell ins Krankenhaus?", "Krankenwagen", "Feuerwehrauto", "Müllauto", "Traktor"], // Quelle: https://de.wikipedia.org/wiki/Krankenwagen
     ["Welches Fahrzeug zieht auf dem Bauernhof den Pflug?", "Traktor", "Zug", "Boot", "Rakete"], // Quelle: https://de.wikipedia.org/wiki/Traktor
     ["Mit welchem Fahrzeug fliegen Menschen ins Weltall?", "Rakete", "Hubschrauber", "Heißluftballon", "Segelflugzeug"], // Quelle: https://de.wikipedia.org/wiki/Rakete
@@ -119,7 +114,6 @@ export const KINDER: FragenKategorie = {
     ["Wie viele Monate hat ein Jahr?", 12, "Monate"], // Quelle: https://de.wikipedia.org/wiki/Monat
     ["Wie viele Jahreszeiten gibt es?", 4, "Jahreszeiten"], // Quelle: https://de.wikipedia.org/wiki/Jahreszeit
     ["Wie viele Finger hast du an einer Hand?", 5, "Finger"], // Quelle: https://de.wikipedia.org/wiki/Finger
-    ["Wie viele Zehen hast du an beiden Füßen zusammen?", 10, "Zehen"], // Quelle: https://de.wikipedia.org/wiki/Zeh
     ["Wie viele Beine hat ein Hund?", 4, "Beine"], // Quelle: https://de.wikipedia.org/wiki/Haushund
     ["Wie viele Beine hat ein Vogel?", 2, "Beine"], // Quelle: https://de.wikipedia.org/wiki/Vögel
     ["Wie viele Zwerge wohnen bei Schneewittchen?", 7, "Zwerge"], // Quelle: https://de.wikipedia.org/wiki/Schneewittchen
@@ -133,7 +127,6 @@ export const KINDER: FragenKategorie = {
     ["Wie viele Tage hat ein Jahr, das kein Schaltjahr ist?", 365, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Gemeinjahr
     ["Wie viele Punkte hat ein Spielwürfel auf allen Seiten zusammen?", 21, "Punkte"], // Quelle: https://de.wikipedia.org/wiki/Spielwürfel
     ["Wie viele Punkte hat die höchste Seite eines Spielwürfels?", 6, "Punkte"], // Quelle: https://de.wikipedia.org/wiki/Spielwürfel
-    ["Wie viele Arme hat ein Krake?", 8, "Arme"], // Quelle: https://de.wikipedia.org/wiki/Kraken
     ["Wie viele Milchzähne hat ein Kind?", 20, "Zähne"], // Quelle: https://de.wikipedia.org/wiki/Milchgebiss
     ["Wie viele Buchstaben hat das Alphabet ohne Ä, Ö, Ü und ß?", 26, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/Deutsches_Alphabet
     ["Wie viele Tage hat der Februar, wenn kein Schaltjahr ist?", 28, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Februar
@@ -159,10 +152,8 @@ export const KINDER: FragenKategorie = {
     ["Der Tag von früh bis spät:", ["Morgen", "Mittag", "Abend", "Nacht"]], // Quelle: https://de.wikipedia.org/wiki/Tageszeit
     ["Von wenigen zu vielen Rädern:", ["Einrad", "Fahrrad", "Dreirad", "Auto"]], // Quelle: https://de.wikipedia.org/wiki/Einrad https://de.wikipedia.org/wiki/Dreirad
     ["Die Monate, beginnend mit Januar:", ["Januar", "Februar", "März", "April"]], // Quelle: https://de.wikipedia.org/wiki/Monat
-    ["Vom jüngsten zum ältesten Menschen:", ["Baby", "Kind", "Jugendlicher", "Erwachsener"]], // Quelle: https://de.wikipedia.org/wiki/Lebensalter
     ["Von der kürzesten zur längsten Zeit:", ["Minute", "Stunde", "Tag", "Woche"]], // Quelle: https://de.wikipedia.org/wiki/Zeiteinheit
     ["Planeten, von der Sonne aus gesehen:", ["Merkur", "Venus", "Erde", "Mars"]], // Quelle: https://de.wikipedia.org/wiki/Sonnensystem
     ["Von wenigen zu vielen Beinen:", ["Schlange", "Huhn", "Katze", "Spinne"]], // Quelle: https://de.wikipedia.org/wiki/Schlangen https://de.wikipedia.org/wiki/Webspinnen
-    ["Vom Laich zum Frosch:", ["Froschlaich", "Kaulquappe", "Jungfrosch", "Frosch"]], // Quelle: https://de.wikipedia.org/wiki/Froschlurche
   ],
 };

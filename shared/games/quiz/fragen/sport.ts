@@ -18,7 +18,6 @@ export const SPORT: FragenKategorie = {
     ["Wie lange dauert ein Fußballspiel regulär?", "90 Minuten", "80 Minuten", "100 Minuten", "120 Minuten"], // Quelle: https://de.wikipedia.org/wiki/Fu%C3%9Fballregeln
     ["Wie lange dauert eine Halbzeit beim Handball der Erwachsenen?", "30 Minuten", "20 Minuten", "25 Minuten", "45 Minuten"], // Quelle: https://de.wikipedia.org/wiki/Handballregeln
     ["Wie lange dauert ein Drittel im Eishockey (reine Spielzeit)?", "20 Minuten", "15 Minuten", "25 Minuten", "30 Minuten"], // Quelle: https://de.wikipedia.org/wiki/Eishockey
-    ["Wie lange dauert ein Viertel im internationalen Basketball?", "10 Minuten", "12 Minuten", "15 Minuten", "8 Minuten"], // Quelle: https://de.wikipedia.org/wiki/Basketball
     ["Wie viele Punkte zählt ein verwandelter Freiwurf im Basketball?", "1", "2", "3", "0"], // Quelle: https://de.wikipedia.org/wiki/Freiwurf_(Basketball)
     ["Wie viele Punkte braucht man im Volleyball für einen normalen Satz?", "25", "21", "15", "30"], // Quelle: https://de.wikipedia.org/wiki/Volleyball https://de.wikipedia.org/wiki/Sitzvolleyball
     ["Bis wie viele Punkte geht ein Satz im Badminton?", "21", "15", "25", "11"], // Quelle: https://de.wikipedia.org/wiki/Badminton
@@ -49,7 +48,6 @@ export const SPORT: FragenKategorie = {
     ["Wer gilt als Begründer der Olympischen Spiele der Neuzeit?", "Pierre de Coubertin", "Jules Rimet", "James Naismith", "Friedrich Ludwig Jahn"], // Quelle: https://de.wikipedia.org/wiki/Olympische_Spiele
     ["Wie viele Ringe hat das olympische Symbol?", "5", "4", "6", "7"], // Quelle: https://de.wikipedia.org/wiki/Olympische_Ringe
     ["Alle wie viele Jahre finden Olympische Sommerspiele statt?", "4", "2", "3", "5"], // Quelle: https://de.wikipedia.org/wiki/Olympische_Spiele
-    ["Welche Farbe kommt bei den olympischen Ringen nicht vor?", "Orange", "Blau", "Schwarz", "Grün"], // Quelle: https://de.wikipedia.org/wiki/Olympische_Ringe
     ["Wo wird das olympische Feuer für die Sommerspiele entzündet?", "In Olympia", "In Athen", "In Rom", "In Sparta"], // Quelle: https://de.wikipedia.org/wiki/Olympischer_Fackellauf
     ["Aus welchen Sportarten besteht ein Triathlon?", "Schwimmen, Rad, Laufen", "Laufen, Rudern, Rad", "Schwimmen, Laufen, Reiten", "Rad, Laufen, Schießen"], // Quelle: https://de.wikipedia.org/wiki/Triathlon
     ["Welche Sportarten verbindet der Biathlon?", "Skilanglauf und Schießen", "Skispringen und Langlauf", "Abfahrt und Slalom", "Eisschnelllauf und Schießen"], // Quelle: https://de.wikipedia.org/wiki/Ski_Nordisch
@@ -76,20 +74,16 @@ export const SPORT: FragenKategorie = {
     ["An wie vielen Geräten turnen Männer im olympischen Mehrkampf?", "6", "4", "5", "8"], // Quelle: https://de.wikipedia.org/wiki/Ger%C3%A4tturnen
     ["An wie vielen Geräten turnen Frauen im olympischen Mehrkampf?", "4", "6", "5", "3"], // Quelle: https://de.wikipedia.org/wiki/Ger%C3%A4tturnen
     ["Welches Turngerät gibt es nur bei den Frauen?", "Schwebebalken", "Reck", "Ringe", "Seitpferd"], // Quelle: https://de.wikipedia.org/wiki/Schwebebalken
-    ["Welches Turngerät gibt es nur bei den Männern?", "Ringe", "Schwebebalken", "Stufenbarren", "Sprung"], // Quelle: https://de.wikipedia.org/wiki/Ringe_(Turnger%C3%A4t)
     ["Bei welcher Fechtwaffe ist der ganze Körper Trefferfläche?", "Degen", "Florett", "Säbel", "Rapier"], // Quelle: https://de.wikipedia.org/wiki/Degenfechten
     ["Wie viele Spielsteine hat jeder Spieler beim Backgammon?", "15", "12", "16", "10"], // Quelle: https://de.wikipedia.org/wiki/Kotra_(Backgammon)
     ["Wie viele Karten hat ein Skatblatt?", "32", "52", "36", "24"], // Quelle: https://de.wikipedia.org/wiki/Skat
     ["Wie viele Steine hat ein klassisches Domino bis Doppel-Sechs?", "28", "36", "21", "32"], // Quelle: https://de.wikipedia.org/wiki/Domino
-    ["Wie groß ist das übliche Spielbrett beim Go?", "19 × 19 Linien", "16 × 16 Linien", "21 × 21 Linien", "12 × 12 Linien"], // Quelle: https://de.wikipedia.org/wiki/Go_(Spiel)
     ["Welche Farbe beginnt beim Schach?", "Weiß", "Schwarz", "Wer ausgelost wird", "Der jüngere Spieler"], // Quelle: https://de.wikipedia.org/wiki/Schach
     ["Wie heißt der Schachzug, bei dem König und Turm zugleich ziehen?", "Rochade", "Gambit", "Patt", "En passant"], // Quelle: https://de.wikipedia.org/wiki/Rochade
     ["Wie heißt es im Schach, wenn man nicht im Schach steht, aber nicht ziehen kann?", "Patt", "Matt", "Gambit", "Rochade"], // Quelle: https://de.wikipedia.org/wiki/Schach
     ["Wie viele Spieler hat ein Team beim Beachvolleyball?", "2", "3", "4", "6"], // Quelle: https://de.wikipedia.org/wiki/Beachvolleyball
     ["Wie viele Spieler hat ein Team beim Curling?", "4", "3", "5", "6"], // Quelle: https://de.wikipedia.org/wiki/Curling
     ["Wie heißt der Zielkreis beim Curling?", "Haus", "Nest", "Tor", "Hof"], // Quelle: https://de.wikipedia.org/wiki/Curling
-    ["Wie nennt man beim Tennis einen Aufschlag, den der Gegner nicht berührt?", "Ass", "Volley", "Lob", "Stopp"], // Quelle: https://de.wikipedia.org/wiki/Ass_(Tennis)
-    ["Wie heißt beim Tennis ein hoher Ball über den Gegner hinweg?", "Lob", "Volley", "Slice", "Ass"], // Quelle: https://de.wikipedia.org/wiki/Lob_(Tennis)
     ["Aus wie vielen Federn besteht ein Federball für Wettkämpfe?", "16", "12", "20", "10"], // Quelle: https://de.wikipedia.org/wiki/Federball
     ["Wie viele Reiter hat ein Poloteam auf dem Feld?", "4", "5", "6", "3"], // Quelle: https://de.wikipedia.org/wiki/Polo
     ["Bei welcher Sportart gibt es Wicket, Bowler und Batsman?", "Cricket", "Baseball", "Rugby", "Hockey"], // Quelle: https://de.wikipedia.org/wiki/Batter_(Cricket)
@@ -98,7 +92,6 @@ export const SPORT: FragenKategorie = {
     ["Wie viele Innings hat ein reguläres Baseballspiel?", "9", "7", "8", "10"], // Quelle: https://de.wikipedia.org/wiki/Inning_(Baseball)
     ["Wie viele Punkte zählt ein Touchdown im American Football?", "6", "7", "3", "5"], // Quelle: https://de.wikipedia.org/wiki/American_Football
     ["Welche ist die schnellste Grundgangart des Pferdes?", "Galopp", "Trab", "Schritt", "Passage"], // Quelle: https://de.wikipedia.org/wiki/Galopp
-    ["Welche Disziplin gehört nicht zur Leichtathletik?", "Bodenturnen", "Kugelstoßen", "Stabhochsprung", "Speerwurf"], // Quelle: https://de.wikipedia.org/wiki/Leichtathletik
     ["Wo fanden die ersten Olympischen Winterspiele statt?", "Chamonix", "St. Moritz", "Oslo", "Innsbruck"], // Quelle: https://de.wikipedia.org/wiki/Olympische_Winterspiele
     ["Wie viele Tore erzielt ein Spieler bei einem Hattrick?", "3", "2", "4", "5"], // Quelle: https://de.wikipedia.org/wiki/Hattrick
     ["Welcher Sport findet in einem Velodrom statt?", "Bahnradsport", "Eisschnelllauf", "Leichtathletik", "Schwimmen"], // Quelle: https://de.wikipedia.org/wiki/Radrennbahn
@@ -107,21 +100,12 @@ export const SPORT: FragenKategorie = {
     ["Wie viele rote Kugeln liegen zu Beginn beim Snooker auf dem Tisch?", "15", "10", "21", "12"], // Quelle: https://de.wikipedia.org/wiki/Snooker
 
     ["Wie lang ist ein Marathon?", 42.195, "km"], // Quelle: https://de.wikipedia.org/wiki/Marathonlauf
-    ["Wie hoch ist ein Fußballtor?", 244, "cm"], // Quelle: https://de.wikipedia.org/wiki/Tor_(Fu%C3%9Fball)
-    ["Wie breit ist ein Fußballtor?", 732, "cm"], // Quelle: https://de.wikipedia.org/wiki/Tor_(Fu%C3%9Fball)
-    ["Wie hoch hängt ein Basketballkorb?", 305, "cm"], // Quelle: https://de.wikipedia.org/wiki/Basketball
     ["Wie hoch ist das Volleyballnetz bei den Männern?", 243, "cm"], // Quelle: https://de.wikipedia.org/wiki/Volleyball
-    ["Wie lang ist ein Tennisplatz?", 2377, "cm"], // Quelle: https://de.wikipedia.org/wiki/Tennisplatz
     ["Wie lang ist eine Tischtennisplatte?", 274, "cm"], // Quelle: https://de.wikipedia.org/wiki/Tischtennis
     ["Wie hoch ist eine Tischtennisplatte?", 76, "cm"], // Quelle: https://de.wikipedia.org/wiki/Tischtennis
-    ["Welchen Durchmesser hat ein Golfloch?", 108, "mm"], // Quelle: https://de.wikipedia.org/wiki/Glossar_von_Golfbegriffen
-    ["Wie schwer ist die Kugel beim Kugelstoßen der Männer?", 7.26, "kg"], // Quelle: https://de.wikipedia.org/wiki/Kugelsto%C3%9Fen
     ["Wie schwer ist der Speer beim Speerwurf der Männer?", 800, "g"], // Quelle: https://de.wikipedia.org/wiki/Speerwurf
     ["Wie schwer ist der Diskus beim Diskuswurf der Männer?", 2, "kg"], // Quelle: https://de.wikipedia.org/wiki/Diskuswurf
     ["Wie viele Kilometer fährt man beim olympischen Triathlon mit dem Rad?", 40, "km"], // Quelle: https://de.wikipedia.org/wiki/Triathlon_bei_den_Olympischen_Spielen
-    ["Wie viele Minuten dauert eine Verlängerung im Fußball insgesamt?", 30, "Minuten"], // Quelle: https://de.wikipedia.org/wiki/Verl%C3%A4ngerung_(Fu%C3%9Fball)
-    ["Wie weit ist beim Darts die Abwurflinie von der Scheibe entfernt?", 237, "cm"], // Quelle: https://de.wikipedia.org/wiki/Darts
-    ["Wie hoch hängt die Mitte einer Dartscheibe über dem Boden?", 173, "cm"], // Quelle: https://de.wikipedia.org/wiki/Darts
     ["Wie viele Punkte kann man beim Darts mit drei Pfeilen höchstens werfen?", 180, ""], // Quelle: https://de.wikipedia.org/wiki/Darts
     ["Wie viele Punkte hat ein höchstmögliches Break beim Snooker (ohne Fouls)?", 147, ""], // Quelle: https://de.wikipedia.org/wiki/Maximum_Break
     ["Wie viele Punkte hat ein perfektes Spiel beim Bowling?", 300, ""], // Quelle: https://de.wikipedia.org/wiki/Bowlingregeln
@@ -147,7 +131,6 @@ export const SPORT: FragenKategorie = {
     ["Punkte in einem Tennisspiel in der Zählfolge:", ["15", "30", "40", "Spielgewinn"]], // Quelle: https://de.wikipedia.org/wiki/Tennis
     ["Schachfiguren nach Wert, vom geringsten zum höchsten:", ["Bauer", "Springer", "Turm", "Dame"]], // Quelle: https://de.wikipedia.org/wiki/Schach
     ["Olympische Sommerspiele, vom frühesten zum spätesten:", ["Amsterdam", "Berlin", "München", "Sydney"]], // Quelle: https://de.wikipedia.org/wiki/Olympiastadt
-    ["Spielflächen nach Länge, von kurz zu lang:", ["Tischtennisplatte", "Volleyballfeld", "Basketballfeld", "Handballfeld"]], // Quelle: https://de.wikipedia.org/wiki/Tischtennis https://de.wikipedia.org/wiki/Volleyball https://de.wikipedia.org/wiki/Basketball https://de.wikipedia.org/wiki/Handballregeln
     ["Vom leichtesten zum schwersten:", ["Tennisball", "Speer (Männer)", "Diskus (Männer)", "Kugel (Männer)"]], // Quelle: https://de.wikipedia.org/wiki/Tennisball https://de.wikipedia.org/wiki/Speerwurf https://de.wikipedia.org/wiki/Diskuswurf https://de.wikipedia.org/wiki/Kugelsto%C3%9Fen
     ["Snookerkugeln nach Wert, vom geringsten zum höchsten:", ["Rot", "Gelb", "Pink", "Schwarz"]], // Quelle: https://de.wikipedia.org/wiki/Snooker
     ["Golfergebnisse an einem Loch, vom besten zum schlechtesten:", ["Albatros", "Eagle", "Birdie", "Bogey"]], // Quelle: https://de.wikipedia.org/wiki/Glossar_von_Golfbegriffen

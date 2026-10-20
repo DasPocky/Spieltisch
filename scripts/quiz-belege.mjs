@@ -52,16 +52,17 @@ async function load(url) {
   const wiki = url.match(/^https?:\/\/(\w+)\.wikipedia\.org\/wiki\/(.+)$/);
   // Wikipedia: ganze Seite als HTML (mit Tabellen und Infokasten, Weiterleitungen folgt die Schnittstelle selbst)
   const src = wiki ? `https://${wiki[1]}.wikipedia.org/api/rest_v1/page/html/${encodeURIComponent(decodeURIComponent(wiki[2].split("#")[0]))}?redirect=true` : url;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     try {
       const r = await fetch(src, { headers: { "User-Agent": UA }, redirect: "follow" });
       if (r.status === 404) return null;
-      if (!r.ok) { await new Promise((ok) => setTimeout(ok, 1500 * (attempt + 1))); continue; }
+      // gedrosselt (429) oder kurz weg: warten und nochmal
+      if (!r.ok) { await new Promise((ok) => setTimeout(ok, Math.max(Number(r.headers.get("retry-after")) * 1000 || 0, 2000 * (attempt + 1)))); continue; }
       const html = await r.text();
       return norm(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")
         .replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))));
     } catch {
-      await new Promise((ok) => setTimeout(ok, 1500 * (attempt + 1)));
+      await new Promise((ok) => setTimeout(ok, 2000 * (attempt + 1)));
     }
   }
   failed.add(url);
@@ -100,7 +101,7 @@ async function check(item) {
   const texts = (await Promise.all(urls.map(page)));
   const missing = urls.filter((_, i) => texts[i] === null);
   const text = texts.filter(Boolean).join(" \n ");
-  if (!text) return { ...item, status: "Seite fehlt", detail: missing.join(" ") };
+  if (!text) return { ...item, status: missing.some((u) => failed.has(u)) ? "Abruf fehlgeschlagen" : "Seite fehlt", detail: missing.join(" ") };
   let lacking = [];
   if (typeof q[1] === "number") { if (!hasNumber(text, q[1])) lacking = [String(q[1])]; }
   else if (Array.isArray(q[1])) lacking = q[1].filter((x) => !hasTerm(text, x));
@@ -119,7 +120,7 @@ async function pool(items, n, fn) {
 }
 
 const questions = readQuestions();
-const results = await pool(questions, 4, check);
+const results = await pool(questions, 2, check);
 if (failed.size) console.log(`Abruf fehlgeschlagen (Netz): ${[...failed].join(" ")}`);
 const open = results.filter((r) => r.status !== "ok");
 const by = (s) => results.filter((r) => r.status === s).length;

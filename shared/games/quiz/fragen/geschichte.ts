@@ -123,7 +123,6 @@ export const GESCHICHTE: FragenKategorie = {
     ["Wie viele Thesen veröffentlichte Martin Luther 1517?", 95, ""], // Quelle: https://de.wikipedia.org/wiki/95_Thesen
     ["In welchem Jahr wurde Karl der Große zum Kaiser gekrönt?", 800, ""], // Quelle: https://de.wikipedia.org/wiki/Karl_der_Große
     ["In welchem Jahr wurde Otto von Bismarck geboren?", 1815, ""], // Quelle: https://de.wikipedia.org/wiki/Otto_von_Bismarck
-    ["Wie viele Jahre dauerte der Hundertjährige Krieg tatsächlich?", 116, "Jahre"], // Quelle: https://de.wikipedia.org/wiki/Hundertjähriger_Krieg
     ["In welchem Jahr wurde Abraham Lincoln ermordet?", 1865, ""], // Quelle: https://de.wikipedia.org/wiki/Abraham_Lincoln
     ["In welchem Jahr wurde Albert Einstein geboren?", 1879, ""], // Quelle: https://de.wikipedia.org/wiki/Albert_Einstein
     ["In welchem Jahr flog Juri Gagarin ins Weltall?", 1961, ""], // Quelle: https://de.wikipedia.org/wiki/Wostok_1

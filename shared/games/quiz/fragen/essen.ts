@@ -26,14 +26,10 @@ export const ESSEN: FragenKategorie = {
     ["Welche Zutat färbt die Suppe Borschtsch rot?", "Rote Bete", "Tomaten", "Paprika", "Rotkohl"], // Quelle: https://de.wikipedia.org/wiki/Borschtsch
     ["Von welchem Fisch stammt echter Kaviar?", "Stör", "Lachs", "Forelle", "Hering"], // Quelle: https://de.wikipedia.org/wiki/Kaviar
     ["Woraus wird Butter hergestellt?", "Sahne", "Molke", "Quark", "Joghurt"], // Quelle: https://de.wikipedia.org/wiki/Butter
-    ["Was ist Ghee?", "Geklärte Butter", "Ziegenkäse", "Linsenbrei", "Fladenbrot"], // Quelle: https://de.wikipedia.org/wiki/Ghee
     ["Welche Frucht trägt ihre Nüsschen außen?", "Erdbeere", "Himbeere", "Kiwi", "Feige"], // Quelle: https://de.wikipedia.org/wiki/Erdbeeren
-    ["Zu welchen Früchten gehört die Kumquat?", "Zitrusfrüchte", "Kürbisse", "Nüsse", "Steinfrüchte"], // Quelle: https://de.wikipedia.org/wiki/Kumquats
     ["Woraus wird Schokolade hergestellt?", "Kakaobohnen", "Kaffeebohnen", "Erdnüssen", "Vanilleschoten"], // Quelle: https://de.wikipedia.org/wiki/Schokolade
     ["Welches Gewürz macht Currypulver gelb?", "Kurkuma", "Paprika", "Pfeffer", "Ingwer"], // Quelle: https://de.wikipedia.org/wiki/Currypulver
     ["Was ist Wasabi?", "Japanischer Meerrettich", "Eingelegter Ingwer", "Getrockneter Seetang", "Sojabohnenpaste"], // Quelle: https://de.wikipedia.org/wiki/Wasabi
-    ["Wie heißt der eingelegte Ingwer, der zu Sushi gereicht wird?", "Gari", "Nori", "Miso", "Udon"], // Quelle: https://de.wikipedia.org/wiki/Gari_(Ingwer)
-    ["Was ist Nori?", "Getrockneter Seetang", "Reisessig", "Fischsoße", "Bohnenpaste"], // Quelle: https://de.wikipedia.org/wiki/Nori
     ["Welches Gas lässt Hefeteig aufgehen?", "Kohlendioxid", "Sauerstoff", "Stickstoff", "Wasserstoff"], // Quelle: https://de.wikipedia.org/wiki/Backhefe
     ["Welches Vitamin steckt reichlich in Zitrusfrüchten?", "Vitamin C", "Vitamin D", "Vitamin B12", "Vitamin K"], // Quelle: https://de.wikipedia.org/wiki/Vitamin_C
     ["Welcher Zucker steckt in Milch?", "Laktose", "Fruktose", "Saccharose", "Maltose"], // Quelle: https://de.wikipedia.org/wiki/Lactose
@@ -47,7 +43,6 @@ export const ESSEN: FragenKategorie = {
     ["Welches Land erntet seit Langem am meisten Kaffee?", "Brasilien", "Vietnam", "Kolumbien", "Äthiopien"], // Quelle: https://de.wikipedia.org/wiki/Kaffeebohne
     ["Was ist Matcha?", "Gemahlener Grüntee", "Reiswein", "Sojasoße", "Bohnenpaste"], // Quelle: https://de.wikipedia.org/wiki/Matcha
     ["Welches Kaffeegetränk ist nach einem Mönchsorden benannt?", "Cappuccino", "Latte macchiato", "Espresso", "Mokka"], // Quelle: https://de.wikipedia.org/wiki/Kapuziner_(Kaffee)
-    ["Was wird beim Radler gemischt?", "Bier und Limonade", "Wein und Wasser", "Saft und Wasser", "Bier und Tee"], // Quelle: https://de.wikipedia.org/wiki/Radler_(Getränk)
     ["Womit wird Apfelsaft für eine Apfelschorle gemischt?", "Mineralwasser", "Milch", "Tee", "Sirup"], // Quelle: https://de.wikipedia.org/wiki/Apfelschorle
     ["Aus welchem Obst wird Cidre gemacht?", "Äpfeln", "Birnen", "Pflaumen", "Kirschen"], // Quelle: https://de.wikipedia.org/wiki/Cidre
     ["Welches Getreide nennt das bayerische Reinheitsgebot von 1516?", "Gerste", "Weizen", "Roggen", "Hafer"], // Quelle: https://de.wikipedia.org/wiki/Reinheitsgebot https://de.wikipedia.org/wiki/Geschichte_des_Bieres
@@ -59,8 +54,6 @@ export const ESSEN: FragenKategorie = {
     ["Was ist in Österreich „Topfen“?", "Quark", "Butter", "Joghurt", "Sahne"], // Quelle: https://de.wikipedia.org/wiki/Quark_(Milchprodukt)
     ["Wie heißt ein „Berliner“ in Berlin selbst?", "Pfannkuchen", "Krapfen", "Kreppel", "Schmalzkuchen"], // Quelle: https://de.wikipedia.org/wiki/Berliner_Pfannkuchen
     ["Aus welchem Fleisch ist ein echtes Wiener Schnitzel?", "Kalbfleisch", "Schweinefleisch", "Putenfleisch", "Lammfleisch"], // Quelle: https://de.wikipedia.org/wiki/Wiener_Schnitzel
-    ["Was ist Tzatziki?", "Joghurt-Gurken-Soße", "Auberginenmus", "Kichererbsenpüree", "Tomatensalsa"], // Quelle: https://de.wikipedia.org/wiki/Tzatziki
-    ["Aus welchem Land stammen Tapas?", "Spanien", "Portugal", "Mexiko", "Italien"], // Quelle: https://de.wikipedia.org/wiki/Tapas
     ["Aus welchem Land stammt Kimchi?", "Korea", "Japan", "China", "Vietnam"], // Quelle: https://de.wikipedia.org/wiki/Kimchi
     ["Aus welchem Land stammen Tacos?", "Mexiko", "Spanien", "Peru", "Argentinien"], // Quelle: https://de.wikipedia.org/wiki/Taco
     ["Aus welchem Land stammt der Gouda?", "Niederlande", "Belgien", "Dänemark", "Schweiz"], // Quelle: https://de.wikipedia.org/wiki/Gouda_(Käse)
@@ -82,9 +75,6 @@ export const ESSEN: FragenKategorie = {
     ["Woraus wird Ketchup hauptsächlich gemacht?", "Tomaten", "Paprika", "Karotten", "Kürbis"], // Quelle: https://de.wikipedia.org/wiki/Ketchup
     ["Was kommt neben Öl in eine klassische Mayonnaise?", "Eigelb", "Eiweiß", "Sahne", "Milch"], // Quelle: https://de.wikipedia.org/wiki/Mayonnaise
     ["Welche Soße wird aus Butter, Eigelb und Zitrone gemacht?", "Hollandaise", "Béchamel", "Bolognese", "Vinaigrette"], // Quelle: https://de.wikipedia.org/wiki/Sauce_hollandaise
-    ["Woraus besteht eine Béchamelsoße?", "Milch, Butter, Mehl", "Eigelb, Butter, Zitrone", "Tomaten, Hackfleisch", "Öl, Essig, Senf"], // Quelle: https://de.wikipedia.org/wiki/Sauce_béchamel
-    ["Was ist Carpaccio klassisch?", "Dünnes rohes Rindfleisch", "Gebratener Fisch", "Gekochter Schinken", "Frittierter Tintenfisch"], // Quelle: https://de.wikipedia.org/wiki/Carpaccio
-    ["Was ist Prosciutto?", "Italienischer Schinken", "Italienischer Hartkäse", "Eine Nudelsorte", "Ein Mandelgebäck"], // Quelle: https://de.wikipedia.org/wiki/Prosciutto
     ["Welches Gebäck hat die Form eines verschlungenen Knotens?", "Brezel", "Croissant", "Berliner", "Muffin"], // Quelle: https://de.wikipedia.org/wiki/Brezel
     ["Welche Stadt ist für ihren Christstollen berühmt?", "Dresden", "Nürnberg", "Lübeck", "Aachen"], // Quelle: https://de.wikipedia.org/wiki/Dresdner_Christstollen
     ["Welche Stadt ist für ihre Lebkuchen berühmt?", "Nürnberg", "Dresden", "Lübeck", "Bremen"], // Quelle: https://de.wikipedia.org/wiki/Nürnberger_Lebkuchen
@@ -93,7 +83,6 @@ export const ESSEN: FragenKategorie = {
     ["Was sind Maultaschen?", "Gefüllte Teigtaschen", "Kartoffelklöße", "Eierkuchen", "Ein Roggenbrot"], // Quelle: https://de.wikipedia.org/wiki/Maultasche
     ["Was ist ein „Strammer Max“?", "Brot mit Schinken und Spiegelei", "Schweinshaxe mit Kraut", "Kartoffelsalat mit Wurst", "Pfannkuchen mit Speck"], // Quelle: https://de.wikipedia.org/wiki/Strammer_Max
     ["Wie heißt ein in saurer Beize eingelegter Rinderbraten?", "Sauerbraten", "Roulade", "Gulasch", "Tafelspitz"], // Quelle: https://de.wikipedia.org/wiki/Sauerbraten
-    ["Was ist Kaiserschmarrn?", "Zerrupfter Pfannkuchen", "Gefüllter Hefekloß", "Kalte Obstsuppe", "Gebratene Blutwurst"], // Quelle: https://de.wikipedia.org/wiki/Kaiserschmarrn
     ["Was ist die Grundzutat von Risotto?", "Reis", "Nudeln", "Kartoffeln", "Grieß"], // Quelle: https://de.wikipedia.org/wiki/Risotto
     ["Welche Reissorte nimmt man klassisch für Risotto?", "Arborio", "Basmati", "Jasmin", "Langkornreis"], // Quelle: https://de.wikipedia.org/wiki/Arborio_(Reis)
     ["Aus welchem Getreide wird Pumpernickel gebacken?", "Roggen", "Weizen", "Dinkel", "Hafer"], // Quelle: https://de.wikipedia.org/wiki/Pumpernickel
@@ -103,7 +92,6 @@ export const ESSEN: FragenKategorie = {
     ["Welcher Stoff macht Chilis scharf?", "Capsaicin", "Piperin", "Koffein", "Menthol"], // Quelle: https://de.wikipedia.org/wiki/Capsaicin
     ["Welcher Stoff macht Pfeffer scharf?", "Piperin", "Capsaicin", "Koffein", "Menthol"], // Quelle: https://de.wikipedia.org/wiki/Piperin
     ["Mit welcher Skala misst man die Schärfe von Chilis?", "Scoville", "Richter", "Beaufort", "Kelvin"], // Quelle: https://de.wikipedia.org/wiki/Scoville-Skala
-    ["Woher stammen grüner, schwarzer und weißer Pfeffer?", "Von derselben Pflanze", "Von drei Pflanzenarten", "Von einer Paprikasorte", "Von einer Chilisorte"], // Quelle: https://de.wikipedia.org/wiki/Pfeffer_(Gewürz)
     ["Woraus wird Tahin hergestellt?", "Sesam", "Mohn", "Leinsamen", "Sonnenblumenkernen"], // Quelle: https://de.wikipedia.org/wiki/Tahin
     ["Von welcher Insel stammt der Halloumi?", "Zypern", "Kreta", "Sizilien", "Mallorca"], // Quelle: https://de.wikipedia.org/wiki/Halloumi
     ["Welcher Fisch wird für Matjes verwendet?", "Hering", "Makrele", "Sardine", "Lachs"], // Quelle: https://de.wikipedia.org/wiki/Matjes
@@ -113,7 +101,6 @@ export const ESSEN: FragenKategorie = {
     ["Welches Land ist die Heimat von Haggis?", "Schottland", "Irland", "Wales", "Norwegen"], // Quelle: https://de.wikipedia.org/wiki/Haggis
     ["Wie heißen dicke japanische Weizennudeln?", "Udon", "Soba", "Glasnudeln", "Reisnudeln"], // Quelle: https://de.wikipedia.org/wiki/Udon
     ["Woraus werden Soba-Nudeln traditionell gemacht?", "Buchweizen", "Reis", "Mais", "Kartoffeln"], // Quelle: https://de.wikipedia.org/wiki/Soba_(Teigware)
-    ["Was ist Miso?", "Vergorene Sojabohnenpaste", "Getrockneter Seetang", "Japanischer Reiswein", "Eingelegter Rettich"], // Quelle: https://de.wikipedia.org/wiki/Miso
     ["Welches dieser Vitamine ist fettlöslich?", "Vitamin A", "Vitamin C", "Vitamin B1", "Vitamin B12"], // Quelle: https://de.wikipedia.org/wiki/Vitamin_A
     ["Wofür ist Milch als Quelle besonders bekannt?", "Calcium", "Eisen", "Vitamin C", "Ballaststoffe"], // Quelle: https://de.wikipedia.org/wiki/Milch
     ["Welcher Mangel löste bei Seefahrern Skorbut aus?", "Vitamin C", "Vitamin A", "Eisen", "Jod"], // Quelle: https://de.wikipedia.org/wiki/Skorbut
@@ -121,7 +108,6 @@ export const ESSEN: FragenKategorie = {
     ["Wie heißt Speisesalz chemisch?", "Natriumchlorid", "Kaliumchlorid", "Calciumcarbonat", "Natriumnitrat"], // Quelle: https://de.wikipedia.org/wiki/Natriumchlorid
     ["Wie heißt die Bräunungsreaktion beim Braten und Backen?", "Maillard-Reaktion", "Photosynthese", "Fermentation", "Oxidationsstopp"], // Quelle: https://de.wikipedia.org/wiki/Maillard-Reaktion
     ["Wie nennt man kurzes Überbrühen von Gemüse?", "Blanchieren", "Flambieren", "Gratinieren", "Glasieren"], // Quelle: https://de.wikipedia.org/wiki/Blanchieren
-    ["Was bedeutet „flambieren“?", "Mit Alkohol abbrennen", "Mit Käse überbacken", "In Fett ausbacken", "Langsam schmoren"], // Quelle: https://de.wikipedia.org/wiki/Flambieren
     ["Was bedeutet „gratinieren“?", "Mit Kruste überbacken", "Mit Alkohol abbrennen", "Fein pürieren", "Kurz überbrühen"], // Quelle: https://de.wikipedia.org/wiki/Gratinieren
     ["Wie heißt eine Fachkraft für Wein im Restaurant?", "Sommelier", "Konditor", "Barista", "Maître Saucier"], // Quelle: https://de.wikipedia.org/wiki/Sommelier
     ["Wie heißt ein Handwerker für Torten und Feingebäck?", "Konditor", "Metzger", "Sommelier", "Brauer"], // Quelle: https://de.wikipedia.org/wiki/Konditor
@@ -132,7 +118,6 @@ export const ESSEN: FragenKategorie = {
     ["Wie heißt die Frucht der Rose?", "Hagebutte", "Holunder", "Schlehe", "Vogelbeere"], // Quelle: https://de.wikipedia.org/wiki/Hagebutte
     ["Aus welchem Land kommt der meiste Ahornsirup?", "Kanada", "USA", "Schweden", "Norwegen"], // Quelle: https://de.wikipedia.org/wiki/Ahornsirup
     ["Woraus machen Bienen Honig?", "Nektar", "Blütenblättern", "Harz", "Wachs"], // Quelle: https://de.wikipedia.org/wiki/Honig
-    ["Woraus besteht Seitan?", "Weizeneiweiß", "Sojabohnen", "Pilzen", "Erbsen"], // Quelle: https://de.wikipedia.org/wiki/Seitan
     ["Welcher Edelpilz wächst unter der Erde?", "Trüffel", "Morchel", "Pfifferling", "Steinpilz"], // Quelle: https://de.wikipedia.org/wiki/Trüffel
     ["Welche Tiere setzt man zur Trüffelsuche ein?", "Hunde und Schweine", "Katzen und Ziegen", "Pferde und Esel", "Hühner und Gänse"], // Quelle: https://de.wikipedia.org/wiki/Trüffel
     ["Wie heißt vergorener Honigwein?", "Met", "Most", "Grog", "Sekt"], // Quelle: https://de.wikipedia.org/wiki/Met
@@ -179,8 +164,6 @@ export const ESSEN: FragenKategorie = {
 
     // Ordnen
     ["Ordne die Eiergrößen von klein nach groß.", ["S", "M", "L", "XL"]], // Quelle: https://de.wikipedia.org/wiki/Eierkennzeichnung
-    ["Ordne die Gänge eines Menüs vom Anfang bis zum Ende.", ["Aperitif", "Vorspeise", "Hauptgang", "Dessert"]], // Quelle: https://de.wikipedia.org/wiki/Menü_(Speisenfolge)
-    ["Ordne nach Fettgehalt, vom geringsten zum höchsten.", ["Magermilch", "Fettarme Milch", "Vollmilch", "Schlagsahne"]], // Quelle: https://de.wikipedia.org/wiki/Milch
     ["Ordne die Flaschen nach Inhalt, von klein nach groß.", ["Piccolo", "Normalflasche", "Magnum", "Doppelmagnum"]], // Quelle: https://de.wikipedia.org/wiki/Weinflasche
     ["Ordne nach Kilokalorien pro Gramm, von wenig nach viel.", ["Wasser", "Eiweiß", "Alkohol", "Fett"]], // Quelle: https://de.wikipedia.org/wiki/Physiologischer_Brennwert
     ["Ordne die Garstufen eines Steaks von roh bis durch.", ["Rare", "Medium rare", "Medium", "Well done"]], // Quelle: https://de.wikipedia.org/wiki/Garen https://de.wikipedia.org/wiki/Steak
@@ -191,7 +174,6 @@ export const ESSEN: FragenKategorie = {
     ["Ordne die Kaffeegetränke nach Milchanteil, von wenig nach viel.", ["Espresso", "Espresso macchiato", "Cappuccino", "Latte macchiato"]], // Quelle: https://de.wikipedia.org/wiki/Liste_von_Kaffeespezialitäten https://de.wikipedia.org/wiki/Espresso
     ["Ordne die Weinprädikate nach Mostgewicht, von niedrig nach hoch.", ["Kabinett", "Spätlese", "Auslese", "Beerenauslese"]], // Quelle: https://de.wikipedia.org/wiki/Prädikatswein
     ["Ordne die Sekt-Bezeichnungen von herb nach süß.", ["Brut", "Extra trocken", "Trocken", "Halbtrocken"]], // Quelle: https://de.wikipedia.org/wiki/Geschmacksangabe_(Wein)
-    ["Ordne nach Temperatur, von kalt nach heiß.", ["Gefrierfach", "Kühlschrank", "Zimmerluft", "Kochendes Wasser"]], // Quelle: https://de.wikipedia.org/wiki/Tiefkühlkost
     ["Ordne die Kaffeemahlgrade von fein nach grob.", ["Türkischer Mokka", "Espresso", "Filterkaffee", "Stempelkanne"]], // Quelle: https://de.wikipedia.org/wiki/Kaffeepulver https://de.wikipedia.org/wiki/Espresso https://de.wikipedia.org/wiki/Pressstempelkanne
   ],
 };

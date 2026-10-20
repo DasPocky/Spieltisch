@@ -100,7 +100,6 @@ export const GEOGRAFIE: FragenKategorie = {
     ["Durch welchen Londoner Stadtteil verläuft der Nullmeridian?", "Greenwich", "Westminster", "Camden", "Chelsea"], // Quelle: https://de.wikipedia.org/wiki/Nullmeridian
     ["Wie heißt die Linie, die die Erde in Nord- und Südhalbkugel teilt?", "Äquator", "Nullmeridian", "Wendekreis", "Polarkreis"], // Quelle: https://de.wikipedia.org/wiki/Äquator
     ["Welche Wüste liegt in China und der Mongolei?", "Gobi", "Sahara", "Atacama", "Kalahari"], // Quelle: https://de.wikipedia.org/wiki/Gobi
-    ["Welches Gebirge gilt als Grenze zwischen Europa und Asien?", "Ural", "Karpaten", "Alpen", "Altai"], // Quelle: https://de.wikipedia.org/wiki/Ural_(Gebirge)
     ["Welches Gebirge liegt zwischen Frankreich und Spanien?", "Pyrenäen", "Alpen", "Vogesen", "Apenninen"], // Quelle: https://de.wikipedia.org/wiki/Pyrenäen
     ["Welches Gebirge verläuft entlang der Westküste Südamerikas?", "Anden", "Rocky Mountains", "Appalachen", "Ural"], // Quelle: https://de.wikipedia.org/wiki/Anden
     ["Auf welcher Insel liegt der Vulkan Ätna?", "Sizilien", "Sardinien", "Korsika", "Kreta"], // Quelle: https://de.wikipedia.org/wiki/Ätna
@@ -119,7 +118,6 @@ export const GEOGRAFIE: FragenKategorie = {
     ["Wie weit ist der Mond im Mittel von der Erde entfernt?", 384400, "km"], // Quelle: https://de.wikipedia.org/wiki/Mond
     ["Wie weit ist die Sonne im Mittel von der Erde entfernt?", 150, "Mio. km"], // Quelle: https://de.wikipedia.org/wiki/Astronomische_Einheit
     ["Wie hoch ist der Brocken im Harz?", 1141, "m"], // Quelle: https://de.wikipedia.org/wiki/Brocken
-    ["Wie hoch ist der Feldberg im Schwarzwald?", 1493, "m"], // Quelle: https://de.wikipedia.org/wiki/Feldberg_(Schwarzwald)
     ["Wie hoch ist der Großglockner?", 3798, "m"], // Quelle: https://de.wikipedia.org/wiki/Großglockner
     ["Wie hoch ist das Matterhorn?", 4478, "m"], // Quelle: https://de.wikipedia.org/wiki/Matterhorn
     ["Wie hoch ist der Aconcagua?", 6961, "m"], // Quelle: https://de.wikipedia.org/wiki/Aconcagua
@@ -136,12 +134,9 @@ export const GEOGRAFIE: FragenKategorie = {
     ["Wie hoch ist der Elbrus im Kaukasus?", 5642, "m"], // Quelle: https://de.wikipedia.org/wiki/Elbrus
     ["Wie hoch ist der K2?", 8611, "m"], // Quelle: https://de.wikipedia.org/wiki/K2
     ["Wie viele Provinzen hat Kanada?", 10, ""], // Quelle: https://de.wikipedia.org/wiki/Provinzen_und_Territorien_Kanadas
-    ["Wie viele Bundesstaaten hat Australien?", 6, ""], // Quelle: https://de.wikipedia.org/wiki/Bundesstaaten_und_Territorien_Australiens
-    ["Auf welchem Breitengrad liegt der nördliche Polarkreis etwa?", 66.6, "°"], // Quelle: https://de.wikipedia.org/wiki/Polarkreis
     ["Wie groß ist die Fläche des Bodensees etwa?", 536, "km²"], // Quelle: https://de.wikipedia.org/wiki/Bodensee
     ["Wie groß ist die Fläche Deutschlands etwa?", 357000, "km²"], // Quelle: https://de.wikipedia.org/wiki/Deutschland
     ["Auf welcher Höhe über dem Meer liegt der Titicacasee etwa?", 3812, "m"], // Quelle: https://de.wikipedia.org/wiki/Titicacasee https://www.lernhelfer.de/schuelerlexikon/geografie/artikel/titicacasee-hoechstgelegener-see-der-welt
-    ["Wie hoch ist der Tafelberg in Kapstadt etwa?", 1085, "m"], // Quelle: https://en.wikipedia.org/wiki/Table_Mountain
 
     ["Vom größten zum kleinsten Land:", ["Russland", "Kanada", "Brasilien", "Australien"]], // Quelle: https://de.wikipedia.org/wiki/Liste_der_Staaten_der_Erde
     ["Vom höchsten zum niedrigsten Berg:", ["Mount Everest", "K2", "Aconcagua", "Kilimandscharo"]], // Quelle: https://de.wikipedia.org/wiki/Seven_Summits https://de.wikipedia.org/wiki/K2
@@ -153,7 +148,6 @@ export const GEOGRAFIE: FragenKategorie = {
     ["Bundesländer von der größten zur kleinsten Fläche:", ["Bayern", "Niedersachsen", "Baden-Württemberg", "Nordrhein-Westfalen"]], // Quelle: https://de.wikipedia.org/wiki/Land_(Deutschland)
     ["Länder von Norden nach Süden:", ["Norwegen", "Dänemark", "Deutschland", "Italien"]], // Quelle: https://de.wikipedia.org/wiki/Norwegen https://de.wikipedia.org/wiki/Dänemark https://de.wikipedia.org/wiki/Deutschland https://de.wikipedia.org/wiki/Italien
     ["Vom höchsten zum niedrigsten deutschen Berg:", ["Zugspitze", "Watzmann", "Feldberg", "Brocken"]], // Quelle: https://de.wikipedia.org/wiki/Zugspitze https://de.wikipedia.org/wiki/Watzmann https://de.wikipedia.org/wiki/Feldberg_(Schwarzwald) https://de.wikipedia.org/wiki/Brocken
-    ["Vom größten zum kleinsten See:", ["Kaspisches Meer", "Oberer See", "Victoriasee", "Baikalsee"]], // Quelle: https://de.wikipedia.org/wiki/Liste_der_größten_Seen_der_Erde
     ["US-Städte von Westen nach Osten:", ["San Francisco", "Denver", "Chicago", "New York"]], // Quelle: https://de.wikipedia.org/wiki/San_Francisco https://de.wikipedia.org/wiki/Denver https://de.wikipedia.org/wiki/Chicago https://de.wikipedia.org/wiki/New_York_City
     ["Afrikanische Städte von Norden nach Süden:", ["Kairo", "Khartum", "Nairobi", "Kapstadt"]], // Quelle: https://de.wikipedia.org/wiki/Kairo https://de.wikipedia.org/wiki/Khartum https://de.wikipedia.org/wiki/Nairobi https://de.wikipedia.org/wiki/Kapstadt
     ["Von der größten zur kleinsten Insel:", ["Grönland", "Neuguinea", "Borneo", "Madagaskar"]], // Quelle: https://de.wikipedia.org/wiki/Liste_der_größten_Inseln_der_Erde

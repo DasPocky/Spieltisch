@@ -6,7 +6,6 @@ export const ALLGEMEIN: FragenKategorie = {
   emoji: "💡",
   stufe: "familie",
   fragen: [
-    ["Wie viele Beine hat eine Spinne?", "Acht", "Sechs", "Zehn", "Zwölf"], // Quelle: https://de.wikipedia.org/wiki/Spinnen
     ["Welches Gas nehmen Pflanzen bei der Fotosynthese auf?", "Kohlendioxid", "Sauerstoff", "Stickstoff", "Helium"], // Quelle: https://de.wikipedia.org/wiki/Fotosynthese
     ["Wer malte die „Mona Lisa“?", "Leonardo da Vinci", "Michelangelo", "Raffael", "Rembrandt"], // Quelle: https://de.wikipedia.org/wiki/Mona_Lisa
     ["Welches chemische Symbol hat Gold?", "Au", "Ag", "Go", "Gd"], // Quelle: https://de.wikipedia.org/wiki/Gold
@@ -28,7 +27,6 @@ export const ALLGEMEIN: FragenKategorie = {
     ["Wofür steht die Formel H₂O?", "Wasser", "Wasserstoffperoxid", "Kochsalz", "Ozon"], // Quelle: https://de.wikipedia.org/wiki/Wasser
     ["Welches Element hat das chemische Symbol „O“?", "Sauerstoff", "Gold", "Osmium", "Ozon"], // Quelle: https://de.wikipedia.org/wiki/Sauerstoff
     ["Welche Farbe entsteht, wenn man Blau und Gelb mischt?", "Grün", "Lila", "Orange", "Braun"], // Quelle: https://de.wikipedia.org/wiki/Subtraktive_Farbmischung
-    ["Welche Farbe entsteht, wenn man Rot und Gelb mischt?", "Orange", "Grün", "Lila", "Rosa"], // Quelle: https://de.wikipedia.org/wiki/Subtraktive_Farbmischung
     ["Wer erreichte 1492 im Auftrag Spaniens Amerika?", "Christoph Kolumbus", "Vasco da Gama", "Ferdinand Magellan", "Amerigo Vespucci"], // Quelle: https://de.wikipedia.org/wiki/Christoph_Kolumbus
     ["Wer betrat als erster Mensch den Mond?", "Neil Armstrong", "Buzz Aldrin", "Juri Gagarin", "Michael Collins"], // Quelle: https://de.wikipedia.org/wiki/Neil_Armstrong
     ["Wer flog als erster Mensch ins Weltall?", "Juri Gagarin", "Neil Armstrong", "Alexei Leonow", "John Glenn"], // Quelle: https://de.wikipedia.org/wiki/Juri_Alexejewitsch_Gagarin
@@ -91,7 +89,6 @@ export const ALLGEMEIN: FragenKategorie = {
     ["Welcher Planet wird „der Rote Planet“ genannt?", "Mars", "Venus", "Jupiter", "Merkur"], // Quelle: https://de.wikipedia.org/wiki/Mars_(Planet)
     ["Welcher Planet hat die auffälligsten Ringe?", "Saturn", "Jupiter", "Mars", "Venus"], // Quelle: https://de.wikipedia.org/wiki/Saturn_(Planet)
     ["Wie heißt unsere Galaxie?", "Milchstraße", "Andromeda", "Sombrero-Galaxie", "Große Magellansche Wolke"], // Quelle: https://de.wikipedia.org/wiki/Milchstraße
-    ["Wer malte „Die Sternennacht“?", "Vincent van Gogh", "Claude Monet", "Paul Cézanne", "Edvard Munch"], // Quelle: https://de.wikipedia.org/wiki/Die_Sternennacht
     ["Wer malte „Der Schrei“?", "Edvard Munch", "Vincent van Gogh", "Gustav Klimt", "Egon Schiele"], // Quelle: https://de.wikipedia.org/wiki/Der_Schrei
     ["Wer bemalte die Decke der Sixtinischen Kapelle?", "Michelangelo", "Raffael", "Leonardo da Vinci", "Tizian"], // Quelle: https://de.wikipedia.org/wiki/Sixtinische_Kapelle
     ["Wer schrieb den Roman „Der Zauberberg“?", "Thomas Mann", "Hermann Hesse", "Franz Kafka", "Günter Grass"], // Quelle: https://de.wikipedia.org/wiki/Der_Zauberberg
@@ -119,7 +116,6 @@ export const ALLGEMEIN: FragenKategorie = {
     ["In welchem Jahr sank die Titanic?", 1912, ""], // Quelle: https://de.wikipedia.org/wiki/Titanic_(Schiff)
     ["Wie hoch ist die normale Körpertemperatur des Menschen etwa?", 37, "°C"], // Quelle: https://de.wikipedia.org/wiki/Körpertemperatur
     ["Wie schnell ist Licht im Vakuum?", 299792, "km/s"], // Quelle: https://de.wikipedia.org/wiki/Lichtgeschwindigkeit
-    ["Wie viele Tage dauert es von Vollmond zu Vollmond etwa?", 29.5, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Lunation
     ["Wie viele Planeten hat unser Sonnensystem?", 8, ""], // Quelle: https://de.wikipedia.org/wiki/Sonnensystem
     ["Wie viele Karten hat ein französisches Blatt ohne Joker?", 52, ""], // Quelle: https://de.wikipedia.org/wiki/Französisches_Blatt
     ["Wie viele Augen hat ein normaler Spielwürfel insgesamt?", 21, ""], // Quelle: https://de.wikipedia.org/wiki/Spielwürfel
@@ -133,7 +129,6 @@ export const ALLGEMEIN: FragenKategorie = {
     ["Wie viele Gramm hat ein Pfund in Deutschland?", 500, "g"], // Quelle: https://de.wikipedia.org/wiki/Pfund
     ["Wie viele Zentimeter misst ein Zoll?", 2.54, "cm"], // Quelle: https://de.wikipedia.org/wiki/Zoll_(Einheit)
     ["Wie viele Meter misst eine Seemeile?", 1852, "m"], // Quelle: https://de.wikipedia.org/wiki/Seemeile
-    ["Wie viele Stunden hat eine Woche?", 168, ""], // Quelle: https://de.wikipedia.org/wiki/Woche
     ["Bei wie viel Grad Fahrenheit gefriert Wasser?", 32, "°F"], // Quelle: https://de.wikipedia.org/wiki/Grad_Fahrenheit
     ["Welche Ordnungszahl hat Kohlenstoff im Periodensystem?", 6, ""], // Quelle: https://de.wikipedia.org/wiki/Kohlenstoff
     ["Wie viele Sinfonien hat Ludwig van Beethoven vollendet?", 9, ""], // Quelle: https://de.wikipedia.org/wiki/Ludwig_van_Beethoven
@@ -153,7 +148,6 @@ export const ALLGEMEIN: FragenKategorie = {
     ["Von der kleinsten zur größten Datenmenge:", ["Kilobyte", "Megabyte", "Gigabyte", "Terabyte"]], // Quelle: https://de.wikipedia.org/wiki/Byte
     ["Römische Zahlzeichen vom kleinsten zum größten Wert:", ["V", "X", "L", "C"]], // Quelle: https://de.wikipedia.org/wiki/Römische_Zahlschrift
     ["Zeitalter vom frühesten zum spätesten:", ["Steinzeit", "Bronzezeit", "Eisenzeit", "Mittelalter"]], // Quelle: https://de.wikipedia.org/wiki/Dreiperiodensystem https://de.wikipedia.org/wiki/Mittelalter
-    ["Kunstepochen von der frühesten zur spätesten:", ["Romanik", "Gotik", "Renaissance", "Barock"]], // Quelle: https://de.wikipedia.org/wiki/Europäische_Kunstgeschichte
     ["Elemente nach Ordnungszahl, die kleinste zuerst:", ["Wasserstoff", "Helium", "Kohlenstoff", "Sauerstoff"]], // Quelle: https://de.wikipedia.org/wiki/Periodensystem
     ["Regenbogenfarben von außen nach innen:", ["Rot", "Orange", "Gelb", "Grün"]], // Quelle: https://de.wikipedia.org/wiki/Regenbogen
     ["Bundeskanzler in zeitlicher Reihenfolge:", ["Konrad Adenauer", "Willy Brandt", "Helmut Kohl", "Gerhard Schröder"]], // Quelle: https://de.wikipedia.org/wiki/Bundeskanzler_(Deutschland)

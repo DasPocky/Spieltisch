@@ -135,19 +135,16 @@ export const NATUR: FragenKategorie = {
     ["Wie viele Tage brütet ein Huhn seine Eier aus?", 21, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Haushuhn
     ["Wie viele Monate ist eine Kuh etwa trächtig?", 9, "Monate"], // Quelle: https://de.wikipedia.org/wiki/Tr%C3%A4chtigkeit
     ["Wie viele Tage ist eine Hündin etwa trächtig?", 63, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Haushund
-    ["Wie viele Beine hat ein Hummer?", 10, "Beine"], // Quelle: https://de.wikipedia.org/wiki/Europ%C3%A4ischer_Hummer
     ["Wie viele Augen hat eine typische Spinne?", 8, "Augen"], // Quelle: https://de.wikipedia.org/wiki/Webspinnen
     ["Wie lang kann ein Blauwal höchstens etwa werden?", 33, "m"], // Quelle: https://de.wikipedia.org/wiki/Blauwal
     ["Wie viel wiegt ein Afrikanischer Elefantenbulle etwa?", 6000, "kg"], // Quelle: https://de.wikipedia.org/wiki/Afrikanischer_Elefant
     ["Wie viele Monate ist eine Stute etwa trächtig?", 11, "Monate"], // Quelle: https://de.wikipedia.org/wiki/Hauspferd
     ["Wie viele Zehen hat ein Strauß an jedem Fuß?", 2, "Zehen"], // Quelle: https://de.wikipedia.org/wiki/Afrikanischer_Strau%C3%9F
-    ["Wie viele Stacheln hat ein erwachsener Igel etwa?", 7000, "Stacheln"], // Quelle: https://de.wikipedia.org/wiki/Igel
     ["Aus wie vielen Körperabschnitten besteht ein Insekt?", 3, "Abschnitte"], // Quelle: https://de.wikipedia.org/wiki/Insekten
     ["Aus wie vielen Körperabschnitten besteht eine Spinne?", 2, "Abschnitte"], // Quelle: https://de.wikipedia.org/wiki/Webspinnen
     ["Wie viele Ecken hat eine Zelle der Bienenwabe?", 6, "Ecken"], // Quelle: https://de.wikipedia.org/wiki/Bienenwabe
     ["Wie viele Blättchen hat ein gewöhnliches Kleeblatt?", 3, "Blättchen"], // Quelle: https://de.wikipedia.org/wiki/Klee
     ["Wie viele Kiemenspalten haben die meisten Haie je Körperseite?", 5, "Spalten"], // Quelle: https://de.wikipedia.org/wiki/Haie
-    ["Welche Körpertemperatur hat ein Huhn etwa?", 41, "°C"], // Quelle: https://flexikon.doccheck.com/de/Haut_(Gefl%C3%BCgel)
     ["Wie viele Tage brütet eine Stockente ihre Eier etwa aus?", 27, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Stockente
     ["Wie viele Flügel hat ein Schmetterling?", 4, "Flügel"], // Quelle: https://de.wikipedia.org/wiki/Schmetterlinge
     ["Zu wie viel Prozent besteht eine Qualle etwa aus Wasser?", 98, "%"], // Quelle: https://de.wikipedia.org/wiki/Quallen
@@ -155,11 +152,7 @@ export const NATUR: FragenKategorie = {
     ["Wie viele Tage ist eine Sau etwa trächtig?", 114, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Hausschwein
     ["Wie viele Hörner hat ein Panzernashorn?", 1, "Horn"], // Quelle: https://de.wikipedia.org/wiki/Panzernashorn
     ["Wie viele Hörner hat ein Breitmaulnashorn?", 2, "Hörner"], // Quelle: https://de.wikipedia.org/wiki/Breitmaulnashorn
-    ["Wie viele Monate ist eine Giraffe etwa trächtig?", 15, "Monate"], // Quelle: https://de.wikipedia.org/wiki/Tr%C3%A4chtigkeit
-    ["Welche normale Körpertemperatur hat ein Hund etwa?", 38.5, "°C"], // Quelle: https://de.wikipedia.org/wiki/Haushund
     ["Wie viel wiegt ein Hühnerei etwa?", 60, "g"], // Quelle: https://de.wikipedia.org/wiki/H%C3%BChnerei
-    ["Wie viel wiegt ein Straußenei etwa?", 1.4, "kg"], // Quelle: https://de.wikipedia.org/wiki/Strau%C3%9Fe_(Gattung)
-    ["Wie viele Zitzen hat das Euter einer Kuh?", 4, "Zitzen"], // Quelle: https://de.wikipedia.org/wiki/Euter
     ["Wie viele Tage dauert es vom Ei bis zur fertigen Arbeitsbiene?", 21, "Tage"], // Quelle: https://de.wikipedia.org/wiki/Westliche_Honigbiene
     ["Wie viele Zehen hat eine Hauskatze an einer Hinterpfote?", 4, "Zehen"], // Quelle: https://de.wikipedia.org/wiki/Hauskatze
     ["Vom leichtesten zum schwersten Tier:", ["Maus", "Katze", "Pferd", "Elefant"]], // Quelle: https://de.wikipedia.org/wiki/Hausmaus https://de.wikipedia.org/wiki/Hauskatze https://de.wikipedia.org/wiki/Hauspferd https://de.wikipedia.org/wiki/Elefanten
@@ -170,9 +163,6 @@ export const NATUR: FragenKategorie = {
     ["Von der kleinsten zur größten Katze:", ["Hauskatze", "Luchs", "Leopard", "Tiger"]], // Quelle: https://de.wikipedia.org/wiki/Hauskatze https://de.wikipedia.org/wiki/Eurasischer_Luchs https://de.wikipedia.org/wiki/Leopard https://de.wikipedia.org/wiki/Tiger
     ["Von den wenigsten zu den meisten Beinen:", ["Huhn", "Hund", "Käfer", "Spinne"]], // Quelle: https://de.wikipedia.org/wiki/Haushuhn https://de.wikipedia.org/wiki/Haushund https://de.wikipedia.org/wiki/K%C3%A4fer https://de.wikipedia.org/wiki/Webspinnen
     ["Vom kleinsten zum größten Meerestier:", ["Krill", "Hering", "Delfin", "Blauwal"]], // Quelle: https://de.wikipedia.org/wiki/Krill https://de.wikipedia.org/wiki/Atlantischer_Hering https://de.wikipedia.org/wiki/Delfine https://de.wikipedia.org/wiki/Blauwal
-    ["Stockwerke des Waldes, von unten nach oben:", ["Moosschicht", "Krautschicht", "Strauchschicht", "Baumschicht"]], // Quelle: https://de.wikipedia.org/wiki/Stockwerkbau_des_Waldes
-    ["Nahrungskette, vom Gefressenen zum Fressenden:", ["Gras", "Heuschrecke", "Frosch", "Storch"]], // Quelle: https://de.wikipedia.org/wiki/Nahrungskette
-    ["Vom leichtesten zum schwersten Ei:", ["Wachtelei", "Hühnerei", "Gänseei", "Straußenei"]], // Quelle: https://de.wikipedia.org/wiki/Wachtel https://de.wikipedia.org/wiki/H%C3%BChnerei https://de.wikipedia.org/wiki/Hausgans https://de.wikipedia.org/wiki/Afrikanischer_Strau%C3%9F
     ["Vom kleinsten zum größten Hirsch:", ["Reh", "Damhirsch", "Rothirsch", "Elch"]], // Quelle: https://de.wikipedia.org/wiki/Reh https://de.wikipedia.org/wiki/Damhirsch https://de.wikipedia.org/wiki/Rothirsch https://de.wikipedia.org/wiki/Elch
     ["Vom kleinsten zum größten Pinguin:", ["Zwergpinguin", "Brillenpinguin", "Königspinguin", "Kaiserpinguin"]], // Quelle: https://de.wikipedia.org/wiki/Zwergpinguin https://de.wikipedia.org/wiki/Brillenpinguin https://de.wikipedia.org/wiki/K%C3%B6nigspinguin https://de.wikipedia.org/wiki/Kaiserpinguin
     ["Vom kleinsten zum größten Wal:", ["Schweinswal", "Orca", "Pottwal", "Blauwal"]], // Quelle: https://de.wikipedia.org/wiki/Schweinswal https://de.wikipedia.org/wiki/Schwertwal https://de.wikipedia.org/wiki/Pottwal https://de.wikipedia.org/wiki/Blauwal

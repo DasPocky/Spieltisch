@@ -95,7 +95,6 @@ export const KULTUR: FragenKategorie = {
     ["Wer schrieb „Die Zeitmaschine“?", "H. G. Wells", "Jules Verne", "Aldous Huxley", "George Orwell"], // Quelle: https://de.wikipedia.org/wiki/Die_Zeitmaschine
 
     ["Wie viele Tasten hat ein klassisches Klavier?", 88, "Tasten"], // Quelle: https://de.wikipedia.org/wiki/Klavier
-    ["Aus wie vielen Linien besteht ein Notensystem?", 5, "Linien"], // Quelle: https://de.wikipedia.org/wiki/Notensystem_(Musik)
     ["In welchem Jahr wurde Mozart geboren?", 1756, ""], // Quelle: https://de.wikipedia.org/wiki/Wolfgang_Amadeus_Mozart
     ["In welchem Jahr wurde Beethoven geboren?", 1770, ""], // Quelle: https://de.wikipedia.org/wiki/Ludwig_van_Beethoven
     ["In welchem Jahr starb Johann Sebastian Bach?", 1750, ""], // Quelle: https://de.wikipedia.org/wiki/Johann_Sebastian_Bach
@@ -128,7 +127,6 @@ export const KULTUR: FragenKategorie = {
     ["Gesangsstimmen von hoch nach tief:", ["Sopran", "Alt", "Tenor", "Bass"]], // Quelle: https://de.wikipedia.org/wiki/Stimmlage
     ["Nach Geburtsjahr, der Früheste zuerst:", ["Johann Sebastian Bach", "Wolfgang Amadeus Mozart", "Ludwig van Beethoven", "Richard Wagner"]], // Quelle: https://de.wikipedia.org/wiki/Johann_Sebastian_Bach https://de.wikipedia.org/wiki/Wolfgang_Amadeus_Mozart https://de.wikipedia.org/wiki/Ludwig_van_Beethoven https://de.wikipedia.org/wiki/Richard_Wagner
     ["Baustile vom ältesten zum jüngsten:", ["Romanik", "Gotik", "Renaissance", "Barock"]], // Quelle: https://de.wikipedia.org/wiki/Romanik https://de.wikipedia.org/wiki/Gotik https://de.wikipedia.org/wiki/Renaissance https://de.wikipedia.org/wiki/Barock
-    ["Musikepochen vom ältesten zur jüngsten:", ["Renaissance", "Barock", "Klassik", "Romantik"]], // Quelle: https://de.wikipedia.org/wiki/Musikgeschichte
     ["Dichter nach Geburtsjahr, der Früheste zuerst:", ["Gotthold Ephraim Lessing", "Johann Wolfgang von Goethe", "Friedrich Schiller", "Heinrich Heine"]], // Quelle: https://de.wikipedia.org/wiki/Gotthold_Ephraim_Lessing https://de.wikipedia.org/wiki/Johann_Wolfgang_von_Goethe https://de.wikipedia.org/wiki/Friedrich_Schiller https://de.wikipedia.org/wiki/Heinrich_Heine
     ["Maler nach Geburtsjahr, der Früheste zuerst:", ["Albrecht Dürer", "Rembrandt", "Francisco de Goya", "Vincent van Gogh"]], // Quelle: https://de.wikipedia.org/wiki/Albrecht_Dürer https://de.wikipedia.org/wiki/Rembrandt_van_Rijn https://de.wikipedia.org/wiki/Francisco_de_Goya https://de.wikipedia.org/wiki/Vincent_van_Gogh
     ["Lautstärke von leise nach laut:", ["pianissimo", "piano", "forte", "fortissimo"]], // Quelle: https://de.wikipedia.org/wiki/Dynamik_(Musik)
