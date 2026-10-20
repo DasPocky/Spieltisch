@@ -8,11 +8,21 @@ import { checkFreshStart } from "./lib/freshStart";
 import { startUpdates } from "./lib/update";
 
 // Als App auf dem Homescreen: echte Fensterhöhe statt 100dvh (iOS rechnet dort die Statusleiste falsch heraus)
-if ((navigator as Navigator & { standalone?: boolean }).standalone || matchMedia("(display-mode: standalone)").matches) {
-  const fit = () => document.documentElement.style.setProperty("--app-h", `${window.innerHeight}px`);
-  fit();
+// Nach einem Neuladen (z. B. durch ein Update) meldet iOS die Höhe anfangs zu klein und schickt danach kein „resize“ –
+// darum mehrfach nachmessen; im Hochformat über die ganze Breite ist das Fenster dort so hoch wie der Bildschirm.
+const iosApp = (navigator as Navigator & { standalone?: boolean }).standalone === true;
+if (iosApp || matchMedia("(display-mode: standalone)").matches) {
+  const fit = () => {
+    let h = Math.max(window.innerHeight, document.documentElement.clientHeight);
+    if (iosApp && window.innerWidth === screen.width && window.innerWidth < window.innerHeight) h = Math.max(h, screen.height);
+    document.documentElement.style.setProperty("--app-h", `${h}px`);
+  };
+  const soon = () => { fit(); for (const ms of [100, 500, 1500]) setTimeout(fit, ms); };
+  soon();
   window.addEventListener("resize", fit);
   window.addEventListener("orientationchange", () => setTimeout(fit, 300));
+  window.addEventListener("pageshow", soon);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) soon(); });
 }
 
 // Admin-Einstellungen (u. a. der Look) gleich beim Start holen – und nach einem Neustart im Admin einmal frisch beginnen
