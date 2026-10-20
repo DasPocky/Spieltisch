@@ -7,6 +7,7 @@ import { ALL_CATS, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { MauMauState } from "../games/maumau/logic";
 import { extend as p10Extend, findPhase, type P10State } from "../games/zehnphasen/logic";
+import { encodePoints } from "../games/zeichnen/logic";
 import { fits as sbFits, type SbState } from "../games/stapelbau/logic";
 import { canPlay as einsCanPlay, COLORS, type EinsState } from "../games/eins/logic";
 import type { WerwolfState } from "../games/werwolf/logic";
@@ -229,6 +230,18 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "verdict", target: null });
       if (st.options.length) add({ type: "guess", word: pick(st.options) });
       if (Math.random() < 0.05) add({ type: "custom", words: ["Opas Schnurrbart", "Unser Hund"] });
+      break;
+    }
+    case "zeichnen": {
+      ["timeUp", "next", "done", "undo"].forEach((type) => add({ type }));
+      for (let i = 0; i < 3; i++) add({ type: "pick", i });
+      // ein paar Kritzel – ein Strich aus 2–8 Punkten
+      for (let k = 0; k < 3; k++) {
+        const pts = Array.from({ length: 2 + Math.floor(Math.random() * 7) }, () => [Math.random(), Math.random()] as [number, number]);
+        add({ type: "stroke", c: Math.floor(Math.random() * 9), w: Math.floor(Math.random() * 4), p: encodePoints(pts) });
+      }
+      add({ type: "guess", text: pick(["Haus", "Hund", "Sonne", "Auto", "Baum", "Katze"]) });
+      if (Math.random() < 0.3) add({ type: "award", to: pick([...ids, null]) });
       break;
     }
     case "einenacht": {

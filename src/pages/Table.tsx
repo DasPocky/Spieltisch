@@ -25,6 +25,7 @@ import { tableModel, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
+import { Paper } from "@/games/zeichnen/Canvas";
 import { RESET_VIEW } from "@/platform/table/camera";
 import { createFlatScene } from "@/platform/table/flat";
 import { createStudioScene, type StudioScene } from "@/platform/table/studio";
@@ -384,6 +385,16 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         </OnFelt>
       )}
       {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
+      {/* Zeichenblatt groß über dem Tisch – live, wie eine Staffelei */}
+      {model?.drawing && (
+        <div className="pointer-events-none absolute inset-x-[14%] top-[13%] bottom-[16%] flex flex-col items-center gap-3" data-testid="table-drawing">
+          <div className="flex items-center gap-4">
+            <span className="table-banner text-3xl">{model.drawing.title}{model.drawing.sub && <span className="ml-3 font-mono tracking-[0.2em] opacity-85">{model.drawing.sub}</span>}</span>
+            {model.drawing.endsAt ? <SignClock endsAt={model.drawing.endsAt} /> : null}
+          </div>
+          <Paper strokes={model.drawing.strokes} className="min-h-0 w-full flex-1" label={model.drawing.title} />
+        </div>
+      )}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
       {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}

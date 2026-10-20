@@ -143,6 +143,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["stirnraten", 5, { variant: "teams", teams: 2, rounds: 1, open: true, style_pantomime: true }],
   ["stirnraten", 4, { variant: "bombe", rounds: 2 }],
   ["stirnraten", 5, { variant: "hochstapler", rounds: 2, level: "kinder" }],
+  ["zeichnen", 3, { rounds: 1 }],
+  ["zeichnen", 4, { rounds: 2, guess: "tippen", level: "kinder" }],
   ["eins", 2, {}],
   ["eins", 5, { stack: true, plus4: "any", eins: false, target: "round" }],
   ["eins", 8, { target: "round" }],
