@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Camera, EyeOff, UserPlus, X } from "lucide-react";
 import { cleanName, currentPlayerId, MAX_NAME, type RoomState } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
@@ -127,11 +128,12 @@ function CouchConnection({ code, pin, seat, shown, revealed, snapping, onSnapped
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [shown, revealed, onReveal, onClose]);
-  const camera = snapping ? <TableCamera name={seat.name} onShot={(data) => room.photo(data)} onClose={onSnapped} /> : null;
+  // Direkt an die Seite gehängt: die Liste steht im Menü am Fernseher, das sich ausblendet – Hand und Kamera nicht
+  const camera = snapping ? createPortal(<TableCamera name={seat.name} onShot={(data) => room.photo(data)} onClose={onSnapped} />, document.body) : null;
   if (!shown) return camera;
 
   return (
-    <>{camera}
+    <>{camera}{createPortal(<>
     <div className="couch-hand fixed inset-y-0 left-0 z-30 flex w-[min(30rem,100vw)] flex-col bg-background text-foreground shadow-2xl" data-testid="couch-hand">
       <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
         <b className="min-w-0 flex-1 truncate">{seat.name} am Fernseher</b>
@@ -155,6 +157,7 @@ function CouchConnection({ code, pin, seat, shown, revealed, snapping, onSnapped
         <p className="grid flex-1 place-items-center text-muted-foreground">{room.error ?? "Verbinde …"}</p>
       )}
     </div>
+</>, document.body)}
     </>
   );
 }
