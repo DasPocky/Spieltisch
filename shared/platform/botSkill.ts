@@ -17,6 +17,9 @@ import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/f
 import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf as maexValue, type MaexState } from "../games/maexchen/logic";
 import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
 import type { FischenState } from "../games/fischen/logic";
+import type { SkState } from "../games/himmelskarten/logic";
+import { cardPoints as p10Points, colorOf as p10Color, extend as p10Extend, findPhase, PHASES, isSkip as p10Skip, isWild as p10Wild, valueOf as p10Value, type P10Card, type P10State } from "../games/zehnphasen/logic";
+import { bustOdds, linePoints, numValue as f7Value, type F7State } from "../games/glueckssieben/logic";
 import { fits as sbFits, JOKER, needs as sbNeeds, type SbCard, type SbState } from "../games/stapelbau/logic";
 import { canStop, latestCard, selectionValue, type AllesState, type DiceState } from "../games/alles/logic";
 import { botMove, candidates, type Move } from "./bots";
@@ -397,11 +400,163 @@ const scoreStapelbau: Scorer = (view, a, after, me) => {
   return -50;
 };
 
-const SCORERS: Record<string, Scorer> = { stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+// ---------------------------------------------------------------- Himmelskarten (wenig Punkte, Spalten abräumen)
+
+/** Was es bringt, Karte `d` an Platz `i` zu legen (verdeckte zählen wie eine 5) */
+function skGain(grid: SkState["grids"][string], i: number, d: number): number {
+  const cell = grid[i];
+  if (!cell) return -Infinity;
+  const mates = [i % 4, i % 4 + 4, i % 4 + 8].filter((j) => j !== i).map((j) => grid[j]);
+  let v = (cell.up ? cell.v! : 5) - d;
+  const same = mates.filter((m) => m?.up && m.v === d).length;
+  if (same === 2) v += 3 * d + 10; // ganze Spalte fällt weg
+  else if (same === 1) v += 2;
+  return v;
+}
+
+const scoreHimmelskarten: Scorer = (view, a, _after, me) => {
+  const s = view.game as SkState;
+  const grid = s.grids[me] ?? [];
+  const best = (d: number) => Math.max(...grid.map((_, i) => skGain(grid, i, d)));
+  switch (a.type) {
+    case "flipStart": return -(a.i as number) * 0.01;
+    case "draw": {
+      const top = s.discard[s.discard.length - 1];
+      return a.from === "discard" ? (top !== undefined && best(top) >= 3 ? 30 : -5) : 10;
+    }
+    case "swap": return s.drawn === null ? -50 : skGain(grid, a.i as number, s.drawn);
+    case "discardDrawn": return 1;
+    case "flip": {
+      // lieber in Spalten aufdecken, in denen schon etwas offen liegt
+      const i = a.i as number;
+      return [i % 4, i % 4 + 4, i % 4 + 8].filter((j) => grid[j]?.up).length * 0.1;
+    }
+    case "nextRound": return 10;
+    default: return -50;
+  }
+};
+
+// ---------------------------------------------------------------- Glückssieben (aufhören, bevor es kippt)
+
+const scoreGlueckssieben: Scorer = (view, a, _after, me) => {
+  const s = view.game as F7State;
+  const line = s.lines[me];
+  const standing = (id: string) => (s.scores[id] ?? 0) + (s.lines[id] ? linePoints(s.lines[id]) : 0);
+  if (a.type === "hit" || a.type === "stay") {
+    const odds = bustOdds(s, me);
+    const p = odds ? odds.bust / odds.total : 0;
+    const pts = line ? linePoints(line) : 0;
+    // weiterziehen lohnt, solange der erwartete Gewinn (~7) den erwarteten Verlust übersteigt
+    const hit = (1 - p) * 7 > p * pts;
+    return (a.type === "hit") === hit ? 10 : 0;
+  }
+  if (a.type === "target") {
+    const t = a.target as string;
+    const good = s.pending?.card === "a:second";
+    if (good) return t === me ? 20 : -standing(t) / 100;
+    // Schlechtes trifft den, der vorn liegt – nie sich selbst, wenn es anders geht
+    return t === me ? -50 : 10 + standing(t) / 100;
+  }
+  if (a.type === "pick") {
+    const owner = a.owner as string;
+    const card = s.lines[owner]?.nums[a.index as number];
+    return owner === me ? -10 : card ? f7Value(card) : 0;
+  }
+  return 0;
+};
+
+// ---------------------------------------------------------------- Zehn Phasen (Phase sammeln, Nutzloses abwerfen)
+
+/** Wie nützlich ist eine Handkarte für die aktuelle Phase (Gleiche, Folge oder eine Farbe)? */
+function p10Use(hand: P10Card[], c: P10Card, phase: number): number {
+  if (p10Wild(c)) return 100;
+  if (p10Skip(c)) return -5;
+  const kinds = new Set((PHASES[phase - 1] ?? []).map((n) => n.kind));
+  const rest = hand.filter((x) => x !== c && !p10Wild(x) && !p10Skip(x));
+  const v = p10Value(c);
+  let u = 0;
+  if (kinds.has("set")) u += rest.filter((x) => p10Value(x) === v).length * 2;
+  if (kinds.has("run")) {
+    // doppelte Werte helfen einer Folge nicht; Nachbarn im Fenster schon
+    const others = new Set(rest.map(p10Value));
+    if (others.has(v)) u -= 1;
+    else u += [...others].filter((x) => Math.abs(x - v) <= 3).length;
+  }
+  if (kinds.has("color")) u += rest.filter((x) => p10Color(x) === p10Color(c)).length;
+  return u;
+}
+
+const scoreZehnphasen: Scorer = (view, a, _after, me) => {
+  const s = view.game as P10State;
+  const hand = s.hands[me] ?? [];
+  const phase = s.phase[me] ?? 1;
+  switch (a.type) {
+    case "draw": {
+      if (a.from === "pile") return 10;
+      const top = s.discard[s.discard.length - 1];
+      if (!top || p10Skip(top)) return -10;
+      if (p10Wild(top)) return 30;
+      // nur, wenn die Karte die Phase sofort vollmacht oder anlegbar ist – sonst reichen sich zwei Bots ewig dieselbe Karte
+      const helps = s.laid[me]
+        ? Object.values(s.laid).some((gs) => gs.some((gr) => p10Extend(gr, top)))
+        : !findPhase(hand, phase) && !!findPhase([...hand, top], phase);
+      return helps ? 30 : 0;
+    }
+    case "lay": return 100;
+    case "hit": return 50;
+    case "discard": {
+      const c = a.card as P10Card;
+      // Aussetzen trifft den, der am weitesten ist
+      const lead = a.skip ? (s.phase[a.skip as string] ?? 0) : 0;
+      return -p10Use(hand, c, phase) + p10Points(c) / 10 + lead * 0.1;
+    }
+    case "nextRound": return 10;
+    default: return -50;
+  }
+};
+
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
   // echte Würfel: Augen tippt der Mensch ein – dann wie die Testspieler
+  zehnphasen: (view, me) => {
+    const s = view.game as P10State;
+    if (s.mode !== "app") return null;
+    const hand = s.hands[me] ?? [];
+    const out: A[] = [{ type: "draw", from: "pile" }, { type: "draw", from: "discard" }, { type: "nextRound" }];
+    const found = !s.laid[me] && findPhase(hand, s.phase[me] ?? 1);
+    if (found) out.push({ type: "lay", groups: found });
+    if (s.laid[me]) for (const c of hand) for (const [owner, gs] of Object.entries(s.laid)) gs.forEach((gr, g) => {
+      for (const end of [undefined, "lo", "hi"] as const) if (p10Extend(gr, c, end)) out.push({ type: "hit", card: c, owner, g, ...(end ? { end } : {}) });
+    });
+    const others = view.players.map((p) => p.id).filter((id) => id !== me);
+    for (const card of new Set(hand)) {
+      out.push({ type: "discard", card });
+      if (p10Skip(card)) for (const skip of others) out.push({ type: "discard", card, skip });
+    }
+    return out;
+  },
+  glueckssieben: (view) => {
+    const s = view.game as F7State;
+    if (s.mode !== "app") return null;
+    const ids = Object.keys(s.lines);
+    const out: A[] = [{ type: "hit" }, { type: "stay" }, ...ids.map((target) => ({ type: "target", target }))];
+    for (const owner of ids) {
+      const l = s.lines[owner];
+      for (let index = 0; index < l.nums.length + l.mods.length; index++) out.push({ type: "pick", owner, index });
+      for (const o2 of ids) if (owner < o2) for (let i = 0; i < l.nums.length; i++) for (let j = 0; j < s.lines[o2].nums.length; j++)
+        out.push({ type: "swap", a: { owner, index: i }, b: { owner: o2, index: j } });
+    }
+    return out;
+  },
+  himmelskarten: (view, me) => {
+    const s = view.game as SkState;
+    if (s.mode !== "app") return null;
+    const cells = Array.from({ length: 12 }, (_, i) => i);
+    return [...cells.flatMap((i) => [{ type: "flipStart", i }, { type: "flipStart", player: me, i }, { type: "swap", i }, { type: "flip", i }]),
+      { type: "draw", from: "deck" }, { type: "draw", from: "discard" }, { type: "discardDrawn" }, { type: "nextRound" }];
+  },
   stapelbau: (view, me) => {
     const s = view.game as SbState;
     if (s.mode !== "app") return null;
