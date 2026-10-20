@@ -146,7 +146,9 @@ describe("Abnahme: Bots", () => {
         // Eins!: eine Runde reicht (sonst bis 500 Punkte)
         if (gameId === "eins") r = { ...r, options: { ...r.options, target: "round" } };
         let i = 0;
-        for (; i < 3000 && !roomGame(r).isOver(r.game); i++) {
+        // Alles oder nichts bis 1000 mit Zufallszügen: meist unter 1000 Züge, selten über 3000
+        const limit = gameId === "alles" ? 20_000 : 3000;
+        for (; i < limit && !roomGame(r).isOver(r.game); i++) {
           // verdeckte Ansage (Hellseher): niemand ist „dran“, jeder sagt für sich an
           const cur = roomGame(r).currentPlayerId(r.game);
           let m: ReturnType<typeof botMove> = null, who = "";
