@@ -1,6 +1,7 @@
 import { Fish, Layers } from "lucide-react";
 import { Seats } from "@/platform/Seats";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { DECKS, rankOf, RANK_DATIVE, RANK_PLURAL, type Card, type Rank } from "@shared/cards/deck";
 import { leaders, type FischenAction, type FischenEvent, type FischenState } from "@shared/games/fischen/logic";
 import type { Player } from "@shared/platform/types";
@@ -64,16 +65,22 @@ function RankStack({ cards, rank, selected, disabled, fished, onPick }: { cards:
 }
 
 /** Fischen: 1. Mitspieler antippen, 2. Wert aus der eigenen Hand antippen, 3. fragen. */
+/** Tasten für die Mitspieler am Rechner */
+const TARGET_KEYS = ["q", "w", "e", "r", "t", "y"];
+
 export function Board(props: BoardProps<FischenState, FischenAction>) {
   return props.game.table ? <TableBoard {...props} /> : <HandBoard {...props} />;
 }
 
-function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<FischenState, FischenAction>) {
+function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch, desk }: BoardProps<FischenState, FischenAction>) {
   const players = room.players;
   const local = me === null;
   const [rank, setRank] = useState<Rank | null>(null);
   const [target, setTarget] = useState<string | null>(null);
   const { covered, reveal } = useHandoff(local, s.curId, players.length);
+  // Tastatur am Rechner (unten belegt, sobald Hand und Mitspieler feststehen)
+  const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
+  useDeskKeys((e) => { if (desk) keys.current(e); });
 
   if (s.finished) {
     const win = leaders(s, players).map((id) => nameOf(players, id));
@@ -101,6 +108,55 @@ function HandBoard({ room, game: s, me, online, isHost, canAct, act, dispatch }:
     act({ type: "ask", target: selTarget, rank: selRank });
     setRank(null);
   };
+
+  // Am Rechner: Mitspieler und Teich liegen auf dem Tisch – hier wen fragen (Q W E …), welcher Wert (1–9), Enter fragt
+  keys.current = (e) => {
+    if (!myTurn) return;
+    const k = e.key.toLowerCase();
+    const n = Number(e.key);
+    if (n >= 1 && n <= groups.length) setRank(groups[n - 1].rank);
+    else if (TARGET_KEYS.includes(k) && targets[TARGET_KEYS.indexOf(k)]) setTarget(targets[TARGET_KEYS.indexOf(k)].id);
+    else if (k === "enter") ask();
+  };
+  if (desk) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="mx-auto w-full max-w-2xl">
+          {last ? <LastAsk e={last} players={players} viewer={viewerForText} /> : (
+            <p className="text-center font-semibold" data-testid="status">{myTurn ? "Du fängst an! Frag nach einem Wert, den du selbst hast." : `${cur?.name} fängt an.`}</p>
+          )}
+        </div>
+        <div className="flex items-end justify-center gap-6">
+          {myTurn && (
+            <div className="grid gap-1" role="group" aria-label="Wen fragst du?">
+              <span className="text-xs font-bold text-ice">1 · Wen fragst du?</span>
+              <div className="flex flex-wrap gap-1.5">
+                {targets.map((p, i) => (
+                  <Button key={p.id} variant={selTarget === p.id ? "default" : "secondary"} aria-pressed={selTarget === p.id} onClick={() => setTarget(p.id)} title={TARGET_KEYS[i]?.toUpperCase()}>
+                    {p.name}{TARGET_KEYS[i] && <kbd className="ml-1 text-xs uppercase opacity-60">{TARGET_KEYS[i]}</kbd>}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="grid gap-1">
+            {myTurn && <span className="text-xs font-bold text-ice">2 · Wonach fragst du? (1–{Math.min(9, groups.length)})</span>}
+            <div className="flex flex-wrap items-end justify-center gap-x-0.5" data-testid="hand" role="group" aria-label="Wert">
+              {groups.map((g) => (
+                <RankStack key={g.rank} cards={g.cards} rank={g.rank} selected={myTurn && selRank === g.rank} disabled={!myTurn} fished={s.fished} onPick={() => setRank(g.rank)} />
+              ))}
+              {!groups.length && <p className="py-6 text-sm text-muted-foreground">Keine Karten auf der Hand.</p>}
+            </div>
+          </div>
+          {myTurn ? (
+            <Button size="lg" disabled={!selRank || !selTarget} onClick={ask}>
+              {selRank && selTarget ? `${nameOf(players, selTarget)}, hast du ${RANK_PLURAL[selRank]}?` : "Fragen"} <kbd className="ml-1 text-xs opacity-60">Enter</kbd>
+            </Button>
+          ) : <p className="glass rounded-xl px-4 py-3 text-muted-foreground" data-testid="status">Warte auf <b className="text-foreground">{cur?.name}</b></p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

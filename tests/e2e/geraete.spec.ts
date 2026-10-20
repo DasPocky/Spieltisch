@@ -184,7 +184,8 @@ test("Am Rechner am Tisch mitspielen (Eins!): eigene Hand unter dem Tisch, Tasta
     await page.getByRole("button", { name: "Spiel starten" }).click();
 
     await expect(page.getByTestId("desk-stage")).toBeVisible();
-    await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(7);
+    // 7 Karten – oder 9, wenn die Startkarte eine +2 ist
+    await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThanOrEqual(7);
     await expect(page.getByTestId("table-seat")).toContainText("Ben");
     await expectNoScroll(page);
     await shot(page, "g7-desk-eins");
@@ -194,8 +195,9 @@ test("Am Rechner am Tisch mitspielen (Eins!): eigene Hand unter dem Tisch, Tasta
     if (/Farbwahl/.test((await status.textContent()) ?? "")) await page.keyboard.press("1");
     if (!/ist am Zug/.test((await status.textContent()) ?? "")) {
       // Anna ist dran: ziehen (Z) – danach passen (P), falls die gezogene Karte nicht gelegt wird
+      const before = await page.getByTestId("desk-hand").getByTestId("hand").locator("button").count();
       await page.keyboard.press("z");
-      await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(7);
+      await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(before);
       await page.keyboard.press("p");
       await expect.poll(async () => (await status.textContent()) ?? "").toMatch(/ist am Zug|Leg|Gezogene|ziehen/);
     }
@@ -245,4 +247,176 @@ test("Private Hand: am Rechner liegt der Tisch für alle, die Karten nur auf dem
   await companion.context().close();
   await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(5, { timeout: 15_000 });
   await expect(page.getByTestId("desk-private")).toHaveCount(0);
+});
+
+/** Rechner (Anna, Host) und Handy (Ben) im selben Raum, Spiel gewählt und gestartet – „Am Rechner“ ist für das Spiel an */
+async function deskGame(browser: Browser, gameId: string, pin: string, more: string[] = []): Promise<{ page: Page; phone: Page }> {
+  const page = await desktop(browser);
+  await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+  await page.goto("/");
+  await page.evaluate((g) => localStorage.setItem("spieltisch:lastGame", g), gameId);
+  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByLabel("Dein Name").fill("Anna");
+  await page.getByLabel(/PIN/).fill(pin);
+  await page.getByRole("button", { name: "Öffnen", exact: true }).click();
+  await page.getByTestId("meet-play").click();
+  await page.getByTestId(`pick-${gameId}`).click();
+  const code = (await page.getByTestId("room-code").textContent())!.trim();
+  const phone = await newPhone(browser);
+  await phone.goto(`/r/${code}`);
+  await phone.getByLabel("Dein Name").fill("Ben");
+  await phone.getByLabel("PIN").fill(pin);
+  await phone.getByRole("button", { name: "Beitreten" }).click();
+  await expect(page.getByText("Ben", { exact: true }).first()).toBeVisible();
+  for (const name of more) {
+    const p = await newPhone(browser);
+    await p.goto(`/r/${code}`);
+    await p.getByLabel("Dein Name").fill(name);
+    await p.getByLabel("PIN").fill(pin);
+    await p.getByRole("button", { name: "Beitreten" }).click();
+    await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(page.getByTestId("desk-stage")).toBeVisible();
+  return { page, phone };
+}
+
+test("Am Rechner (Stapelbau): Vorrat, Ablagen und Hand unter dem Tisch, Aufbau als Ziele, Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { stapelbau: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "stapelbau", "7373");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(5);
+    await expect(area.getByRole("group", { name: "Auf Aufbaustapel legen" }).locator("button")).toHaveCount(4);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "g8-desk-stapelbau");
+    // Anna ist dran: Handkarte 1 wählen (Taste 1), mit Q auf Ablage 1 legen – Zug vorbei, Ben ist dran
+    const status = area.getByTestId("status");
+    await expect(status).not.toContainText("ist am Zug");
+    await page.keyboard.press("1");
+    await page.keyboard.press("q");
+    await expect(status).toContainText("Ben ist am Zug");
+    await expect(area.getByTestId("discard-0").getByRole("img")).toBeVisible();
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Zehn Phasen): Hand unter dem Tisch, ziehen, markieren und ablegen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { zehnphasen: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "zehnphasen", "7474");
+    const area = page.getByTestId("desk-hand");
+    const hand = area.getByTestId("hand").locator("button");
+    await expect(hand).toHaveCount(10);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "g9-desk-zehnphasen");
+    const status = area.getByTestId("status");
+    await expect(status).not.toContainText("ist am Zug");
+    // Z zieht vom Stapel, 1 markiert die erste Karte, X legt sie ab – Ben ist dran
+    await page.keyboard.press("z");
+    await expect(hand).toHaveCount(11);
+    await page.keyboard.press("1");
+    await page.keyboard.press("x");
+    await expect(status).toContainText("Ben ist am Zug");
+    await expect(hand).toHaveCount(10);
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Himmelskarten): eigenes Raster unter dem Tisch, Aufdecken und Ziehen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { himmelskarten: { desk: "on" } } });
+  try {
+    const { page, phone } = await deskGame(browser, "himmelskarten", "7575");
+    const area = page.getByTestId("desk-hand");
+    const mine = area.getByRole("group", { name: "Deine Karten" });
+    await expect(mine.getByRole("button")).toHaveCount(12);
+    // Zwei Karten aufdecken mit 1 und 2; Ben deckt am Handy zwei auf
+    await page.keyboard.press("1");
+    await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(1);
+    await page.keyboard.press("2");
+    await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(2);
+    const bens = phone.getByRole("group", { name: "Deine Karten" }).getByRole("button");
+    await bens.nth(0).click();
+    await bens.nth(1).click();
+    await expect(area.getByTestId("hint")).not.toContainText("Deck zwei");
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "ga-desk-himmelskarten");
+    // Wer dran ist: Anna zieht mit Z, legt mit B ab und deckt mit 3 eine Karte auf
+    if (!/Warte auf/.test((await area.getByTestId("hint").textContent()) ?? "")) {
+      await page.keyboard.press("z");
+      await expect(area.getByTestId("drawn")).toBeVisible();
+      await page.keyboard.press("b");
+      await expect(area.getByTestId("hint")).toContainText("Dreh eine verdeckte Karte um");
+      await page.keyboard.press("3");
+      await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(3);
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Hellseher): Hand unter dem Tisch, Ansage und Karte per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { hellseher: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "hellseher", "7676", ["Cem"]);
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(1);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gb-desk-hellseher");
+    // Ist Anna mit der Ansage dran: mit 0 ansagen – danach ist jemand anderes dran
+    const status = area.getByTestId("status");
+    if (/Wie viele Stiche/.test((await status.textContent()) ?? "")) {
+      await expect(area.getByRole("group", { name: "Ansage" })).toBeVisible();
+      await page.keyboard.press("0");
+      await expect(status).not.toContainText("Wie viele Stiche");
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Fischen): Werte als Stapel unter dem Tisch, fragen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { fischen: { desk: "on" } } });
+  try {
+    const { page, phone } = await deskGame(browser, "fischen", "7777");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button").first()).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gc-desk-fischen");
+    // Ist Anna dran: Wert 1 wählen, Enter fragt Ben (einziger Mitspieler) – die Frage steht danach oben
+    if (await area.getByRole("group", { name: "Wen fragst du?" }).isVisible()) {
+      await page.keyboard.press("1");
+      await page.keyboard.press("Enter");
+      await expect(area.getByTestId("last-ask")).toContainText("Du → Ben");
+      await expect(phone.getByTestId("last-ask")).toContainText("Anna → dich");
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Glückssieben): eigene Reihe unter dem Tisch, „Noch eine!“ und „Aufhören“ per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { glueckssieben: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "glueckssieben", "7878", ["Cem"]);
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("status")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gd-desk-glueckssieben");
+    // Entscheidet Anna gerade: A hört auf – danach ist jemand anderes dran
+    if (await area.getByRole("button", { name: /Aufhören/ }).isVisible()) {
+      await page.keyboard.press("a");
+      await expect(area.getByRole("button", { name: /Aufhören/ })).toHaveCount(0);
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
 });

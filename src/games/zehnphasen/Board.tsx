@@ -17,6 +17,7 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { P10_INK } from "./colors";
 
 /** Kräftige Kartenfarben wie im Original */
@@ -87,7 +88,7 @@ function Mini({ cards }: { cards: P10Card[] }) {
 }
 const groupText = (g: Group) => (g.kind === "set" ? `${g.cards.length}× ${g.value}` : g.kind === "run" ? `${g.lo}–${g.hi}` : `${g.cards.length}× Farbe`);
 
-function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10State, P10Action>) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: BoardProps<P10State, P10Action>) {
   const players = room.players;
   const local = me === null;
   const { covered, reveal } = useHandoff(local && (s.step === "draw" || s.step === "play"), s.curId, players.length);
@@ -144,6 +145,95 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<P10Stat
     : slots ? "Karten markieren, dann „Hierher“ bei der Gruppe."
     : laidMine ? "Anlegen: Karte markieren, dann Gruppe antippen. Zum Schluss eine Karte ablegen."
     : "Phase auslegen – oder eine Karte markieren und ablegen.";
+
+  // Am Rechner: Tisch mit Stapel, Ablage und ausgelegten Phasen liegt darüber – hier Hand, Auslage und Tastatur
+  useDeskKeys((e) => {
+    if (!desk) return;
+    if (s.step === "roundEnd") { if (e.key === "Enter") act({ type: "nextRound" }); return; }
+    if (!myTurn) return;
+    const k = e.key.toLowerCase();
+    const n = e.key === "0" ? 10 : Number(e.key);
+    if (k === "escape") { setSel([]); setSlots(null); setSkipPick(false); }
+    else if (s.step === "draw" && k === "z") act({ type: "draw", from: "pile" });
+    else if (s.step === "draw" && k === "a" && top && !isSkip(top)) act({ type: "draw", from: "discard" });
+    else if (s.step !== "play") return;
+    else if (n >= 1 && n <= hand.length && !inSlots.has(n - 1)) toggle(n - 1);
+    else if (k === "l" && !laidMine && !slots) openLay();
+    else if (k === "enter" && slots && !slots.some((g, j) => g.length < needs[j].n)) lay();
+    else if (k === "x" && one && !slots) discard();
+  });
+  if (desk) {
+    const kbd = (x: string) => <kbd className="ml-1 text-xs opacity-60">{x}</kbd>;
+    if (s.step === "roundEnd") return <RoundEnd room={room} s={s} act={act} />;
+    const groups = laidMine && one && !slots ? layers.flatMap((p) => s.laid[p.id].map((g, k) => ({ p, g, k }))).filter(({ g }) => !!extend(g, one)) : [];
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-center text-base">
+          <span data-testid="status" className={cn(myTurn && "font-semibold")}><SmoothText>{status}</SmoothText></span>
+          <span className="ml-3 text-sm text-muted-foreground">Phase {myPhase}: {phaseLabel(myPhase)}</span>
+        </p>
+        {complete && <div className="flex justify-center"><HintChip onClick={openLay}>Deine Phase ist komplett – auslegen! (L)</HintChip></div>}
+        {slots && (
+          <div className="mx-auto grid w-full max-w-3xl grid-cols-2 gap-1.5" data-testid="slots">
+            {needs.map((nd, k) => (
+              <div key={k} className="glass flex items-center gap-2 rounded-xl px-2 py-1">
+                <span className="w-24 shrink-0 text-xs leading-tight text-muted-foreground">{needLabel(nd)}</span>
+                <span className="min-w-0 flex-1 overflow-hidden"><Mini cards={slots[k].map((i) => hand[i])} /></span>
+                {slots[k].length > 0 && <Button size="sm" variant="ghost" className="px-2 text-muted-foreground" onClick={() => setSlots(slots.map((g, j) => (j === k ? [] : g)))}>Leeren</Button>}
+                <Button size="sm" variant="secondary" disabled={!sel.length} onClick={() => assign(k)}>Hierher</Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap items-end justify-center gap-1.5" data-testid="hand">
+          {hand.map((c, i) => inSlots.has(i) ? null : (
+            <button key={`${c}-${hand.slice(0, i).filter((x) => x === c).length}`} type="button" disabled={!myTurn || s.step !== "play"} onClick={() => toggle(i)} aria-pressed={sel.includes(i)}
+              title={i < 10 ? String((i + 1) % 10) : undefined}
+              className={cn("w-[4.25rem] shrink-0 rounded-[12%] outline-none transition hover:-translate-y-1 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
+                sel.includes(i) ? "-translate-y-3 ring-[3px] ring-ice" : hittable(c) && "hint-glow")}>
+              <P10CardView card={c} />
+            </button>
+          ))}
+        </div>
+        {groups.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1.5" role="group" aria-label="Anlegen">
+            {groups.map(({ p, g, k }) => (
+              <button key={`${p.id}-${k}`} type="button" onClick={() => hit(p.id, k)} aria-label={`An ${p.name}s Gruppe ${groupText(g)} anlegen`}
+                className="target-glow flex items-center gap-1.5 rounded-lg bg-navy-900/60 px-2 py-1 text-sm tabular-nums">
+                <span className="font-semibold">{p.name}</span><Mini cards={g.cards} />
+              </button>
+            ))}
+          </div>
+        )}
+        {skipPick ? (
+          <div className="flex flex-wrap justify-center gap-2">
+            <span className="self-center font-semibold">Wer soll aussetzen?</span>
+            {players.filter((p) => p.id !== viewer).map((p) => <Button key={p.id} variant="secondary" disabled={!skipTargets(s, players, viewer!).includes(p.id)} onClick={() => discard(p.id)}>{p.name}</Button>)}
+          </div>
+        ) : (
+          <div className="mx-auto flex flex-wrap justify-center gap-2">
+            {s.step === "draw" ? (
+              <>
+                <Button size="lg" disabled={!myTurn} onClick={() => act({ type: "draw", from: "pile" })}>Ziehen{kbd("Z")}</Button>
+                <Button size="lg" variant="secondary" disabled={!myTurn || !top || isSkip(top)} onClick={() => act({ type: "draw", from: "discard" })}>Ablage nehmen{kbd("A")}</Button>
+              </>
+            ) : slots ? (
+              <>
+                <Button size="lg" variant="ghost" onClick={() => { setSlots(null); setSel([]); }}>Zurück{kbd("Esc")}</Button>
+                <Button size="lg" variant="secondary" onClick={() => setNoFind(!suggest())}>{noFind ? "Nichts da" : "Finden"}</Button>
+                <Button size="lg" disabled={slots.some((g, k) => g.length < needs[k].n)} onClick={lay}>Auslegen{kbd("Enter")}</Button>
+              </>
+            ) : (
+              <>
+                {!laidMine && <Button size="lg" variant="secondary" disabled={!myTurn} onClick={openLay}>Phase auslegen{kbd("L")}</Button>}
+                <Button size="lg" disabled={!myTurn || !one} onClick={() => discard()}>{one ? `${isWild(one) ? "Joker" : isSkip(one) ? "Aussetzen" : valueOf(one)} ablegen` : "Ablegen"}{kbd("X")}</Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

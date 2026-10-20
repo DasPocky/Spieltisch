@@ -11,6 +11,7 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { cn, vibrate } from "@/lib/utils";
+import { useDeskKeys } from "@/platform/desk/keys";
 
 /** Zahlenfarbe wie beim Original: 1–4 blau, 5–8 grün, 9–12 rot */
 const ink = (c: number) => (c <= 4 ? "#1d5fc4" : c <= 8 ? "#23913c" : "#d3262b");
@@ -73,7 +74,7 @@ type Pick = Source | null;
 const Label = ({ children }: { children: React.ReactNode }) => <span className="text-[0.66rem] font-bold tracking-wider text-muted-foreground uppercase">{children}</span>;
 const same = (a: Pick, b: Pick) => !!a && !!b && a.from === b.from && (a.from !== "hand" || a.card === (b as typeof a).card) && (a.from !== "discard" || a.i === (b as typeof a).i);
 
-function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState, SbAction>) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: BoardProps<SbState, SbAction>) {
   const avatars = useContext(AvatarContext);
   const players = room.players;
   const local = me === null;
@@ -111,6 +112,11 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
     : pick ? "Auf einen passenden Aufbaustapel legen."
     : !hand.length ? "Keine Karten mehr – tipp auf eine Ablage, um den Zug zu beenden."
     : "Karte antippen: Vorrat, Ablage oder Hand.";
+
+  // Am Rechner: Tisch mit Aufbau und Mitspielern liegt darüber – hier nur der eigene Bereich, Ziele und Tastatur
+  if (desk) {
+    return <DeskArea {...{ s, hand, stock, stockCount: viewer ? s.stockCounts[viewer] ?? 0 : 0, discards, pick, picked, select, playTo, discardTo, myTurn, useful, status, act, setPick }} />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col [--c:clamp(2.6rem,9.5vh,4.6rem)]">
@@ -228,6 +234,102 @@ function AppBoard({ room, game: s, me, online, canAct, act }: BoardProps<SbState
             )}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+const KEY_BUILD = ["a", "s", "d", "f"];
+const KEY_DISCARD = ["q", "w", "e", "r"];
+
+/**
+ * Am Rechner unter dem Tisch: links Vorrat und Ablagen, in der Mitte die Hand, rechts die vier Aufbaustapel als Ziele.
+ * Tastatur: 1–5 Handkarte, V Vorrat, Q W E R Ablage (wählen oder ablegen), A S D F auf Aufbaustapel, Esc abwählen.
+ */
+function DeskArea({ s, hand, stock, stockCount, discards, pick, picked, select, playTo, discardTo, myTurn, useful, status, act, setPick }: {
+  s: SbState; hand: SbCard[]; stock: SbCard[]; stockCount: number; discards: SbCard[][]; pick: Pick; picked: SbCard | undefined;
+  select: (p: Source) => void; playTo: (to: number) => void; discardTo: (to: number) => void; myTurn: boolean;
+  useful: (c: SbCard | undefined) => boolean; status: string; act: (a: SbAction) => void; setPick: (p: Pick) => void;
+}) {
+  useDeskKeys((e) => {
+    if (s.phase === "roundEnd") { if (e.key === "Enter") act({ type: "nextRound" }); return; }
+    if (!myTurn) return;
+    const k = e.key.toLowerCase();
+    const n = Number(e.key);
+    if (k === "escape") setPick(null);
+    else if (n >= 1 && n <= hand.length) select({ from: "hand", card: hand[n - 1] });
+    else if (k === "v" && stock.length) select({ from: "stock" });
+    else if (KEY_BUILD.includes(k)) playTo(KEY_BUILD.indexOf(k));
+    else if (KEY_DISCARD.includes(k)) {
+      const i = KEY_DISCARD.indexOf(k);
+      if (pick?.from === "hand" || !hand.length) discardTo(i);
+      else if (discards[i]?.length) select({ from: "discard", i });
+    }
+  });
+  const kbd = (k: string) => <kbd className="text-[0.65rem] font-bold uppercase opacity-60">{k}</kbd>;
+  if (s.phase === "roundEnd") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-2">
+        <span data-testid="status" className="font-semibold"><SmoothText>{status}</SmoothText></span>
+        <Button size="lg" onClick={() => act({ type: "nextRound" })}>Nächste Runde <kbd className="ml-1 text-xs opacity-60">Enter</kbd></Button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <span data-testid="status" className={cn("text-center text-base", myTurn && "font-semibold")}><SmoothText>{status}</SmoothText></span>
+      <div className="flex items-end justify-center gap-4">
+        {/* Vorrat und Ablagen */}
+        <div className="glass flex shrink-0 items-end gap-2 rounded-2xl px-3 py-2">
+          <div className="grid justify-items-center gap-1">
+            <Label>Vorrat {kbd("V")}</Label>
+            <button type="button" disabled={!myTurn || !stock.length} onClick={() => select({ from: "stock" })} aria-label={`Vorrat, oben ${stock.length ? topOf(stock) : "leer"}`} title="V"
+              className={cn("relative w-20 rounded-[12%] outline-none transition disabled:cursor-default", pick?.from === "stock" ? "-translate-y-2 ring-[3px] ring-ice" : useful(topOf(stock)) && "hint-glow")}>
+              <SbCardView card={topOf(stock)} className="ring-2 ring-ice/60" />
+              <span className="absolute -top-2 -right-2 rounded-full bg-ice px-1.5 text-[0.7rem] font-bold text-navy-950 tabular-nums" data-testid="stock">{stockCount}</span>
+            </button>
+          </div>
+          {discards.map((d, i) => {
+            const target = myTurn && (pick?.from === "hand" || !hand.length);
+            const sel = pick?.from === "discard" && pick.i === i;
+            return (
+              <div key={i} className="grid justify-items-center gap-1">
+                {kbd(KEY_DISCARD[i])}
+                <button type="button" disabled={!target && !(myTurn && !pick && d.length) && !sel} data-testid={`discard-${i}`} title={KEY_DISCARD[i].toUpperCase()}
+                  onClick={() => (target ? discardTo(i) : select({ from: "discard", i }))}
+                  aria-label={target ? `Auf Ablage ${i + 1} ablegen und Zug beenden` : `Ablage ${i + 1}${d.length ? `, oben ${topOf(d)}` : " leer"}`}
+                  className={cn("w-14 rounded-[12%] outline-none transition disabled:cursor-default", sel && "-translate-y-2 ring-[3px] ring-ice", target ? "target-glow" : useful(topOf(d)) && "hint-glow")}>
+                  <SbCardView card={topOf(d)} small />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {/* Hand */}
+        <div className="flex shrink-0 items-end gap-2" data-testid="hand">
+          {hand.map((c, i) => {
+            const sel = pick?.from === "hand" && pick.card === c && hand.indexOf(c) === i;
+            return (
+              <button key={`${c}-${i}`} type="button" disabled={!myTurn} onClick={() => select({ from: "hand", card: c })} title={String(i + 1)}
+                className={cn("w-[4.5rem] shrink-0 rounded-[12%] outline-none transition hover:-translate-y-1 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", sel ? "-translate-y-3 ring-[3px] ring-ice" : useful(c) && "hint-glow")}>
+                <SbCardView card={c} />
+              </button>
+            );
+          })}
+          {!hand.length && <p className="py-6 text-sm text-muted-foreground">Keine Handkarten</p>}
+        </div>
+        {/* Ziele: die vier Aufbaustapel (liegen auch auf dem Tisch) */}
+        <div className="glass grid shrink-0 grid-cols-2 gap-1.5 rounded-2xl px-3 py-2" role="group" aria-label="Auf Aufbaustapel legen">
+          {s.builds.map((b, i) => {
+            const ok = picked !== undefined && fits(b, picked);
+            return (
+              <button key={i} type="button" disabled={!ok} onClick={() => playTo(i)} title={KEY_BUILD[i].toUpperCase()} aria-label={`Auf Aufbaustapel ${i + 1} legen, braucht ${needs(b)}`}
+                className={cn("flex w-20 items-center justify-center gap-1.5 rounded-xl py-2 font-bold whitespace-nowrap outline-none transition disabled:cursor-default", ok ? "target-glow bg-ice text-navy-950" : "bg-navy-950/40 text-muted-foreground")}>
+                <span className="text-lg tabular-nums">→ {needs(b)}</span>{kbd(KEY_BUILD[i])}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
