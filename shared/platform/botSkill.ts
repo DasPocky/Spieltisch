@@ -14,6 +14,8 @@ import { isKing, legalMoves as dameMoves, type DameState } from "../games/dame/l
 import { legalMoves as muehleMoves, MILLS, type MuehleState } from "../games/muehle/logic";
 import { PER_COLOR, PIECES, trackLen, type LudoState } from "../games/ludo/logic";
 import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
+import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf as maexValue, type MaexState } from "../games/maexchen/logic";
+import { canStop, latestCard, selectionValue, type AllesState, type DiceState } from "../games/alles/logic";
 import { botMove, candidates, type Move } from "./bots";
 import { applyRoomAction, roomGame, viewRoom, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
@@ -259,11 +261,72 @@ const scoreFuenfwuerfel: Scorer = (view, a, _after, me) => {
   return -50;
 };
 
-const SCORERS: Record<string, Scorer> = { fuenfwuerfel: scoreFuenfwuerfel, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+// ---------------------------------------------------------------- Mäxchen (nur mit App-Würfeln: der Bot sieht nur seinen Becher)
+
+const scoreMaexchen: Scorer = (view, a, _after, _me) => {
+  const s = view.game as MaexState;
+  const last = lastOf(s);
+  const opt = turnOptions(s, view.options);
+  if (!s.rolled) {
+    // Unglaubwürdige Ansage (selten so hoch gewürfelt) aufdecken, sonst würfeln
+    const doubt = !!last && chanceAtLeast(last.value) < 0.35;
+    if (a.type === "reveal") return doubt ? 50 : -10;
+    if (a.type === "roll") return 20;
+    return -50;
+  }
+  if (a.type !== "announce") return -50;
+  const v = a.value as number;
+  const real = s.dice ? maexValue(s.dice) : null;
+  // ehrlich, wenn es reicht – sonst knapp bluffen (die niedrigste erlaubte Ansage)
+  if (real !== null && maexRank(real) >= opt.minRank) return v === real ? 100 : -maexRank(v);
+  return 50 - (maexRank(v) - opt.minRank) * 5;
+};
+
+// ---------------------------------------------------------------- Alles oder nichts (nur mit App-Würfeln)
+
+/** Beste gültige Auswahl im Wurf: meiste Punkte, bei Gleichstand möglichst viele Würfel (Straße, Torte) */
+function allesPick(d: DiceState, card: ReturnType<typeof latestCard>): boolean[] {
+  let best: boolean[] = d.roll.map(() => false), top = -1;
+  for (let m = 1; m < 1 << d.roll.length; m++) {
+    const sel = d.roll.map((_, i) => !!(m & (1 << i)));
+    const v = selectionValue({ ...d, sel }, card);
+    if (v === null) continue;
+    const rank = v * 10 + sel.filter(Boolean).length;
+    if (rank > top) { top = rank; best = sel; }
+  }
+  return best;
+}
+
+const scoreAlles: Scorer = (view, a, _after, _me) => {
+  const s = view.game as AllesState;
+  const d = s.dice;
+  const card = latestCard(s);
+  if (a.type === "useChance") return 100;
+  if (!d || (!d.roll.length && !s.turnCards.length)) return a.type === "draw" ? 50 : a.type === "roll" ? 40 : -50;
+  if (d.bust) return a.type === "book" ? 50 : -50;
+  const want = d.roll.length ? allesPick(d, card) : [];
+  const sel = selectionValue(d, card);
+  const left = 6 - d.aside.length - d.sel.filter(Boolean).length;
+  const pts = s.turnPts + (sel ?? 0);
+  // Aufhören, wenn genug im Topf ist und kaum Würfel übrig sind (oder der Topf sehr voll ist)
+  const stop = canStop(s) && sel !== null && ((pts >= 300 && left <= 2) || pts >= 1000);
+  switch (a.type) {
+    case "toggleDie": return d.roll.length && want[a.i as number] !== d.sel[a.i as number] ? 30 : -30;
+    case "roll": return stop ? -10 : 20;
+    case "book": return a.zero ? -100 : stop ? 60 : -20;
+    case "draw": return d.alles || !s.turnCards.length ? 45 : -50;
+    default: return -50;
+  }
+};
+
+const SCORERS: Record<string, Scorer> = { fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
   // echte Würfel: Augen tippt der Mensch ein – dann wie die Testspieler
+  maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
+  alles: (view) => (view.options.diceMode !== "app" || view.options.cards === "real" ? null
+    : [{ type: "draw" }, { type: "roll" }, { type: "book" }, { type: "useChance" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ type: "toggleDie", i }))]),
   fuenfwuerfel: (view) => (view.options.diceMode === "real" ? null : [{ type: "roll" }, ...[0, 1, 2, 3, 4].map((i) => ({ type: "hold", i })), ...ALL_CATS.map((cat) => ({ type: "score", cat }))]),
   maumau: (view, me) => {
     const s = view.game as MauMauState;
@@ -327,7 +390,9 @@ export function playBot(room: RoomState, botId: string, online: boolean, seed = 
   const level = room.botLevels?.[botId];
   // Spiele ohne Bewertung: echter Zufall (ein fester Startwert ließe den Bot in derselben Lage immer gleich ziehen –
   // z. B. einen Würfel endlos an- und abwählen)
-  if (!level || level === "zufall" || !hasSkill(room.gameId)) return botMove(room, botId, online);
+  // Spielweisen ohne Bewertung (z. B. echte Würfel): ebenso
+  const skilled = hasSkill(room.gameId) && room.game && MOVES[room.gameId]?.(viewRoom(room, botId), botId) !== null;
+  if (!level || level === "zufall" || !skilled) return botMove(room, botId, online);
   if (!online && room.phase === "playing" && room.game && roomGame(room).currentPlayerId(room.game) !== botId) return null;
   return chooseBotMove(room, botId, level, online, seed);
 }
