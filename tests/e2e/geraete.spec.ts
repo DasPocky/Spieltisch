@@ -184,7 +184,8 @@ test("Am Rechner am Tisch mitspielen (Eins!): eigene Hand unter dem Tisch, Tasta
     await page.getByRole("button", { name: "Spiel starten" }).click();
 
     await expect(page.getByTestId("desk-stage")).toBeVisible();
-    await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(7);
+    // 7 Karten – oder 9, wenn die Startkarte eine +2 ist
+    await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThanOrEqual(7);
     await expect(page.getByTestId("table-seat")).toContainText("Ben");
     await expectNoScroll(page);
     await shot(page, "g7-desk-eins");
@@ -194,8 +195,9 @@ test("Am Rechner am Tisch mitspielen (Eins!): eigene Hand unter dem Tisch, Tasta
     if (/Farbwahl/.test((await status.textContent()) ?? "")) await page.keyboard.press("1");
     if (!/ist am Zug/.test((await status.textContent()) ?? "")) {
       // Anna ist dran: ziehen (Z) – danach passen (P), falls die gezogene Karte nicht gelegt wird
+      const before = await page.getByTestId("desk-hand").getByTestId("hand").locator("button").count();
       await page.keyboard.press("z");
-      await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(7);
+      await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(before);
       await page.keyboard.press("p");
       await expect.poll(async () => (await status.textContent()) ?? "").toMatch(/ist am Zug|Leg|Gezogene|ziehen/);
     }
@@ -334,6 +336,7 @@ test("Am Rechner (Himmelskarten): eigenes Raster unter dem Tisch, Aufdecken und 
     await expect(mine.getByRole("button")).toHaveCount(12);
     // Zwei Karten aufdecken mit 1 und 2; Ben deckt am Handy zwei auf
     await page.keyboard.press("1");
+    await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(1);
     await page.keyboard.press("2");
     await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(2);
     const bens = phone.getByRole("group", { name: "Deine Karten" }).getByRole("button");
@@ -348,6 +351,7 @@ test("Am Rechner (Himmelskarten): eigenes Raster unter dem Tisch, Aufdecken und 
       await page.keyboard.press("z");
       await expect(area.getByTestId("drawn")).toBeVisible();
       await page.keyboard.press("b");
+      await expect(area.getByTestId("hint")).toContainText("Dreh eine verdeckte Karte um");
       await page.keyboard.press("3");
       await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(3);
     }
