@@ -12,7 +12,9 @@ import type { SbState } from "@shared/games/stapelbau/logic";
 import type { EinsState } from "@shared/games/eins/logic";
 import type { HsState } from "@shared/games/hellseher/logic";
 import { candidates, shuffleInPlace } from "@shared/platform/bots";
-import { applyRoomAction, roomGame, skipLabel, type RoomState } from "@shared/platform/room";
+import { applyRoomAction, roomGame, skipLabel, viewRoom, type RoomState } from "@shared/platform/room";
+import { WATCH_ID } from "@shared/platform/protocol";
+import { tableModel } from "../../src/platform/table/model";
 import { GameError } from "@shared/platform/types";
 import { act, roomWith } from "./helpers";
 
@@ -66,6 +68,19 @@ function checkCards(r: RoomState) {
 }
 
 /**
+ * Großer Tisch: in jedem Zustand lässt sich die Sicht des Fernsehers zeichnen – wer dran ist, sitzt am Tisch,
+ * und Plätze gibt es nur für Mitspieler. (Was der Fernseher nicht sehen darf, nimmt schon `view` heraus.)
+ */
+function checkTable(r: RoomState) {
+  const m = tableModel(viewRoom(r, WATCH_ID));
+  if (!m) return;
+  const ids = new Set(r.players.map((p) => p.id));
+  if (m.turn) expect(ids.has(m.turn), `${r.gameId}: dran ist ${m.turn}`).toBe(true);
+  for (const id of Object.keys(m.counts)) expect(ids.has(id), `${r.gameId}: Kartenzahl für ${id}`).toBe(true);
+  for (const id of Object.keys(m.boards ?? {})) expect(ids.has(id), `${r.gameId}: Auslage für ${id}`).toBe(true);
+}
+
+/**
  * Obergrenze gegen Endlosschleifen. Ludo mit 6 Spielern, Schlagzwang und „bis alle im Ziel“ ist von Natur aus lang
  * (gemessen an 574 Zufallspartien: Mittel ~4.600, längste ~14.000 Schritte) – die Grenze liegt deutlich darüber,
  * damit seltene lange Partien nicht als „hängt“ zählen. Ein echter Hänger endet nie und fällt weiter auf.
@@ -100,6 +115,7 @@ function playOut(start: RoomState, online: boolean, maxSteps = 40000) {
     // Solange alle mitspielen, muss es immer einen erlaubten Zug geben
     if (!moved) throw new Error(`Festgefahren in ${r.gameId} (${[...errors].filter((m) => !m.includes("schon eingetragen")).slice(0, 20).join(" | ")}): ${JSON.stringify(r.game).slice(0, 800)}`);
     checkCards(r);
+    checkTable(r);
   }
   throw new Error(`${start.gameId}: Partie nach ${maxSteps} Schritten nicht beendet: ${JSON.stringify(r.game).slice(0, 3000)}`);
 }
