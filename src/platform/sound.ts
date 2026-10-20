@@ -19,6 +19,8 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let musicBus: GainNode | null = null;
 let crowdBus: GainNode | null = null;
+/** Echte Stimme (Ansagen) – eigene Spur, nicht vom Regler „Effekte“ abhängig */
+let voiceBus: GainNode | null = null;
 
 /** Lautstärke-Regler wirken quadratisch – so klingt die Mitte des Reglers auch nach Mitte */
 const level = (v: number) => v * v;
@@ -47,6 +49,7 @@ function audio(): AudioContext | null {
       master = ctx.createGain(); master.connect(limit);
       musicBus = ctx.createGain(); musicBus.connect(limit);
       crowdBus = ctx.createGain(); crowdBus.connect(limit);
+      voiceBus = ctx.createGain(); voiceBus.gain.value = 0.95; voiceBus.connect(limit);
       applyVolumes();
       onPrefs(applyVolumes);
     }
@@ -245,3 +248,9 @@ export function stopMusic() {
 export const audioRunning = () => ctx?.state === "running";
 /** Ton nach einem Klick freischalten */
 export const unlockAudio = () => { audio(); };
+
+/** Ausgang für die echte Stimme (null ohne WebAudio) */
+export function voiceOut(): { ctx: AudioContext; out: GainNode } | null {
+  const c = audio();
+  return c && voiceBus ? { ctx: c, out: voiceBus } : null;
+}

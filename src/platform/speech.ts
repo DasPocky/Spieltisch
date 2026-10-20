@@ -1,4 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import type { VoiceMood } from "@shared/platform/voice";
+import { speakReal, stopReal } from "./realVoice";
 
 const KEY = "spieltisch:werwolf:speech";
 const VOICE_KEY = "spieltisch:voice";
@@ -13,7 +15,7 @@ const notify = () => listeners.forEach((l) => l());
 export function setSpeech(on: boolean) {
   current = on;
   try { localStorage.setItem(KEY, on ? "1" : "0"); } catch { /* egal */ }
-  if (!on) try { speechSynthesis.cancel(); } catch { /* nicht unterstützt */ }
+  if (!on) { try { speechSynthesis.cancel(); } catch { /* nicht unterstützt */ } stopReal(); }
   notify();
 }
 
@@ -77,6 +79,9 @@ function pickVoice(): SpeechSynthesisVoice | null {
   return all.find((v) => v.voiceURI === want) ?? all[0] ?? null;
 }
 
+/** Zählt Ansagen – eine spätere ersetzt eine frühere */
+let said = 0;
+
 /** Grobe Sprechdauer, falls das Gerät kein Ende meldet */
 const estimate = (text: string) => 900 + text.length * 70;
 
@@ -84,9 +89,17 @@ const estimate = (text: string) => 900 + text.length * 70;
  * Liest `text` vor – Satz für Satz mit natürlichen Pausen – und meldet, wann alles gesagt ist.
  * Ohne Sprachausgabe wird kurz gewartet, damit Abläufe gleich getaktet bleiben.
  */
-export function speak(text: string, opts: { force?: boolean; /** je gesprochenem Wort (für Mundbewegung) */ onWord?: () => void; /** Stimmlage, 1 = normal */ pitch?: number } = {}): Promise<void> {
-  if (!text.trim()) return Promise.resolve();
-  if (!speechSupported() || (current === false && !opts.force)) return new Promise((r) => setTimeout(r, Math.min(estimate(text), 2500)));
+export async function speak(text: string, opts: { force?: boolean; /** je gesprochenem Wort (für Mundbewegung) */ onWord?: () => void; /** Stimmlage der Gerätestimme, 1 = normal */ pitch?: number; /** Stimmung der echten Stimme */ mood?: VoiceMood } = {}): Promise<void> {
+  if (!text.trim()) return;
+  if (current === false && !opts.force) return new Promise((r) => setTimeout(r, Math.min(estimate(text), 2500)));
+  // Zuerst die echte Stimme (Bausteine aus R2); fehlt etwas, spricht das Gerät
+  const id = ++said;
+  try { speechSynthesis.cancel(); } catch { /* nicht unterstützt */ }
+  stopReal();
+  if (await speakReal(text, { mood: opts.mood, onWord: opts.onWord }).catch(() => false)) return;
+  // Inzwischen kam schon die nächste Ansage – diese nicht mehr nachsprechen
+  if (id !== said) return;
+  if (!speechSupported()) return new Promise((r) => setTimeout(r, Math.min(estimate(text), 2500)));
   return new Promise((resolve) => {
     let done = false;
     const finish = () => { if (!done) { done = true; clearTimeout(guard); resolve(); } };

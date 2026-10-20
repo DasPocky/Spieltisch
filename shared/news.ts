@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-stimme",
+    date: "2026-10-20",
+    title: "Eine echte Stimme",
+    items: [
+      "Ansagen spricht jetzt ein echter Sprecher statt der Handystimme – mit Stimmung: fröhlich, frech, grimmig und nachts im Werwolf flüsternd.",
+      "Neue Namen lernt er von selbst dazu, meist in unter einer Stunde.",
+      "Im Profil unter „Stimme“ lässt sich auf die Stimme des Geräts zurückschalten.",
+    ],
+  },
+  {
     id: "2026-10-stirnraten",
     date: "2026-10-20",
     title: "Neu: Stirnraten",

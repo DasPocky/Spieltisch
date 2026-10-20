@@ -1,3 +1,4 @@
+import type { VoiceMood } from "@shared/platform/voice";
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Smile } from "lucide-react";
 import { eveningRanking, planStatus, roomGame, type RoomState } from "@shared/platform/room";
@@ -18,6 +19,9 @@ const OWN_LEADER = new Set(["werwolf", "einenacht"]);
 const MOOD_KEY = "spieltisch:host-mood";
 export const readMood = (): Mood => { const m = readStr(MOOD_KEY); return m === "frech" || m === "boese" ? m : "charmant"; };
 
+/** Echte Stimme: Charakter des Moderators → Stimmung */
+const MOOD_VOICE: Record<Mood, VoiceMood> = { charmant: "froh", frech: "ueberrascht", boese: "wuetend" };
+
 interface Say { text: string; moment: Moment; at: number; ms: number }
 
 /**
@@ -36,7 +40,7 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
   const show = (moment: Moment, text: string) => {
     const ms = 600 + text.length * 62;
     setSay({ text, moment, at: Date.now(), ms });
-    if (voice) void speak(text, { force: true, pitch: 1.1 });
+    if (voice) void speak(text, { force: true, pitch: 1.1, mood: MOOD_VOICE[mood] });
   };
   const announce = (moment: Moment, who = "") => {
     if (!on) return;

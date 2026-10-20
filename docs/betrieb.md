@@ -91,6 +91,14 @@ Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff
 
 Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`.
 
+### Echte Stimme (Ordner `assets/stimme/`)
+
+Ansagen spielt das Gerät aus Bausteinen ab: feste Satzteile je Stimmung, Namen und Zahlen einzeln (`shared/platform/voice.ts`, `src/platform/realVoice.ts`). Jeder Baustein liegt als `stimme/<Prüfsumme>.mp3` in R2, die Liste aller in `stimme/index.json`. Fehlt ein Baustein, meldet das Gerät ihn (`POST /api/voice/missing`, geprüft und je Adresse begrenzt) und spricht diesmal mit der Gerätestimme.
+
+Die GitHub-Aktion **Stimme** (`.github/workflows/stimme.yml`, stündlich, bei Änderungen an den Ansagen und per Knopf) erzeugt mit Thorsten (deutsche Neuronalstimme mit Stimmungen, CC0, über sherpa-onnx) alle festen Satzteile (`scripts/stimme/saetze.ts`), die Vornamen aus `scripts/stimme/namen.txt`, die Zahlen 0–300 und die gemeldeten Lücken (`GET /api/release/voice`), lädt neue Bausteine über `PUT /api/release/files/stimme/…` hoch, schreibt das Verzeichnis neu und meldet Erledigtes (`POST /api/release/voice/done`). Braucht das GitHub-Secret `RELEASE_SECRET` (gleicher Wert wie das Worker-Secret); andere Adresse als workers.dev über die Variable `SITE_URL`. Lokal: `SITE_URL=http://localhost:5199 RELEASE_SECRET=… MODEL_DIR=… python3 scripts/stimme/erzeugen.py`.
+
+Stimmungen: neutral (Namen, Zahlen, normale Ansagen), froh (Moderator charmant), überrascht (frech), wütend (böse), flüsternd (Werwolf-Nacht), beschwipst, müde. Im Profil unter „Stimme“: echte Stimme oder Stimme des Geräts.
+
 ### Dateien per Schlüssel einspielen
 
 `PUT /api/release/files/<Ordner>/<Name>` nimmt Dateien mit dem Kopf `x-release-key: <RELEASE_SECRET>` an (gleiche Prüfung wie in der Verwaltung, Eintrag im Protokoll) – für spätere Automatisierungen. Ohne passenden Schlüssel nimmt der Server nichts an.

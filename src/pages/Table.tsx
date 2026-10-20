@@ -39,6 +39,7 @@ import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
+import { useVoiceNames } from "@/platform/realVoice";
 
 /** Am Fernseher: mit den Pfeiltasten der Fernbedienung von Knopf zu Knopf */
 const useArrowKeys = () => useEffect(() => enableSpatialNav(), []);
@@ -210,6 +211,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   useTableSound(room, model);
   const [mood, setMood] = useState(readMood);
   const moderator = useTableHost(room, model, mood, game?.info.name);
+  useVoiceNames(room.players);
   const couch = useCouch(code);
   // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
   const [handOpen, setHandOpen] = useState(false);

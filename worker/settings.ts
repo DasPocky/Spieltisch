@@ -47,6 +47,9 @@ export type AdminResult = { ok: boolean; error?: string; status?: number };
  * Ein einziges Durable Object mit den Admin-Einstellungen (Freigaben, Zugangscode, Hinweis, Standards),
  * den Admin-Sitzungen, der Übersicht offener Räume (`room:<CODE>`) und der Statistik.
  */
+/** Höchstens so viele fehlende Bausteine der Stimme auf der Warteliste */
+const VOICE_QUEUE_MAX = 3000;
+
 export class SiteSettings extends DurableObject<Env> {
   private data: SettingsData = { config: { ...DEFAULT_CONFIG }, codeHash: null, salt: crypto.randomUUID(), fails: 0, lockUntil: 0 };
   private stats: SiteStats = emptySiteStats(Date.now());
@@ -294,6 +297,29 @@ export class SiteSettings extends DurableObject<Env> {
   }
 
   /** Einen KI-Spruch für heute verbuchen – false, wenn das Tageslimit erreicht ist */
+  /** Echte Stimme: fehlende Bausteine merken (Gerät meldet), die GitHub-Aktion holt sie ab und erzeugt sie */
+  async voiceNote(items: { key: string; mood: string; text: string }[]): Promise<number> {
+    const queue = (await this.ctx.storage.get<Record<string, { mood: string; text: string; at: number }>>("voiceQueue")) ?? {};
+    const now = Date.now();
+    for (const it of items) if (!queue[it.key]) queue[it.key] = { mood: it.mood, text: it.text, at: now };
+    // Begrenzt: die ältesten fliegen raus
+    const keys = Object.keys(queue);
+    if (keys.length > VOICE_QUEUE_MAX) for (const k of keys.sort((a, b) => queue[a].at - queue[b].at).slice(0, keys.length - VOICE_QUEUE_MAX)) delete queue[k];
+    await this.ctx.storage.put("voiceQueue", queue);
+    return Object.keys(queue).length;
+  }
+
+  async voiceQueue(): Promise<{ key: string; mood: string; text: string }[]> {
+    const queue = (await this.ctx.storage.get<Record<string, { mood: string; text: string; at: number }>>("voiceQueue")) ?? {};
+    return Object.entries(queue).map(([key, v]) => ({ key, mood: v.mood, text: v.text }));
+  }
+
+  async voiceDone(keys: string[]): Promise<void> {
+    const queue = (await this.ctx.storage.get<Record<string, { mood: string; text: string; at: number }>>("voiceQueue")) ?? {};
+    for (const k of keys) delete queue[k];
+    await this.ctx.storage.put("voiceQueue", queue);
+  }
+
   async aiTake(max: number): Promise<boolean> {
     const day = new Date().toISOString().slice(0, 10);
     const used = (await this.ctx.storage.get<{ day: string; count: number }>("ai")) ?? { day, count: 0 };

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useVoiceNames } from "./realVoice";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal, Smartphone } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
@@ -81,6 +82,8 @@ export function RoomScreen(props: Props) {
   // Mitten in der Partie dazugekommen: wartet auf die nächste Partie
   const benched = playing && me !== null && !!room.bench?.some((p) => p.id === me);
   const feedback = useGameFeedback(room, me);
+  // Echte Stimme: Namen der Mitspieler sind eigene Bausteine
+  useVoiceNames(room.players);
   useRoomUpdateGate(room, me);
 
   // Am Rechner: Partie am Tisch aus eigener Sicht (Spiele mit Spielweise „Am Rechner“, großer Bildschirm)
