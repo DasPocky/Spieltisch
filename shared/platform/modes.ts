@@ -28,26 +28,23 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   // Bausteine Würfel und Spielfeld: abgenommen (docs/abnahme/fuenfwuerfel.md, vier.md)
   fuenfwuerfel: { table: "on", stage: "beta" },
   vier: { table: "on", stage: "beta" },
-  // Bausteine Stapel und Auslage am Platz – Beta bis zur Abnahme
-  stapelbau: { table: "beta" },
-  himmelskarten: { table: "beta" },
-  zehnphasen: { table: "beta" },
-  glueckssieben: { table: "beta" },
-  decknamen: { table: "beta" },
-  // Würfel mit Karten bzw. Becher – Beta bis zur Abnahme
-  alles: { table: "beta" },
-  maexchen: { table: "beta" },
-  // Baustein Brett – Beta bis zur Abnahme
-  dame: { table: "beta" },
-  muehle: { table: "beta" },
-  ludo: { table: "beta" },
-  fischen: { table: "beta" },
-  hellseher: { table: "beta" },
-  // Baustein Aufsteller (Partyspiele) – Beta bis zur Abnahme
-  werwolf: { table: "beta" },
-  einenacht: { table: "beta" },
-  spion: { table: "beta" },
-  stirnraten: { table: "beta" },
+  // Tisch abgenommen: docs/abnahme/tisch.md (Stapel und Auslage, Würfel mit Karten/Becher, Brett, Aufsteller)
+  stapelbau: { table: "on" },
+  himmelskarten: { table: "on" },
+  zehnphasen: { table: "on" },
+  glueckssieben: { table: "on" },
+  decknamen: { table: "on" },
+  alles: { table: "on" },
+  maexchen: { table: "on" },
+  dame: { table: "on" },
+  muehle: { table: "on" },
+  ludo: { table: "on" },
+  fischen: { table: "on" },
+  hellseher: { table: "on" },
+  werwolf: { table: "on" },
+  einenacht: { table: "on" },
+  spion: { table: "on" },
+  stirnraten: { table: "on" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */
