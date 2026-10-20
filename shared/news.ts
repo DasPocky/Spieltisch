@@ -15,6 +15,17 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-stirnraten",
+    date: "2026-10-20",
+    title: "Neu: Stirnraten",
+    items: [
+      "Handy an die Stirn, die anderen erklären – nicken heißt erraten, nach hinten kippen heißt weiter.",
+      "Vier Varianten: klassisch, in Teams, mit tickender Bombe oder mit einem Hochstapler, der den Begriff nicht kennt.",
+      "Über 3.500 Begriffe in 59 Kategorien – von Kinderliedern zum Summen bis „Ab 18“ – und eure eigenen.",
+      "Auf Wunsch filmt das Handy die Erklärenden; das Video bleibt nur bei dir.",
+    ],
+  },
+  {
     id: "2026-10-partyabend",
     date: "2026-10-19",
     title: "Partyabend, Bühne und Kartenspiele am Rechner",

@@ -213,6 +213,24 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       if (st.place && Math.random() < 0.3) add({ type: "guess", place: st.place });
       break;
     }
+    case "stirnraten": {
+      const st = r.game as { cards: unknown[]; passes: number; options: string[]; order: string[]; phase: string };
+      ["start", "timeUp", "stop", "confirm", "tick", "next", "seen", "said"].forEach((type) => add({ type }));
+      add({ type: "pick", cat: "mix" });
+      for (let k = 0; k < 4; k++) add({ type: "mark", i: st.cards.length - 1, r: Math.random() < 0.7 ? "hit" : "pass" });
+      if (st.cards.length) add({ type: "fix", i: Math.floor(Math.random() * st.cards.length), r: "pass" });
+      for (let k = 0; k < 3; k++) add({ type: "pass", n: st.passes });
+      add({ type: "swap", n: st.passes });
+      for (const id of ids) {
+        add({ type: "seen", player: id });
+        add({ type: "vote", target: id });
+        add({ type: "verdict", target: id });
+      }
+      add({ type: "verdict", target: null });
+      if (st.options.length) add({ type: "guess", word: pick(st.options) });
+      if (Math.random() < 0.05) add({ type: "custom", words: ["Opas Schnurrbart", "Unser Hund"] });
+      break;
+    }
     case "einenacht": {
       const ids2 = r.players.map((p) => p.id);
       ["ready", "startNight", "next", "nightDone", "closeVote"].forEach((type) => add({ type }));

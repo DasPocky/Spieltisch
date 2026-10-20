@@ -29,6 +29,7 @@ const FEATURES: [keyof SiteFeatures, string, string][] = [
   ["local", "Ein Handy für alle", "lokal spielen ohne Raum"],
   ["offline", "Offline-App", "Seite und Spiele auf dem Handy speichern"],
   ["ai", "KI-Sprüche", "Moderator mit frischen Sprüchen (Cloudflare Workers AI, höchstens 400 am Tag)"],
+  ["recording", "Video bei Stirnraten", "Das Stirn-Handy filmt die Runde – bleibt nur auf dem Gerät"],
 ];
 const LIMITS: [keyof SiteLimits, string, string, number, number][] = [
   ["roomHours", "Leere Räume höchstens", "Stunden", 1, 336],
