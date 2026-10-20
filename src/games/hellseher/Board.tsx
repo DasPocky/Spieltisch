@@ -17,6 +17,7 @@ import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { HS_BG, HsBack, HsCardView, SuitMark } from "./Card";
 
 type Props = BoardProps<HsState, HsAction>;
@@ -58,7 +59,7 @@ function Trick({ plays, players, me, winner, faded }: { plays: Play[]; players: 
   );
 }
 
-function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: Props) {
   const players = room.players;
   const local = me === null;
   const hints = useHints();
@@ -95,6 +96,64 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
     vibrate(10);
     act(secretBid ? { type: "secretBid", player: viewer ?? undefined, bid: n } : { type: "bid", bid: n });
   };
+
+  // Am Rechner: Ansage 0–9 / Trumpf 1–4 / Karte 1–9 und 0 per Tastatur, Enter für die nächste Runde
+  useDeskKeys((e) => {
+    if (!desk) return;
+    if (s.phase === "roundEnd") { if (e.key === "Enter") act({ type: "nextRound" }); return; }
+    if (!myTurn) return;
+    const n = Number(e.key);
+    if (!Number.isInteger(n) || e.key === " ") return;
+    if (s.phase === "trump" && n >= 1 && n <= 4) act({ type: "trump", suit: SUITS[n - 1] });
+    else if (bidding && n <= s.round && n !== forbidden) onBid(n);
+    else if (playing) { const c = hand[n === 0 ? 9 : n - 1]; if (c && playable(c)) act({ type: "play", card: c }); }
+  });
+  if (desk) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-center text-base">
+          <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold")}><SmoothText>{status}</SmoothText></span>
+          {mine && mine.bid !== null && <span className="ml-3 text-sm text-muted-foreground tabular-nums">angesagt {mine.bid} · gemacht {mine.got}</span>}
+        </p>
+        {s.phase === "roundEnd" ? (
+          <div className="mx-auto grid w-full max-w-xl gap-2">
+            <RoundSummary s={s} players={players} me={me} />
+            <Button size="lg" onClick={() => act({ type: "nextRound" })}>{s.round >= s.totalRounds ? "Zum Ergebnis" : `Runde ${s.round + 1} geben`} <kbd className="ml-1 text-xs opacity-60">Enter</kbd></Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-end justify-center gap-1.5" data-testid="hand">
+              {hand.map((c, i) => {
+                const ok = playable(c);
+                return (
+                  <button key={c} type="button" disabled={!ok} data-card={c} title={i < 10 ? String((i + 1) % 10) : undefined} onClick={() => act({ type: "play", card: c })}
+                    className={cn("w-[4.5rem] shrink-0 rounded-[11%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default", ok && "-translate-y-2 hover:-translate-y-4", ok && hints && "hint-glow")}>
+                    <HsCardView card={c} dim={playing && !ok} />
+                  </button>
+                );
+              })}
+            </div>
+            {s.phase === "trump" && myTurn ? (
+              <div className="mx-auto grid grid-cols-4 gap-2" role="group" aria-label="Trumpf wählen">
+                {SUITS.map((c, i) => (
+                  <Button key={c} variant="secondary" onClick={() => act({ type: "trump", suit: c })} aria-label={SUIT_NAME[c]} title={String(i + 1)}>
+                    <svg viewBox="-5 -5 10 10" className="size-5" aria-hidden="true"><circle r={5} fill={HS_BG[c]} /><SuitMark suit={c} size={0.6} /></svg>{SUIT_NAME[c]} <kbd className="text-xs opacity-60">{i + 1}</kbd>
+                  </Button>
+                ))}
+              </div>
+            ) : bidding ? (
+              <div className="mx-auto flex flex-wrap items-center justify-center gap-1.5" role="group" aria-label="Ansage">
+                {hints && <HintChip>Tipp: etwa {estimateBid(hand, s.trump, players.length)}{forbidden !== null ? ` · ${forbidden} geht nicht` : ""}</HintChip>}
+                {Array.from({ length: s.round + 1 }, (_, n) => (
+                  <Button key={n} variant={n === forbidden ? "ghost" : "secondary"} className="h-10 w-11 px-0 text-lg tabular-nums" disabled={n === forbidden} aria-label={`${n} ansagen`} onClick={() => onBid(n)}>{n}</Button>
+                ))}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
