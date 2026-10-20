@@ -15,6 +15,8 @@ import { legalMoves as muehleMoves, MILLS, type MuehleState } from "../games/mue
 import { PER_COLOR, PIECES, trackLen, type LudoState } from "../games/ludo/logic";
 import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
 import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf as maexValue, type MaexState } from "../games/maexchen/logic";
+import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
+import type { FischenState } from "../games/fischen/logic";
 import { canStop, latestCard, selectionValue, type AllesState, type DiceState } from "../games/alles/logic";
 import { botMove, candidates, type Move } from "./bots";
 import { applyRoomAction, roomGame, viewRoom, type RoomAction, type RoomState } from "./room";
@@ -319,11 +321,64 @@ const scoreAlles: Scorer = (view, a, _after, _me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+// ---------------------------------------------------------------- Fischen (merkt sich die öffentlichen Fragen)
+
+const scoreFischen: Scorer = (view, a, _after, me) => {
+  if (a.type !== "ask") return -50;
+  const s = view.game as FischenState;
+  const rank = a.rank as string, target = a.target as string;
+  const mine = (s.hands[me] ?? []).filter((c) => rankOf(c) === rank).length;
+  // Was die Fragen verraten: wer nach einem Wert fragt, hat ihn; wer abgeben musste oder „Geh fischen!“ sagte, hat ihn nicht mehr
+  let known = 0;
+  for (const e of s.events) {
+    if (e.rank !== rank) continue;
+    if (e.askerId === target) known = 1;
+    if (e.targetId === target) known = -1;
+    if (e.askerId === me && e.targetId !== target && e.got > 0) known = known === 1 ? 1 : 0;
+  }
+  return mine * 3 + known * 10 + (s.counts[target] ?? 0) * 0.1;
+};
+
+// ---------------------------------------------------------------- Hellseher (ansagen, dann genau so viele Stiche)
+
+/** Stärke einer Karte für die Wahl: Zauberer vor Trumpf vor Farbe, Narr ganz unten */
+const hsPower = (c: HsCard, trump: string | null) => (isWizard(c) ? 100 : isFool(c) ? 0 : (hsSuit(c) === trump ? 20 : 0) + hsRank(c));
+
+const scoreHellseher: Scorer = (view, a, _after, me) => {
+  const s = view.game as HsState;
+  const hand = s.hands[me] ?? [];
+  const n = view.players.length;
+  if (a.type === "trump") return hand.filter((c) => hsSuit(c) === a.suit).reduce((t, c) => t + 1 + hsRank(c) / 13, 0);
+  if (a.type === "bid" || a.type === "secretBid") return -Math.abs((a.bid as number) - Math.round(estimateBid(hand, s.trump, n)));
+  if (a.type === "nextRound") return 10;
+  if (a.type !== "play") return -50;
+  const card = a.card as HsCard;
+  const need = (s.bids[me] ?? 0) - (s.tricks[me] ?? 0);
+  // Gewinnt die Karte den Stich (so wie er jetzt liegt)?
+  const wins = trickWinner([...s.trick, { id: me, card }], s.trump) === me;
+  const p = hsPower(card, s.trump);
+  if (need > 0) return wins ? 100 - p : -p;
+  return wins ? -100 - p : p;
+};
+
+const SCORERS: Record<string, Scorer> = { fischen: scoreFischen, hellseher: scoreHellseher, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
   // echte Würfel: Augen tippt der Mensch ein – dann wie die Testspieler
+  fischen: (view, me) => {
+    const s = view.game as FischenState;
+    if (s.table) return null;
+    const ranks = [...new Set((s.hands[me] ?? []).map(rankOf))];
+    return view.players.filter((p) => p.id !== me).flatMap((p) => ranks.map((rank) => ({ type: "ask", target: p.id, rank })));
+  },
+  hellseher: (view, me) => {
+    const s = view.game as HsState;
+    if (s.mode !== "app") return null;
+    const bids = Array.from({ length: s.round + 1 }, (_, bid) => bid);
+    return [...HS_SUITS.map((suit) => ({ type: "trump", suit })), ...bids.map((bid) => ({ type: "bid", bid })), ...bids.map((bid) => ({ type: "secretBid", bid })),
+      ...(s.hands[me] ?? []).map((card) => ({ type: "play", card })), { type: "nextRound" }];
+  },
   maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
   alles: (view) => (view.options.diceMode !== "app" || view.options.cards === "real" ? null
     : [{ type: "draw" }, { type: "roll" }, { type: "book" }, { type: "useChance" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ type: "toggleDie", i }))]),
