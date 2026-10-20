@@ -23,6 +23,7 @@ import { Icon as SchamlosIcon } from "./schamlos/Icon";
 import { Icon as StapelbauIcon } from "./stapelbau/Icon";
 import { Icon as HimmelskartenIcon } from "./himmelskarten/Icon";
 import { Icon as SpionIcon } from "./spion/Icon";
+import { Icon as StirnratenIcon } from "./stirnraten/Icon";
 import { Icon as AllesIcon } from "./alles/Icon";
 import { Icon as EinsIcon } from "./eins/Icon";
 import { Icon as VierIcon } from "./vier/Icon";
@@ -47,6 +48,7 @@ const ICONS: Record<GameId, Icon> = {
   stapelbau: StapelbauIcon,
   himmelskarten: HimmelskartenIcon,
   spion: SpionIcon,
+  stirnraten: StirnratenIcon,
   alles: AllesIcon,
   eins: EinsIcon,
   vier: VierIcon,
@@ -70,6 +72,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   stapelbau: () => import("./stapelbau").then((m) => m.stapelbauUI as unknown as GameUI),
   himmelskarten: () => import("./himmelskarten").then((m) => m.himmelskartenUI as unknown as GameUI),
   spion: () => import("./spion").then((m) => m.spionUI as unknown as GameUI),
+  stirnraten: () => import("./stirnraten").then((m) => m.stirnratenUI as unknown as GameUI),
   alles: () => import("./alles").then((m) => m.allesUI as unknown as GameUI),
   eins: () => import("./eins").then((m) => m.einsUI as unknown as GameUI),
   vier: () => import("./vier").then((m) => m.vierUI as unknown as GameUI),

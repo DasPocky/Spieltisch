@@ -1,3 +1,4 @@
+import { NEWS } from "../../shared/news";
 import { expect, test, type Page } from "@playwright/test";
 import { createRoom, joinRoom, newPhone, shot } from "./util";
 
@@ -79,12 +80,13 @@ test("Update „Sofort für alle“ (Standard): auch wer dran ist, lädt nach ku
 
 test("Was ist neu: einmal pro Gerät, danach im Profil", async ({ browser }) => {
   const page = await newPhone(browser);
-  await page.addInitScript(() => {
+  // Gesehen ist alles bis auf den neuesten Eintrag
+  await page.addInitScript((seen) => {
     localStorage.setItem("spieltisch:test-news", "true");
     localStorage.setItem("spieltisch:onboarded", "true");
     localStorage.setItem("spieltisch:name", "Ida");
-    if (!sessionStorage.getItem("t-news")) { sessionStorage.setItem("t-news", "1"); localStorage.setItem("spieltisch:newsSeen", "2026-10-updates"); }
-  });
+    if (!sessionStorage.getItem("t-news")) { sessionStorage.setItem("t-news", "1"); localStorage.setItem("spieltisch:newsSeen", seen); }
+  }, NEWS[1].id);
   await page.goto("/");
   const sheet = page.getByTestId("whats-new");
   await expect(sheet).toBeVisible();

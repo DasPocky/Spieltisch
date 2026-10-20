@@ -909,3 +909,39 @@ test("Werwolf, Eine Nacht und Spion am Tisch: Aufsteller mit Phase, Nachtlicht, 
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Stirnraten am Tisch: Fernseher zeigt wer rät, Uhr und Punkte – nie den Begriff; nach dem Zug die Liste", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { stirnraten: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-stirnraten").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("table-sign")).toContainText("Anna ist dran");
+    await anna.getByTestId("categories").getByRole("button", { name: "Tiere", exact: true }).click();
+    await anna.getByTestId("go").click();
+    await expect(anna.getByTestId("forehead")).toBeVisible({ timeout: 8000 });
+    const word = (await anna.getByTestId("forehead-word").textContent())!;
+    await expect(screen.getByTestId("table-sign")).toContainText("Anna rät");
+    await expect(screen.getByTestId("table-sign")).not.toContainText(word);
+    await expect(screen.locator("body")).not.toContainText(word);
+    await screen.waitForTimeout(500);
+    await shot(screen, "9s-tisch-stirnraten");
+    await anna.getByRole("button", { name: "Richtig", exact: true }).click();
+    await anna.waitForTimeout(700);
+    await anna.getByRole("button", { name: "Zug beenden" }).click();
+    await expect(screen.getByTestId("table-word")).toHaveCount(1);
+    await expect(screen.getByTestId("table-word")).toContainText(word);
+    await expect(screen.locator("main")).toContainText("1 erraten");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

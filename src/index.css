@@ -115,7 +115,8 @@
 
 /* Spiele-Tab auf kleinen Handys: Kacheln ohne Spielerzahl, damit alle ohne Scrollen passen */
 @media (max-height: 720px) { .games-sub, .game-tile-players { display: none; } }
-@media (max-height: 600px) { .games-grid .game-tile-icon { width: 2.25rem; height: 2.25rem; } }
+@media (max-height: 720px) { .games-grid .game-tile-icon { width: 2.25rem; height: 2.25rem; } }
+@media (max-height: 600px) { .games-grid .game-tile-icon { width: 2rem; height: 2rem; } }
 
 /* Begrüßung und Willkommen: Papierschnitt, der sich zusammensetzt */
 .intro-bg {

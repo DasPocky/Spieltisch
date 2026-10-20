@@ -76,6 +76,10 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 | Party | Werwolf, Eine Nacht, Spion, Decknamen, Schamlos | Moderator als Spielleiter, Nacht-Stimmung, Abstimmung live, Geheimes nur am Handy |
 | Brett | Dame, Mühle, Vier in einer Reihe, Ludo | Holzbrett auf dem Tisch, Züge animiert |
 
+**Stirnraten** 🔨 (neues Partyspiel, alle Varianten kombiniert): Handy an die Stirn, nicken = erraten, nach hinten = weiter (Sensor, sonst Tippen) · Varianten Klassisch, Teams (2–8, „Offene Runde“), Bombe (geheime Lunte, weitergeben), Hochstapler (einer kennt den Begriff nicht) · Darstellung Erklären, Pantomime, Geräusche, Summen, Akzent · 3.556 Begriffe in 59 Kategorien, Stufen Kinder/Familie/Freunde/Ab 18, eigene Begriffe · ein Handy, online und am Fernseher (Uhr, Punkte, nie der Begriff) · Video der Runde mit der Frontkamera, bleibt auf dem Gerät (Verwaltung: abschaltbar) · Vorlesen wie ein Spielleiter.
+
+**Echte Stimme** ⏳ (statt Gerätestimme): Alle festen Ansagen (Moderator, Spielleiter von Werwolf, Eine Nacht, Spion, Stirnraten …) werden einmal per Skript mit einer deutschen Neuronalstimme (hohe Qualität, läuft hier ohne Kosten je Satz) erzeugt, als kleine Opus-Dateien auf Cloudflare ausgeliefert und am Gerät aneinandergereiht. Namen der Spieler: häufige Vornamen ebenfalls vorab erzeugt, unbekannte Namen spricht die Gerätestimme. Skript `scripts/stimme.mjs` erzeugt nur neue oder geänderte Sätze (Prüfsumme), Rückfall immer Gerätestimme. Schalter je Gerät: echte Stimme / Gerätestimme / aus.
+
 **Dazwischen, sobald die Bühne steht:** Zeichnen & Raten · Quiz & Schätzen · **Schamlos Paket B** (Kartenset-Baukasten auch für Quiz/Decknamen/Zeichnen, private Sets, öffentliche Sets und Karten mit Freigabe, Bildkarten in R2).
 
 ## Phase 4 – Später ⏳

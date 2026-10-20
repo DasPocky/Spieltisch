@@ -65,10 +65,12 @@ export interface SiteFeatures {
   offline: boolean;
   /** KI-Sprüche des Moderators über Cloudflare Workers AI (begrenzt am Tag, Rückfall: feste Texte) – standardmäßig aus */
   ai: boolean;
+  /** Stirnraten: Das Stirn-Handy filmt die Runde (bleibt auf dem Gerät) – standardmäßig an */
+  recording: boolean;
 }
 
 export const DEFAULT_LIMITS: SiteLimits = { roomHours: 168, maxPlayers: 20, maxRooms: 0 };
-export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true, local: false, offline: false, ai: false };
+export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true, local: false, offline: false, ai: false, recording: true };
 export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
 
