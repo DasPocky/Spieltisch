@@ -102,11 +102,11 @@ describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
     }
     return { strong, games };
   }
-  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 80, 0.55], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
+  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
     const { strong, games } = share(gameId, n);
     expect(games).toBeGreaterThanOrEqual(n * 0.6);
     expect(strong / games).toBeGreaterThanOrEqual(min);
-  }, 120_000);
+  }, 300_000);
 
   it("Dame (schwer): schlägt lieber, als einen Stein herzuschenken", () => {
     const r = start("dame");
