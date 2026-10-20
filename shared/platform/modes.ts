@@ -29,7 +29,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   fuenfwuerfel: { table: "on", stage: "beta" },
   vier: { table: "on", stage: "beta" },
   // Tisch abgenommen: docs/abnahme/tisch.md (Stapel und Auslage, Würfel mit Karten/Becher, Brett, Aufsteller)
-  stapelbau: { table: "on" },
+  stapelbau: { table: "on", desk: "beta" },
   himmelskarten: { table: "on" },
   zehnphasen: { table: "on" },
   glueckssieben: { table: "on" },

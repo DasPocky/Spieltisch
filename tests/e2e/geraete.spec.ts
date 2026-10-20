@@ -246,3 +246,49 @@ test("Private Hand: am Rechner liegt der Tisch für alle, die Karten nur auf dem
   await expect(page.getByTestId("desk-hand").getByTestId("hand").locator("button")).toHaveCount(5, { timeout: 15_000 });
   await expect(page.getByTestId("desk-private")).toHaveCount(0);
 });
+
+/** Rechner (Anna, Host) und Handy (Ben) im selben Raum, Spiel gewählt und gestartet – „Am Rechner“ ist für das Spiel an */
+async function deskGame(browser: Browser, gameId: string, pin: string): Promise<{ page: Page; phone: Page }> {
+  const page = await desktop(browser);
+  await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+  await page.goto("/");
+  await page.evaluate((g) => localStorage.setItem("spieltisch:lastGame", g), gameId);
+  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByLabel("Dein Name").fill("Anna");
+  await page.getByLabel(/PIN/).fill(pin);
+  await page.getByRole("button", { name: "Öffnen", exact: true }).click();
+  await page.getByTestId("meet-play").click();
+  await page.getByTestId(`pick-${gameId}`).click();
+  const code = (await page.getByTestId("room-code").textContent())!.trim();
+  const phone = await newPhone(browser);
+  await phone.goto(`/r/${code}`);
+  await phone.getByLabel("Dein Name").fill("Ben");
+  await phone.getByLabel("PIN").fill(pin);
+  await phone.getByRole("button", { name: "Beitreten" }).click();
+  await expect(page.getByText("Ben", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(page.getByTestId("desk-stage")).toBeVisible();
+  return { page, phone };
+}
+
+test("Am Rechner (Stapelbau): Vorrat, Ablagen und Hand unter dem Tisch, Aufbau als Ziele, Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { stapelbau: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "stapelbau", "7373");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(5);
+    await expect(area.getByRole("group", { name: "Auf Aufbaustapel legen" }).locator("button")).toHaveCount(4);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "g8-desk-stapelbau");
+    // Anna ist dran: Handkarte 1 wählen (Taste 1), mit Q auf Ablage 1 legen – Zug vorbei, Ben ist dran
+    const status = area.getByTestId("status");
+    await expect(status).not.toContainText("ist am Zug");
+    await page.keyboard.press("1");
+    await page.keyboard.press("q");
+    await expect(status).toContainText("Ben ist am Zug");
+    await expect(area.getByTestId("discard-0").getByRole("img")).toBeVisible();
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
