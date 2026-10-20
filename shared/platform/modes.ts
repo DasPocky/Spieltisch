@@ -39,7 +39,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   dame: { table: "on" },
   muehle: { table: "on" },
   ludo: { table: "on" },
-  fischen: { table: "on" },
+  fischen: { table: "on", desk: "beta" },
   hellseher: { table: "on", desk: "beta" },
   werwolf: { table: "on" },
   einenacht: { table: "on" },

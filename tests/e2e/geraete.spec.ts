@@ -376,3 +376,24 @@ test("Am Rechner (Hellseher): Hand unter dem Tisch, Ansage und Karte per Tastatu
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Fischen): Werte als Stapel unter dem Tisch, fragen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { fischen: { desk: "on" } } });
+  try {
+    const { page, phone } = await deskGame(browser, "fischen", "7777");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button").first()).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gc-desk-fischen");
+    // Ist Anna dran: Wert 1 wählen, Enter fragt Ben (einziger Mitspieler) – die Frage steht danach oben
+    if (await area.getByRole("group", { name: "Wen fragst du?" }).isVisible()) {
+      await page.keyboard.press("1");
+      await page.keyboard.press("Enter");
+      await expect(area.getByTestId("last-ask")).toContainText("Du → Ben");
+      await expect(phone.getByTestId("last-ask")).toContainText("Anna → dich");
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
