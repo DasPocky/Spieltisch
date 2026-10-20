@@ -20,7 +20,7 @@ export const NEWS: NewsEntry[] = [
     title: "Neu: Quiz & Schätzen",
     items: [
       "Alle beantworten dieselbe Frage am eigenen Handy: Auswahl, Schätzen oder in die richtige Reihenfolge bringen.",
-      "Rund 1.200 eigene Fragen in acht Kategorien, jede mit Quelle – dazu ein Kinderquiz. Der Fernseher zeigt Frage, Uhr und Auflösung.",
+      "Über 1.100 eigene Fragen in acht Kategorien, jede mit Quelle – dazu ein Kinderquiz. Der Fernseher zeigt Frage, Uhr und Auflösung.",
     ],
   },
   {
