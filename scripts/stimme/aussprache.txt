@@ -14,12 +14,12 @@ ca. = zirka
 # Wörter aus dem Englischen
 Team = Tiehm
 Teams = Tiems
-Host = Hoost
+Host = Gastgeber
 Bot = Bott
 Bots = Botts
 Party = Pahti
-Partyabend = Pahtiabend
-Quiz = Quis
+Partyabend = Spieleabend
+Quiz = Quiss
 Snacks = Snäcks
 Joker = Dschoker
 Chat = Tschätt
