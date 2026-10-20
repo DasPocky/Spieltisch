@@ -61,25 +61,32 @@ export function useTableSound(room: RoomState, model: TableModel | null) {
  * Ton-Regler am Tisch: an/aus und drei Lautstärken. Fernseher-Browser spielen erst nach einem Klick –
  * solange zeigt der Knopf „Ton einschalten“.
  */
-export function SoundPanel() {
+/**
+ * Browser spielen Ton erst nach einer Berührung: solange er gesperrt ist, steht unten links „Ton einschalten“
+ * (am Fernseher der einzige Knopf, den es braucht).
+ */
+export function SoundUnlock() {
   const p = usePrefs();
   const [running, setRunning] = useState(audioRunning);
-  const [open, setOpen] = useState(false);
   useEffect(() => {
     if (running) return;
     const t = setInterval(() => setRunning(audioRunning()), 1000);
     return () => clearInterval(t);
   }, [running]);
+  if (!p.sound || running) return null;
+  return (
+    <button type="button" onClick={() => { unlockAudio(); setTimeout(() => setRunning(audioRunning()), 200); }} data-testid="sound-unlock"
+      className="absolute bottom-5 left-5 z-20 flex h-11 items-center justify-center gap-2 rounded-xl bg-black/50 px-4 text-sm font-semibold text-[#f7ecd6] outline-none hover:bg-black/60 focus-visible:ring-2 focus-visible:ring-[#f7ecd6]">
+      <Volume2 className="size-4" />Ton einschalten
+    </button>
+  );
+}
+
+export function SoundPanel() {
+  const p = usePrefs();
+  const [open, setOpen] = useState(false);
   const on = p.sound;
 
-  if (on && !running) {
-    return (
-      <button type="button" onClick={() => { unlockAudio(); setTimeout(() => setRunning(audioRunning()), 200); }} data-testid="sound-unlock"
-        className="flex h-10 items-center justify-center gap-2 rounded-xl bg-white/10 text-sm font-semibold text-[#f7ecd6] outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-[#f7ecd6]">
-        <Volume2 className="size-4" />Ton einschalten
-      </button>
-    );
-  }
   return (
     <div className="grid gap-2" data-testid="sound-panel">
       <div className="flex gap-2">

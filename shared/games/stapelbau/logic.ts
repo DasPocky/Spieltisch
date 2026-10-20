@@ -41,6 +41,8 @@ export interface SbState {
   log: string[];
   entries: Record<string, number | null>;
   tableWinner: string | null;
+  /** Züge in Folge ohne Karte (leere Hand, nichts mehr zu ziehen) – reihum alle: die Runde endet */
+  stalls?: number;
 }
 
 export type SbAction =
@@ -184,6 +186,7 @@ function apply(prev: SbState, a: SbAction, ctx: GameContext): SbState {
       else s.discards[me][a.i].pop();
       b.push(card);
       s.log.push(`${nameOf(ctx, me)} legt ${card === JOKER ? "Joker" : card} auf Stapel ${a.to + 1}${a.from === "stock" ? " (Vorrat)" : ""}`);
+      s.stalls = 0;
       if (b.length === 12) {
         s.done.push(...b);
         s.builds[a.to] = [];
@@ -206,7 +209,19 @@ function apply(prev: SbState, a: SbAction, ctx: GameContext): SbState {
       if (i < 0) {
         // Nichts mehr auf der Hand und nichts zu ziehen: Zug einfach beenden
         if (hand.length) throw new GameError("Diese Karte hast du nicht.");
+        // Geht reihum bei allen nichts mehr: Runde endet, wer den kleinsten Vorrat hat, gewinnt sie (nichts bleibt hängen)
+        s.stalls = (s.stalls ?? 0) + 1;
+        if (s.stalls >= ctx.players.length) {
+          const ids = ctx.players.map((p) => p.id).filter((id) => s.stocks[id]);
+          const best = ids.reduce((w, id) => (s.stocks[id].length < s.stocks[w].length ? id : w), me);
+          s.log.push(`Nichts geht mehr – ${nameOf(ctx, best)} hat den kleinsten Vorrat und gewinnt die Runde`);
+          s.stalls = 0;
+          winRound(s, ctx, best, roundPoints(s, ctx, best));
+          sync(s);
+          return s;
+        }
       } else {
+        s.stalls = 0;
         hand.splice(i, 1);
         d.push(a.card);
         s.log.push(`${nameOf(ctx, me)} legt ${a.card === JOKER ? "Joker" : a.card} ab – Zug vorbei`);

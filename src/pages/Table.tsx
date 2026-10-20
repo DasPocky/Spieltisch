@@ -32,8 +32,9 @@ import { useQuality } from "@/lib/quality";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { useAdminDevice } from "@/lib/admin";
 import { modeAllowed } from "@shared/platform/modes";
-import { SoundPanel, useTableSound } from "@/platform/table/sound";
-import { HostCorner, HostPanel, readMood, useTableHost } from "@/platform/table/host";
+import { SoundPanel, SoundUnlock, useTableSound } from "@/platform/table/sound";
+import { HostCorner, HostPanel, nextMood, readMood, useTableHost } from "@/platform/table/host";
+import { MOODS } from "@/platform/moderator/lines";
 import { FeltDice, FeltGrid, FeltSign, FeltTabletop, SignClock } from "@/platform/table/blocks";
 import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
@@ -166,8 +167,11 @@ type Remote = { cmd: RemoteCmd; by: string; n: number };
 /** Reaktion eines Spielers (Emoji), schwebt kurz über seinem Platz */
 type TableReact = { id: number; from: string; emoji: string };
 
+/** Was nur der Fernseher selbst ausführen kann – gibt zurück, was gezeigt wird (null: geht gerade nicht) */
+type RemoteActions = Partial<Record<"view" | "mood", () => string | null>>;
+
 /** Befehle der Fernbedienung (Handy des Hosts) ausführen und kurz zeigen, wer was gemacht hat. Gibt den Zähler für „Hand verdecken“ zurück. */
-function useRemote(remote: Remote | null): number {
+function useRemote(remote: Remote | null, actions: React.RefObject<RemoteActions>): number {
   const [cover, setCover] = useState(0);
   useEffect(() => {
     if (!remote) return;
@@ -176,14 +180,51 @@ function useRemote(remote: Remote | null): number {
       for (const k of ["volFx", "volMusic", "volCrowd"] as const) setPref(k, Math.round(Math.min(1, Math.max(0, p[k] + d)) * 20) / 20);
       if (!p.sound && d > 0) setPref("sound", true);
     };
-    const what = remote.cmd === "sound" ? (p.sound ? "Ton aus" : "Ton an") : remote.cmd === "louder" ? "Lauter" : remote.cmd === "quieter" ? "Leiser" : "Hand verdeckt";
-    if (remote.cmd === "sound") setPref("sound", !p.sound);
-    else if (remote.cmd === "louder") step(0.15);
-    else if (remote.cmd === "quieter") step(-0.15);
-    else setCover((c) => c + 1);
-    toast(`${remote.by}: ${what}`, { id: "remote", duration: 2000 });
-  }, [remote]);
+    let what: string | null;
+    switch (remote.cmd) {
+      case "sound": setPref("sound", !p.sound); what = p.sound ? "Ton aus" : "Ton an"; break;
+      case "louder": step(0.15); what = "Lauter"; break;
+      case "quieter": step(-0.15); what = "Leiser"; break;
+      case "cover": setCover((c) => c + 1); what = "Hand verdeckt"; break;
+      case "host": setPref("host", !p.host); what = p.host ? "Moderator aus" : "Moderator an"; break;
+      case "voice": setPref("hostVoice", !p.hostVoice); what = p.hostVoice ? "Vorlesen aus" : "Vorlesen an"; break;
+      case "video": setPref("tableVideo", !p.tableVideo); what = p.tableVideo ? "Videos aus" : "Videos an"; break;
+      case "reset": window.dispatchEvent(new Event(RESET_VIEW)); what = "Ansicht zurückgesetzt"; break;
+      default: { const r = actions.current[remote.cmd]?.() ?? null; what = r && (remote.cmd === "mood" ? `Moderator ${r}` : `Ansicht ${r}`); }
+    }
+    if (what) toast(`${remote.by}: ${what}`, { id: "remote", duration: 2000 });
+  }, [remote, actions]);
   return cover;
+}
+
+/**
+ * Menü am Fernseher: unsichtbar, bis jemand die Maus bewegt, eine Taste drückt oder tippt – dann gleitet es rechts
+ * herein und verschwindet nach ein paar Sekunden Ruhe wieder (bleibt, solange Maus oder Fokus darin sind).
+ */
+function TvMenu({ children }: { children: React.ReactNode }) {
+  const [shown, setShown] = useState(false);
+  const inside = useRef(false);
+  useEffect(() => {
+    let t = 0;
+    const wake = () => {
+      setShown(true);
+      clearTimeout(t);
+      const hide = () => { if (inside.current) t = window.setTimeout(hide, 2000); else setShown(false); };
+      t = window.setTimeout(hide, 5000);
+    };
+    const events = ["mousemove", "pointerdown", "keydown", "wheel"] as const;
+    for (const e of events) window.addEventListener(e, wake, { passive: true });
+    return () => { clearTimeout(t); for (const e of events) window.removeEventListener(e, wake); };
+  }, []);
+  return (
+    <aside aria-label="Einstellungen am Fernseher" data-testid="tv-menu" data-shown={shown}
+      onMouseEnter={() => { inside.current = true; }} onMouseLeave={() => { inside.current = false; }}
+      onFocus={() => { inside.current = true; setShown(true); }} onBlur={() => { inside.current = false; }}
+      className={cn("absolute right-5 bottom-5 z-30 flex w-80 flex-col gap-3 rounded-2xl bg-[#1d1611]/92 p-4 shadow-2xl ring-1 ring-white/10 backdrop-blur transition-[opacity,translate] duration-200",
+        shown ? "opacity-100" : "translate-y-3 opacity-0")}>
+      {children}
+    </aside>
+  );
 }
 
 function toggleFullscreen() {
@@ -202,7 +243,6 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   const model = useMemo(() => (tableOn ? tableModel(room) : null), [room, tableOn]);
   const playing = room.phase === "playing";
   const game = GAME_LIST.find((g) => g.id === room.gameId) ?? null;
-  const avatars = useMemo(() => roomAvatars(room), [room]);
   const sham = playing && tableOn && room.gameId === "schamlos" ? (room.game as SchamlosState) : null;
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
@@ -215,7 +255,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   const couch = useCouch(code);
   // Hand eines Couch-Spielers offen: der Tisch rückt nach rechts
   const [handOpen, setHandOpen] = useState(false);
-  const cover = useRemote(remote);
+  const remoteActions = useRef<RemoteActions>({});
   // Videochat: Videos an den Plätzen (abschaltbar, einzeln ausblendbar) und Couch-Kamera
   const callReady = useCallReady();
   const p = usePrefs();
@@ -229,6 +269,12 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   const pickView = (v: "table" | "stage") => { writeStr(TV_VIEW_KEY, v); setTvView(v); };
   const [hiddenVideos, setHiddenVideos] = useState<Set<string>>(new Set());
   const toggleVideo = useCallback((id: string) => setHiddenVideos((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
+  // Fernbedienung: was nur der Fernseher kennt (Ansicht, Charakter des Moderators)
+  remoteActions.current = {
+    view: () => { if (!stagePossible) return null; pickView(stage ? "table" : "stage"); return stage ? "Tisch" : "Bühne"; },
+    mood: () => { const m = nextMood(mood); setMood(m); return MOODS.find((x) => x.value === m)?.label ?? null; },
+  };
+  const cover = useRemote(remote, remoteActions);
 
   return (
     <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
@@ -257,11 +303,10 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
         {fallback && <Fallback room={room} code={code} online={online} />}
       </main>
 
-      <aside className="flex w-80 shrink-0 flex-col gap-4 border-l border-white/10 bg-black/25 p-5">
-        {playing && <JoinNote code={code} pin={pin} />}
-        <Scores room={room} model={model} avatars={avatars} points={sham?.scores} />
-        {model && <Log lines={model.log} />}
-        <div className="mt-auto" />
+      {/* Am Fernseher keine Knöpfe: nur der QR-Code zum Mitspielen. Bedienen geht vom Handy des Hosts (Fernbedienung)
+          oder hier über das Menü, das bei Maus, Taste oder Berührung kurz erscheint. */}
+      {playing && <div className="absolute top-5 right-5"><JoinNote code={code} pin={pin} /></div>}
+      <TvMenu>
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
         <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
         {stagePossible && <ViewPanel view={stage ? "stage" : "table"} onView={pickView} />}
@@ -275,7 +320,8 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
             aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen (Tisch ziehen dreht, Rad zoomt)" data-testid="view-reset"><RotateCcw className="size-4" /></Button>
           <Button variant="ghost" className="flex-1 text-[#f7ecd6] hover:bg-white/10" onClick={() => { remove(tableKey(code)); navigate("/"); }}><LogOut className="size-4" />Verlassen</Button>
         </div>
-      </aside>
+      </TvMenu>
+      <SoundUnlock />
     </div>
   );
 }
@@ -314,7 +360,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
 
   return (
     <>
-      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} onReal={setReal} follow={!me} />
+      <TableCanvas model={shown} seats={seats} names={players.map((p) => p.name)} onSeats={onSeats} forceFlat={flat} onReal={setReal} follow={!me} />
       {/* Wie durch ein Objektiv: der Rand dunkelt ab, der Blick geht zur Mitte */}
       {real && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_70%_at_50%_52%,transparent_55%,rgb(0_0_0/0.5))]" />}
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
@@ -349,8 +395,10 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
  * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
  * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
  */
-function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
-  model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
+function TableCanvas({ model, seats, names = [], onSeats, forceFlat, onReal, follow }: {
+  model: TableModel | null; seats: string[];
+  /** Namen in Tischreihenfolge – stehen auf Karten am Platz */
+  names?: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
   /** meldet, ob gerade in 3D gezeichnet wird */
   onReal?: (real: boolean) => void;
   /** Fernseher: Kamera dreht sich zu dem, der dran ist */
@@ -363,8 +411,9 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
   // WebGL verloren (Grafiktreiber, zu wenig Speicher): ab jetzt flach
   const [lost, setLost] = useState(false);
   const flat = forceFlat || level === "flach" || lost || !webglOk();
-  const latest = useRef({ model, seats });
-  latest.current = { model, seats };
+  const nameKey = names.join("\u0001");
+  const latest = useRef({ model, seats, names });
+  latest.current = { model, seats, names };
 
   useEffect(() => {
     const box = holder.current;
@@ -386,16 +435,16 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
     canvas.addEventListener("webglcontextlost", onLost);
     const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); onSeats(s.seatPoints(), s.feltRect()); });
     ro.observe(canvas);
-    s.update(latest.current.model, latest.current.seats);
+    s.update(latest.current.model, latest.current.seats, latest.current.names);
     return () => { ro.disconnect(); canvas.removeEventListener("webglcontextlost", onLost); s.dispose(); scene.current = null; };
   }, [onSeats, flat, level, onReal, follow]);
 
   useEffect(() => {
     const s = scene.current;
     if (!s) return;
-    s.update(model, seatKey ? seatKey.split(",") : []);
+    s.update(model, seatKey ? seatKey.split(",") : [], nameKey ? nameKey.split("\u0001") : []);
     onSeats(s.seatPoints(), s.feltRect());
-  }, [model, seatKey, onSeats]);
+  }, [model, seatKey, nameKey, onSeats]);
 
   return <div ref={holder} className="absolute inset-0" />;
 }
@@ -702,35 +751,3 @@ function JoinNote({ code, pin }: { code: string; pin: string }) {
   );
 }
 
-function Scores({ room, model, avatars, points }: { room: RoomState; model: TableModel | null; avatars: ReturnType<typeof roomAvatars>; points?: Record<string, number> }) {
-  if (!room.players.length) return null;
-  if (points) model = { ...(model ?? { deck: "cards", pile: 0, discard: [], counts: {}, turn: null, n: 0, log: [] }), scores: points };
-  const rows = [...room.players].sort((a, b) => (model?.scores ? (model.scores[b.id] ?? 0) - (model.scores[a.id] ?? 0) : 0));
-  // Spiele ohne Karten (Würfel, Spielfeld): statt Kartenzahl die Notiz des Platzes (z. B. die Farbe)
-  const cards = !!model && Object.keys(model.counts).length > 0;
-  return (
-    <div className="paper-note -rotate-1 p-4">
-      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">{model?.scores ? "Punkte" : cards ? "Karten" : "Am Tisch"}</div>
-      <ul className="grid gap-1.5">
-        {rows.map((p) => (
-          <li key={p.id} className="flex items-center gap-2">
-            <Avatar avatar={avatars[p.id]} name={p.name} className="size-6 text-sm" />
-            <span className="min-w-0 flex-1 truncate">{p.name}</span>
-            <b className="tabular-nums">{model?.scores ? model.scores[p.id] ?? 0 : cards ? model!.counts[p.id] ?? 0 : model?.notes?.[p.id] ?? ""}</b>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Log({ lines }: { lines: string[] }) {
-  return (
-    <div className="paper-note min-h-0 shrink rotate-[0.6deg] overflow-hidden p-4">
-      <div className="text-xs font-bold uppercase tracking-wider text-[#8a6f4e]">Verlauf</div>
-      <ul className="mt-1">
-        {[...lines].reverse().map((l, i) => <li key={`${i}-${l}`} className={cn("border-b border-dashed border-[#e3d2b3] py-2 text-sm", i === 0 && "font-semibold")}>{l}</li>)}
-      </ul>
-    </div>
-  );
-}

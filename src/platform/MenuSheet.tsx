@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cloneElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { BookOpen, Crown, EyeOff, Flag, History, Home, LogOut, Menu, Repeat, RotateCcw, Undo2, UserRound, Volume1, Volume2, VolumeX, Wrench } from "lucide-react";
+import { Armchair, BookOpen, Crown, EyeOff, Flag, History, Home, LogOut, Menu, Mic, Repeat, RotateCcw, Smile, Sparkles, Undo2, UserRound, Video, Volume1, Volume2, VolumeX, Wrench } from "lucide-react";
 import type { RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { getGame } from "@shared/games";
@@ -304,13 +304,21 @@ function RoomSettings({ room, isHost, dispatch }: Pick<BoardProps, "room" | "isH
   );
 }
 
-/** Fernbedienung für den Großen Tisch: Ton, Lautstärke der Musik, offene Hand am Fernseher verdecken */
+/**
+ * Fernbedienung für den Großen Tisch – am Fernseher selbst gibt es keine Knöpfe: Ton und Lautstärke, offene Hand verdecken,
+ * Moderator (an/aus, Charakter, Vorlesen), Videos an den Plätzen, Ansicht Tisch/Bühne, Kamera zurück zur Grundansicht.
+ */
 function Remote({ onRemote }: { onRemote: (cmd: RemoteCmd) => void }) {
-  const keys: [RemoteCmd, string, typeof Volume2][] = [["sound", "Ton an/aus", VolumeX], ["quieter", "Leiser", Volume1], ["louder", "Lauter", Volume2], ["cover", "Verdecken", EyeOff]];
+  const keys: [RemoteCmd, string, typeof Volume2][] = [
+    ["sound", "Ton", VolumeX], ["quieter", "Leiser", Volume1], ["louder", "Lauter", Volume2],
+    ["host", "Moderator", Smile], ["mood", "Charakter", Sparkles], ["voice", "Vorlesen", Mic],
+    ["video", "Videos", Video], ["view", "Tisch/Bühne", Armchair], ["reset", "Ansicht", RotateCcw],
+    ["cover", "Verdecken", EyeOff],
+  ];
   return (
-    <div className="grid grid-cols-2 gap-2" data-testid="remote">
+    <div className="grid grid-cols-3 gap-1.5" data-testid="remote">
       {keys.map(([cmd, label, Icon]) => (
-        <Button key={cmd} variant="secondary" className="justify-start" onClick={() => onRemote(cmd)} data-testid={`remote-${cmd}`}><Icon />{label}</Button>
+        <Button key={cmd} variant="secondary" size="sm" className="h-10 justify-start gap-1.5 px-2 text-xs" onClick={() => onRemote(cmd)} data-testid={`remote-${cmd}`}><Icon />{label}</Button>
       ))}
     </div>
   );

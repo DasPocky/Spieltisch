@@ -1,0 +1,63 @@
+# Aussprache: so steht es im Text = so soll Thorsten es sprechen (nur ganze Wörter, Groß-/Kleinschreibung zählt).
+# Ändert sich eine Zeile, erzeugt die Aktion „Stimme“ alle betroffenen Bausteine beim nächsten Lauf neu.
+# Prüfen ohne Hören: python3 scripts/stimme/lautschrift.py Kevin Kevvin  → zeigt die Lautschrift, die das Modell bekommt.
+# Nur eintragen, was wirklich falsch klingt – englische Wörter (Lautschrift mit „(en)“) klingen mit der deutschen
+# Stimme blechern, deshalb hier eindeutschen.
+
+# Abkürzungen
+z. B. = zum Beispiel
+Pkt. = Punkte
+Nr. = Nummer
+usw. = und so weiter
+ca. = zirka
+
+# Wörter aus dem Englischen
+Team = Tiehm
+Teams = Tiems
+Host = Gastgeber
+Bot = Bott
+Bots = Botts
+Party = Pahti
+Partyabend = Spieleabend
+Quiz = Quiss
+Snacks = Snäcks
+Joker = Dschoker
+Chat = Tschätt
+online = onlein
+Online = Onlein
+offline = offlein
+Offline = Offlein
+Selfie = Selfi
+Comeback = Kambäck
+cool = kuhl
+
+# Vornamen
+Aileen = Eiliehn
+Aisha = Aischa
+Alan = Ällen
+Amy = Ehmi
+Ayse = Aische
+Bianca = Bjanka
+Caitlin = Kätlinn
+Can = Dschan
+Cem = Dschem
+Chiara = Kiara
+Claire = Klär
+Danny = Dänni
+Denise = Denies
+Dustin = Dastin
+Emily = Emmili
+Fabienne = Fabjenn
+Harry = Härri
+Jessica = Dschessika
+Joshua = Dschoschua
+Kevin = Kevvin
+Liam = Liehamm
+Mandy = Mändi
+Michelle = Mischell
+Noel = Nohell
+Pierre = Piär
+Rene = Renee
+Sam = Säm
+Sylvia = Silwia
+Vincent = Winßent

@@ -6,20 +6,25 @@
 import {
   ACESFilmicToneMapping, BoxGeometry, CanvasTexture, CircleGeometry, CylinderGeometry, DirectionalLight, ExtrudeGeometry, Group, HemisphereLight,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, Shape, SpotLight,
-  SRGBColorSpace, Vector3, Vector2, type Object3D, WebGLRenderer, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
+  SRGBColorSpace, Vector3, Vector2, type Object3D, WebGLRenderer, WebGLRenderTarget, HalfFloatType, DoubleSide, AdditiveBlending, TorusGeometry, Path, LatheGeometry, SphereGeometry, type Material, type Texture,
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
+import { BokehPass } from "three/examples/jsm/postprocessing/BokehPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { feltMaterial, furnishRoom, woodMaterial } from "./room";
 import { createCameraRig, type Rect } from "./camera";
-import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawPips, drawSign, drawSlot } from "./textures";
+import { CARD_RATIO, drawBack, drawBoard, drawCard, drawContact, drawFace, drawLabel, drawNameCard, drawPips, drawSign, drawSlot } from "./textures";
 import type { TableDeck, TableModel } from "./model";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 
 export interface FeltRect { x: number; y: number; w: number; h: number }
 
 export interface TableScene {
-  /** Partie zeigen (null: leerer Tisch, z. B. in der Lobby). `seats`: Spieler in Tischreihenfolge. */
-  update(model: TableModel | null, seats: string[]): void;
+  /** Partie zeigen (null: leerer Tisch, z. B. in der Lobby). `seats`: Spieler in Tischreihenfolge, `names`: ihre Namen (Namenskarten). */
+  update(model: TableModel | null, seats: string[], names?: string[]): void;
   resize(width: number, height: number): void;
   /** Bildschirmpunkte (CSS-Pixel) der Plätze am Tischrand – dort stehen Name, Bild und Video */
   seatPoints(): { x: number; y: number }[];
@@ -31,6 +36,8 @@ export interface TableScene {
 // Maße in Metern (ungefähr): Platte 5,2 × 3,3, Filz 4,5 × 2,6
 const TOP_W = 5.2, TOP_D = 3.3, FELT_W = 4.5, FELT_D = 2.6;
 const SURFACE = 0.06;
+/** Oberkante des Holzrands (um den Filz) */
+const RIM = 0.04;
 /**
  * Echte Größen: die Platte (5,2 Einheiten) entspricht gut 1,6 m – eine Einheit sind etwa 31 cm.
  * Spielkarte 6 × 9 cm, Würfel 2 cm, Brett 40 cm. Lesbar wird es über die Kamera (Bildausschnitt, Heranfahren).
@@ -151,6 +158,34 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   const camera = new PerspectiveCamera(36, 1.27, 0.05, 60);
   let width = 1, height = 1;
   const rig = createCameraRig(camera, canvas, () => render());
+
+  /**
+   * Nur auf „hoch“: weiche Verschattung in Ecken und unter Karten (Umgebungsverdeckung) und leichte Unschärfe
+   * hinten im Raum – vorn und auf dem Tisch bleibt alles scharf.
+   */
+  const post = quality === "hoch" ? (() => {
+    const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 });
+    const composer = new EffectComposer(renderer, target);
+    composer.addPass(new RenderPass(scene, camera));
+    const ao = new GTAOPass(scene, camera, 1, 1);
+    ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.4, thickness: 1, scale: 1, samples: 12 });
+    ao.blendIntensity = 0.85;
+    composer.addPass(ao);
+    const bokeh = new BokehPass(scene, camera, { focus: 6, aperture: 0.0016, maxblur: 0.006 });
+    // nur hinter dem Schärfepunkt unscharf (sonst würde auch die vordere Tischkante weich)
+    bokeh.materialBokeh.fragmentShader = bokeh.materialBokeh.fragmentShader.replace("clamp( factor * aperture, -maxblur, maxblur )", "clamp( factor * aperture, -maxblur, 0.0 )");
+    composer.addPass(bokeh);
+    composer.addPass(new OutputPass());
+    return { composer, bokeh, target };
+  })() : null;
+  const ray = new Vector3();
+  /** Schärfe auf den Punkt, den die Kamera auf dem Tisch ansieht – etwas dahinter, damit der ganze Tisch scharf bleibt */
+  function focusTable() {
+    if (!post) return;
+    camera.getWorldDirection(ray);
+    const d = ray.y < -0.05 ? (camera.position.y - SURFACE) / -ray.y : 8;
+    (post.bokeh.uniforms as Record<string, { value: number }>).focus.value = Math.min(d + 1.6, 30);
+  }
   /** Grundansicht der laufenden Partie (die Zeichen-Funktionen setzen sie) */
   let homeRect: Rect = FULL;
 
@@ -227,10 +262,48 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     return { pos: new Vector3(DISCARD_X + ((h % 7) - 3) * 0.012, SURFACE + 0.003 + i * 0.003, ((h >> 3) % 7 - 3) * 0.012), rot: ((h >> 6) % 41 - 20) / 100 };
   };
 
+  // ---------- Namenskarten am Platz ----------
+  /** Aufgestellte Karte (wie ein Tischkärtchen) auf dem Holzrand vor jedem Platz – von beiden Seiten lesbar */
+  const plates = new Group(); scene.add(plates);
+  let plateTex: Texture[] = [];
+  let plateKey = "";
+  const PLATE_W = 0.66, PLATE_H = 0.17, PLATE_TILT = 0.3;
+  function namePlates(names: string[]) {
+    const key = `${anchors.length}|${names.join("\u0001")}`;
+    if (key === plateKey) return;
+    plateKey = key;
+    plates.clear();
+    for (const t of plateTex) t.dispose();
+    plateTex = [];
+    anchors.forEach(([x, z], i) => {
+      const name = names[i]?.trim();
+      if (!name) return;
+      const tex = new CanvasTexture(drawNameCard(name)); tex.colorSpace = SRGBColorSpace; tex.anisotropy = aniso;
+      plateTex.push(tex);
+      const mat = new MeshStandardMaterial({ map: tex, roughness: 0.75, side: DoubleSide });
+      const tent = new Group();
+      // zwei Seiten, oben zusammengelehnt
+      for (const side of [1, -1]) {
+        const leaf = new Mesh(new PlaneGeometry(PLATE_W, PLATE_H), mat);
+        leaf.position.set(0, (PLATE_H / 2) * Math.cos(PLATE_TILT), side * (PLATE_H / 2) * Math.sin(PLATE_TILT));
+        leaf.rotation.x = -side * PLATE_TILT;
+        if (side < 0) leaf.rotation.y = Math.PI;
+        leaf.castShadow = true;
+        tent.add(leaf);
+      }
+      // auf dem Holzrand zwischen Filz und Tischkante, mit der Schrift zur Mitte und nach außen
+      const s = Math.min((FELT_W / 2 + (TOP_W - FELT_W) / 4) / Math.max(Math.abs(x), 0.01), (FELT_D / 2 + (TOP_D - FELT_D) / 4) / Math.max(Math.abs(z), 0.01));
+      tent.position.set(x * s, RIM, z * s);
+      tent.rotation.y = Math.atan2(x, z);
+      plates.add(tent);
+    });
+  }
+
   /** Partie zeigen und die Kamera auf ihren Bereich ausrichten */
-  function update(model: TableModel | null, seats: string[]) {
+  function update(model: TableModel | null, seats: string[], names: string[] = []) {
     homeRect = FULL;
     anchors = seatAnchors(seats.length);
+    namePlates(names);
     // Am Fernseher wie eine Übertragung: von der gegenüberliegenden Seite auf den, der dran ist (nicht über seine Schulter).
     // Bretter bleiben fest – dort verwirrt Hin- und Herdrehen bei jedem Zug.
     const i = opts.follow && model?.turn && !model.grid && !model.tabletop ? seats.indexOf(model.turn) : -1;
@@ -811,7 +884,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     }
     anims = anims.filter((a) => now - a.start < a.ms);
     const moving = rig.step(now);
-    renderer.render(scene, camera);
+    if (post) { focusTable(); post.composer.render(); } else renderer.render(scene, camera);
     // Plätze und Schilder nachziehen – höchstens zehnmal je Sekunde (sie gleiten per CSS), am Ende genau
     if ((moving && now - lastView > 100) || (!moving && wasMoving)) { lastView = now; opts.onView?.(); }
     wasMoving = moving;
@@ -822,6 +895,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   function resize(w: number, h: number) {
     width = Math.max(1, w); height = Math.max(1, h);
     renderer.setSize(width, height, false);
+    post?.composer.setPixelRatio(renderer.getPixelRatio()); post?.composer.setSize(width, height);
     camera.aspect = width / height; camera.updateProjectionMatrix();
     rig.resize();
     render();
@@ -854,6 +928,9 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       for (const t of textures.values()) t.dispose();
       room.env.dispose();
       rig.dispose();
+      plates.clear();
+      for (const t of plateTex) t.dispose();
+      post?.composer.dispose(); post?.target.dispose();
       renderer.dispose();
     },
   };

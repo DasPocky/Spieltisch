@@ -339,3 +339,19 @@ export function drawSign(title: string, sub?: string): HTMLCanvasElement {
   if (sub) { g.fillStyle = "#6b5a46"; fit(g, sub, 900, 56, 600); g.fillText(sub, 512, 295); }
   return c;
 }
+
+/** Namenskarte am Platz: Papier mit Namen (beide Seiten gleich) */
+export function drawNameCard(name: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 128;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#f4ead8"; g.fillRect(0, 0, 512, 128);
+  // feine Papierkante
+  g.strokeStyle = "rgba(90,60,30,.25)"; g.lineWidth = 4; g.strokeRect(6, 6, 500, 116);
+  let size = 72;
+  g.font = `700 ${size}px ${FONT}`;
+  while (g.measureText(name).width > 460 && size > 30) { size -= 4; g.font = `700 ${size}px ${FONT}`; }
+  g.fillStyle = "#3a2716"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(name, 256, 68, 470);
+  return c;
+}

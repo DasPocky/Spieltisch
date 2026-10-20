@@ -15,6 +15,18 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-fernseher",
+    date: "2026-10-20",
+    title: "Der Fernseher zeigt nur noch den Tisch",
+    items: [
+      "Keine Knöpfe mehr am Rand: der Fernseher zeigt den Tisch und den QR-Code zum Mitspielen.",
+      "Der Gastgeber steuert alles vom Handy aus (Menü → Großer Tisch): Ton, Moderator, Videos, Ansicht.",
+      "Am Tisch stehen Namenskarten an jedem Platz, auf „hoch“ mit weichen Schatten.",
+      "Alle Spiele liegen jetzt am Fernseher auf dem Tisch – auch Dame, Mühle, Ludo, Werwolf, Spion, Stirnraten und die Kartenspiele.",
+      "Die echte Stimme klingt munterer und spricht Namen richtig aus.",
+    ],
+  },
+  {
     id: "2026-10-stimme",
     date: "2026-10-20",
     title: "Eine echte Stimme",

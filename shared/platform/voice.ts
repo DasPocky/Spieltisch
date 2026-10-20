@@ -12,7 +12,7 @@
  */
 
 /** Fassung der Stimme – erhöhen, wenn sich Modell oder Klang ändern (alles wird dann neu erzeugt) */
-export const VOICE_VERSION = 2;
+export const VOICE_VERSION = 3;
 
 /** Stimmungen der Stimme (Sprecher im Modell) – neutral für Namen, Zahlen und normale Ansagen */
 export const MOODS = ["neutral", "froh", "wuetend", "ueberrascht", "fluester", "beschwipst", "muede"] as const;

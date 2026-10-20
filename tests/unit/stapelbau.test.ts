@@ -99,4 +99,17 @@ describe("Stapelbau", () => {
     expect(g(r).scores.p3).toBe(75);
     expect(g(r).phase).toBe("enter");
   });
+
+  it("Nichts geht mehr (Stapel leer, Hände leer, nichts passt): reihum gepasst – kleinster Vorrat gewinnt die Runde", () => {
+    let r = start(2);
+    const s = g(r);
+    // Aufbaustapel brauchen eine 5, Vorräte zeigen 9 und 10, keine Karten zum Ziehen
+    r = { ...r, game: { ...s, hands: { p1: [], p2: [] }, stocks: { p1: [9, 9], p2: [10] }, pile: [], done: [],
+      builds: [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]], discards: { p1: [[], [], [], []], p2: [[], [], [], []] }, curId: "p1" } };
+    r = game(r, { type: "discard", card: -1, to: 0 }, "p1");
+    expect(g(r).phase).toBe("play");
+    r = game(r, { type: "discard", card: -1, to: 0 }, "p2");
+    expect(g(r).phase).not.toBe("play");
+    expect(g(r).roundWinner).toBe("p2");
+  });
 });
