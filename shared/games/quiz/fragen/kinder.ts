@@ -154,6 +154,5 @@ export const KINDER: FragenKategorie = {
     ["Die Monate, beginnend mit Januar:", ["Januar", "Februar", "März", "April"]], // Quelle: https://de.wikipedia.org/wiki/Monat
     ["Von der kürzesten zur längsten Zeit:", ["Minute", "Stunde", "Tag", "Woche"]], // Quelle: https://de.wikipedia.org/wiki/Zeiteinheit
     ["Planeten, von der Sonne aus gesehen:", ["Merkur", "Venus", "Erde", "Mars"]], // Quelle: https://de.wikipedia.org/wiki/Sonnensystem
-    ["Von wenigen zu vielen Beinen:", ["Schlange", "Huhn", "Katze", "Spinne"]], // Quelle: https://de.wikipedia.org/wiki/Schlangen https://de.wikipedia.org/wiki/Webspinnen
   ],
 };
