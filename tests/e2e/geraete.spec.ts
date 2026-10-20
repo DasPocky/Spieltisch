@@ -292,3 +292,27 @@ test("Am Rechner (Stapelbau): Vorrat, Ablagen und Hand unter dem Tisch, Aufbau a
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Zehn Phasen): Hand unter dem Tisch, ziehen, markieren und ablegen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { zehnphasen: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "zehnphasen", "7474");
+    const area = page.getByTestId("desk-hand");
+    const hand = area.getByTestId("hand").locator("button");
+    await expect(hand).toHaveCount(10);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "g9-desk-zehnphasen");
+    const status = area.getByTestId("status");
+    await expect(status).not.toContainText("ist am Zug");
+    // Z zieht vom Stapel, 1 markiert die erste Karte, X legt sie ab – Ben ist dran
+    await page.keyboard.press("z");
+    await expect(hand).toHaveCount(11);
+    await page.keyboard.press("1");
+    await page.keyboard.press("x");
+    await expect(status).toContainText("Ben ist am Zug");
+    await expect(hand).toHaveCount(10);
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
