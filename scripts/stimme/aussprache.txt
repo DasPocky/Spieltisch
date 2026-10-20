@@ -1,6 +1,8 @@
 # Aussprache: so steht es im Text = so soll Thorsten es sprechen (nur ganze Wörter, Groß-/Kleinschreibung zählt).
 # Ändert sich eine Zeile, erzeugt die Aktion „Stimme“ alle betroffenen Bausteine beim nächsten Lauf neu.
-# Klingt ein Wort falsch: hier eintragen (lautschriftlich auf Deutsch, z. B. „Kewin“).
+# Prüfen ohne Hören: python3 scripts/stimme/lautschrift.py Kevin Kevvin  → zeigt die Lautschrift, die das Modell bekommt.
+# Nur eintragen, was wirklich falsch klingt – englische Wörter (Lautschrift mit „(en)“) klingen mit der deutschen
+# Stimme blechern, deshalb hier eindeutschen.
 
 # Abkürzungen
 z. B. = zum Beispiel
@@ -8,87 +10,54 @@ Pkt. = Punkte
 Nr. = Nummer
 usw. = und so weiter
 ca. = zirka
-TV = Fernseher
 
 # Wörter aus dem Englischen
-Handy = Händi
-Handys = Händis
-Snacks = Snäcks
-Team = Tiem
+Team = Tiehm
 Teams = Tiems
-Host = Houst
+Host = Hoost
 Bot = Bott
 Bots = Botts
-Party = Parti
-Partyabend = Partiabend
-Quiz = Kwiss
+Party = Pahti
+Partyabend = Pahtiabend
+Quiz = Quis
+Snacks = Snäcks
 Joker = Dschoker
 Chat = Tschätt
 online = onlein
 Online = Onlein
 offline = offlein
+Offline = Offlein
 Selfie = Selfi
-Video = Wideo
-Videos = Wideos
-Mau-Mau = Mau Mau
 Comeback = Kambäck
 cool = kuhl
-okay = okeh
-Okay = Okeh
-fair = fähr
-Bluff = Blöff
-bluffen = blöffen
-Showdown = Schoudaun
 
 # Vornamen
-Aileen = Eilien
-Aisha = A-ischa
+Aileen = Eiliehn
+Aisha = Aischa
 Alan = Ällen
-Amy = Ämi
+Amy = Ehmi
 Ayse = Aische
 Bianca = Bjanka
-Caitlin = Kätlin
+Caitlin = Kätlinn
 Can = Dschan
-Carl = Karl
-Carla = Karla
-Carlo = Karlo
-Carlos = Karlos
 Cem = Dschem
-Chris = Kriss
-Christopher = Kristoffer
-Claire = Klähr
-Claus = Klaus
-Conny = Konni
+Chiara = Kiara
+Claire = Klär
 Danny = Dänni
-Denise = Döniese
+Denise = Denies
 Dustin = Dastin
-Emily = Emili
-Enrico = Enriko
+Emily = Emmili
 Fabienne = Fabjenn
 Harry = Härri
-Henry = Henri
-Jacob = Jakob
 Jessica = Dschessika
 Joshua = Dschoschua
-Kevin = Kewin
-Kian = Kiahn
-Levi = Lewi
-Liam = Liäm
-Louis = Lui
-Lucy = Lussi
+Kevin = Kevvin
+Liam = Liehamm
 Mandy = Mändi
-Marc = Mark
-Marco = Marko
-Marcus = Markus
 Michelle = Mischell
-Noel = No-ell
-Pierre = Pjähr
-Rebecca = Rebekka
+Noel = Nohell
+Pierre = Piär
 Rene = Renee
-Sam = Sämm
+Sam = Säm
 Sylvia = Silwia
-Yannick = Jannick
-Yara = Jara
-Yusuf = Jussuf
-Zeynep = Sejnep
-Zoe = Zo-e
+Vincent = Winßent
