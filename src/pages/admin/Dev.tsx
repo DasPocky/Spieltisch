@@ -3,8 +3,8 @@ import { Bot, Loader2, Minus, Plus, WifiOff } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { BOT_LEVELS, hasSkill, type BotLevel } from "@shared/platform/botSkill";
 
-/** Spiele, in denen die Bots Züge bewerten */
-const SKILL_GAMES = GAME_IDS.filter(hasSkill).map((id) => getGame(id).info.name).join(", ");
+/** Spiele, in denen die Bots zufällig ziehen (Rate- und Partyspiele) – kürzer als die Liste mit Spielstärke */
+const LUCK_GAMES = GAME_IDS.filter((id) => !hasSkill(id)).map((id) => getGame(id).info.name).join(", ");
 import { Confirm } from "@/components/Confirm";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -111,7 +111,7 @@ function TestRoom() {
     } catch (e) { if (!(e instanceof AuthError)) setError((e as Error).message); setBusy(false); }
   };
   return (
-    <Panel title="Testraum mit Bots" hint={`Unsichtbar unter „Offene Räume“, zählt nicht in der Statistik. Bots ziehen von selbst (nur erlaubte Züge) – mit Spielstärke, wo das Spiel sie kennt (${SKILL_GAMES}), sonst zufällig. Unter „Live“ kannst du einen sofort ziehen lassen oder übernehmen.`}>
+    <Panel title="Testraum mit Bots" hint={`Unsichtbar unter „Offene Räume“, zählt nicht in der Statistik. Bots ziehen von selbst (nur erlaubte Züge) – mit Spielstärke, außer in Rate- und Partyspielen (${LUCK_GAMES}). Unter „Live“ kannst du einen sofort ziehen lassen oder übernehmen.`}>
       <label className="grid gap-1.5 text-sm font-semibold">
         Spiel
         <select value={game} onChange={(e) => setGame(e.target.value)} data-testid="dev-game"
