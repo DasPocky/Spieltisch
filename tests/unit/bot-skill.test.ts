@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VierState } from "@shared/games/vier/logic";
+import { allCaptures, type DameState } from "@shared/games/dame/logic";
 import { chooseBotMove, seeded, type BotLevel } from "@shared/platform/botSkill";
 import { roomGame, viewRoom } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
@@ -80,6 +81,34 @@ describe("Bots mit Spielstärke", () => {
   });
 });
 
+describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
+  /** Anteil der entschiedenen Partien, die „schwer“ gegen „zufall“ gewinnt */
+  function share(gameId: string, n: number) {
+    let strong = 0, games = 0;
+    for (let k = 0; k < n; k++) {
+      const levels: Record<string, BotLevel> = k % 2 ? { p1: "schwer", p2: "zufall" } : { p1: "zufall", p2: "schwer" };
+      const w = duel(gameId, levels, `${gameId}${k}`);
+      if (w.length === 1) { games++; if (levels[w[0]] === "schwer") strong++; }
+    }
+    return { strong, games };
+  }
+  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 30, 0.6], ["fuenfwuerfel", 10, 0.9]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
+    const { strong, games } = share(gameId, n);
+    expect(games).toBeGreaterThanOrEqual(n * 0.6);
+    expect(strong / games).toBeGreaterThanOrEqual(min);
+  }, 120_000);
+
+  it("Dame (schwer): schlägt lieber, als einen Stein herzuschenken", () => {
+    const r = start("dame");
+    const s = r.game as DameState;
+    const me = s.colors[s.turn];
+    const m = chooseBotMove(r, me, "schwer", true, "d")!;
+    // Eröffnung: kein Zug, nach dem der Gegner sofort schlagen kann
+    const after = m.next.game as DameState;
+    expect(allCaptures(after, r.options).length).toBe(0);
+  });
+});
+
 describe("Bots ohne Bewertung", () => {
   it("Spiele ohne Spielstärke enden trotzdem (kein Hin und Her in derselben Lage)", async () => {
     const { playBot } = await import("@shared/platform/botSkill");
@@ -99,7 +128,7 @@ describe("Bots ohne Bewertung", () => {
 });
 
 describe("Abnahme: Bots", () => {
-  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
+  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
     for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
       for (const n of counts) {
         let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));

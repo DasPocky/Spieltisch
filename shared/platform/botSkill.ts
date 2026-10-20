@@ -10,6 +10,10 @@ import { DECKS, rankOf, suitOf, type Card } from "../cards/deck";
 import type { MauMauState } from "../games/maumau/logic";
 import { colorOf, COLORS, isWild, valueOf, type EinsCard, type EinsState } from "../games/eins/logic";
 import type { VierState } from "../games/vier/logic";
+import { isKing, legalMoves as dameMoves, type DameState } from "../games/dame/logic";
+import { legalMoves as muehleMoves, MILLS, type MuehleState } from "../games/muehle/logic";
+import { PER_COLOR, PIECES, trackLen, type LudoState } from "../games/ludo/logic";
+import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
 import { botMove, candidates, type Move } from "./bots";
 import { applyRoomAction, roomGame, viewRoom, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
@@ -37,6 +41,7 @@ export function seeded(seed: string): () => number {
 }
 
 type Legal = { action: RoomAction; next: RoomState };
+type A = { type: string } & Record<string, unknown>;
 /** Bewertung eines erlaubten Zugs aus Sicht des Bots (höher ist besser) */
 type Scorer = (view: RoomState, a: { type: string } & Record<string, unknown>, after: RoomState, me: string) => number;
 
@@ -124,11 +129,142 @@ function scoreVier(view: RoomState, a: { type: string } & Record<string, unknown
   return v;
 }
 
-const SCORERS: Record<string, Scorer> = { maumau: scoreMaumau, eins: scoreEins, vier: scoreVier };
+// ---------------------------------------------------------------- Brettspiele zu zweit (offenes Brett)
 
-type A = { type: string } & Record<string, unknown>;
+type Duel = { colors: [string, string]; turn: 0 | 1; winner: 0 | 1 | null; draw: boolean };
+
+/**
+ * Zwei Halbzüge vorausschauen: Wert nach dem eigenen Zug, dann die beste Antwort des anderen (für ihn).
+ * Ist man nach dem Zug noch selbst dran (z. B. Stein nehmen nach einer Mühle), zählt der beste eigene Folgezug.
+ */
+function lookahead(after: RoomState, me: string, value: (r: RoomState, side: 0 | 1) => number, replies: (r: RoomState) => A[]): number {
+  const s = after.game as Duel;
+  const side = s.colors.indexOf(me) as 0 | 1;
+  const base = (r: RoomState) => {
+    const d = r.game as Duel;
+    if (d.winner !== null) return d.winner === side ? 1000 : -1000;
+    return d.draw ? 0 : value(r, side);
+  };
+  if (s.winner !== null || s.draw) return base(after);
+  const actor = s.colors[s.turn];
+  const mine = actor === me;
+  let best = mine ? -Infinity : Infinity;
+  for (const a of replies(after)) {
+    try {
+      const v = base(applyRoomAction(after, { type: "game", action: a }, actor));
+      best = mine ? Math.max(best, v) : Math.min(best, v);
+    } catch (e) { if (!(e instanceof GameError)) throw e; }
+  }
+  return Number.isFinite(best) ? best : base(after);
+}
+
+function dameValue(r: RoomState, side: 0 | 1): number {
+  const s = r.game as DameState;
+  let v = 0;
+  s.board.forEach((x, i) => {
+    if (!x) return;
+    const own = side === 0 ? x > 0 : x < 0;
+    const row = Math.floor(i / s.size);
+    // Damen zählen dreifach, Steine etwas mehr, je näher sie der Umwandlung sind
+    const w = isKing(x) ? 3 : 1 + 0.05 * (x > 0 ? row : s.size - 1 - row);
+    v += own ? w : -w;
+  });
+  return v * 10;
+}
+const dameReplies = (r: RoomState): A[] => [
+  ...dameMoves(r.game as DameState, r.options).map((m) => ({ type: "move", from: m.from, path: m.path })),
+  ...(r.game as DameState).blow.map((at) => ({ type: "blow", at })),
+];
+
+function muehleValue(r: RoomState, side: 0 | 1): number {
+  const s = r.game as MuehleState;
+  const stones = (x: 0 | 1) => s.board.filter((b) => b === x).length + s.hand[x];
+  // fast fertige Mühlen (zwei eigene, dritter Punkt frei)
+  const open = (x: 0 | 1) => MILLS.filter((m) => m.filter((j) => s.board[j] === x).length === 2 && m.some((j) => s.board[j] === null)).length;
+  const other = (1 - side) as 0 | 1;
+  let v = (stones(side) - stones(other)) * 10 + (open(side) - open(other)) * 2;
+  // gleich darf jemand einen Stein nehmen
+  if (s.remove) v += s.turn === side ? 8 : -8;
+  return v;
+}
+const muehleReplies = (r: RoomState): A[] => muehleMoves(r.game as MuehleState, r.options) as A[];
+
+const scoreDame: Scorer = (_v, _a, after, me) => lookahead(after, me, dameValue, dameReplies);
+const scoreMuehle: Scorer = (_v, _a, after, me) => lookahead(after, me, muehleValue, muehleReplies);
+
+// ---------------------------------------------------------------- Ludo (Würfel: nur der eigene Zug zählt)
+
+function ludoValue(s: LudoState, me: string): number {
+  const T = trackLen(s.board);
+  const abs = (pid: string, pos: number) => (s.color[pid] * PER_COLOR + pos) % T;
+  const progress = (pos: number) => (pos < 0 ? -10 : pos >= T ? pos + 15 : pos);
+  let v = 0;
+  for (const [pid, ps] of Object.entries(s.pos)) {
+    const sum = ps.reduce((t, p) => t + progress(p), 0);
+    v += pid === me ? sum : -sum / Math.max(1, Object.keys(s.pos).length - 1);
+  }
+  // Gefahr: gegnerische Figur 1–6 Felder hinter einer eigenen auf der Laufbahn
+  for (const p of s.pos[me] ?? []) {
+    if (p < 0 || p >= T) continue;
+    const at = abs(me, p);
+    for (const [pid, ps] of Object.entries(s.pos)) {
+      if (pid === me) continue;
+      if (ps.some((q) => q >= 0 && q < T && ((at - abs(pid, q) + T) % T) >= 1 && ((at - abs(pid, q) + T) % T) <= 6)) { v -= p / 4 + 3; break; }
+    }
+  }
+  return v;
+}
+const scoreLudo: Scorer = (_v, a, after, me) => (a.type === "roll" ? 0 : ludoValue(after.game as LudoState, me));
+
+// ---------------------------------------------------------------- Fünf Würfel
+
+/** Was ein Feld im Schnitt bringt – darunter lieber weiterwürfeln oder ein schwaches Feld opfern */
+const PAR: Record<Cat, number> = { ones: 2, twos: 5, threes: 8, fours: 11, fives: 14, sixes: 17, three: 17, four: 10, full: 18, small: 20, large: 22, pasch: 12, chance: 22 };
+
+/** Plan für den Wurf: eintragen (welches Feld) oder welche Würfel halten */
+function fwPlan(s: FuenfWuerfelState, me: string): { score: Cat } | { hold: boolean[] } {
+  const sheet = s.sheets[me] ?? {};
+  const free = ALL_CATS.filter((c) => sheet[c] === undefined);
+  const diff = (c: Cat) => scoreFor(c, s.dice) - PAR[c];
+  const best = free.reduce((a, c) => (diff(c) > diff(a) || (diff(c) === diff(a) && scoreFor(c, s.dice) > scoreFor(a, s.dice)) ? c : a), free[0]);
+  if (s.rollsLeft === 0 || diff(best) >= 8 || (["large", "pasch"] as Cat[]).some((c) => free.includes(c) && scoreFor(c, s.dice) > 0)) return { score: best };
+  const n = [0, 0, 0, 0, 0, 0, 0];
+  for (const d of s.dice) n[d]++;
+  // Straße: längste Folge verschiedener Augen, wenn noch eine Straße frei ist und kein Drilling liegt
+  const uniq = [...new Set(s.dice)].sort();
+  let run: number[] = [], cur: number[] = [];
+  for (const d of uniq) { cur = cur.length && d === cur[cur.length - 1] + 1 ? [...cur, d] : [d]; if (cur.length > run.length) run = cur; }
+  if (run.length >= 3 && Math.max(...n) < 3 && (free.includes("small") || free.includes("large"))) {
+    const used = new Set<number>();
+    return { hold: s.dice.map((d) => (run.includes(d) && !used.has(d) ? (used.add(d), true) : false)) };
+  }
+  // sonst die häufigste Augenzahl (bei Gleichstand die höhere)
+  let face = 6;
+  for (let f = 6; f >= 1; f--) if (n[f] > n[face]) face = f;
+  // alle fünf gleich (Pasch schon belegt): nichts mehr zu würfeln – eintragen
+  if (n[face] === 5) return { score: best };
+  return { hold: s.dice.map((d) => d === face) };
+}
+
+const scoreFuenfwuerfel: Scorer = (view, a, _after, me) => {
+  const s = view.game as FuenfWuerfelState;
+  if (!s.dice.length) return a.type === "roll" ? 10 : -10;
+  const plan = fwPlan(s, me);
+  if ("score" in plan) {
+    if (a.type === "score") return a.cat === plan.score ? 100 : scoreFor(a.cat as Cat, s.dice) - PAR[a.cat as Cat];
+    return -50;
+  }
+  if (a.type === "hold") return s.held[a.i as number] !== plan.hold[a.i as number] ? 20 : -20;
+  if (a.type === "roll") return plan.hold.every((h, i) => h === s.held[i]) ? 10 : 0;
+  return -50;
+};
+
+const SCORERS: Record<string, Scorer> = { fuenfwuerfel: scoreFuenfwuerfel, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
-const MOVES: Record<string, (view: RoomState, me: string) => A[]> = {
+const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
+  // echte Würfel: Augen tippt der Mensch ein – dann wie die Testspieler
+  fuenfwuerfel: (view) => (view.options.diceMode === "real" ? null : [{ type: "roll" }, ...[0, 1, 2, 3, 4].map((i) => ({ type: "hold", i })), ...ALL_CATS.map((cat) => ({ type: "score", cat }))]),
   maumau: (view, me) => {
     const s = view.game as MauMauState;
     const out: A[] = [{ type: "draw" }, { type: "pass" }];
@@ -144,6 +280,10 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[]> = {
     return out;
   },
   vier: (view) => Array.from({ length: (view.game as VierState).cols }, (_, col) => ({ type: "drop", col })),
+  dame: (view) => dameReplies(view),
+  muehle: (view) => muehleReplies(view),
+  // Würfeln ohne Wunschzahl – der Bot darf sich den Wurf nicht aussuchen
+  ludo: () => [{ type: "roll" }, ...Array.from({ length: PIECES }, (_, piece) => [{ type: "move", piece }, { type: "move", piece, back: true }]).flat()],
 };
 
 /** Kann dieses Spiel Züge bewerten? (sonst spielen alle Stufen wie „zufall“) */
@@ -158,9 +298,9 @@ export function chooseBotMove(room: RoomState, botId: string, level: BotLevel, o
   const view = viewRoom(room, botId);
   // Würfel des Bots: fester Startwert + nur das, was er sieht
   const rnd = seeded(`${seed}|${botId}|${room.round}|${JSON.stringify(view.game)}`);
-  const own = MOVES[room.gameId];
+  const own = MOVES[room.gameId]?.(view, botId);
   const moves: Move[] = own
-    ? own(view, botId).map((a) => ({ action: { type: "game", action: a }, actor: online ? botId : null }))
+    ? own.map((a) => ({ action: { type: "game", action: a }, actor: online ? botId : null }))
     : candidates(room, online).filter((m) => (online ? m.actor === botId : true));
   const legal: Legal[] = [];
   const seen = new Set<string>();
@@ -171,7 +311,7 @@ export function chooseBotMove(room: RoomState, botId: string, level: BotLevel, o
     try { legal.push({ action: m.action, next: applyRoomAction(room, m.action, online ? botId : null) }); } catch (e) { if (!(e instanceof GameError)) throw e; }
   }
   if (!legal.length) return null;
-  const scorer = SCORERS[room.gameId];
+  const scorer = own ? SCORERS[room.gameId] : undefined;
   if (!scorer || rnd() >= BEST_SHARE[level]) return legal[Math.floor(rnd() * legal.length)];
   let best: Legal[] = [], top = -Infinity;
   for (const l of legal) {
