@@ -316,3 +316,34 @@ test("Am Rechner (Zehn Phasen): Hand unter dem Tisch, ziehen, markieren und able
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Himmelskarten): eigenes Raster unter dem Tisch, Aufdecken und Ziehen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { himmelskarten: { desk: "on" } } });
+  try {
+    const { page, phone } = await deskGame(browser, "himmelskarten", "7575");
+    const area = page.getByTestId("desk-hand");
+    const mine = area.getByRole("group", { name: "Deine Karten" });
+    await expect(mine.getByRole("button")).toHaveCount(12);
+    // Zwei Karten aufdecken mit 1 und 2; Ben deckt am Handy zwei auf
+    await page.keyboard.press("1");
+    await page.keyboard.press("2");
+    await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(2);
+    const bens = phone.getByRole("group", { name: "Deine Karten" }).getByRole("button");
+    await bens.nth(0).click();
+    await bens.nth(1).click();
+    await expect(area.getByTestId("hint")).not.toContainText("Deck zwei");
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "ga-desk-himmelskarten");
+    // Wer dran ist: Anna zieht mit Z, legt mit B ab und deckt mit 3 eine Karte auf
+    if (!/Warte auf/.test((await area.getByTestId("hint").textContent()) ?? "")) {
+      await page.keyboard.press("z");
+      await expect(area.getByTestId("drawn")).toBeVisible();
+      await page.keyboard.press("b");
+      await page.keyboard.press("3");
+      await expect(mine.getByRole("button", { name: /^Karte / })).toHaveCount(3);
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

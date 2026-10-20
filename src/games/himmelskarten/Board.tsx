@@ -11,6 +11,7 @@ import { Scoreboard } from "@/platform/Scoreboard";
 import { SmoothText } from "@/platform/SmoothText";
 import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { cardColor } from "./colors";
 
 const nameOf = (players: Player[], id: string | null) => players.find((p) => p.id === id)?.name ?? "?";
@@ -98,9 +99,25 @@ function Result({ room, game: s, isHost, dispatch }: BoardProps<SkState, SkActio
 
 /** Karten in der App */
 function AppBoard(props: BoardProps<SkState, SkAction>) {
-  const { room, game: s, me, canAct, act } = props;
+  const { room, game: s, me, canAct, act, desk } = props;
   const players = room.players;
   const hints = useHints();
+  // Am Rechner: Tastatur – Z Stapel, O offene Karte, B ablegen & umdrehen, Raster 1–4 / Q–R / A–F
+  useDeskKeys((e) => {
+    if (!desk || !me) return;
+    const k = e.key.toLowerCase();
+    if (s.phase === "roundEnd") { if (k === "enter") act({ type: "nextRound" }); return; }
+    const i = GRID_KEYS.indexOf(k);
+    const mine = s.grids[me];
+    const turn = s.phase === "turn" && canAct && s.curId === me;
+    if (i >= 0 && mine?.[i]) {
+      if (s.phase === "flip" && !mine[i]!.up) act({ type: "flipStart", player: me, i });
+      else if (turn && s.drawn !== null) act({ type: "swap", i });
+      else if (turn && s.mustFlip && !mine[i]!.up) act({ type: "flip", i });
+    } else if (turn && s.drawn === null && !s.mustFlip && k === "z") act({ type: "draw", from: "deck" });
+    else if (turn && s.drawn === null && !s.mustFlip && k === "o" && s.discard.length) act({ type: "draw", from: "discard" });
+    else if (turn && s.drawnFrom === "deck" && s.drawn !== null && k === "b") act({ type: "discardDrawn" });
+  });
   if (s.phase === "over") return <Result {...props} />;
 
   const local = me === null;
@@ -138,6 +155,43 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
   else hint = "Tauschen – oder ablegen und umdrehen.";
 
   const others = players.filter((p) => p.id !== focus && s.grids[p.id]);
+
+  // Am Rechner: die anderen und die Mitte liegen auf dem Tisch darüber – hier eigenes Raster, Ziehen und Ablegen
+  if (desk) {
+    const kbd = (x: string) => <kbd className="ml-1 text-xs opacity-60">{x}</kbd>;
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-center text-base font-semibold" data-testid="hint"><SmoothText>{`${s.ender && s.phase === "turn" ? "Letzte Runde! " : ""}${hint}`}</SmoothText>
+          <span className="ml-3 text-sm font-normal text-muted-foreground tabular-nums">offen {grid ? visibleSum(grid) : 0} · gesamt {focus ? s.scores[focus] ?? 0 : 0}</span></p>
+        {s.phase === "roundEnd" ? (
+          <div className="mx-auto grid w-full max-w-xl gap-2"><RoundEnd {...props} /><Button size="lg" onClick={() => act({ type: "nextRound" })}>Nächste Runde{kbd("Enter")}</Button></div>
+        ) : (
+          <div className="flex items-center justify-center gap-6">
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="lg" disabled={!canDraw} onClick={() => act({ type: "draw", from: "deck" })}>Ziehen ({deckCount}){kbd("Z")}</Button>
+              <Button size="lg" variant="secondary" disabled={!canDraw || top === undefined} onClick={() => act({ type: "draw", from: "discard" })}>{top !== undefined ? `${top} nehmen` : "Ablage leer"}{kbd("O")}</Button>
+              {s.drawn !== null && (
+                <div className="col-span-2 flex items-center justify-center gap-3">
+                  <div className="aspect-[5/7] w-14" data-testid="drawn"><SkCard cell={{ v: s.drawn, up: true }} pick label={`Gezogen: ${s.drawn}`} /></div>
+                  {myTurn && s.drawnFrom === "deck" && <Button variant="secondary" onClick={() => act({ type: "discardDrawn" })}>Ablegen & umdrehen{kbd("B")}</Button>}
+                </div>
+              )}
+            </div>
+            {grid && (
+              <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Deine Karten">
+                {grid.map((c, i) => (
+                  <div key={i} className="relative w-14">
+                    <div className={cn("aspect-[5/7] rounded-[14%]", goodSwap(c) && "hint-glow")}><SkCard cell={c} onClick={cellTappable(c) ? () => tap(i) : undefined} /></div>
+                    {c && <kbd className="absolute -top-1.5 -left-1.5 z-10 rounded bg-navy-950/80 px-1 text-[0.6rem] font-bold uppercase text-paper">{GRID_KEYS[i]}</kbd>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -202,6 +256,9 @@ function AppBoard(props: BoardProps<SkState, SkAction>) {
     </>
   );
 }
+
+/** Tasten fürs eigene Raster am Rechner: drei Reihen zu je vier */
+const GRID_KEYS = ["1", "2", "3", "4", "q", "w", "e", "r", "a", "s", "d", "f"];
 
 /** Rundenende: Punkte dieser Runde je Spieler */
 function RoundEnd({ room, game: s }: BoardProps<SkState, SkAction>) {
