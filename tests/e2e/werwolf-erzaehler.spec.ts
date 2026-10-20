@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, joinRoom, newPhone } from "./util";
+import { captureSpeech, createRoom, joinRoom, newPhone } from "./util";
 const D = "screenshots/ww";
 const NAMES = ["Anna", "Ben", "Cem", "Dora", "Emil"];
 const snap = async (p: Page, n: string) => { await p.waitForTimeout(500); await p.screenshot({ path: `${D}/${n}.png` }); };
@@ -9,12 +9,7 @@ test("Werwolf online: das Host-Handy erzählt alles wie ein Spielleiter", async 
   const phones = await Promise.all(NAMES.map(() => newPhone(browser)));
   const [host] = phones;
   // Sprachausgabe mitschreiben statt abspielen
-  await host.addInitScript(() => {
-    const said: string[] = [];
-    (window as unknown as { __said: string[] }).__said = said;
-    const fake = { speak: (u: SpeechSynthesisUtterance) => { said.push(u.text); setTimeout(() => u.onend?.(new Event("end") as SpeechSynthesisEvent), 10); }, cancel: () => {}, getVoices: () => [], addEventListener: () => {}, removeEventListener: () => {}, speaking: false, pending: false, paused: false };
-    Object.defineProperty(window, "speechSynthesis", { value: fake, configurable: true });
-  });
+  await captureSpeech(host);
   const code = await createRoom(host, "werwolf", "Anna", "1313");
   for (let i = 1; i < 5; i++) await joinRoom(phones[i], code, NAMES[i], "1313");
   await snap(host, "00-lobby");

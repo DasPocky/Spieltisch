@@ -12,6 +12,7 @@ import { handleAdmin, putAsset } from "./routes/admin";
 import { handleCall } from "./routes/call";
 import { ownsProfile } from "./auth";
 import { ASSET_PREFIX, assetPath } from "../shared/platform/files";
+import { pieceKey, validPiece } from "../shared/platform/voice";
 import { AI_DAILY, AI_MODEL, cleanHostLine, hostPrompt, parseHostLine } from "../shared/platform/hostline";
 
 /** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
@@ -58,6 +59,29 @@ export default {
       const res = await putAsset(env, target.path, request);
       if (res.ok) await settingsOf(env).audit(`Datei eingespielt (GitHub): ${target.path}`);
       return res;
+    }
+
+    // Echte Stimme: Gerät meldet fehlende Bausteine (Text kurz und geprüft, je Adresse begrenzt)
+    if (url.pathname === "/api/voice/missing" && request.method === "POST") {
+      if (!allowed("voice", request.headers.get("cf-connecting-ip") ?? "local", 60)) return json({ ok: false }, 429);
+      const body = (await readBody(request)) as { items?: unknown } | null;
+      const items = (Array.isArray(body?.items) ? body.items : []).slice(0, 30).map(validPiece).filter((x): x is NonNullable<typeof x> => x !== null);
+      if (!items.length) return badRequest();
+      const withKeys = await Promise.all(items.map(async (it) => ({ ...it, key: await pieceKey(it.mood, it.text) })));
+      await settingsOf(env).voiceNote(withKeys);
+      return json({ ok: true });
+    }
+    // … und die GitHub-Aktion „Stimme“ holt die Liste ab bzw. meldet erledigte (nur mit RELEASE_SECRET)
+    if (url.pathname === "/api/release/voice" || url.pathname === "/api/release/voice/done") {
+      const key = request.headers.get("x-release-key") ?? "";
+      if (!env.RELEASE_SECRET || !(await sameSecret(key, env.RELEASE_SECRET))) return json({ ok: false, error: "Schlüssel fehlt oder passt nicht." }, 403);
+      if (request.method === "GET" && url.pathname === "/api/release/voice") return json({ items: await settingsOf(env).voiceQueue() });
+      if (request.method === "POST" && url.pathname === "/api/release/voice/done") {
+        const body = (await readBody(request, 200_000)) as { keys?: unknown } | null;
+        const keys = (Array.isArray(body?.keys) ? body.keys : []).filter((k): k is string => typeof k === "string" && /^[0-9a-f]{16}$/.test(k));
+        await settingsOf(env).voiceDone(keys);
+        return json({ ok: true, done: keys.length });
+      }
     }
 
     // KI-Spruch für den Moderator am Tisch – nur wenn eingeschaltet, begrenzt; sonst 204 (der Tisch nimmt feste Texte)
@@ -223,7 +247,9 @@ export default {
       const target = assetPath(decodeURIComponent(asset[1]));
       const obj = target && env.FILES ? await env.FILES.get(ASSET_PREFIX + target.path, { onlyIf: request.headers }) : null;
       if (!obj) return new Response("Nicht gefunden.", { status: 404 });
-      const headers = new Headers({ etag: obj.httpEtag, "cache-control": "public, max-age=3600", "x-content-type-options": "nosniff", "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream" });
+      // Bausteine der Stimme ändern sich nie (Name = Prüfsumme des Texts) – lange behalten; ihr Verzeichnis nur kurz
+      const cache = target!.path.startsWith("stimme/") ? (target!.path.endsWith(".mp3") ? "public, max-age=31536000, immutable" : "public, max-age=300") : "public, max-age=3600";
+      const headers = new Headers({ etag: obj.httpEtag, "cache-control": cache, "x-content-type-options": "nosniff", "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream" });
       // Bedingung erfüllt (ETag gleich): ohne Inhalt
       const body = "body" in obj ? (obj as R2ObjectBody).body : null;
       if (!body) return new Response(null, { status: 304, headers });

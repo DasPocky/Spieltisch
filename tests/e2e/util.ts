@@ -139,6 +139,8 @@ export async function captureSpeech(page: Page) {
       cancel: () => {}, getVoices: () => [], addEventListener: () => {}, removeEventListener: () => {}, speaking: false, pending: false, paused: false,
     };
     Object.defineProperty(window, "speechSynthesis", { value: fake, configurable: true });
+    // Mitschreiben geht nur mit der Gerätestimme – die echte Stimme spielt Audiodateien
+    try { localStorage.setItem("spieltisch:voiceMode", "geraet"); } catch { /* egal */ }
   });
 }
 

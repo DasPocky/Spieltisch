@@ -1,0 +1,63 @@
+name: Stimme
+
+# Echte Stimme: Bausteine (feste Satzteile, Vornamen, Zahlen, von Geräten gemeldete Lücken) mit Thorsten erzeugen
+# und über den Worker nach R2 laden. Stündlich (neue Namen), bei Änderungen an den Ansagen und per Knopf.
+# Braucht das Secret RELEASE_SECRET (gleicher Wert wie das Worker-Secret); SITE_URL optional als Variable.
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/stimme/**"
+      - "src/platform/moderator/lines.ts"
+      - "shared/platform/voice.ts"
+
+concurrency:
+  group: stimme
+  cancel-in-progress: false
+
+jobs:
+  stimme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install sherpa-onnx soundfile numpy
+      - run: sudo apt-get install -y ffmpeg >/dev/null
+      - name: Stimme laden (Thorsten „high“ und mit Stimmungen, CC0)
+        id: model
+        uses: actions/cache@v4
+        with:
+          path: |
+            vits-piper-de_DE-thorsten-high
+            vits-piper-de_DE-thorsten_emotional-medium
+          key: thorsten-high-emotional-1
+      - if: steps.model.outputs.cache-hit != 'true'
+        run: |
+          for m in vits-piper-de_DE-thorsten-high vits-piper-de_DE-thorsten_emotional-medium; do
+            curl -sSL https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$m.tar.bz2 | tar xj
+          done
+      - name: Feste Satzteile sammeln
+        run: npx esbuild scripts/stimme/saetze.ts --bundle --platform=node --log-level=error | node > saetze.json
+      - name: Erzeugen und hochladen
+        env:
+          RELEASE_SECRET: ${{ secrets.RELEASE_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          MODEL_DIR: vits-piper-de_DE-thorsten-high
+          EMO_DIR: vits-piper-de_DE-thorsten_emotional-medium
+          PITCH: ${{ vars.VOICE_PITCH || '1.0' }}
+          SAETZE: saetze.json
+        run: |
+          if [ -z "$SITE_URL" ]; then unset SITE_URL; fi
+          python scripts/stimme/erzeugen.py

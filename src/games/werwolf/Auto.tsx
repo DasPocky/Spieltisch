@@ -94,7 +94,8 @@ export function AutoRunner({ say, after, total, required, acted, result, onNext,
 
   useEffect(() => {
     let alive = true;
-    void speak(say).then(() => { if (alive) go("act", total); });
+    // Nachts flüstert der Spielleiter
+    void speak(say, { mood: "fluester" }).then(() => { if (alive) go("act", total); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
