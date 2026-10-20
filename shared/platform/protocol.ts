@@ -51,7 +51,7 @@ export type ClientMessage =
   | { type: "remote"; cmd: RemoteCmd };
 
 /** Befehle der Fernbedienung (Handy des Hosts → Großer Tisch) */
-export const REMOTE_CMDS = ["sound", "louder", "quieter", "cover"] as const;
+export const REMOTE_CMDS = ["sound", "louder", "quieter", "cover", "host", "mood", "voice", "video", "view", "reset"] as const;
 export type RemoteCmd = (typeof REMOTE_CMDS)[number];
 
 /** Eine Chat-Nachricht im Raum */

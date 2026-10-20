@@ -17,6 +17,13 @@ import type { HostMoment } from "@shared/platform/hostline";
 /** Spiele mit eigenem Spielleiter bzw. geheimen Rollen: der Moderator hält sich raus */
 const OWN_LEADER = new Set(["werwolf", "einenacht"]);
 const MOOD_KEY = "spieltisch:host-mood";
+/** Nächster Charakter des Moderators (wird gemerkt) */
+export function nextMood(mood: Mood): Mood {
+  const i = MOODS.findIndex((m) => m.value === mood);
+  const m = MOODS[(i + 1) % MOODS.length].value;
+  writeStr(MOOD_KEY, m);
+  return m;
+}
 export const readMood = (): Mood => { const m = readStr(MOOD_KEY); return m === "frech" || m === "boese" ? m : "charmant"; };
 
 /** Echte Stimme: Charakter des Moderators → Stimmung */
@@ -152,7 +159,7 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
 /** Einstellungen am Tisch: Moderator an/aus, Charakter, Vorlesen */
 export function HostPanel({ mood, onMood }: { mood: Mood; onMood: (m: Mood) => void }) {
   const p = usePrefs();
-  const next = () => { const i = MOODS.findIndex((m) => m.value === mood); const m = MOODS[(i + 1) % MOODS.length].value; writeStr(MOOD_KEY, m); onMood(m); };
+  const next = () => onMood(nextMood(mood));
   const btn = "flex h-10 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 text-sm font-semibold text-[#f7ecd6] outline-none hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-[#f7ecd6]";
   return (
     <div className="flex gap-2" data-testid="host-panel">

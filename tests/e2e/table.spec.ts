@@ -144,10 +144,12 @@ test("Ton am Tisch: Musik läuft, Regler für Effekte, Musik und Publikum, aussc
   await screen.getByTestId("sound-toggle").click();
   await screen.reload();
   // Nach dem Neuladen baut sich der Tisch erst auf (ohne Grafikchip dauert das)
-  await expect(screen.getByTestId("sound-unlock").or(screen.getByTestId("sound-panel"))).toBeVisible({ timeout: 20_000 });
+  await expect(screen.getByTestId("sound-panel")).toBeAttached({ timeout: 20_000 });
+  // Gesperrter Ton: „Ton einschalten“ unten links ist am Fernseher der einzige Knopf
   if (await screen.getByTestId("sound-unlock").isVisible()) {
-    await screen.getByTestId("sound-unlock").click();
-    await expect(screen.getByTestId("sound-panel")).toBeVisible();
+    // kann schon weg sein, wenn der Ton inzwischen läuft
+    await screen.getByTestId("sound-unlock").click({ timeout: 3000 }).catch(() => undefined);
+    await expect(screen.getByTestId("sound-unlock")).toHaveCount(0);
   }
   await screen.waitForTimeout(1500);
   expect(errors).toEqual([]);
@@ -232,6 +234,39 @@ test("Fernbedienung: Pfeiltasten am Fernseher, Handy des Hosts schaltet Ton und 
   await expect(screen.getByTestId("sound-toggle")).toHaveAttribute("aria-checked", "true");
   const vol = await screen.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:prefs") ?? "{}").volMusic);
   expect(vol).toBeCloseTo(0.55, 2);
+  // Moderator und Charakter vom Handy aus – am Fernseher selbst gibt es dafür keine Knöpfe
+  await anna.getByTestId("remote-host").click();
+  await expect(screen.getByText("Anna: Moderator aus")).toBeVisible();
+  await expect(screen.getByTestId("table-host")).toHaveCount(0);
+  await anna.getByTestId("remote-host").click();
+  await expect(screen.getByTestId("table-host")).toBeVisible();
+  await anna.getByTestId("remote-mood").click();
+  await expect(screen.getByText("Anna: Moderator Frech")).toBeVisible();
+});
+
+test("Fernseher ohne Knöpfe: nur Tisch und QR-Code, das Menü erscheint erst bei Maus oder Taste", async ({ browser }) => {
+  const screen = await newScreen(browser);
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  await joinByLink(browser, code, pin, "Ben");
+  await anna.getByTestId("meet-play").click();
+  await anna.getByTestId("pick-maumau").click();
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  await expect(screen.getByTestId("table-lobby")).toBeHidden();
+  // Ruhe: Menü ausgeblendet, QR-Code zum Nachkommen oben rechts
+  await expect(screen.getByTestId("tv-menu")).toHaveAttribute("data-shown", "false", { timeout: 10_000 });
+  await expect(screen.getByLabel("QR-Code zum Mitspielen")).toBeVisible();
+  await shot(screen, "91c-tisch-ohne-knoepfe");
+  // Maus bewegt: Menü gleitet herein
+  await screen.mouse.move(300, 300);
+  await screen.mouse.move(320, 310);
+  await expect(screen.getByTestId("tv-menu")).toHaveAttribute("data-shown", "true");
+  await screen.waitForTimeout(300);
+  await shot(screen, "91d-tisch-menue");
 });
 
 test("Foto statt Tier: Anna nimmt ein Foto auf, Ben und der Fernseher sehen es, Entfernen bringt das Tier zurück", async ({ browser }) => {
