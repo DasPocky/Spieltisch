@@ -385,6 +385,27 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
         </OnFelt>
       )}
       {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
+      {/* Quizfrage groß über dem Tisch */}
+      {model?.quiz && (
+        <div className="pointer-events-none absolute inset-x-[12%] top-[12%] bottom-[18%] flex flex-col gap-4" data-testid="table-quiz">
+          <div className="flex items-center justify-between gap-4">
+            <span className="table-banner text-xl">{model.quiz.head}</span>
+            {model.quiz.endsAt ? <SignClock endsAt={model.quiz.endsAt} /> : null}
+          </div>
+          <p className="paper-note px-8 py-6 text-center text-4xl leading-tight font-bold" data-testid="table-question">{model.quiz.question}</p>
+          {model.quiz.options.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {model.quiz.options.map((o) => (
+                <div key={o.text} className={cn("flex items-center gap-4 rounded-2xl px-5 py-4 text-3xl font-bold text-white shadow-xl transition", o.right === false && "opacity-30", o.right && "ring-8 ring-white")} style={{ background: o.tone }}>
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/25">{o.letter}</span>{o.text}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="table-banner self-center text-2xl" data-testid="table-quiz-status">{model.quiz.status}</p>
+          {model.quiz.points.length > 0 && <p className="table-banner self-center text-xl">{model.quiz.points.map((x) => `${x.name} +${x.p}`).join(" · ")}</p>}
+        </div>
+      )}
       {/* Zeichenblatt groß über dem Tisch – live, wie eine Staffelei */}
       {model?.drawing && (
         <div className="pointer-events-none absolute inset-x-[14%] top-[13%] bottom-[16%] flex flex-col items-center gap-3" data-testid="table-drawing">

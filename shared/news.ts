@@ -15,11 +15,20 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-quiz",
+    date: "2026-10-20",
+    title: "Neu: Quiz & Schätzen",
+    items: [
+      "Alle beantworten dieselbe Frage am eigenen Handy: Auswahl, Schätzen oder in die richtige Reihenfolge bringen.",
+      "Rund 1.200 eigene Fragen in acht Kategorien, jede mit Quelle – dazu ein Kinderquiz. Der Fernseher zeigt Frage, Uhr und Auflösung.",
+    ],
+  },
+  {
     id: "2026-10-zeichnen",
     date: "2026-10-20",
     title: "Neu: Zeichnen & Raten",
     items: [
-      "Einer malt am Handy, alle anderen raten – laut rufen oder ins Handy tippen (kleine Tippfehler zählen).",
+      "Einer malt am Handy, alle anderen raten – laut rufen oder ins Handy tippen (kleine Tippfehler zählen, „ganz nah dran!“ sieht nur, wer getippt hat).",
       "Drei Begriffe zur Wahl, von Kinder bis Ab 18. Online, an einem Handy und am Fernseher.",
     ],
   },

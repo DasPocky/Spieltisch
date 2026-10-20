@@ -8,6 +8,7 @@ import type { FischenState } from "../games/fischen/logic";
 import type { MauMauState } from "../games/maumau/logic";
 import { extend as p10Extend, findPhase, type P10State } from "../games/zehnphasen/logic";
 import { encodePoints } from "../games/zeichnen/logic";
+import { randomAnswer, type QState } from "../games/quiz/logic";
 import { fits as sbFits, type SbState } from "../games/stapelbau/logic";
 import { canPlay as einsCanPlay, COLORS, type EinsState } from "../games/eins/logic";
 import type { WerwolfState } from "../games/werwolf/logic";
@@ -230,6 +231,13 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "verdict", target: null });
       if (st.options.length) add({ type: "guess", word: pick(st.options) });
       if (Math.random() < 0.05) add({ type: "custom", words: ["Opas Schnurrbart", "Unser Hund"] });
+      break;
+    }
+    case "quiz": {
+      ["reveal", "timeUp", "next"].forEach((type) => add({ type }));
+      const v = randomAnswer(r.game as QState);
+      if (v !== null) for (const id of ids) moves.push({ action: g({ type: "answer", value: v }), actor: online ? id : null });
+      add({ type: "award", ids: ids.filter(() => Math.random() < 0.5) });
       break;
     }
     case "zeichnen": {

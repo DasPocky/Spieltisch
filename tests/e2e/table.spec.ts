@@ -1020,3 +1020,40 @@ test("Zeichnen & Raten am Tisch: das Blatt groß und live über dem Tisch, Lück
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Quiz am Tisch: Frage und Antworten groß, wer schon geantwortet hat – nie die Lösung vor dem Auflösen", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { quiz: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-quiz").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    const tv = screen.getByTestId("table-quiz");
+    await expect(tv.getByTestId("table-question")).toHaveText(new RegExp((await anna.getByTestId("question").textContent())!.slice(0, 12).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    await expect(screen.getByTestId("table-quiz-status")).toContainText("0 von 2");
+    await expect(screen.getByTestId("table-quiz-status")).not.toContainText("Lösung");
+    // Antwort geben (je nach Art der Frage)
+    const answer = async (p: typeof anna) => {
+      if (await p.getByRole("group", { name: "Antworten" }).isVisible()) await p.getByRole("group", { name: "Antworten" }).getByRole("button").first().click();
+      else if (await p.getByLabel("Deine Schätzung").isVisible()) { await p.getByLabel("Deine Schätzung").fill("10"); await p.getByRole("button", { name: "Schätzen" }).click(); }
+      else for (let i = 0; i < 4; i++) await p.getByRole("group", { name: "Begriffe" }).getByRole("button").nth(i).click();
+    };
+    await answer(anna);
+    await expect(screen.getByTestId("table-quiz-status")).toContainText("1 von 2");
+    await screen.waitForTimeout(500);
+    await shot(screen, "9u-tisch-quiz");
+    await answer(ben);
+    await expect(screen.getByTestId("table-quiz-status")).toContainText("Lösung");
+    await shot(screen, "9v-tisch-quiz-loesung");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
