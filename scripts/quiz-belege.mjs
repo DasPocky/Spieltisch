@@ -40,7 +40,7 @@ function readQuestions() {
   return out;
 }
 
-const norm = (t) => t.toLowerCase().replace(/[­​]/g, "").replace(/[   ]/g, " ").replace(/[„“”"‚‘’'«»]/g, "").replace(/\s+/g, " ");
+const norm = (t) => t.toLowerCase().replace(/[\u2212\u2013]/g, "-").replace(/[­​]/g, "").replace(/[   ]/g, " ").replace(/[„“”"‚‘’'«»]/g, "").replace(/\s+/g, " ");
 
 /** Seite holen (zwischengespeichert) – Wikipedia als reiner Text, sonst HTML ohne Tags */
 const cache = new Map();
@@ -50,40 +50,37 @@ async function page(url) {
 }
 async function load(url) {
   const wiki = url.match(/^https?:\/\/(\w+)\.wikipedia\.org\/wiki\/(.+)$/);
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // Wikipedia: ganze Seite als HTML (mit Tabellen und Infokasten, Weiterleitungen folgt die Schnittstelle selbst)
+  const src = wiki ? `https://${wiki[1]}.wikipedia.org/api/rest_v1/page/html/${encodeURIComponent(decodeURIComponent(wiki[2].split("#")[0]))}?redirect=true` : url;
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      if (wiki) {
-        const title = decodeURIComponent(wiki[2].split("#")[0]).replace(/_/g, " ");
-        const api = `https://${wiki[1]}.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
-        const r = await fetch(api, { headers: { "User-Agent": UA } });
-        if (r.status === 429) { await new Promise((ok) => setTimeout(ok, 2000 * (attempt + 1))); continue; }
-        const j = await r.json();
-        const p = Object.values(j.query?.pages ?? {})[0];
-        if (!p || p.missing !== undefined || !p.extract) return null;
-        return norm(p.extract);
-      }
-      const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
-      if (!r.ok) return null;
-      return norm((await r.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " "));
+      const r = await fetch(src, { headers: { "User-Agent": UA }, redirect: "follow" });
+      if (r.status === 404) return null;
+      if (!r.ok) { await new Promise((ok) => setTimeout(ok, 1500 * (attempt + 1))); continue; }
+      const html = await r.text();
+      return norm(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))));
     } catch {
-      await new Promise((ok) => setTimeout(ok, 1000));
+      await new Promise((ok) => setTimeout(ok, 1500 * (attempt + 1)));
     }
   }
+  failed.add(url);
   return null;
 }
+const failed = new Set();
 
 /** Kommt ein Begriff vor? Ganz, ohne Artikel, als Ziffer/Zahlwort oder mit allen wichtigen Wörtern */
+const FILL = /^(der|die|das|den|dem|des|ein|eine|einen|einem|am|im|in|auf|zum|zur|mit|aus|von|vom|durch|nach)\s+/;
 function hasTerm(text, term) {
-  const t = norm(term).replace(/\s*\(.*?\)/g, "").replace(/[.,;:!?]+$/, "");
-  if (!t) return true;
-  if (text.includes(t)) return true;
-  const bare = t.replace(/^(der|die|das|den|dem|ein|eine|einen|am|im|in|auf|zum|zur)\s+/, "");
-  if (bare !== t && text.includes(bare)) return true;
-  const n = ZAHLWORT.indexOf(bare);
+  let t = norm(term).replace(/\s*\(.*?\)/g, "").replace(/[.,;:!?]+$/, "");
+  if (!t || text.includes(t)) return true;
+  while (FILL.test(t)) { t = t.replace(FILL, ""); if (text.includes(t)) return true; }
+  const n = ZAHLWORT.indexOf(t);
   if (n >= 0 && new RegExp(`(^|[^\\d])${n}([^\\d]|$)`).test(text)) return true;
-  if (/^\d+$/.test(bare) && Number(bare) <= 20 && text.includes(ZAHLWORT[Number(bare)])) return true;
-  const words = bare.split(/[\s-]+/).filter((w) => w.length >= 4);
-  return words.length > 1 && words.every((w) => text.includes(w));
+  if (/^\d+$/.test(t) && Number(t) <= 20 && text.includes(ZAHLWORT[Number(t)])) return true;
+  // mehrere Wörter: jedes muss vorkommen (lange Wörter genügen mit ihrem Anfang, z. B. „Gemüsesuppe“ → „gemüs“)
+  const words = t.split(/[\s-]+/).filter((w) => w.length >= 4);
+  return words.length > 1 && words.every((w) => text.includes(w.length >= 7 ? w.slice(0, 5) : w));
 }
 
 /** Zahl in den üblichen Schreibweisen (1234, 1.234, 1 234, 12,5 / 12.5) */
@@ -122,7 +119,8 @@ async function pool(items, n, fn) {
 }
 
 const questions = readQuestions();
-const results = await pool(questions, 6, check);
+const results = await pool(questions, 4, check);
+if (failed.size) console.log(`Abruf fehlgeschlagen (Netz): ${[...failed].join(" ")}`);
 const open = results.filter((r) => r.status !== "ok");
 const by = (s) => results.filter((r) => r.status === s).length;
 const lines = [
