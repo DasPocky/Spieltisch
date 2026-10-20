@@ -314,7 +314,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
 
   return (
     <>
-      <TableCanvas model={shown} seats={seats} onSeats={onSeats} forceFlat={flat} onReal={setReal} follow={!me} />
+      <TableCanvas model={shown} seats={seats} names={players.map((p) => p.name)} onSeats={onSeats} forceFlat={flat} onReal={setReal} follow={!me} />
       {/* Wie durch ein Objektiv: der Rand dunkelt ab, der Blick geht zur Mitte */}
       {real && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_70%_at_50%_52%,transparent_55%,rgb(0_0_0/0.5))]" />}
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
@@ -349,8 +349,10 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
  * Der Tisch in voller Größe – in 3D in der gewählten Grafik-Stufe, sonst (Stufe „Ohne 3D“, kein WebGL,
  * Grafik abgestürzt) als einfacher flacher Tisch in derselben Anordnung. Die Partie läuft dabei einfach weiter.
  */
-function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
-  model: TableModel | null; seats: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
+function TableCanvas({ model, seats, names = [], onSeats, forceFlat, onReal, follow }: {
+  model: TableModel | null; seats: string[];
+  /** Namen in Tischreihenfolge – stehen auf Karten am Platz */
+  names?: string[]; onSeats: (p: { x: number; y: number }[], felt: FeltRect) => void; forceFlat?: boolean;
   /** meldet, ob gerade in 3D gezeichnet wird */
   onReal?: (real: boolean) => void;
   /** Fernseher: Kamera dreht sich zu dem, der dran ist */
@@ -363,8 +365,9 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
   // WebGL verloren (Grafiktreiber, zu wenig Speicher): ab jetzt flach
   const [lost, setLost] = useState(false);
   const flat = forceFlat || level === "flach" || lost || !webglOk();
-  const latest = useRef({ model, seats });
-  latest.current = { model, seats };
+  const nameKey = names.join("\u0001");
+  const latest = useRef({ model, seats, names });
+  latest.current = { model, seats, names };
 
   useEffect(() => {
     const box = holder.current;
@@ -386,16 +389,16 @@ function TableCanvas({ model, seats, onSeats, forceFlat, onReal, follow }: {
     canvas.addEventListener("webglcontextlost", onLost);
     const ro = new ResizeObserver(() => { s.resize(canvas.clientWidth, canvas.clientHeight); onSeats(s.seatPoints(), s.feltRect()); });
     ro.observe(canvas);
-    s.update(latest.current.model, latest.current.seats);
+    s.update(latest.current.model, latest.current.seats, latest.current.names);
     return () => { ro.disconnect(); canvas.removeEventListener("webglcontextlost", onLost); s.dispose(); scene.current = null; };
   }, [onSeats, flat, level, onReal, follow]);
 
   useEffect(() => {
     const s = scene.current;
     if (!s) return;
-    s.update(model, seatKey ? seatKey.split(",") : []);
+    s.update(model, seatKey ? seatKey.split(",") : [], nameKey ? nameKey.split("\u0001") : []);
     onSeats(s.seatPoints(), s.feltRect());
-  }, [model, seatKey, onSeats]);
+  }, [model, seatKey, nameKey, onSeats]);
 
   return <div ref={holder} className="absolute inset-0" />;
 }
