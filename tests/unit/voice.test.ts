@@ -16,9 +16,9 @@ describe("Echte Stimme", () => {
   });
 
   it("Schlüssel wie im Skript der GitHub-Aktion (Python)", async () => {
-    expect(await pieceKey("neutral", "ist dran.")).toBe("87259376f45dfb45");
-    expect(await pieceKey("froh", "du bist  dran – wir sind gespannt! ")).toBe("0028ea8be92fd23f");
-    expect(await pieceKey("neutral", "Anna")).toBe("c11509df9f92c387");
+    expect(await pieceKey("neutral", "ist dran.")).toBe("e33dade3937c9ce6");
+    expect(await pieceKey("froh", "du bist  dran – wir sind gespannt! ")).toBe("8934d81c8c4ca4b2");
+    expect(await pieceKey("neutral", "Anna")).toBe("dc84c79ea0c1b2a4");
   });
 
   it("Gemeldete Bausteine werden geprüft", () => {

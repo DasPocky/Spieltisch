@@ -1,0 +1,94 @@
+# Aussprache: so steht es im Text = so soll Thorsten es sprechen (nur ganze Wörter, Groß-/Kleinschreibung zählt).
+# Ändert sich eine Zeile, erzeugt die Aktion „Stimme“ alle betroffenen Bausteine beim nächsten Lauf neu.
+# Klingt ein Wort falsch: hier eintragen (lautschriftlich auf Deutsch, z. B. „Kewin“).
+
+# Abkürzungen
+z. B. = zum Beispiel
+Pkt. = Punkte
+Nr. = Nummer
+usw. = und so weiter
+ca. = zirka
+TV = Fernseher
+
+# Wörter aus dem Englischen
+Handy = Händi
+Handys = Händis
+Snacks = Snäcks
+Team = Tiem
+Teams = Tiems
+Host = Houst
+Bot = Bott
+Bots = Botts
+Party = Parti
+Partyabend = Partiabend
+Quiz = Kwiss
+Joker = Dschoker
+Chat = Tschätt
+online = onlein
+Online = Onlein
+offline = offlein
+Selfie = Selfi
+Video = Wideo
+Videos = Wideos
+Mau-Mau = Mau Mau
+Comeback = Kambäck
+cool = kuhl
+okay = okeh
+Okay = Okeh
+fair = fähr
+Bluff = Blöff
+bluffen = blöffen
+Showdown = Schoudaun
+
+# Vornamen
+Aileen = Eilien
+Aisha = A-ischa
+Alan = Ällen
+Amy = Ämi
+Ayse = Aische
+Bianca = Bjanka
+Caitlin = Kätlin
+Can = Dschan
+Carl = Karl
+Carla = Karla
+Carlo = Karlo
+Carlos = Karlos
+Cem = Dschem
+Chris = Kriss
+Christopher = Kristoffer
+Claire = Klähr
+Claus = Klaus
+Conny = Konni
+Danny = Dänni
+Denise = Döniese
+Dustin = Dastin
+Emily = Emili
+Enrico = Enriko
+Fabienne = Fabjenn
+Harry = Härri
+Henry = Henri
+Jacob = Jakob
+Jessica = Dschessika
+Joshua = Dschoschua
+Kevin = Kewin
+Kian = Kiahn
+Levi = Lewi
+Liam = Liäm
+Louis = Lui
+Lucy = Lussi
+Mandy = Mändi
+Marc = Mark
+Marco = Marko
+Marcus = Markus
+Michelle = Mischell
+Noel = No-ell
+Pierre = Pjähr
+Rebecca = Rebekka
+Rene = Renee
+Sam = Sämm
+Sylvia = Silwia
+Yannick = Jannick
+Yara = Jara
+Yusuf = Jussuf
+Zeynep = Sejnep
+Zoe = Zo-e

@@ -56,7 +56,6 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           MODEL_DIR: vits-piper-de_DE-thorsten-high
           EMO_DIR: vits-piper-de_DE-thorsten_emotional-medium
-          PITCH: ${{ vars.VOICE_PITCH || '1.0' }}
           SAETZE: saetze.json
         run: |
           if [ -z "$SITE_URL" ]; then unset SITE_URL; fi

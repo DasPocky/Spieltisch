@@ -97,6 +97,8 @@ Ansagen spielt das Gerät aus Bausteinen ab: feste Satzteile je Stimmung, Namen 
 
 Die GitHub-Aktion **Stimme** (`.github/workflows/stimme.yml`, stündlich, bei Änderungen an den Ansagen und per Knopf) erzeugt mit Thorsten (deutsche Neuronalstimme mit Stimmungen, CC0, über sherpa-onnx) alle festen Satzteile (`scripts/stimme/saetze.ts`), die Vornamen aus `scripts/stimme/namen.txt`, die Zahlen 0–300 und die gemeldeten Lücken (`GET /api/release/voice`), lädt neue Bausteine über `PUT /api/release/files/stimme/…` hoch, schreibt das Verzeichnis neu und meldet Erledigtes (`POST /api/release/voice/done`). Braucht das GitHub-Secret `RELEASE_SECRET` (gleicher Wert wie das Worker-Secret); andere Adresse als workers.dev über die Variable `SITE_URL`. Lokal: `SITE_URL=http://localhost:5199 RELEASE_SECRET=… MODEL_DIR=… python3 scripts/stimme/erzeugen.py`.
 
+Klang: mittleres Tempo, etwas höher als das Modell (Werte `STYLE` in `erzeugen.py`). Aussprache: `scripts/stimme/aussprache.txt` (Schreibung = Sprechweise, z. B. `Kevin = Kewin`); `stimme/quelle.json` merkt sich je Baustein Text und Sprechweise – ändert sich eine Zeile, erzeugt der nächste Lauf die betroffenen Bausteine neu. Klingt ein Wort falsch, genügt eine Zeile dort.
+
 Stimmungen: neutral (Namen, Zahlen, normale Ansagen), froh (Moderator charmant), überrascht (frech), wütend (böse), flüsternd (Werwolf-Nacht), beschwipst, müde. Im Profil unter „Stimme“: echte Stimme oder Stimme des Geräts.
 
 ### Dateien per Schlüssel einspielen
