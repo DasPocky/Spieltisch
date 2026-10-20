@@ -32,7 +32,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   stapelbau: { table: "on", desk: "beta" },
   himmelskarten: { table: "on", desk: "beta" },
   zehnphasen: { table: "on", desk: "beta" },
-  glueckssieben: { table: "on" },
+  glueckssieben: { table: "on", desk: "beta" },
   decknamen: { table: "on" },
   alles: { table: "on" },
   maexchen: { table: "on" },

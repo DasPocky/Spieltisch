@@ -397,3 +397,22 @@ test("Am Rechner (Fischen): Werte als Stapel unter dem Tisch, fragen per Tastatu
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Glückssieben): eigene Reihe unter dem Tisch, „Noch eine!“ und „Aufhören“ per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { glueckssieben: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "glueckssieben", "7878", ["Cem"]);
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("status")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gd-desk-glueckssieben");
+    // Entscheidet Anna gerade: A hört auf – danach ist jemand anderes dran
+    if (await area.getByRole("button", { name: /Aufhören/ }).isVisible()) {
+      await page.keyboard.press("a");
+      await expect(area.getByRole("button", { name: /Aufhören/ })).toHaveCount(0);
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

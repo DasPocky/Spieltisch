@@ -12,6 +12,7 @@ import { Scoreboard } from "@/platform/Scoreboard";
 import { HintChip } from "@/platform/HintChip";
 import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
+import { useDeskKeys } from "@/platform/desk/keys";
 
 const STATUS: Record<string, string> = { active: "", stayed: "aufgehört", bust: "raus", frozen: "eingefroren", done: "fertig" };
 
@@ -105,9 +106,12 @@ export function Tile({ card, selectable, selected, onClick, quiet, small }: { ca
 }
 
 /** Glückssieben: Punkteleiste, der Tisch mit allen Reihen, unten Karte ziehen oder aufhören. */
-export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch }: BoardProps<F7State, F7Action>) {
+export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch, desk }: BoardProps<F7State, F7Action>) {
   const players = room.players;
   const [sel, setSel] = useState<{ owner: string; index: number }[]>([]);
+  // Tastatur am Rechner (unten belegt, sobald feststeht, wer entscheidet)
+  const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
+  useDeskKeys((e) => { if (desk) keys.current(e); });
   const hints = useHints();
   // Viele Spieler: kompakte Zeilen, und wer gerade entscheidet, rutscht ins Bild
   const compact = players.length > 4;
@@ -155,6 +159,58 @@ export function Board({ room, game: s, me, online, isHost, canAct, act, dispatch
   // Spielhilfe: Wie wahrscheinlich platzt die Reihe bei „Noch eine!“? Der Stapel ergibt sich aus den offenen Karten.
   const odds = hints && mine && !p && decider ? bustOdds(s, decider) : null;
   const risk = odds ? (odds.bust / odds.total >= 0.3 ? "hoch" : odds.bust / odds.total >= 0.15 ? "mittel" : "niedrig") : null;
+
+  // Am Rechner: alle Reihen liegen auf dem Tisch – hier eigene Reihe, Entscheidung und Tastatur (N noch eine, A aufhören, 1–6 Ziel)
+  keys.current = (e) => {
+    if (!mine) return;
+    const k = e.key.toLowerCase();
+    const n = Number(e.key);
+    if (p?.kind === "target" && n >= 1 && n <= targets.length) act({ type: "target", target: targets[n - 1].id });
+    else if (!p && k === "n") act({ type: "hit" });
+    else if (!p && k === "a") act({ type: "stay" });
+  };
+  if (desk) {
+    const own = me ? s.lines[me] : null;
+    const shown = pickMode ? players.filter((x) => s.lines[x.id]) : own && me ? [players.find((x) => x.id === me)!] : [];
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap justify-center gap-2" data-testid="table">
+          {shown.map((x) => {
+            const l = s.lines[x.id];
+            const cards = [...l.nums, ...l.mods];
+            return (
+              <div key={x.id} className={cn("glass min-w-0 rounded-xl px-2.5 py-1.5", l.status === "bust" && "opacity-50")}>
+                <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                  <b>{nameOf(x.id)}</b>
+                  <span className="flex items-center gap-2 text-xs">{l.second && <LifeBuoy className="size-4 text-ice" aria-label="Zweite Chance" />}{STATUS[l.status] && <span className="rounded-full bg-navy-950/60 px-2 py-0.5 font-semibold text-muted-foreground">{STATUS[l.status]}</span>}<b className="tabular-nums">{linePoints(l)}</b></span>
+                </div>
+                <div className="flex gap-1">
+                  {cards.length ? cards.map((c, i) => <Tile key={`${c}-${i}`} card={c} selectable={canPick(x.id, i)} selected={sel.some((y) => y.owner === x.id && y.index === i)} onClick={() => toggle(x.id, i)} />)
+                    : <span className="py-2 text-xs text-muted-foreground">noch keine Karten</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {!mine ? (
+          <p className="text-center text-muted-foreground" data-testid="status">Warte auf <b className="text-foreground">{nameOf(decider)}</b>{p ? ` (${cardLabel(p.card)})` : ""}</p>
+        ) : p?.kind === "target" ? (
+          <div className="flex flex-wrap items-center justify-center gap-2" data-testid="status">
+            <span className="font-semibold">{nameOf(p.by)} zieht <b className="text-ice">{cardLabel(p.card)}</b> – wen trifft's?</span>
+            {targets.map((x, i) => <Button key={x.id} variant="secondary" onClick={() => act({ type: "target", target: x.id })}>{nameOf(x.id)} <kbd className="text-xs opacity-60">{i + 1}</kbd></Button>)}
+          </div>
+        ) : p ? (
+          <p className="text-center font-semibold" data-testid="status"><b className="text-ice">{cardLabel(p.card)}:</b> {p.kind === "swap" ? "Klick zwei Zahlenkarten von verschiedenen Spielern an." : p.card === "a:steal" ? "Klick die Karte an, die du klaust." : "Klick die Karte an, die weg soll."}</p>
+        ) : (
+          <div className="flex items-center justify-center gap-3" data-testid="status">
+            {risk && <HintChip testId="risk">Risiko: {risk}</HintChip>}
+            <Button size="lg" variant="secondary" onClick={() => act({ type: "stay" })}>Aufhören ({myLine ? linePoints(myLine) : 0}) <kbd className="ml-1 text-xs opacity-60">A</kbd></Button>
+            <Button size="lg" onClick={() => act({ type: "hit" })}>Noch eine! <kbd className="ml-1 text-xs opacity-60">N</kbd></Button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
