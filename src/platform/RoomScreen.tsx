@@ -407,7 +407,7 @@ function GamePicker({ open, onOpenChange, gameIds, current, online, players, onP
                         <span className="block text-xs text-muted-foreground">{g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}–${g.maxPlayers}`} Spieler · {g.duration}</span>
                       </span>
                     </button>
-                    <button type="button" onClick={() => toggleFavorite(id)} aria-pressed={fav} aria-label={fav ? `${g.name} nicht mehr merken` : `${g.name} merken`} data-testid={`fav-${id}`}
+                    <button type="button" onClick={() => toggleFavorite(id)} aria-pressed={fav} aria-label={fav ? `Nicht mehr merken: ${g.name}` : `Merken: ${g.name}`} data-testid={`fav-${id}`}
                       className="grid w-11 shrink-0 place-items-center rounded-2xl text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
                       <Star className={cn("size-5", fav && "fill-primary text-primary")} />
                     </button>
