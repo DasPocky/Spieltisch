@@ -7,6 +7,7 @@ import { MAX_SET_NAME, MAX_SETS_IN_GAME, SET_ID_RE, SET_KINDS, type GameContent,
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { renameGameFields, renamedGameId } from "../games/renamed";
 import { legacyGame } from "../legacy";
+import { presetsOf, presetValues } from "./presets";
 import { sanitizeAvatar, type Avatar } from "./avatar";
 import { sanitizeAccess, type RoomAccess } from "./directory";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
@@ -138,6 +139,7 @@ export type RoomAction =
   | { type: "toLobby" }
   | { type: "selectGame"; gameId: string }
   | { type: "setOption"; key: string; value: OptionValue }
+  | { type: "setPreset"; id: string }
   | { type: "setEntry"; mode: EntryMode }
   | { type: "setHostTools"; on: boolean }
   | { type: "setHints"; on: boolean }
@@ -402,6 +404,15 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (s.phase === "playing" && s.game && logic.onOptionsChanged) {
         s.game = logic.onOptionsChanged(s.game, prev.options, context(s, actorId));
       }
+      return s;
+    }
+    case "setPreset": {
+      hostOnly();
+      if (prev.phase === "playing") throw new GameError("Das lässt sich nur in der Lobby ändern.");
+      const p = presetsOf(logic).find((x) => x.id === a.id);
+      if (!p) throw new GameError("Diese Regeln gibt es nicht.");
+      const s = structuredClone(prev);
+      for (const [k, v] of Object.entries(presetValues(logic, p))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
       return s;
     }
     case "setEntry": {

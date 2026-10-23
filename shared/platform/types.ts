@@ -95,6 +95,8 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
    */
   migrate?(state: unknown, from: number): S | null;
   settings: SettingDef[];
+  /** Regel-Pakete neben „Standard“ (höchstens zwei), siehe `presets.ts` */
+  presets?: import("./presets").RulePreset[];
   /** Zugbasiert? Dann gibt es die Einstellung „Wer darf für den Spieler am Zug handeln?“ */
   turnBased: boolean;
   /**

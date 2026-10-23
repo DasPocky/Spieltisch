@@ -70,6 +70,8 @@ Regeln für die Logik:
 - Jede Eingabe prüfen – Aktionen kommen ungefiltert aus dem Netz.
 - Spieler nicht selbst speichern: Reihenfolge aus `ctx.players`, Punkte je Spieler-ID.
 
+- Regel-Pakete (optional, höchstens zwei neben „Standard“): `presets: [{ id: "kurz", label: "Kurz", hint: "bis 3.000", options: { target: 3000 } }]`. Ein Paket setzt alle Regel-Einstellungen des Spiels (Hausregel-Gruppen und alles, was ein Paket nennt) – Material (App-/echte Karten und Würfel), Brett und Ablauf nie. In der Lobby steht darüber „Regeln: Standard · Kurz · …“, einzeln geänderte Hausregeln zeigen „Eigene · N Änderungen“ (`shared/platform/presets.ts`, Test `tests/unit/presets.test.ts`).
+
 Danach in `shared/games/index.ts` eintragen.
 
 ### Oberfläche

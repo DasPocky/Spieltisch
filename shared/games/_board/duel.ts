@@ -59,6 +59,7 @@ interface DuelDef<S extends DuelBase, A extends { type: string }> {
   info: GameInfo;
   version: number;
   settings: SettingDef[];
+  presets?: GameLogic["presets"];
   setup(ctx: GameContext): S;
   /** Alle erlaubten Züge des Spielers am Zug (für „Überspringen“ und zum Prüfen, dass nichts hängt) */
   moves(s: S, o: Options): A[];
@@ -74,6 +75,7 @@ export function duelGame<S extends DuelBase, A extends { type: string }>(def: Du
     info: def.info,
     version: def.version,
     settings: def.settings,
+    presets: def.presets,
     turnBased: true,
     joinMidGame: false,
     setup: def.setup,
