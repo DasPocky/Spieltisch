@@ -3,7 +3,7 @@
  * Wird vom Durable Object (online) und vom Browser (lokal) gleichermaßen genutzt.
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
-import { MAX_SET_NAME, MAX_SETS_IN_GAME, SET_ID_RE, type GameContent } from "./cardsets";
+import { MAX_SET_NAME, MAX_SETS_IN_GAME, SET_ID_RE, SET_KINDS, type GameContent, type SetKind } from "./cardsets";
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { renameGameFields, renamedGameId } from "../games/renamed";
 import { legacyGame } from "../legacy";
@@ -47,8 +47,8 @@ export interface RoomState {
   /** Avatar je Spieler (online setzt ihn der Server beim Beitritt, lokal das Gerät) */
   /** Treffpunkt-Ansicht in der Lobby (nur online) */
   meet?: boolean;
-  /** Gewählte eigene Kartensets (Kennung und Name) – gelten für Spiele der passenden Art */
-  sets?: { id: string; name: string }[];
+  /** Gewählte eigene Kartensets (Kennung, Name, Art) – gelten für Spiele der passenden Art */
+  sets?: RoomSet[];
   /** Inhalte der gewählten eigenen Kartensets für den nächsten Start – bleibt auf Server bzw. Gerät, geht nie an Mitspieler */
   content?: GameContent;
   avatars?: Record<string, Avatar>;
@@ -160,8 +160,11 @@ export type RoomAction =
   /** Host: Partyabend planen (Spiele der Reihe nach) oder beenden (null) */
   | { type: "setPlan"; games: string[] | null }
   /** Host: eigene Kartensets für die nächsten Partien wählen (leer = nur eingebaute Karten) */
-  | { type: "setSets"; sets: { id: string; name: string }[] }
+  | { type: "setSets"; sets: RoomSet[] }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
+
+/** Ein gewähltes Kartenset im Raum (ohne Inhalt) */
+export interface RoomSet { id: string; name: string; kind?: SetKind }
 
 export function cleanName(name: unknown): string {
   return String(name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
@@ -360,8 +363,14 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
     }
     case "setSets": {
       hostOnly();
-      if (!Array.isArray(a.sets) || a.sets.length > MAX_SETS_IN_GAME) throw new GameError(`Höchstens ${MAX_SETS_IN_GAME} Sets.`);
-      const sets = a.sets.filter((x) => x && SET_ID_RE.test(String(x.id))).map((x) => ({ id: String(x.id), name: String(x.name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_SET_NAME) || "Eigenes Set" }));
+      if (!Array.isArray(a.sets) || a.sets.length > MAX_SETS_IN_GAME * SET_KINDS.length) throw new GameError(`Höchstens ${MAX_SETS_IN_GAME} Sets.`);
+      const seen = new Set<string>();
+      const sets = a.sets.filter((x) => x && SET_ID_RE.test(String(x.id)) && !seen.has(String(x.id)) && seen.add(String(x.id))).map((x): RoomSet => {
+        const kind = SET_KINDS.find((k) => k.id === x.kind)?.id;
+        return { id: String(x.id), name: String(x.name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_SET_NAME) || "Eigenes Set", ...(kind ? { kind } : {}) };
+      });
+      // Je Art höchstens sechs (Sets ohne Art zählen für jede)
+      if (SET_KINDS.some((k) => sets.filter((x) => !x.kind || x.kind === k.id).length > MAX_SETS_IN_GAME)) throw new GameError(`Höchstens ${MAX_SETS_IN_GAME} Sets je Spiel.`);
       const s = structuredClone(prev);
       if (sets.length) s.sets = sets; else delete s.sets;
       delete s.content;

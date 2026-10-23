@@ -42,6 +42,8 @@ export const CATEGORIES: Category[] = [...KINDER, ...FAMILIE, ...FREUNDE, ...AB1
 export const CAT_BY_ID: Record<string, Category> = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
 /** Eigene Begriffe der Runde */
 export const CUSTOM = "eigene";
+/** Kennung eines Begriffs aus einem eigenen Kartenset: „x:<Begriff>“ */
+export const OWN_WORD = "x:";
 
 const RANK: Record<Level, number> = { kinder: 0, familie: 1, freunde: 2, ab18: 3 };
 export const levelOf = (v: unknown): Level => (typeof v === "string" && v in RANK ? (v as Level) : "familie");
@@ -54,6 +56,8 @@ export const wordIds = (cat: Category) => cat.words.map((_, i) => `${cat.id}:${i
 /** Text zu einer Kennung – eigene Begriffe stehen im Spielstand */
 export function wordText(id: string | null | undefined, custom: string[] = []): string {
   if (!id) return "";
+  // Eigener Begriff aus einem Kartenset (Zeichnen & Raten): der Text steht in der Kennung
+  if (id.startsWith(OWN_WORD)) return id.slice(OWN_WORD.length);
   const [cat, n] = id.split(":");
   if (cat === CUSTOM) return custom[Number(n)] ?? "";
   return CAT_BY_ID[cat]?.words[Number(n)] ?? "";

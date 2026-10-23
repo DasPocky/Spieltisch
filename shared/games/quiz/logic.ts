@@ -9,6 +9,12 @@ import { randomInt, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
 import { KATEGORIEN, KAT_BY_ID } from "./fragen";
 import { isFolge, isZahl, type Frage } from "./fragen/typen";
+import { mergedContent } from "../../platform/cardsets";
+
+/** Kennung einer eigenen Frage (aus Kartensets): „x:<Nummer in own>“ */
+export const OWN_CAT = "x";
+/** So steht eine eigene Frage über der Frage */
+export const OWN_KAT = { emoji: "✏️", name: "Eigene Frage" } as const;
 
 export type Kind = "wahl" | "zahl" | "folge";
 export type Phase = "ask" | "reveal" | "over";
@@ -41,6 +47,8 @@ export interface QState {
   scores: Record<string, number>;
   last: Result | null;
   local: boolean;
+  /** eigene Fragen (aus Kartensets) – geheim wie der Stapel */
+  own?: Frage[];
   log: string[];
 }
 
@@ -61,7 +69,7 @@ export const KINDS: { id: Kind; name: string; hint: string }[] = [
 ];
 
 const kindOf = (f: Frage): Kind => (isZahl(f) ? "zahl" : isFolge(f) ? "folge" : "wahl");
-export const frageOf = (id: string): Frage | null => { const [c, n] = id.split(":"); return KAT_BY_ID[c]?.fragen[Number(n)] ?? null; };
+export const frageOf = (id: string, own: Frage[] = []): Frage | null => { const [c, n] = id.split(":"); return c === OWN_CAT ? own[Number(n)] ?? null : KAT_BY_ID[c]?.fragen[Number(n)] ?? null; };
 
 /** Kategorien der Partie: Kinderquiz allein oder alle anderen (einzeln abschaltbar) */
 export function katsFor(o: Options) {
@@ -73,15 +81,30 @@ const kindsFor = (o: Options): Kind[] => {
   return on.length ? on : ["wahl"];
 };
 
-function buildDeck(o: Options, n: number): string[] {
+/**
+ * Stapel der Partie: eigene Fragen zuerst (passende Arten), aufgefüllt mit eingebauten – bei „nur eigene“ nur diese.
+ * Nie leer: Sind alle Kategorien abgewählt oder passt keine Frage zu den Arten, kommen alle Kategorien bzw. alle Arten dazu.
+ */
+export function buildDeck(o: Options, n: number, own: Frage[] = []): string[] {
   const kinds = kindsFor(o);
-  const ids = katsFor(o).flatMap((k) => k.fragen.map((f, i) => (kinds.includes(kindOf(f)) ? `${k.id}:${i}` : null)).filter((x): x is string => !!x));
-  return shuffle(ids).slice(0, n);
+  const ownIds = shuffle(own.map((f, i) => (kinds.includes(kindOf(f)) ? `${OWN_CAT}:${i}` : null)).filter((x): x is string => !!x)).slice(0, n);
+  if (o.own_only === true && ownIds.length) return ownIds;
+  const pick = (kats: typeof KATEGORIEN, ks: Kind[]) => kats.flatMap((k) => k.fragen.map((f, i) => (ks.includes(kindOf(f)) ? `${k.id}:${i}` : null)).filter((x): x is string => !!x));
+  let ids = pick(katsFor(o), kinds);
+  if (!ids.length) ids = pick(katsFor({ ...o, ...Object.fromEntries(KATEGORIEN.map((k) => [`kat_${k.id}`, true])) }), kinds);
+  if (!ids.length) ids = pick(katsFor(o).length ? katsFor(o) : KATEGORIEN.filter((k) => k.stufe !== "kinder"), KINDS.map((k) => k.id));
+  return [...ownIds, ...shuffle(ids)].slice(0, n);
+}
+
+/** Lobby-Hinweis: Was die Einstellungen ergeben (z. B. alle Kategorien abgewählt) */
+export function deckNote(o: Options): string | null {
+  if (o.level === "kinder") return null;
+  return katsFor(o).length ? null : "Keine Kategorie gewählt – es kommen Fragen aus allen.";
 }
 
 function show(s: QState, ctx: GameContext) {
   const id = s.deck[s.idx];
-  const f = frageOf(id);
+  const f = frageOf(id, s.own);
   s.answers = {};
   s.answered = [];
   s.bonus = {};
@@ -151,12 +174,14 @@ export const deadlineOf = (s: QState): number | null => (s.phase === "ask" && s.
 function setup(ctx: GameContext): QState {
   const order = ctx.players.map((p) => p.id);
   const n = Math.max(5, Math.min(Number(ctx.options.count) || 10, 30));
-  const deck = buildDeck(ctx.options, n);
+  const own = mergedContent(ctx.content).questions;
+  const deck = buildDeck(ctx.options, n, own);
   const s: QState = {
     v: 1, order, phase: "ask", deck, total: deck.length, idx: 0, shown: null, key: null, answers: {}, answered: [], bonus: {}, startedAt: null,
     seconds: Math.max(10, Math.min(Number(ctx.options.seconds) || 20, 90)), scores: Object.fromEntries(order.map((id) => [id, 0])),
     last: null, local: false, log: [],
   };
+  if (own.length) s.own = own;
   show(s, ctx);
   return s;
 }
@@ -258,6 +283,7 @@ export const quiz: GameLogic<QState, QAction> = {
       key: `kat_${k.id}`, label: `${k.emoji} ${k.name}`, type: "toggle" as const, default: true, group: "Kategorien",
       showIf: (o: Options) => o.level !== "kinder",
     })),
+    { key: "own_only", label: "Nur eigene Fragen", hint: "statt der eingebauten Fragen", type: "toggle", default: false, group: "Kartensets" },
   ],
   setup,
   apply,
@@ -285,10 +311,10 @@ export const quiz: GameLogic<QState, QAction> = {
     return s;
   },
   view(s, viewer) {
-    if (s.phase !== "ask") return { ...s, deck: [] };
+    if (s.phase !== "ask") return { ...s, deck: [], ...(s.own ? { own: [] } : {}) };
     // Während der Frage: keine Lösung, nur die eigene Antwort
     const own = viewer && s.answers[viewer] !== undefined ? { [viewer]: s.answers[viewer] } : {};
-    return { ...s, deck: [], key: null, answers: own, bonus: {} };
+    return { ...s, deck: [], key: null, answers: own, bonus: {}, ...(s.own ? { own: [] } : {}) };
   },
 };
 

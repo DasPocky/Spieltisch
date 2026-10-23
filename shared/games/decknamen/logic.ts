@@ -259,7 +259,7 @@ export const decknamen: GameLogic<CNState, CNAction> = {
         { value: "key", label: "Brettspiel-Hilfe", hint: "nur die Schlüsselkarte" },
       ],
     },
-    { key: "own_only", label: "Nur eigene Wörter", hint: "mit gewählten eigenen Sets (mindestens 25 Wörter)", type: "toggle", default: false, showIf: (o) => o.mode !== "key" },
+    { key: "own_only", label: "Nur eigene Wörter", hint: "statt der eingebauten Wörter (ab 25)", type: "toggle", default: false, showIf: (o) => o.mode !== "key" },
     {
       key: "timer", label: "Sanduhr pro Zug", type: "choice", default: "0", inGame: true, showIf: (o) => o.mode !== "key",
       choices: [

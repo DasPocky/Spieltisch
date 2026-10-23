@@ -8,10 +8,10 @@ import { GameError, type GameContext, type GameLogic, type Options, type PlayerR
 import { shuffle } from "../../platform/random";
 import { playerName } from "../../platform/turns";
 import { blanksOf, deckFor, DEFAULT_SET, LANGS, ownCard, SETS, type Lang } from "./cards";
-import { mergedContent } from "../../platform/cardsets";
+import { mergedContent, OWN_MIN } from "../../platform/cardsets";
 
 /** So viele eigene schwarze Karten braucht „Nur eigene Karten“ mindestens */
-const OWN_MIN_BLACK = 5;
+const OWN_MIN_BLACK = OWN_MIN.schamlos;
 
 export const HAND = 7;
 export const langOf = (o: Options): Lang => (o.lang === "en" ? "en" : "de");
@@ -126,7 +126,7 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
     ...SETS.map((s) => ({ key: `set_${s.id}`, label: s.name, hint: s.hint, type: "toggle" as const, default: s.id === DEFAULT_SET[s.lang], group: "Kartensets",
       showIf: (o: Options) => langOf(o) === s.lang })),
     { key: "goal", label: "Punkte zum Sieg", type: "number", default: 7, min: 3, max: 15, step: 1 },
-    { key: "own_only", label: "Nur eigene Karten", hint: "mit gewählten eigenen Sets – reichen sie nicht, kommen die eingebauten dazu", type: "toggle", default: false, group: "Kartensets" },
+    { key: "own_only", label: "Nur eigene Karten", hint: "statt der eingebauten Karten", type: "toggle", default: false, group: "Kartensets" },
   ],
   turnBased: false,
   joinMidGame: true,
@@ -252,7 +252,7 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
 
   view(s, viewer) {
     if (viewer === null) return s;
-    const v: SchamlosState = { ...s, blackPile: [], whitePile: [], whiteUsed: [], hands: viewer in s.hands ? { [viewer]: s.hands[viewer] } : {} };
+    const v: SchamlosState = { ...s, blackPile: [], whitePile: [], whiteUsed: [], ownBlack: s.ownBlack ? [] : undefined, hands: viewer in s.hands ? { [viewer]: s.hands[viewer] } : {} };
     // Was andere gelegt haben, bleibt verdeckt – nur dass sie gelegt haben, ist sichtbar
     v.played = Object.fromEntries(Object.entries(s.played).map(([id, cards]) => [id, id === viewer ? cards : []]));
     // Beim Wählen weiß niemand, von wem welche Antwort ist

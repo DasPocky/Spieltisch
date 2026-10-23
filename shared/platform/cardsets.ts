@@ -42,7 +42,11 @@ export interface CardSet extends CardSetData {
 }
 
 /** Kurzinfo für Listen (ohne Inhalt) */
-export interface CardSetInfo { id: string; kind: SetKind; name: string; owner: string; status: SetStatus; note?: string; count: number; updatedAt: number; by?: string }
+export interface CardSetInfo {
+  id: string; kind: SetKind; name: string; owner: string; status: SetStatus; note?: string; count: number; updatedAt: number; by?: string;
+  /** Schamlos: schwarze und weiße Karten getrennt (für „Nur eigene Karten“) */
+  black?: number; white?: number;
+}
 
 export const SET_ID_RE = /^[a-z0-9]{12}$/;
 export const MAX_SETS_PER_PROFILE = 30;
@@ -126,7 +130,29 @@ export const setCount = (s: CardSetData) => (s.black?.length ?? 0) + (s.white?.l
 /** Alle Bildschlüssel eines Sets (zum Aufräumen) */
 export const setImages = (s: CardSetData) => [...(s.white ?? []), ...(s.words ?? [])].filter(isImage).map(imageKey);
 
-export const toInfo = (s: CardSet, by?: string): CardSetInfo => ({ id: s.id, kind: s.kind, name: s.name, owner: s.owner, status: s.status, note: s.note, count: setCount(s), updatedAt: s.updatedAt, ...(by ? { by } : {}) });
+export const toInfo = (s: CardSet, by?: string): CardSetInfo => ({
+  id: s.id, kind: s.kind, name: s.name, owner: s.owner, status: s.status, note: s.note, count: setCount(s), updatedAt: s.updatedAt,
+  ...(s.kind === "schamlos" ? { black: s.black?.length ?? 0, white: s.white?.length ?? 0 } : {}), ...(by ? { by } : {}),
+});
+
+/** Mindestmengen für „Nur eigene …“ je Art (Schamlos zusätzlich weiße Karten je Spieler, siehe ownEnough) */
+export const OWN_MIN: Record<SetKind, number> = { schamlos: 5, decknamen: MIN_DECKNAMEN, zeichnen: 3, quiz: 1 };
+
+/** Reichen die gewählten Sets für „Nur eigene …“? Schamlos: 5 schwarze und 7 weiße je Spieler plus 10 */
+export function ownEnough(kind: SetKind, sets: Pick<CardSetInfo, "count" | "black" | "white">[], players: number): boolean {
+  if (kind === "schamlos") {
+    const black = sets.reduce((n, s) => n + (s.black ?? 0), 0), white = sets.reduce((n, s) => n + (s.white ?? 0), 0);
+    return black >= OWN_MIN.schamlos && white >= players * 7 + 10;
+  }
+  return sets.reduce((n, s) => n + s.count, 0) >= OWN_MIN[kind];
+}
+
+/** Neue zufällige Kennung eines Sets */
+export function newSetId(): string {
+  const b = new Uint8Array(12);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36]).join("");
+}
 
 /**
  * Was eine Partie aus den gewählten Sets bekommt (nur Inhalte, keine Besitzer):
