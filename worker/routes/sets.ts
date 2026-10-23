@@ -17,7 +17,7 @@ import {
   cleanSetData, cleanSetName, IMG_PREFIX, SET_ID_RE, SET_IMAGE_MAX_BYTES, SET_KINDS, setImages, SetError, type CardSet, type CardSetData, type SetKind,
 } from "../../shared/platform/cardsets";
 import { Env, profileOf, settingsOf } from "../env";
-import { allowed, json, readBody } from "../http";
+import { allowed, json, readBody, readBytes } from "../http";
 import { ownsProfile } from "../auth";
 
 const notYours = () => json({ error: "Dein Profil passt nicht zu diesem Gerät. Übertrage es neu („Code zum Übertragen anzeigen“)." }, 403);
@@ -28,10 +28,12 @@ const rand = (n: number) => { const b = new Uint8Array(n); crypto.getRandomValue
 /** Ordner der Bilder eines Profils: Kurz-Hash der ID (die ID selbst steht nicht in der Adresse) */
 const imageFolder = async (profile: string) => `k/${hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`kartenbild:${profile}`))).slice(0, 16)}`;
 
-export async function deleteImages(env: Env, data: CardSetData, keep: CardSetData = {}) {
+/** Bilder eines Sets löschen, die `keep` nicht mehr braucht – nur aus dem eigenen Ordner (fremde Schlüssel bleiben unberührt) */
+export async function deleteImages(env: Env, profile: string, data: CardSetData, keep: CardSetData = {}) {
   if (!env.FILES) return;
+  const folder = `${await imageFolder(profile)}/`;
   const still = new Set(setImages(keep));
-  const gone = setImages(data).filter((k) => !still.has(k));
+  const gone = setImages(data).filter((k) => !still.has(k) && k.startsWith(folder));
   if (gone.length) await env.FILES.delete(gone);
 }
 
@@ -45,7 +47,8 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
   if (path === "/api/sets/public" && request.method === "GET") {
     const kind = url.searchParams.get("kind");
     if (!isKind(kind)) return json({ error: "Unbekannte Art." }, 400);
-    return json({ sets: await settings.publicSets(kind) });
+    // Ohne Besitzer und Namen: die Profil-ID bleibt geheim, ein Name erscheint nur nach ausdrücklicher Zustimmung (noch offen)
+    return json({ sets: (await settings.publicSets(kind)).map(({ by: _by, ...info }) => ({ ...info, owner: "" })) });
   }
 
   const profile = request.headers.get("x-profile") ?? "";
@@ -63,8 +66,8 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
     if (!store) return notYours();
     if (!env.FILES) return json({ error: "Bilder gehen hier gerade nicht." }, 503);
     if (!allowed("set-image", ip, 120)) return json({ error: "Zu viele Bilder auf einmal. Bitte gleich nochmal." }, 429);
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (bytes.length > SET_IMAGE_MAX_BYTES) return json({ error: "Das Bild ist zu groß." }, 413);
+    const bytes = await readBytes(request, SET_IMAGE_MAX_BYTES);
+    if (!bytes) return json({ error: "Das Bild ist zu groß." }, 413);
     const type = photoType(bytes);
     if (!type) return json({ error: "Nur JPEG-, PNG- oder WebP-Bilder." }, 400);
     const key = `${await imageFolder(profile)}/${rand(20)}`;
@@ -92,12 +95,15 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
     if (old && old.kind !== body.kind) return json({ error: "Die Art eines Sets lässt sich nicht ändern." }, 400);
     try {
       const data = cleanSetData(body.kind, (body.data ?? {}) as CardSetData);
+      // Nur eigene Bilder: ein fremder Schlüssel würde sonst beim Löschen das Bild eines anderen mitnehmen
+      const folder = `${await imageFolder(profile)}/`;
+      if (setImages(data).some((k) => !k.startsWith(folder))) return json({ error: "Dieses Bild gehört nicht zu deinem Profil. Lade es neu hoch." }, 400);
       // Wer ein vorgeschlagenes oder freigegebenes Set ändert, schlägt es neu vor
       const listed = old && (old.status === "wartet" || old.status === "frei");
       const set: CardSet = { id, kind: body.kind, name: cleanSetName(body.name), owner: profile, status: listed ? "wartet" : "privat", updatedAt: Date.now(), ...data };
       await store.putSet(set);
       if (listed) await settings.submitSet(set, (await store.get()).name || "Gast");
-      if (old) await deleteImages(env, old as CardSetData, set);
+      if (old) await deleteImages(env, profile, old as CardSetData, set);
       return json({ set });
     } catch (e) {
       if (e instanceof SetError) return json({ error: e.message }, 400);
@@ -109,7 +115,7 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
     const old = await store.deleteSet(id);
     if (old) {
       await settings.withdrawSet(id);
-      await deleteImages(env, old as CardSetData);
+      await deleteImages(env, profile, old as CardSetData);
     }
     return json({ ok: true });
   }

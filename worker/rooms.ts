@@ -1,5 +1,5 @@
 /** Ein Durable Object pro Spielraum: Spieler, Spielstand, Chat, Anruf, Anklopfen, Bots und die Eingriffe der Verwaltung */
-import { kindOfGame } from "../shared/platform/cardsets";
+import { kindOfGame, MAX_SETS_IN_GAME } from "../shared/platform/cardsets";
 import { loadContent } from "./routes/sets";
 import { DurableObject } from "cloudflare:workers";
 import { isGameId } from "../shared/games";
@@ -505,15 +505,21 @@ export class GameRoom extends DurableObject<Env> {
       // Start mit eigenen Kartensets: Inhalte frisch laden (eigene des Gastgebers bzw. freigegebene) – nur für den Start
       const starting = msg.action.type === "start" || msg.action.type === "restart";
       const setKind = starting && this.room.state.sets?.length ? kindOfGame(this.room.state.gameId) : null;
+      let missingSets = 0;
       if (setKind) {
         const host = this.room.state.hostId;
+        const wanted = this.room.state.sets!.filter((x) => !x.kind || x.kind === setKind).slice(0, MAX_SETS_IN_GAME).map((x) => x.id);
         try {
-          this.room.state = { ...this.room.state, content: await loadContent(this.env, this.room.state.sets!.map((x) => x.id), setKind, host ? this.room.profiles?.[host] : undefined) };
-        } catch { /* ohne eigene Karten weiter */ }
+          const content = await loadContent(this.env, wanted, setKind, host ? this.room.profiles?.[host] : undefined);
+          this.room.state = { ...this.room.state, content };
+          missingSets = wanted.length - content.sets.length;
+        } catch { missingSets = wanted.length; /* ohne eigene Karten weiter */ }
       }
       try {
         this.room.state = applyRoomAction(this.room.state, msg.action, playerId);
         delete this.room.state.content;
+        // Gewählte Sets gibt es nicht mehr (gelöscht, zurückgezogen, nicht mehr freigegeben): sagen statt still weglassen
+        if (missingSets > 0) this.send(ws, { type: "error", message: missingSets === 1 ? "Ein gewähltes Kartenset gibt es nicht mehr – es spielen die übrigen Karten." : `${missingSets} gewählte Kartensets gibt es nicht mehr – es spielen die übrigen Karten.` });
         // Anderes Spiel gewählt: Standard-Einstellungen des Admins übernehmen
         const now = this.room.state;
         if (config && now.gameId !== before.gameId) now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[now.gameId]);
@@ -784,8 +790,11 @@ export class GameRoom extends DurableObject<Env> {
   private async handleJoin(ws: WebSocket, raw: Extract<ClientMessage, { type: "join" }>): Promise<void> {
     const room = this.room!;
     // Profil nur mit passendem Geräteschlüssel übernehmen (sonst könnte jeder fremde Statistiken füllen)
+    // Ohne Schlüssel nur, wer sich mit gültigem Token als genau dieser Spieler ausweist und dasselbe Profil schon hatte
+    // (die Profil-ID eines Mitspielers zu kennen reicht nicht – sonst landete sie bei einem neuen Beitritt per PIN)
     let msg = raw;
-    if (typeof msg.profile === "string" && !(msg.playerId && room.profiles?.[msg.playerId] === msg.profile)) {
+    const knownProfile = !!(msg.playerId && msg.token && room.tokens[msg.playerId] === msg.token && room.profiles?.[msg.playerId] === msg.profile);
+    if (typeof msg.profile === "string" && !knownProfile) {
       const ok = PROFILE_ID_RE.test(msg.profile) && typeof msg.profileKey === "string"
         && await this.env.PROFILES.get(this.env.PROFILES.idFromName(msg.profile)).owns(msg.profileKey).catch(() => false);
       if (!ok) msg = { ...msg, profile: undefined };
