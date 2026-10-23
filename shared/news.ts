@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-auswahl-suche",
+    date: "2026-10-23",
+    title: "Spiele schneller finden, Partyabend in zwei Schritten",
+    items: [
+      "In der Spielauswahl gibt es eine Suche – Umlaute sind egal. „Für 3“ zeigt nur Spiele, die zu eurer Runde passen.",
+      "Partyabend: erst Spiele wählen, dann die Reihenfolge mit Pfeilen festlegen. Mit Gesamtdauer und Hinweis, wenn ein Spiel mehr Spieler braucht.",
+    ],
+  },
+  {
     id: "2026-10-start-klarer",
     date: "2026-10-23",
     title: "Startseite klarer: veranstalten, mitspielen, Fernseher",
