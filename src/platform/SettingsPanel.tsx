@@ -11,6 +11,7 @@ import { Segmented } from "./Segmented";
 import { DeckPicker } from "./cards/DeckPicker";
 import { kindOfGame } from "@shared/platform/cardsets";
 import { SetPicker, setsFor } from "./SetPicker";
+import { siteConfigNow } from "@/hooks/useSiteConfig";
 
 /** Spiele mit Spielhilfen (siehe useHints) */
 export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles"]);
@@ -63,7 +64,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
   const logic = getGame(room.gameId);
   const Extra = getGameUI(room.gameId).SettingsExtra;
   const playing = room.phase === "playing";
-  const setKind = kindOfGame(room.gameId);
+  const setKind = siteConfigNow()?.features.sets === false ? null : kindOfGame(room.gameId);
   // „Nur eigene …“ steht bei der Auswahl der eigenen Sets
   const ownDef = setKind ? logic.settings.find((d) => d.key === "own_only") : undefined;
   const shown = logic.settings.filter((def) => (!def.showIf || def.showIf(room.options)) && (!inGame || def.inGame) && def !== ownDef);

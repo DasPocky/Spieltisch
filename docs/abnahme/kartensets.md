@@ -18,6 +18,6 @@ Nach der Vorlage [Mau-Mau](maumau.md). Stand: 23.10.2026. Betrifft Schamlos, Dec
 
 **Bewusste Grenzen (dokumentiert, nicht behoben):** Bildkarten sind nur durch die nicht erratbare Adresse geschützt (wer sie kennt, z. B. ein Mitspieler, kann sie laden). Hochgeladene, aber nie gespeicherte Bilder bleiben in R2 liegen. Ändert ein Ersteller ein Bild, während eine Partie es zeigt, fehlt es dort ab dann.
 
-**Offene Entscheidungen:** Name des Erstellers öffentlich nur mit Opt-in (heute: nie). Sets nur mit Profil anlegen – heute hat jedes Gerät automatisch ein Profil mit Geräteschlüssel.
+**Entschieden (23.10.2026):** Name des Erstellers öffentlich nur mit Häkchen „Meinen Namen zeigen“, sonst „Community-Set“ · jedes Gerät darf Sets anlegen (Profil mit Geräteschlüssel entsteht automatisch), die Verwaltung kann eigene Kartensets unter Einstellungen → Funktionen abschalten (gespeicherte Sets bleiben erhalten) – Nachweis: `tests/e2e/kartensets.spec.ts` („Name des Erstellers“, „abschalten“).
 
 **Noch nicht auf echten Geräten geprüft:** iPhone/Android (Bild-Auswahl, Verkleinern), Fernseher.

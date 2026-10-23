@@ -41,14 +41,16 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
   const path = url.pathname;
   const ip = request.headers.get("cf-connecting-ip") ?? "local";
   const settings = settingsOf(env);
-  if (!(await settings.config()).features.profiles) return json({ error: "Profile sind gerade abgeschaltet." }, 403);
+  const features = (await settings.config()).features;
+  if (!features.profiles) return json({ error: "Profile sind gerade abgeschaltet." }, 403);
+  if (!features.sets) return json({ error: "Eigene Kartensets sind gerade abgeschaltet." }, 403);
 
   // Freigegebene Sets – ohne Profil
   if (path === "/api/sets/public" && request.method === "GET") {
     const kind = url.searchParams.get("kind");
     if (!isKind(kind)) return json({ error: "Unbekannte Art." }, 400);
     // Ohne Besitzer und Namen: die Profil-ID bleibt geheim, ein Name erscheint nur nach ausdrücklicher Zustimmung (noch offen)
-    return json({ sets: (await settings.publicSets(kind)).map(({ by: _by, ...info }) => ({ ...info, owner: "" })) });
+    return json({ sets: (await settings.publicSets(kind)).map(({ by, showName, ...info }) => ({ ...info, owner: "", ...(showName && by ? { by } : {}) })) });
   }
 
   const profile = request.headers.get("x-profile") ?? "";
@@ -100,7 +102,7 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
       if (setImages(data).some((k) => !k.startsWith(folder))) return json({ error: "Dieses Bild gehört nicht zu deinem Profil. Lade es neu hoch." }, 400);
       // Wer ein vorgeschlagenes oder freigegebenes Set ändert, schlägt es neu vor
       const listed = old && (old.status === "wartet" || old.status === "frei");
-      const set: CardSet = { id, kind: body.kind, name: cleanSetName(body.name), owner: profile, status: listed ? "wartet" : "privat", updatedAt: Date.now(), ...data };
+      const set: CardSet = { id, kind: body.kind, name: cleanSetName(body.name), owner: profile, status: listed ? "wartet" : "privat", updatedAt: Date.now(), ...(body.showName === true ? { showName: true } : {}), ...data };
       await store.putSet(set);
       if (listed) await settings.submitSet(set, (await store.get()).name || "Gast");
       if (old) await deleteImages(env, profile, old as CardSetData, set);

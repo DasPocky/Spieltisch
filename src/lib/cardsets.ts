@@ -22,8 +22,8 @@ export const mySets = (kind?: SetKind) => call<{ sets: CardSetInfo[] }>(`/api/se
 export const publicSets = (kind: SetKind) => call<{ sets: CardSetInfo[] }>(`/api/sets/public?kind=${kind}`).then((r) => r.sets);
 export const loadSet = (id: string) => call<{ set: CardSet }>(`/api/sets/${id}`, { headers: headers() }).then((r) => r.set);
 
-export const saveSet = (id: string, kind: SetKind, name: string, data: CardSetData) =>
-  call<{ set: CardSet }>(`/api/sets/${id}`, { method: "PUT", headers: headers(true), body: JSON.stringify({ kind, name, data }) }).then((r) => r.set);
+export const saveSet = (id: string, kind: SetKind, name: string, data: CardSetData, showName = false) =>
+  call<{ set: CardSet }>(`/api/sets/${id}`, { method: "PUT", headers: headers(true), body: JSON.stringify({ kind, name, data, showName }) }).then((r) => r.set);
 
 export const deleteSet = (id: string) => call<{ ok: true }>(`/api/sets/${id}`, { method: "DELETE", headers: headers() });
 

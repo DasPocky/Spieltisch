@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { adminLogin, closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
+import { ADMIN_PW, adminLogin, ALL_ON, closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, setConfig, shot, startLocal } from "./util";
 
 const BLACK = Array.from({ length: 6 }, (_, i) => `Eigene Frage ${i + 1}: ___?`);
 const WHITE = Array.from({ length: 40 }, (_, i) => `Eigene Antwort ${i + 1}`);
@@ -211,4 +211,46 @@ test("Kartensets: gewähltes Set inzwischen gelöscht – Host erfährt es beim 
   await anna.getByRole("button", { name: "Spiel starten" }).click();
   await expect(anna.getByText("Ein gewähltes Kartenset gibt es nicht mehr")).toBeVisible();
   await expect(anna.getByTestId("question")).not.toHaveText("Bald gelöscht?");
+});
+
+test("Kartensets: Name des Erstellers nur mit Häkchen öffentlich", async ({ browser }) => {
+  const anna = await newPhone(browser);
+  await anna.goto("/");
+  await anna.evaluate(() => localStorage.setItem("spieltisch:name", "Anna Beispiel"));
+  const a = await profileOf(anna);
+  const headers = { "x-profile": a.id, "x-profile-key": a.key };
+  expect((await anna.request.put(`/api/profile/${a.id}`, { headers, data: { name: "Anna Beispiel" } })).ok()).toBe(true);
+  const admin = { "x-admin-password": ADMIN_PW };
+  for (const [id, showName] of [["eeeeeeeeeeee", false], ["ffffffffffff", true]] as const) {
+    expect((await anna.request.put(`/api/sets/${id}`, { headers, data: { kind: "zeichnen", name: `Begriffe ${id[0]}`, data: { words: ["Leuchtturm", "Gartenzwerg", "Kaktus"] }, showName } })).ok()).toBe(true);
+    expect((await anna.request.post(`/api/sets/${id}/submit`, { headers })).ok()).toBe(true);
+    const at = (await (await anna.request.get(`/api/admin/sets/${id}`, { headers: admin })).json()).set.updatedAt;
+    expect((await anna.request.post(`/api/admin/sets/${id}/review`, { data: { password: ADMIN_PW, ok: true, at } })).ok()).toBe(true);
+  }
+  // Veraltete Fassung: die Verwaltung muss neu ansehen
+  expect((await anna.request.post("/api/admin/sets/eeeeeeeeeeee/review", { data: { password: ADMIN_PW, ok: true, at: 1 } })).status()).toBe(409);
+  const pub = (await (await anna.request.get("/api/sets/public?kind=zeichnen")).json()).sets as { id: string; by?: string; owner: string }[];
+  expect(pub.find((s) => s.id === "eeeeeeeeeeee")).toMatchObject({ owner: "" });
+  expect(pub.find((s) => s.id === "eeeeeeeeeeee")!.by).toBeUndefined();
+  expect(pub.find((s) => s.id === "ffffffffffff")).toMatchObject({ owner: "", by: "Anna Beispiel" });
+  expect(JSON.stringify(pub)).not.toContain(a.id);
+});
+
+test("Verwaltung: eigene Kartensets abschalten – kein Editor, keine Auswahl, Sets bleiben gespeichert", async ({ page, request }) => {
+  await page.goto("/");
+  const a = await profileOf(page);
+  const headers = { "x-profile": a.id, "x-profile-key": a.key };
+  expect((await page.request.put("/api/sets/gggggggggggg", { headers, data: { kind: "quiz", name: "Bleibt", data: { questions: [["Bleibt das?", "Ja", "Nein", "Weiß nicht", "Nie"]] } } })).ok()).toBe(true);
+  await setConfig(request, { ...ALL_ON, features: { ...ALL_ON.features, sets: false } });
+  try {
+    expect((await page.request.get("/api/sets", { headers })).status()).toBe(403);
+    await page.goto("/profil");
+    await expect(page.getByTestId("stats")).toBeVisible();
+    await expect(page.getByTestId("sets-card")).toHaveCount(0);
+    await page.goto("/profil/sets");
+    await expect(page.getByText("Eigene Kartensets sind gerade abgeschaltet.")).toBeVisible();
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+  expect((await page.request.get("/api/sets/gggggggggggg", { headers })).ok()).toBe(true);
 });

@@ -38,6 +38,8 @@ export interface CardSet extends CardSetData {
   status: SetStatus;
   /** Grund der Ablehnung bzw. Hinweis der Verwaltung */
   note?: string;
+  /** Ersteller möchte, dass sein Name bei der Freigabe für alle erscheint (sonst bleibt er unsichtbar) */
+  showName?: boolean;
   updatedAt: number;
 }
 
@@ -46,6 +48,8 @@ export interface CardSetInfo {
   id: string; kind: SetKind; name: string; owner: string; status: SetStatus; note?: string; count: number; updatedAt: number; by?: string;
   /** Schamlos: schwarze und weiße Karten getrennt (für „Nur eigene Karten“) */
   black?: number; white?: number;
+  /** Name darf öffentlich erscheinen (nur Verwaltung und Server; öffentlich steht dann `by`) */
+  showName?: boolean;
 }
 
 export const SET_ID_RE = /^[a-z0-9]{12}$/;
@@ -132,7 +136,7 @@ export const setImages = (s: CardSetData) => [...(s.white ?? []), ...(s.words ??
 
 export const toInfo = (s: CardSet, by?: string): CardSetInfo => ({
   id: s.id, kind: s.kind, name: s.name, owner: s.owner, status: s.status, note: s.note, count: setCount(s), updatedAt: s.updatedAt,
-  ...(s.kind === "schamlos" ? { black: s.black?.length ?? 0, white: s.white?.length ?? 0 } : {}), ...(by ? { by } : {}),
+  ...(s.kind === "schamlos" ? { black: s.black?.length ?? 0, white: s.white?.length ?? 0 } : {}), ...(by ? { by } : {}), ...(s.showName ? { showName: true } : {}),
 });
 
 /** Mindestmengen für „Nur eigene …“ je Art (Schamlos zusätzlich weiße Karten je Spieler, siehe ownEnough) */

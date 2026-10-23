@@ -142,7 +142,7 @@ export function LocalGame() {
       online={null}
       dispatch={(a: RoomAction) => run((s) => {
         // Start mit eigenen Kartensets: Inhalte aus dem Gerätespeicher (beim Wählen gemerkt) – nur für den Start
-        const kind = (a.type === "start" || a.type === "restart") && s.sets?.length ? kindOfGame(s.gameId) : null;
+        const kind = (a.type === "start" || a.type === "restart") && s.sets?.length && siteConfigNow()?.features.sets !== false ? kindOfGame(s.gameId) : null;
         const wanted = kind ? setsFor(s, kind).map((x) => x.id) : [];
         const withContent = kind ? { ...s, content: cachedContent(wanted, kind) } : s;
         const missing = wanted.length - (withContent.content?.sets.length ?? 0);

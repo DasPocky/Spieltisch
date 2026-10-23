@@ -504,7 +504,8 @@ export class GameRoom extends DurableObject<Env> {
       }
       // Start mit eigenen Kartensets: Inhalte frisch laden (eigene des Gastgebers bzw. freigegebene) – nur für den Start
       const starting = msg.action.type === "start" || msg.action.type === "restart";
-      const setKind = starting && this.room.state.sets?.length ? kindOfGame(this.room.state.gameId) : null;
+      const setsOn = starting && this.room.state.sets?.length ? (config ??= await settingsOf(this.env).config()).features.sets : false;
+      const setKind = setsOn ? kindOfGame(this.room.state.gameId) : null;
       let missingSets = 0;
       if (setKind) {
         const host = this.room.state.hostId;

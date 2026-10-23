@@ -67,7 +67,7 @@ export function SetPicker({ room, editable, online, dispatch, ownToggle }: {
       <Checkbox checked={picked.includes(s.id)} onCheckedChange={() => toggle(s.id)} aria-label={s.name} />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate font-semibold">{s.name}</span>
-        <span className="block text-xs text-muted-foreground">{s.kind === "schamlos" ? `${s.black ?? 0} schwarze · ${s.white ?? 0} weiße` : `${s.count} ${info.item}`}</span>
+        <span className="block text-xs text-muted-foreground">{s.kind === "schamlos" ? `${s.black ?? 0} schwarze · ${s.white ?? 0} weiße` : `${s.count} ${info.item}`}{s.owner === "" ? ` · ${s.by ? `von ${s.by}` : "Community-Set"}` : ""}</span>
       </span>
     </label>
   );

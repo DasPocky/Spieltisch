@@ -7,6 +7,7 @@ import {
 } from "@shared/platform/cardsets";
 import { isFolge, isZahl, type Frage } from "@shared/games/quiz/fragen/typen";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -35,8 +36,8 @@ export function StatusBadge({ status }: { status: SetStatus }) {
 /** /profil/sets: eigene Kartensets – Liste, „Neues Kartenset“ und je Set der Editor (/profil/sets/<id> bzw. /profil/sets/neu/<art>) */
 export function CardSets({ id, kind }: { id?: string; kind?: SetKind }) {
   const config = useSiteConfig();
-  if (config && !config.features.profiles) {
-    return <main className="mx-auto w-full max-w-xl px-4 pt-6"><p className="text-muted-foreground">Profile sind gerade abgeschaltet – damit auch eigene Kartensets.</p></main>;
+  if (config && (!config.features.profiles || !config.features.sets)) {
+    return <main className="mx-auto w-full max-w-xl px-4 pt-6"><p className="text-muted-foreground">{config.features.profiles ? "Eigene Kartensets sind gerade abgeschaltet." : "Profile sind gerade abgeschaltet – damit auch eigene Kartensets."}</p></main>;
   }
   if (id || kind) return <Editor key={id ?? kind} id={id} kind={kind} />;
   return <SetList />;
@@ -106,11 +107,12 @@ function Editor({ id, kind: newKind }: { id?: string; kind?: SetKind }) {
   const [tab, setTab] = useState<"black" | "white">("black");
   const [busy, setBusy] = useState<string | null>(null);
   const [asking, setAsking] = useState<{ i: number | null } | null>(null);
+  const [showName, setShowName] = useState(false);
   const file = useRef<HTMLInputElement>(null);
 
-  const fill = (s: Pick<CardSet, "name"> & CardSetData) => {
+  const fill = (s: Pick<CardSet, "name" | "showName"> & CardSetData) => {
     setName(s.name); setBlack(textOf(s.black)); setWhite(textOf(s.white)); setWords(textOf(s.words));
-    setImages([...imagesOf(s.white), ...imagesOf(s.words)]); setQuestions(s.questions ?? []);
+    setImages([...imagesOf(s.white), ...imagesOf(s.words)]); setQuestions(s.questions ?? []); setShowName(!!s.showName);
   };
   useEffect(() => {
     if (!id) return;
@@ -130,7 +132,7 @@ function Editor({ id, kind: newKind }: { id?: string; kind?: SetKind }) {
     try { const d = cleanSetData(kind, data); return { error: null, kept: (d.black?.length ?? 0) + (d.white?.length ?? 0) + (d.words?.length ?? 0) + (d.questions?.length ?? 0) }; }
     catch (e) { return { error: e instanceof SetError ? e.message : "Das passt so nicht.", kept: 0 }; }
   }, [kind, data]);
-  const dirty = !set || JSON.stringify({ name, data }) !== JSON.stringify({ name: set.name, data: kind === "quiz" ? { questions: set.questions } : kind === "schamlos" ? { black: set.black, white: [...lines(textOf(set.white)), ...imagesOf(set.white)] } : { words: [...lines(textOf(set.words)), ...imagesOf(set.words)] } });
+  const dirty = !set || showName !== !!set.showName || JSON.stringify({ name, data }) !== JSON.stringify({ name: set.name, data: kind === "quiz" ? { questions: set.questions } : kind === "schamlos" ? { black: set.black, white: [...lines(textOf(set.white)), ...imagesOf(set.white)] } : { words: [...lines(textOf(set.words)), ...imagesOf(set.words)] } });
 
   if (error) return <main className="mx-auto w-full max-w-xl px-4 pt-6"><Button variant="ghost" size="sm" className="-ml-2" onClick={back}><ChevronLeft />Meine Kartensets</Button><p role="alert" className="mt-4 rounded-xl bg-destructive/15 p-3 text-sm text-destructive">{error}</p></main>;
   if (!kind || (id && !set)) return <Loader2 className="mx-auto mt-10 size-6 animate-spin text-muted-foreground" />;
@@ -140,7 +142,7 @@ function Editor({ id, kind: newKind }: { id?: string; kind?: SetKind }) {
     if (check.error) { toast(check.error); return null; }
     setBusy("save");
     try {
-      const s = await saveSet(set?.id ?? newSetId(), kind, name, data);
+      const s = await saveSet(set?.id ?? newSetId(), kind, name, data, showName);
       const dropped = raw - check.kept;
       toast(dropped > 0 ? `Gespeichert – ${dropped} doppelte oder ungültige Einträge weggelassen` : s.status === "wartet" && set?.status === "frei" ? "Gespeichert – wird neu geprüft" : "Gespeichert");
       setSet(s); fill(s);
@@ -157,7 +159,7 @@ function Editor({ id, kind: newKind }: { id?: string; kind?: SetKind }) {
   };
   const duplicate = async () => {
     setBusy("copy");
-    try { const s = await saveSet(newSetId(), kind, `${name} (Kopie)`.slice(0, 30), data); toast("Kopie angelegt"); navigate(`/profil/sets/${s.id}`); }
+    try { const s = await saveSet(newSetId(), kind, `${name} (Kopie)`.slice(0, 30), data, showName); toast("Kopie angelegt"); navigate(`/profil/sets/${s.id}`); }
     catch (e) { toast((e as Error).message); } finally { setBusy(null); }
   };
   const remove = async () => {
@@ -231,6 +233,10 @@ function Editor({ id, kind: newKind }: { id?: string; kind?: SetKind }) {
         {!check.error && ` · ${STATUS[status].hint}`}
       </p>
 
+      <label className="flex shrink-0 items-center gap-3 text-sm">
+        <Checkbox checked={showName} onCheckedChange={(c) => setShowName(c === true)} data-testid="set-show-name" />
+        <span><span className="font-semibold">Meinen Namen zeigen</span><span className="block text-xs text-muted-foreground">wenn das Set für alle freigegeben ist – sonst steht dort „Community-Set“</span></span>
+      </label>
       <div className="grid shrink-0 gap-2">
         <Button size="lg" disabled={!dirty || !!busy || !!check.error} onClick={() => void save()} data-testid="set-save">{busy === "save" && <Loader2 className="animate-spin" />}Speichern</Button>
         <div className="grid grid-cols-3 gap-2">
