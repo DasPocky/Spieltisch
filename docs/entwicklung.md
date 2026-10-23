@@ -154,7 +154,7 @@ Profil ≠ Gerät ≠ Spieler ≠ Rolle ≠ Verbindung:
 - **Großer Tisch / Zuschauer:** nur lesen, öffentliche Sicht, kein Chat am Tisch.
 - **Verwaltung:** eigenes Passwort und Sitzungen, ist kein Mitspieler, jeder Eingriff wird protokolliert.
 
-Negativtests dazu: `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
+Negativtests dazu: `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten, Kopplungs-Code ohne Tab-Kennung, Fernseher-Schlüssel nach dem Trennen), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
 
 Raum-Bausteine ohne Durable-Object-Abhängigkeit liegen in `worker/room/` (Beitritt, Chat, Ergebnisse, Typen) – `worker/rooms.ts` bleibt die Fassade.
 

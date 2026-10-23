@@ -95,3 +95,40 @@ test("KI-Sprüche: ausgeschaltet oder ohne Anbindung gibt es keinen Spruch (der 
   const res = await request.post("/api/host/line", { data: { moment: "sieg", mood: "frech", name: "Anna", game: "Mau-Mau" } });
   expect(res.status()).toBe(204);
 });
+
+test("Begleit-Handy: Kopplungs-Code gilt nur mit Kennung des Tabs und nur für einen Tab", async ({ page, request }) => {
+  const { code } = await (await request.post("/api/rooms", { data: { pin: "4712", game: "maumau" } })).json();
+  await page.goto("/");
+  const anna = await socket(page, code, [{ type: "join", name: "Anna", pin: "4712", nonce: "nonce-anna-2" }, { type: "pair" }]);
+  const pairCode = anna.find((m) => m.type === "paired")?.code as string;
+  expect(pairCode).toBeTruthy();
+  const tryPair = (nonce?: string) => socket(page, code, [{ type: "join", name: "", pin: "", pairCode, ...(nonce ? { nonce } : {}) }], 600);
+  // Ohne Kennung: nie (sonst ließe sich der Code beliebig oft einlösen)
+  for (let i = 0; i < 2; i++) expect((await tryPair()).some((m) => m.type === "joined")).toBe(false);
+  // Der erste Tab mit Kennung bekommt ihn, derselbe Tab darf neu verbinden, ein anderer nicht
+  expect((await tryPair("tab-eins-123")).some((m) => m.type === "joined")).toBe(true);
+  expect((await tryPair("tab-eins-123")).some((m) => m.type === "joined")).toBe(true);
+  expect((await tryPair("tab-zwei-456")).some((m) => m.type === "joined")).toBe(false);
+});
+
+test("Fernseher: Schlüssel für den Videochat gilt nur, solange ein Fernseher verbunden ist", async ({ page, request }) => {
+  const { code } = await (await request.post("/api/rooms", { data: { pin: "4713", game: "maumau" } })).json();
+  await page.goto("/");
+  await socket(page, code, [{ type: "join", name: "Anna", pin: "4713", nonce: "nonce-anna-3" }]);
+  // Solange der Tisch verbunden ist, darf er eine Sitzung anlegen
+  const ok = await page.evaluate(async ({ code }) => {
+    const ws = new WebSocket(`${location.origin.replace("http", "ws")}/api/rooms/${code}/ws`);
+    const key = await new Promise<string>((res) => {
+      ws.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m.type === "tableKey") res(m.key); } catch { /* pong */ } };
+      ws.onopen = () => ws.send(JSON.stringify({ type: "table", pin: "4713" }));
+    });
+    const call = () => fetch(`/api/rooms/${code}/call`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ playerId: "@tisch", token: key, op: "new" }) }).then((r) => r.status);
+    const during = await call();
+    ws.close();
+    await new Promise((r) => setTimeout(r, 800));
+    return { during, after: await call() };
+  }, { code });
+  expect(ok.during).toBe(200);
+  // Fernseher weg: sein alter Schlüssel öffnet nichts mehr
+  expect(ok.after).toBe(403);
+});

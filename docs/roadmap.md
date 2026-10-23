@@ -26,6 +26,10 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 | Analyse F-09: Großer Tisch ohne Chat; Protokoll der Verwaltung | ✅ |
 | Analyse F-10: Desktop-/Fernseher-Reihe in der CI, Namen-Prüfung für Knöpfe, ohne WebGL, reduzierte Bewegung | ✅ |
 | Analyse F-11: Ergebnisse mit Partie-Kennung, nur einmal gezählt, bei Fehlern wiederholt | ✅ |
+| Audit 22.10. P1-06: Kopplungs-Code fürs Begleit-Handy nur mit Kennung des Tabs (ohne ließ er sich beliebig oft einlösen) | ✅ |
+| Audit 22.10. P1-07: Raum aus einer neueren App-Version behält seine Version (kein zweites Übernehmen nach dem Zurückrollen) | ✅ |
+| Audit 22.10. P1-08: Ergebnis-Aufträge im selben Schreibvorgang wie das Partie-Ende | ✅ |
+| Audit 22.10. P2-13: Videochat-Schlüssel des Fernsehers verfallen, wenn kein Fernseher mehr verbunden ist | ✅ |
 | Analyse F-14: Betriebskennzahlen je Tag (Beitritte, Wiederverbindungen, abgelehnte Züge, kaputte Nachrichten) | ✅ |
 | CI: `npm audit` als Hinweis | ✅ · Branch-Schutz auf „Handy-Tests (Playwright)“ und „Build & Unit-Tests“ in GitHub einschalten ⏳ (Einstellung in GitHub) |
 

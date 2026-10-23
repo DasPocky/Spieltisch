@@ -232,7 +232,8 @@ export function migrateRoomState(raw: unknown): RoomState {
   const r = s as unknown as RoomState;
   return {
     ...r,
-    v: ROOM_SCHEMA,
+    // Stand einer neueren App (z. B. nach einem Zurückrollen): Version behalten, sonst liefe ihre Übernahme später ein zweites Mal
+    v: Math.max(v, ROOM_SCHEMA) as typeof ROOM_SCHEMA,
     gameId: isGameId(r.gameId) ? r.gameId : DEFAULT_GAME,
     players: Array.isArray(r.players) ? r.players : [],
     options: r.options && typeof r.options === "object" ? r.options : defaultOptions(getGame(r.gameId).settings),
