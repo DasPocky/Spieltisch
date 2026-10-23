@@ -90,6 +90,22 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
 
   if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
 
+  // Kartensets der Spieler: Vorschläge prüfen, freigeben, ablehnen (mit Grund) oder wieder aus der Liste nehmen
+  if (path === "/api/admin/sets" && request.method === "GET") return json({ sets: await settings.adminSets() });
+  const cset = path.match(/^\/api\/admin\/sets\/([a-z0-9]{12})(?:\/(review))?$/);
+  if (cset && !cset[2] && request.method === "GET") {
+    const set = await settings.listedSet(cset[1], false);
+    return set ? json({ set }) : json({ ok: false, error: "Dieses Set gibt es nicht (mehr)." }, 404);
+  }
+  if (cset && cset[2] && request.method === "POST") {
+    const ok = body.ok === true;
+    const note = typeof body.note === "string" ? body.note.replace(/\s+/g, " ").trim().slice(0, 200) : "";
+    const set = await settings.reviewSet(cset[1], ok, note);
+    if (!set) return json({ ok: false, error: "Dieses Set gibt es nicht (mehr)." }, 404);
+    await profileOf(env, set.owner).setStatus(set.id, set.status, note);
+    return json({ ok: true, status: set.status });
+  }
+
   // Dateien der App in R2 (Ordner assets/): auflisten, hochladen (PUT, Rohdaten), löschen
   if (path === "/api/admin/files" && request.method === "GET") {
     if (!env.FILES) return json({ ok: false, error: "Der Dateispeicher ist nicht verbunden." }, 503);

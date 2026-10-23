@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Piece } from "@/games/schamlos/Board";
 import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Sparkles, Tv, Video, VideoOff } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
@@ -624,7 +625,7 @@ function WordsScreen({ words, name, count }: { words: NonNullable<TableModel["wo
             <li key={i} data-testid="studio-answer"
               className={cn("flex flex-col justify-center gap-[1.5cqh] rounded-[2cqh] bg-[#fbf7ef] p-[3cqh] text-[4.8cqh] leading-snug font-semibold text-[#141018] transition-[transform,opacity]",
                 words.pick !== null && (words.pick === i ? "scale-105 ring-[0.8cqh] ring-[#ff7a59]" : "opacity-45"))}>
-              <span>{fillIn(words.prompt, cards).map((p, k) => <span key={k} className={p.fill ? "text-[#c2492e]" : "opacity-60"}>{p.text}</span>)}</span>
+              <span>{fillIn(words.prompt, cards).map((p, k) => <span key={k} className={p.fill ? "text-[#c2492e]" : "opacity-60"}><Piece text={p.text} className="max-h-[22cqh]" /></span>)}</span>
               {words.pick === i && words.pickBy && <span className="text-[4cqh] font-bold text-[#c2492e]">Punkt für {name(words.pickBy)}!</span>}
             </li>
           ))}

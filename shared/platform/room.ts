@@ -3,6 +3,7 @@
  * Wird vom Durable Object (online) und vom Browser (lokal) gleichermaßen genutzt.
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
+import { MAX_SET_NAME, MAX_SETS_IN_GAME, SET_ID_RE, type GameContent } from "./cardsets";
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { renameGameFields, renamedGameId } from "../games/renamed";
 import { legacyGame } from "../legacy";
@@ -46,6 +47,10 @@ export interface RoomState {
   /** Avatar je Spieler (online setzt ihn der Server beim Beitritt, lokal das Gerät) */
   /** Treffpunkt-Ansicht in der Lobby (nur online) */
   meet?: boolean;
+  /** Gewählte eigene Kartensets (Kennung und Name) – gelten für Spiele der passenden Art */
+  sets?: { id: string; name: string }[];
+  /** Inhalte der gewählten eigenen Kartensets für den nächsten Start – bleibt auf Server bzw. Gerät, geht nie an Mitspieler */
+  content?: GameContent;
   avatars?: Record<string, Avatar>;
   /** Spieler → Mitglieds-ID in seiner Gruppe (öffentlich innerhalb der Gruppe, keine Profil-ID) */
   members?: Record<string, string>;
@@ -154,6 +159,8 @@ export type RoomAction =
   | { type: "resetEvening" }
   /** Host: Partyabend planen (Spiele der Reihe nach) oder beenden (null) */
   | { type: "setPlan"; games: string[] | null }
+  /** Host: eigene Kartensets für die nächsten Partien wählen (leer = nur eingebaute Karten) */
+  | { type: "setSets"; sets: { id: string; name: string }[] }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
 
 export function cleanName(name: unknown): string {
@@ -273,7 +280,7 @@ export function playerLimits(room: RoomState): { min: number; max: number; note?
 }
 
 function context(room: RoomState, actorId: string | null): GameContext {
-  return { players: room.players, hostId: room.hostId, actorId, options: room.options, now: Date.now(), round: room.round };
+  return { players: room.players, hostId: room.hostId, actorId, options: room.options, now: Date.now(), round: room.round, content: room.content };
 }
 
 export function addPlayer(prev: RoomState, p: { id: string; name: string }): RoomState {
@@ -349,6 +356,15 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       // Partyabend: das nächste geplante Spiel steht gleich bereit
       const next = planStatus(s.evening)?.next;
       if (next && next !== s.gameId && isGameId(next)) { s.gameId = next; s.options = defaultOptions(getGame(next).settings); }
+      return s;
+    }
+    case "setSets": {
+      hostOnly();
+      if (!Array.isArray(a.sets) || a.sets.length > MAX_SETS_IN_GAME) throw new GameError(`Höchstens ${MAX_SETS_IN_GAME} Sets.`);
+      const sets = a.sets.filter((x) => x && SET_ID_RE.test(String(x.id))).map((x) => ({ id: String(x.id), name: String(x.name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_SET_NAME) || "Eigenes Set" }));
+      const s = structuredClone(prev);
+      if (sets.length) s.sets = sets; else delete s.sets;
+      delete s.content;
       return s;
     }
     case "setPlan": {
@@ -509,7 +525,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
 /** Was eine Person vom Raum sehen darf (versteckte Informationen entfernt das Spiel selbst). */
 export function viewRoom(full: RoomState, viewerId: string | null): RoomState {
   // Frühere Spielstände enthalten verdeckte Karten – Spieler erfahren nur, wie viele es gibt
-  const { undo, ...rest } = full;
+  const { undo, content: _content, ...rest } = full;
   const room: RoomState = { ...rest, undoCount: undo?.length ?? 0 };
   const logic = roomGame(room);
   if (!room.game || !logic.view) return room;

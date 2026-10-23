@@ -1,4 +1,6 @@
 /** Ein Durable Object pro Spielraum: Spieler, Spielstand, Chat, Anruf, Anklopfen, Bots und die Eingriffe der Verwaltung */
+import { kindOfGame } from "../shared/platform/cardsets";
+import { loadContent } from "./routes/sets";
 import { DurableObject } from "cloudflare:workers";
 import { isGameId } from "../shared/games";
 import { PROFILE_ID_RE } from "../shared/platform/profile";
@@ -500,8 +502,18 @@ export class GameRoom extends DurableObject<Env> {
           return;
         }
       }
+      // Start mit eigenen Kartensets: Inhalte frisch laden (eigene des Gastgebers bzw. freigegebene) – nur für den Start
+      const starting = msg.action.type === "start" || msg.action.type === "restart";
+      const setKind = starting && this.room.state.sets?.length ? kindOfGame(this.room.state.gameId) : null;
+      if (setKind) {
+        const host = this.room.state.hostId;
+        try {
+          this.room.state = { ...this.room.state, content: await loadContent(this.env, this.room.state.sets!.map((x) => x.id), setKind, host ? this.room.profiles?.[host] : undefined) };
+        } catch { /* ohne eigene Karten weiter */ }
+      }
       try {
         this.room.state = applyRoomAction(this.room.state, msg.action, playerId);
+        delete this.room.state.content;
         // Anderes Spiel gewählt: Standard-Einstellungen des Admins übernehmen
         const now = this.room.state;
         if (config && now.gameId !== before.gameId) now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[now.gameId]);
@@ -510,6 +522,7 @@ export class GameRoom extends DurableObject<Env> {
         const a = msg.action as { type: string; action?: { type?: unknown } };
         const kind = a.type === "game" && typeof a.action?.type === "string" ? `${this.room.state.gameId}:${a.action.type}` : a.type;
         this.healthDelta.rejected[kind.slice(0, 40)] = (this.healthDelta.rejected[kind.slice(0, 40)] ?? 0) + 1;
+        delete this.room.state.content;
         this.send(ws, { type: "error", message: e instanceof GameError ? e.message : "Das ging gerade nicht.", id: id ?? undefined });
         return;
       }

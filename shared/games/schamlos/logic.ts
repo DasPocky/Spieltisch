@@ -7,7 +7,11 @@
 import { GameError, type GameContext, type GameLogic, type Options, type PlayerResult } from "../../platform/types";
 import { shuffle } from "../../platform/random";
 import { playerName } from "../../platform/turns";
-import { blanksOf, deckFor, DEFAULT_SET, LANGS, SETS, type Lang } from "./cards";
+import { blanksOf, deckFor, DEFAULT_SET, LANGS, ownCard, SETS, type Lang } from "./cards";
+import { mergedContent } from "../../platform/cardsets";
+
+/** So viele eigene schwarze Karten braucht „Nur eigene Karten“ mindestens */
+const OWN_MIN_BLACK = 5;
 
 export const HAND = 7;
 export const langOf = (o: Options): Lang => (o.lang === "en" ? "en" : "de");
@@ -47,6 +51,10 @@ export interface SchamlosState {
   pick: number | null;
   scores: Record<string, number>;
   blackPile: string[];
+  /** eigene schwarze Karten (aus Kartensets) – kommen beim Neumischen wieder dazu */
+  ownBlack?: string[];
+  /** nur eigene Karten (genug davon vorhanden) */
+  ownOnly?: boolean;
   whitePile: string[];
   whiteUsed: string[];
   round: number;
@@ -86,7 +94,7 @@ function startRound(s: SchamlosState, ctx: GameContext): void {
     hand.push(...draw(s, HAND - hand.length));
   }
   s.order = s.order.filter((id) => ids.includes(id));
-  if (!s.blackPile.length) s.blackPile = shuffle(deckFor(s.sets).black);
+  if (!s.blackPile.length) s.blackPile = shuffle([...(s.ownOnly ? [] : deckFor(s.sets).black), ...(s.ownBlack ?? [])]);
   s.prompt = s.blackPile.pop()!;
   s.blanks = blanksOf(s.prompt);
   s.played = {};
@@ -118,13 +126,19 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
     ...SETS.map((s) => ({ key: `set_${s.id}`, label: s.name, hint: s.hint, type: "toggle" as const, default: s.id === DEFAULT_SET[s.lang], group: "Kartensets",
       showIf: (o: Options) => langOf(o) === s.lang })),
     { key: "goal", label: "Punkte zum Sieg", type: "number", default: 7, min: 3, max: 15, step: 1 },
+    { key: "own_only", label: "Nur eigene Karten", hint: "mit gewählten eigenen Sets – reichen sie nicht, kommen die eingebauten dazu", type: "toggle", default: false, group: "Kartensets" },
   ],
   turnBased: false,
   joinMidGame: true,
 
   setup(ctx) {
     const sets = setsOf(ctx.options);
-    const deck = deckFor(sets);
+    const own = mergedContent(ctx.content);
+    const ownBlack = own.black.map(ownCard), ownWhite = own.white.map(ownCard);
+    // Nur eigene Karten geht, wenn es genug davon gibt – sonst kommen die eingebauten dazu
+    const ownOnly = ctx.options.own_only === true && ownBlack.length >= OWN_MIN_BLACK && ownWhite.length >= ctx.players.length * HAND + 10;
+    const built = deckFor(sets);
+    const deck = { black: [...(ownOnly ? [] : built.black), ...ownBlack], white: [...(ownOnly ? [] : built.white), ...ownWhite] };
     const order = ctx.players.map((p) => p.id);
     const s: SchamlosState = {
       v: 1, sets, goal: Number(ctx.options.goal) || 7, phase: "pick", order,
@@ -132,6 +146,7 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
       czar: order[(ctx.round ?? 0) % order.length],
       prompt: "", blanks: 1, hands: {}, played: {}, subs: [], pick: null, scores: {},
       blackPile: shuffle(deck.black), whitePile: shuffle(deck.white), whiteUsed: [], round: 0, winnerId: null, log: [],
+      ...(ownBlack.length ? { ownBlack } : {}), ...(ownOnly ? { ownOnly } : {}),
     };
     startRound(s, ctx);
     return s;

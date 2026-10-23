@@ -125,7 +125,8 @@ async function drawWords(id: string): Promise<HTMLCanvasElement> {
   const w = c.width, h = c.height, u = w / 100;
   const black = id.includes("-b-");
   g.fillStyle = black ? "#16171b" : "#fdfdfb"; rounded(g, 0, 0, w, h, 6 * u); g.fill();
-  const text = cardText(id).replaceAll("___", "______");
+  const raw = cardText(id);
+  const text = (raw.startsWith("bild:") ? "🖼" : raw).replaceAll("___", "______");
   const { lines, size } = wrapText(g, text, w - 18 * u, h - 34 * u, 15 * u);
   g.fillStyle = black ? "#ffffff" : "#16171b"; g.textAlign = "left"; g.textBaseline = "top";
   lines.forEach((l, i) => g.fillText(l, 9 * u, 9 * u + i * size * 1.18));

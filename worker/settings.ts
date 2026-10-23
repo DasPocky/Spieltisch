@@ -10,6 +10,7 @@ import { BUILD, type ServerStatus } from "../shared/build";
 import { DEFAULT_UPDATE, releaseDue, sanitizeUpdate, type PendingRelease, type ReleaseEntry, type ReleaseHow, type ReleaseStatus, type UpdateConfig, type UpdateMode, type VersionInfo } from "../shared/platform/update";
 import { LIFE_MS, type RoomCard } from "../shared/platform/directory";
 import { ROOM_CODE_RE } from "../shared/platform/protocol";
+import { toInfo, type CardSet, type CardSetInfo } from "../shared/platform/cardsets";
 import { Env } from "./env";
 import { hashPin, sameSecret } from "./http";
 import { ROOM_TTL_MS, LOCK_MS } from "./rooms";
@@ -318,6 +319,49 @@ export class SiteSettings extends DurableObject<Env> {
     const queue = (await this.ctx.storage.get<Record<string, { mood: string; text: string; at: number }>>("voiceQueue")) ?? {};
     for (const k of keys) delete queue[k];
     await this.ctx.storage.put("voiceQueue", queue);
+  }
+
+  // ----- Kartensets für alle: Vorschläge (wartet) und freigegebene (frei), je Set „cset:<id>“ -----
+
+  /** Vorschlag annehmen (ersetzt eine frühere Fassung desselben Sets – sie ist dann wieder in Prüfung) */
+  async submitSet(set: CardSet, by: string): Promise<void> {
+    await this.ctx.storage.put(`cset:${set.id}`, { set: { ...set, status: "wartet", note: undefined }, by, at: Date.now() });
+  }
+
+  /** Besitzer zieht zurück oder löscht */
+  async withdrawSet(id: string): Promise<void> {
+    await this.ctx.storage.delete(`cset:${id}`);
+  }
+
+  private async allSets(): Promise<{ set: CardSet; by: string; at: number }[]> {
+    return [...(await this.ctx.storage.list<{ set: CardSet; by: string; at: number }>({ prefix: "cset:" })).values()];
+  }
+
+  /** Freigegebene Sets (für die Auswahl in der Lobby) */
+  async publicSets(kind: string): Promise<CardSetInfo[]> {
+    return (await this.allSets()).filter((e) => e.set.status === "frei" && e.set.kind === kind).map((e) => toInfo(e.set, e.by)).sort((a, b) => a.name.localeCompare(b.name, "de"));
+  }
+
+  /** Ein Set aus der Verwaltungsliste; `onlyPublic`: nur wenn freigegeben */
+  async listedSet(id: string, onlyPublic: boolean): Promise<CardSet | null> {
+    const e = await this.ctx.storage.get<{ set: CardSet; by: string; at: number }>(`cset:${id}`);
+    if (!e || (onlyPublic && e.set.status !== "frei")) return null;
+    return e.set;
+  }
+
+  /** Verwaltung: alle Vorschläge und freigegebenen Sets */
+  async adminSets(): Promise<CardSetInfo[]> {
+    return (await this.allSets()).map((e) => toInfo(e.set, e.by)).sort((a, b) => (a.status === "wartet" ? 0 : 1) - (b.status === "wartet" ? 0 : 1) || b.updatedAt - a.updatedAt);
+  }
+
+  /** Verwaltung entscheidet: frei oder abgelehnt (abgelehnte fliegen aus der Liste, der Besitzer sieht den Grund) */
+  async reviewSet(id: string, ok: boolean, note: string): Promise<CardSet | null> {
+    const e = await this.ctx.storage.get<{ set: CardSet; by: string; at: number }>(`cset:${id}`);
+    if (!e) return null;
+    const set: CardSet = { ...e.set, status: ok ? "frei" : "abgelehnt", note: note || undefined };
+    if (ok) await this.ctx.storage.put(`cset:${id}`, { ...e, set });
+    else await this.ctx.storage.delete(`cset:${id}`);
+    return set;
   }
 
   async aiTake(max: number): Promise<boolean> {

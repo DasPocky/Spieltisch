@@ -5,6 +5,7 @@
  *  - „key“: Hilfe zum Brettspiel – ihr legt eure eigenen Wortkarten aus, die App erzeugt nur die
  *    geheime Schlüsselkarte für die Chefs und zählt mit, was noch fehlt.
  */
+import { mergedContent } from "../../platform/cardsets";
 import { randomInt, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
 import { WORDS } from "./words";
@@ -27,6 +28,10 @@ export interface CNState {
   members: Record<string, Member>;
   /** 25 Wörter (bei „key“ leer – die liegen auf eurem Tisch) */
   words: string[];
+  /** eigene Wörter (aus Kartensets, auch Bilder „bild:…“) – kommen zuerst aufs Brett */
+  own?: string[];
+  /** nur eigene Wörter (mindestens 25) */
+  ownOnly?: boolean;
   /** 25 Farben – die Schlüsselkarte */
   key: Color[];
   revealed: boolean[];
@@ -72,7 +77,10 @@ function newBoard(s: CNState) {
   s.key = shuffle<Color>([
     ...Array<Color>(9).fill(s.start), ...Array<Color>(8).fill(other(s.start)), ...Array<Color>(7).fill("neutral"), "attentaeter",
   ]);
-  s.words = s.mode === "app" ? shuffle(WORDS).slice(0, SIZE) : [];
+  // Eigene Wörter (aus Kartensets) zuerst, aufgefüllt mit eingebauten – bei „nur eigene“ nur diese
+  const own = shuffle(s.own ?? []).slice(0, SIZE);
+  const fill = s.ownOnly ? [] : shuffle(WORDS.filter((w) => !own.includes(w))).slice(0, SIZE - own.length);
+  s.words = s.mode === "app" ? shuffle([...own, ...fill]) : [];
   s.revealed = Array(SIZE).fill(false);
   s.clue = null;
   s.guessesLeft = 0;
@@ -87,6 +95,9 @@ function setup(ctx: GameContext): CNState {
     clue: null, guessesLeft: 0, guessed: 0, winner: null, assassin: false, log: [],
   };
   for (const p of ctx.players) s.members[p.id] = { team: null, chief: false };
+  const own = mergedContent(ctx.content).words;
+  if (own.length) s.own = own;
+  if (own.length >= SIZE && ctx.options.own_only === true) s.ownOnly = true;
   newBoard(s);
   return s;
 }
@@ -248,6 +259,7 @@ export const decknamen: GameLogic<CNState, CNAction> = {
         { value: "key", label: "Brettspiel-Hilfe", hint: "nur die Schlüsselkarte" },
       ],
     },
+    { key: "own_only", label: "Nur eigene Wörter", hint: "mit gewählten eigenen Sets (mindestens 25 Wörter)", type: "toggle", default: false, showIf: (o) => o.mode !== "key" },
     {
       key: "timer", label: "Sanduhr pro Zug", type: "choice", default: "0", inGame: true, showIf: (o) => o.mode !== "key",
       choices: [
@@ -278,6 +290,7 @@ export const decknamen: GameLogic<CNState, CNAction> = {
   // Die Schlüsselkarte sehen nur Chefs (und lokal das Gerät, das sie gezielt aufdeckt)
   view(s, viewer) {
     if (viewer === null) return { ...s, seesKey: true };
+    if (s.own) s = { ...s, own: [] };
     const chief = !!s.members[viewer]?.chief;
     if (chief || s.phase === "over") return { ...s, seesKey: true };
     return { ...s, seesKey: false, key: s.key.map((c, i) => (s.revealed[i] ? c : "neutral")) };
