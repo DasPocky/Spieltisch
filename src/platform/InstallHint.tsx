@@ -58,7 +58,7 @@ export function useInstall() {
 }
 
 /**
- * Kleiner Hinweis auf der Startseite: Spieltisch als App auf den Home-Bildschirm legen.
+ * Kleiner Hinweis auf der Startseite: EndLab (mit dem Spieltisch) als App auf den Home-Bildschirm legen.
  * Öffnet das Blatt mit Knopf bzw. Anleitung. Lässt sich wegklicken.
  */
 export function InstallHint() {
@@ -89,7 +89,7 @@ export function InstallHint() {
   );
 }
 
-/** Ab dem zweiten Besuch einmal von selbst: „Spieltisch als App“ */
+/** Ab dem zweiten Besuch einmal von selbst: „EndLab als App“ */
 export function InstallInvite() {
   const install = useInstall();
   const [open, setOpen] = useState(false);
@@ -114,7 +114,7 @@ export function InstallSheet({ open, onClose, onInstalled, invite }: { open: boo
         <SheetHeader className="flex items-center gap-3 pr-14">
           <Logo className="size-12 shrink-0 -rotate-6 rounded-xl" />
           <div className="min-w-0">
-            <SheetTitle>Spieltisch als App</SheetTitle>
+            <SheetTitle>EndLab als App</SheetTitle>
             <SheetDescription>{invite ? "Schön, dass du wieder da bist!" : "Direkt vom Home-Bildschirm starten"}</SheetDescription>
           </div>
         </SheetHeader>

@@ -7,9 +7,12 @@ import App from "./App";
 import { checkFreshStart } from "./lib/freshStart";
 import { startUpdates } from "./lib/update";
 import { installBase, ownsRegistration, SW_SCOPE, SW_URL } from "./lib/base";
+import { BASE } from "@shared/platform/base";
 
 // Basispfad (unter endlab.de: /spieltisch) vor alle Anfragen – zuerst, vor dem ersten fetch
 installBase();
+// Alte Adresse ohne Basispfad (z. B. spieltisch.endlab.de/r/ABCDE): auf denselben Pfad unter dem Basispfad, gleiche Herkunft – nichts geht verloren
+if (BASE && location.pathname !== BASE && !location.pathname.startsWith(`${BASE}/`)) location.replace(`${BASE}${location.pathname}${location.search}${location.hash}`);
 
 // Als App auf dem Homescreen: echte Fensterhöhe statt 100dvh (iOS rechnet dort die Statusleiste falsch heraus)
 // Nach einem Neuladen (z. B. durch ein Update) meldet iOS die Höhe anfangs zu klein und schickt danach kein „resize“ –
