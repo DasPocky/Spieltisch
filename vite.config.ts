@@ -16,6 +16,7 @@ function precacheList(): Plugin {
     generateBundle(_, bundle) {
       if (this.environment?.name !== "client") return;
       const files = Object.values(bundle).map((f) => `/${f.fileName}`).filter((f) => !f.endsWith(".map") && f.startsWith("/assets/"))
+        .map((f) => `${APP_BASE}${f}`)
         // Schriften nicht vorab: es gibt viele (je Look eigene) – die benutzten landen beim ersten Laden im Cache
         .filter((f) => !/\.woff2?$/.test(f));
       this.emitFile({ type: "asset", fileName: "precache.json", source: JSON.stringify(files) });
@@ -33,9 +34,16 @@ function buildInfo() {
   };
 }
 
+/**
+ * Basispfad: mit APP_BASE ausdrücklich, sonst in Vorschau-Builds (Zweig ≠ main) „/spieltisch“ – dort lässt sich
+ * endlab.de/spieltisch ausprobieren. Produktion (main) und lokal bleiben an der Wurzel, bis die Route steht (E3, docs/endlab.md).
+ */
+const APP_BASE = (process.env.APP_BASE ?? (process.env.WORKERS_CI_BRANCH && process.env.WORKERS_CI_BRANCH !== "main" ? "/spieltisch" : "")).replace(/\/+$/, "");
+
 export default defineConfig({
+  base: `${APP_BASE}/`,
   // Basispfad (z. B. „/spieltisch“ unter endlab.de) – ohne Angabe läuft die App an der Wurzel wie bisher
-  define: { __BUILD__: JSON.stringify(buildInfo()), __APP_BASE__: JSON.stringify(process.env.APP_BASE ?? "") },
+  define: { __BUILD__: JSON.stringify(buildInfo()), __APP_BASE__: JSON.stringify(APP_BASE) },
   plugins: [react(), tailwindcss(), cloudflare({ remoteBindings: false }), precacheList()],
   resolve: {
     alias: {

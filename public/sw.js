@@ -3,6 +3,8 @@
  * nur ohne Netz aus dem Zwischenspeicher. Räume (/api) und WebSockets laufen nie über den Cache.
  */
 const CACHE = "spieltisch-v1";
+/** Basispfad aus dem eigenen Bereich: „“ an der Wurzel, „/spieltisch“ unter endlab.de */
+const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 
 /** Beim Installieren alle Dateien der Seite mitnehmen (Liste entsteht beim Bauen) – Fehler sind egal, dann eben beim Benutzen */
 self.addEventListener("install", (e) => {
@@ -11,11 +13,11 @@ self.addEventListener("install", (e) => {
 });
 
 /** Merkliste: Dateien dieser und der vorigen Version (die vorige braucht eine noch offene alte App) */
-const LISTS = "/__precache-lists";
+const LISTS = `${BASE}/__precache-lists`;
 
 async function precache() {
   try {
-    const files = await (await fetch("/precache.json", { cache: "no-store" })).json();
+    const files = await (await fetch(`${BASE}/precache.json`, { cache: "no-store" })).json();
     const c = await caches.open(CACHE);
     const missing = [];
     for (const f of files) if (!(await c.match(f, { ignoreVary: true }))) missing.push(f);
@@ -26,10 +28,10 @@ async function precache() {
     const previous = same ? saved.previous ?? [] : saved?.current ?? [];
     await c.put(LISTS, new Response(JSON.stringify({ current: files, previous })));
     const keep = new Set([...files, ...previous]);
-    for (const req of await c.keys()) { const path = new URL(req.url).pathname; if (path.startsWith("/assets/") && !keep.has(path)) await c.delete(req); }
+    for (const req of await c.keys()) { const path = new URL(req.url).pathname; if (path.startsWith(`${BASE}/assets/`) && !keep.has(path)) await c.delete(req); }
     // Einzeln, damit eine fehlende Datei nicht alles abbricht
     await Promise.all(missing.map((f) => fetch(f).then((res) => (res.ok ? c.put(f, res) : null)).catch(() => null)));
-    await fetch("/").then((res) => (res.ok ? c.put("/", res) : null)).catch(() => null);
+    await fetch(`${BASE}/`).then((res) => (res.ok ? c.put(`${BASE}/`, res) : null)).catch(() => null);
   } catch { /* offline oder alte Version ohne Liste */ }
 }
 self.addEventListener("activate", (e) => {
@@ -42,18 +44,19 @@ self.addEventListener("message", (e) => { if (e.data === "precache") e.waitUntil
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   const url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
+  // Nur der eigene Bereich (unter endlab.de liegen andere Projekte daneben), nie /api und WebSockets
+  if (req.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith(`${BASE}/api/`) || (BASE && !url.pathname.startsWith(`${BASE}/`))) return;
 
   // Gebaute Dateien haben einen Hash im Namen und ändern sich nie – einmal laden, dann aus dem Cache
-  if (url.pathname.startsWith("/assets/")) {
+  if (url.pathname.startsWith(`${BASE}/assets/`)) {
     e.respondWith(caches.open(CACHE).then(async (c) => (await c.match(req, { ignoreVary: true, ignoreSearch: true })) ?? fetch(req).then((res) => { if (res.ok) c.put(req, res.clone()); return res; })));
     return;
   }
   // Seiten: zuerst Netz, sonst die zuletzt geladene Startseite
   if (req.mode === "navigate") {
     e.respondWith(fetch(req).then((res) => {
-      if (res.ok) caches.open(CACHE).then((c) => c.put("/", res.clone()));
+      if (res.ok) caches.open(CACHE).then((c) => c.put(`${BASE}/`, res.clone()));
       return res;
-    }).catch(async () => (await caches.match("/", { ignoreVary: true })) ?? Response.error()));
+    }).catch(async () => (await caches.match(`${BASE}/`, { ignoreVary: true })) ?? Response.error()));
   }
 });
