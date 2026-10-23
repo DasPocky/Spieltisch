@@ -429,6 +429,10 @@ export const eins: GameLogic<EinsState, EinsAction> = {
   turnBased: true,
   ownTurnsOnly: true,
   joinMidGame: false,
+  presets: [
+    { id: "kurz", label: "Kurz", hint: "eine Runde", options: { target: "round" } },
+    { id: "wild", label: "Wild", hint: "stapeln, 7-0", options: { stack: true, drawUntil: true, sevenZero: true } },
+  ],
   settings: [
     {
       key: "mode", label: "Karten", type: "choice", default: "app",

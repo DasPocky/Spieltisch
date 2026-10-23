@@ -15,6 +15,42 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-regelpakete",
+    date: "2026-10-23",
+    title: "Regeln mit einem Tipp",
+    items: [
+      "In den Einstellungen steht oben „Regeln“: Standard wie im Original oder ein Paket wie „Kurz“ – bei Eins!, Alles oder nichts, Mau-Mau, Ludo und Dame.",
+      "Wer einzelne Hausregeln ändert, sieht „Eigene“ mit der Zahl der Änderungen. „Standard“ bringt alles zurück.",
+    ],
+  },
+  {
+    id: "2026-10-auswahl-suche",
+    date: "2026-10-23",
+    title: "Spiele schneller finden, Partyabend in zwei Schritten",
+    items: [
+      "In der Spielauswahl gibt es eine Suche – Umlaute sind egal. „Für 3“ zeigt nur Spiele, die zu eurer Runde passen.",
+      "Partyabend: erst Spiele wählen, dann die Reihenfolge mit Pfeilen festlegen. Mit Gesamtdauer und Hinweis, wenn ein Spiel mehr Spieler braucht.",
+    ],
+  },
+  {
+    id: "2026-10-start-klarer",
+    date: "2026-10-23",
+    title: "Startseite klarer: veranstalten, mitspielen, Fernseher",
+    items: [
+      "„Raum veranstalten“ fragt, was ihr vorhabt: ein Spiel, ein Partyabend oder erst mal treffen – es bleibt immer derselbe Raum.",
+      "„Mitspielen“ mit Code und „Fernseher“ stehen direkt darunter; der Fernseher zeigt den Tisch, gespielt wird am Handy.",
+    ],
+  },
+  {
+    id: "2026-10-kartensets",
+    date: "2026-10-23",
+    title: "Neu: eigene Kartensets",
+    items: [
+      "Im Profil unter „Meine Kartensets“ eigene Karten, Wörter, Begriffe und Fragen anlegen – für Schamlos, Decknamen, Zeichnen & Raten und das Quiz, auch mit Bildern.",
+      "In der Lobby unter Einstellungen wählen; mit genug eigenen Karten auch „Nur eigene“. Sets bleiben privat, bis ihr sie für alle vorschlagt und die Verwaltung sie freigibt.",
+    ],
+  },
+  {
     id: "2026-10-quiz",
     date: "2026-10-20",
     title: "Neu: Quiz & Schätzen",

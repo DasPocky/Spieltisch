@@ -2,6 +2,7 @@
  * Was beim Start zu sehen ist: der Willkommensablauf (neues Gerät), die Begrüßung (bekanntes Gerät) oder nichts.
  * Entschieden wird einmal beim Laden der Seite.
  */
+import { stripBase, withBase } from "@shared/platform/base";
 import { whenSiteConfig } from "@/hooks/useSiteConfig";
 import { activeGroupCode, loadGroup } from "@/lib/group";
 import { myName } from "@/lib/profile";
@@ -21,7 +22,7 @@ export type IntroMode = "onboarding" | "welcome" | "tour" | null;
 const REPLAY_KEY = "spieltisch:replay";
 export function replayIntro(mode: Exclude<IntroMode, null>) {
   try { sessionStorage.setItem(REPLAY_KEY, mode); } catch { /* egal */ }
-  location.href = "/";
+  location.href = withBase("/");
 }
 
 /** Nur auf den Seiten der App-Hülle – wer einen Raum-Link öffnet, will gleich in den Raum */
@@ -36,7 +37,7 @@ function decide(): IntroMode {
   } catch { /* egal */ }
   // Automatisierte Tests sollen nicht an der Animation hängen (eigene Tests schalten sie gezielt ein)
   if (navigator.webdriver && !readJSON<boolean>(TEST_INTRO_KEY)) return null;
-  if (!SHELL_PATH.test(location.pathname)) return null;
+  if (!SHELL_PATH.test(stripBase(location.pathname))) return null;
   const name = myName();
   if (!name && !readJSON<boolean>(ONBOARDED_KEY)) return "onboarding";
   if (!name) return null;

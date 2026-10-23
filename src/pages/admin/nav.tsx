@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Activity, BarChart3, Dices, Settings2, Users, Wrench, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Dices, Layers, Settings2, Users, Wrench, type LucideIcon } from "lucide-react";
 import { navigate, type AdminSection } from "@/hooks/useRoute";
 import { useDev } from "@/lib/dev";
 import { NavRow } from "@/platform/NavRow";
@@ -10,6 +10,7 @@ export const SECTIONS: { id: Exclude<AdminSection, "start">; title: string; icon
   { id: "live", title: "Live", icon: Activity, desc: "Offene Räume, Dauerräume, wer gerade da ist" },
   { id: "statistik", title: "Statistik", icon: BarChart3, desc: "Partien, beliebte Spiele, Spitzenzeiten" },
   { id: "spiele", title: "Spiele", icon: Dices, desc: "Freigaben, Standards, Neu und Reihenfolge" },
+  { id: "kartensets", title: "Kartensets", icon: Layers, desc: "Vorschläge der Spieler prüfen und freigeben" },
   { id: "leute", title: "Leute", icon: Users, desc: "Verlauf, Gruppen und Profile" },
   { id: "einstellungen", title: "Einstellungen", icon: Settings2, desc: "Aussehen, Zugang, Funktionen, Daten" },
   { id: "entwickler", title: "Entwickler", icon: Wrench, desc: "Testräume mit Bots, Diagnose, Netz, Abläufe" },

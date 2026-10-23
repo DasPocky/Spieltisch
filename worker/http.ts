@@ -61,10 +61,39 @@ export async function limited(global: RateLimit | undefined, bucket: string, ip:
   if (!global) return true;
   try { return (await global.limit({ key: `${bucket}:${ip}` })).success; } catch { return true; }
 }
+/**
+ * Rohdaten der Anfrage, höchstens `max` Bytes – null, sobald es mehr werden. Gelesen wird stückweise,
+ * ein zu großer Inhalt landet also nie ganz im Speicher (die Angabe Content-Length allein reicht nicht).
+ */
+export async function readBytes(request: Request, max: number): Promise<Uint8Array | null> {
+  if (Number(request.headers.get("content-length") ?? 0) > max) return null;
+  if (!request.body) return new Uint8Array(0);
+  const reader = request.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) { void reader.cancel().catch(() => null); return null; }
+    parts.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.byteLength; }
+  return out;
+}
+/** Text der Anfrage, höchstens `max` Zeichen (in UTF-8 höchstens viermal so viele Bytes) – null, wenn mehr */
+export async function readText(request: Request, max: number): Promise<string | null> {
+  const bytes = await readBytes(request, max * 4);
+  if (!bytes) return null;
+  const text = new TextDecoder().decode(bytes);
+  return text.length > max ? null : text;
+}
 /** JSON-Objekt aus der Anfrage – null bei Unsinn, Listen oder zu großem Inhalt */
 export async function readBody(request: Request, max = 8000): Promise<Record<string, unknown> | null> {
-  const text = await request.text();
-  if (text.length > max) return null;
+  const text = await readText(request, max);
+  if (text === null) return null;
   try {
     // Ältere App-Stände schicken noch frühere Spielkennungen – hier gleich übernehmen
     const body = renameStored(text ? JSON.parse(text) : {});

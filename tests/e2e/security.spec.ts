@@ -132,3 +132,23 @@ test("Fernseher: Schlüssel für den Videochat gilt nur, solange ein Fernseher v
   // Fernseher weg: sein alter Schlüssel öffnet nichts mehr
   expect(ok.after).toBe(403);
 });
+
+test("Basispfad: der Server nimmt /spieltisch/api/… genauso an wie /api/… (auch Räume und WebSockets)", async ({ page, request }) => {
+  const plain = await (await request.get("/api/config")).json();
+  const pre = await request.get("/spieltisch/api/config");
+  expect(pre.ok()).toBe(true);
+  expect(await pre.json()).toEqual(plain);
+  const { code } = await (await request.post("/spieltisch/api/rooms", { data: { pin: "4714", game: "maumau" } })).json();
+  expect(code).toMatch(/^[A-Z0-9]{5}$/);
+  expect((await request.get(`/api/rooms/${code}`)).ok()).toBe(true);
+  await page.goto("/");
+  const joined = await page.evaluate(async (code) => {
+    const ws = new WebSocket(`${location.origin.replace("http", "ws")}/spieltisch/api/rooms/${code}/ws`);
+    return new Promise<boolean>((res) => {
+      ws.onmessage = (e) => { try { if (JSON.parse(e.data).type === "joined") { ws.close(); res(true); } } catch { /* pong */ } };
+      ws.onopen = () => ws.send(JSON.stringify({ type: "join", name: "Pia", pin: "4714", nonce: "nonce-pia-1" }));
+      setTimeout(() => res(false), 4000);
+    });
+  }, code);
+  expect(joined).toBe(true);
+});

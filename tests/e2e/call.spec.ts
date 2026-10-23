@@ -97,7 +97,8 @@ test("Text-Chat: schreiben, Reaktion über dem Platz, Ungelesen-Zähler", async 
 test("Jeder Raum ist Treffpunkt: erst reden, sehen, schreiben – dann ein Spiel", async ({ browser }) => {
   const [anna, ben] = await Promise.all([phone(browser), phone(browser)]);
   await anna.goto("/");
-  await anna.getByRole("button", { name: "Raum öffnen" }).click();
+  await anna.getByTestId("host-open").click();
+  await anna.getByTestId("host-meet").click();
   await anna.getByLabel("Dein Name").fill("Anna");
   await anna.getByLabel(/PIN/).fill("3434");
   await anna.getByRole("button", { name: "Öffnen", exact: true }).click();

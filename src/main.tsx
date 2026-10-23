@@ -6,6 +6,10 @@ import { siteConfigNow, whenSiteConfig } from "./hooks/useSiteConfig";
 import App from "./App";
 import { checkFreshStart } from "./lib/freshStart";
 import { startUpdates } from "./lib/update";
+import { installBase, ownsRegistration, SW_SCOPE, SW_URL } from "./lib/base";
+
+// Basispfad (unter endlab.de: /spieltisch) vor alle Anfragen – zuerst, vor dem ersten fetch
+installBase();
 
 // Als App auf dem Homescreen: echte Fensterhöhe statt 100dvh (iOS rechnet dort die Statusleiste falsch heraus)
 // Nach einem Neuladen (z. B. durch ein Update) meldet iOS die Höhe anfangs zu klein und schickt danach kein „resize“ –
@@ -43,12 +47,13 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   setTimeout(() => {
     void whenSiteConfig().then((c) => {
       if (c.features?.offline) {
-        navigator.serviceWorker.register("/sw.js").catch(() => {});
+        navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE }).catch(() => {});
         // Offline-Vorrat auf den Stand dieser Version bringen (fehlende Spiele nachladen, alte Dateien weg)
         navigator.serviceWorker.ready.then((r) => r.active?.postMessage("precache")).catch(() => {});
       } else {
         // Offline-App abgeschaltet (Standard): alten Worker und Zwischenspeicher entfernen – immer frisch online
-        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => void r.unregister())).catch(() => {});
+        // Nur den eigenen – unter endlab.de gehören andere Service Worker der Startseite und anderen Projekten
+        navigator.serviceWorker.getRegistrations().then((rs) => rs.filter(ownsRegistration).forEach((r) => void r.unregister())).catch(() => {});
         if ("caches" in window) caches.keys().then((ks) => ks.filter((k) => k.startsWith("spieltisch")).forEach((k) => void caches.delete(k))).catch(() => {});
       }
     });

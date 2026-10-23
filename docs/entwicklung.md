@@ -70,6 +70,8 @@ Regeln für die Logik:
 - Jede Eingabe prüfen – Aktionen kommen ungefiltert aus dem Netz.
 - Spieler nicht selbst speichern: Reihenfolge aus `ctx.players`, Punkte je Spieler-ID.
 
+- Regel-Pakete (optional, höchstens zwei neben „Standard“): `presets: [{ id: "kurz", label: "Kurz", hint: "bis 3.000", options: { target: 3000 } }]`. Ein Paket setzt alle Regel-Einstellungen des Spiels (Hausregel-Gruppen und alles, was ein Paket nennt) – Material (App-/echte Karten und Würfel), Brett und Ablauf nie. In der Lobby steht darüber „Regeln: Standard · Kurz · …“, einzeln geänderte Hausregeln zeigen „Eigene · N Änderungen“ (`shared/platform/presets.ts`, Test `tests/unit/presets.test.ts`).
+
 Danach in `shared/games/index.ts` eintragen.
 
 ### Oberfläche
@@ -130,6 +132,20 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
 
+## Basispfad (endlab.de/spieltisch)
+
+Die App kann unter einem Pfad laufen (Ziel: `endlab.de/spieltisch`, siehe [endlab.md](endlab.md)). Im Code bleiben alle Pfade **logisch** (`/r/CODE`, `/profil`, `/api/…`):
+
+- `shared/platform/base.ts`: `BASE` (beim Bauen aus `APP_BASE`, sonst leer), `withBase`/`stripBase`/`url`.
+- Anfragen an `/api/…` bekommen den Basispfad zentral beim Start (`installBase` in `src/lib/base.ts`) – neuer Code ruft einfach `fetch("/api/…")`.
+- Router und `navigate`/`goTab` schneiden ihn ab bzw. setzen ihn davor; geteilte Links (Raum, Gruppe, Übertragen, Fernseher, Begleit-Handy) mit `withBase`, Bild- und Datei-Adressen über `url()`.
+- Der Worker nimmt beide Formen an (`/spieltisch/api/…` und `/api/…`) und schneidet das Präfix am Anfang ab.
+- Service Worker: nur der eigene Bereich wird an- bzw. abgemeldet (unter endlab.de gibt es weitere).
+
+Feste Pfade wie `"/r/" + code` direkt in `location`/`history` vermeiden – immer über die Helfer.
+
+Bauen und prüfen mit Basispfad: `APP_BASE=/spieltisch npm run build && npx vite preview --port 5202`, dann `APP_BASE=/spieltisch PW_PORT=5202 npx playwright test basispfad --project=spiele --no-deps`. Vorschau-Builds bei Cloudflare (Zweig ≠ `main`) bauen automatisch mit `/spieltisch`; die Seite liegt dann unter `…workers.dev/spieltisch/` (die Wurzel geht weiter). Der Worker reicht `/spieltisch/*` ohne Präfix an `ASSETS` weiter.
+
 ## Versionen und Updates
 
 Es gibt vier getrennte Versionen:
@@ -160,7 +176,9 @@ Profil ≠ Gerät ≠ Spieler ≠ Rolle ≠ Verbindung:
 - **Großer Tisch / Zuschauer:** nur lesen, öffentliche Sicht, kein Chat am Tisch.
 - **Verwaltung:** eigenes Passwort und Sitzungen, ist kein Mitspieler, jeder Eingriff wird protokolliert.
 
-Negativtests dazu: `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten, Kopplungs-Code ohne Tab-Kennung, Fernseher-Schlüssel nach dem Trennen), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
+**Eigene Kartensets** (`shared/platform/cardsets.ts`, `worker/routes/sets.ts`): private Sets liegen im Profil (`set:<id>`), Lesen/Ändern nur mit Geräteschlüssel; „Vorschlagen“ legt eine Kopie in die Warteschlange der Verwaltung (`SiteSettings`, `cset:<id>`), erst die Verwaltung gibt frei. Ändert der Besitzer ein freigegebenes Set, ist es wieder „wartet“ und so lange nicht öffentlich; die Verwaltung bestätigt immer genau die angesehene Fassung (`at` = `updatedAt`, sonst 409). Öffentliche Listen enthalten nie die Profil-ID, den Namen nur mit Häkchen „Meinen Namen zeigen“ (`showName`). Schalter `features.sets` (Verwaltung → Einstellungen) schaltet Editor, Auswahl und Laden beim Start ab, gespeicherte Sets bleiben. Der Raum kennt nur Kennung, Name und Art der gewählten Sets; die Inhalte lädt der Server erst beim Start (eigene des Hosts aus seinem Profil, sonst nur freigegebene) und gibt sie nie an Mitspieler. Spiele übernehmen sie in ihren Stand und blenden die Listen in `view` aus. Lokal merkt sich das Gerät die Inhalte beim Wählen (`src/lib/cardsets.ts`), gestartet wird ohne Server. Anfragen werden stückweise mit Obergrenze gelesen (`readBytes`/`readBody` in `worker/http.ts`) – zu große Inhalte landen nie ganz im Speicher.
+
+Negativtests dazu: `tests/e2e/kartensets.spec.ts` (fremdes Set, falscher Schlüssel, fremder Bildschlüssel, zu großes Bild), `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten, Kopplungs-Code ohne Tab-Kennung, Fernseher-Schlüssel nach dem Trennen), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
 
 Raum-Bausteine ohne Durable-Object-Abhängigkeit liegen in `worker/room/` (Beitritt, Chat, Ergebnisse, Typen) – `worker/rooms.ts` bleibt die Fassade.
 

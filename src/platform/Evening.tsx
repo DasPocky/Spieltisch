@@ -1,15 +1,18 @@
-import { createContext, useContext, useState } from "react";
-import { Check, ChevronRight, PartyPopper, Trophy } from "lucide-react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, PartyPopper, Trophy, X } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { accessFor, orderGames } from "@shared/platform/access";
 import { eveningRanking, planStatus, PLAN_MAX, type RoomAction, type RoomState } from "@shared/platform/room";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { gameIcon } from "@/games";
 import { IconTile } from "./Logo";
+import { filterGames, GameSearch, NoGames, NO_FILTER } from "./GameSearch";
+import { fitsPlayers, planDuration } from "@/lib/gameSearch";
 import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/Confirm";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { PLAN_NOW_KEY } from "@/lib/createRoom";
 
 /** Spielabend für Ergebnis-Bildschirme (die Spiele kennen den Raum nicht – der Rahmen reicht ihn durch) */
 export const EveningContext = createContext<{ room: RoomState; isHost: boolean; dispatch: (a: RoomAction) => void } | null>(null);
@@ -18,24 +21,33 @@ export const EveningContext = createContext<{ room: RoomState; isHost: boolean; 
  * Spielabend: Siege über alle Partien in diesem Raum, auch über verschiedene Spiele.
  * Eine Zeile mit den Besten, antippen öffnet die ganze Liste.
  */
-export function EveningLine({ className }: { className?: string }) {
+export function EveningLine({ className, beside }: { className?: string; beside?: ReactNode }) {
   const ctx = useContext(EveningContext);
   const [open, setOpen] = useState(false);
   const [planning, setPlanning] = useState(false);
   const e = ctx?.room.evening;
   const plan = planStatus(e);
+  // Gerade als Partyabend veranstaltet: die Planung öffnet sich gleich
+  const fresh = !!ctx?.isHost && ctx.room.phase === "lobby" && !plan;
+  useEffect(() => {
+    if (!fresh) return;
+    try {
+      const want = sessionStorage.getItem(PLAN_NOW_KEY);
+      if (want && location.pathname.endsWith(`/r/${want}`)) { sessionStorage.removeItem(PLAN_NOW_KEY); setPlanning(true); }
+    } catch { /* egal */ }
+  }, [fresh]);
   if (!ctx) return null;
   // Noch nichts gespielt, kein Plan: der Host kann einen Partyabend planen
   if (!e?.log.length && !plan) {
-    if (!ctx.isHost || ctx.room.phase !== "lobby") return null;
+    if (!ctx.isHost || ctx.room.phase !== "lobby") return beside ? <div className={className}>{beside}</div> : null;
     return (
-      <>
-        <button type="button" onClick={() => setPlanning(true)} data-testid="plan-open"
-          className={cn("flex w-full items-center justify-center gap-2 rounded-xl py-1.5 text-sm font-semibold text-primary", className)}>
-          <PartyPopper className="size-4" />Partyabend planen · Gesamtwertung
-        </button>
+      <div className={cn("grid gap-2", beside && "grid-cols-2", className)}>
+        {beside}
+        <Button variant="outline" size="sm" onClick={() => setPlanning(true)} data-testid="plan-open" className="min-w-0" aria-label="Partyabend planen">
+          <PartyPopper className="size-4 text-primary" />Partyabend
+        </Button>
         <PlanSheet open={planning} onOpenChange={setPlanning} />
-      </>
+      </div>
     );
   }
   const ranking = eveningRanking(e);
@@ -45,6 +57,7 @@ export function EveningLine({ className }: { className?: string }) {
     : `Spielabend · ${e!.log.length} ${e!.log.length === 1 ? "Partie" : "Partien"}`;
   return (
     <>
+      {beside && <div className={cn("mb-2", className)}>{beside}</div>}
       <button type="button" onClick={() => setOpen(true)} data-testid="evening"
         className={cn("glass flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring", className)}>
         {plan ? <PartyPopper className="size-4 shrink-0 text-primary" /> : <Trophy className="size-4 shrink-0 text-primary" />}
@@ -61,45 +74,104 @@ export function EveningLine({ className }: { className?: string }) {
 }
 
 /** Partyabend planen: Spiele antippen in der gewünschten Reihenfolge */
+/**
+ * Partyabend planen in zwei Schritten: erst Spiele wählen (Suche, passend zur Spielerzahl),
+ * dann die Reihenfolge festlegen. Bis „Starten“ ist alles nur ein Entwurf.
+ */
 function PlanSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const ctx = useContext(EveningContext);
   const config = useSiteConfig();
   const [picked, setPicked] = useState<string[]>([]);
+  const [step, setStep] = useState<"pick" | "order">("pick");
+  const [filter, setFilter] = useState(NO_FILTER);
+  // Jedes Öffnen beginnt mit einem leeren Entwurf
+  useEffect(() => { if (open) { setPicked([]); setStep("pick"); setFilter(NO_FILTER); } }, [open]);
   if (!ctx) return null;
+  const players = ctx.room.players.length;
   const ids = orderGames(GAME_IDS, config?.order ?? []).filter((id) => !config || accessFor(config, id) !== "off");
+  const shown = filterGames(ids, filter, players);
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < PLAN_MAX ? [...p, id] : p));
+  const move = (i: number, d: -1 | 1) => setPicked((p) => { const q = [...p]; [q[i], q[i + d]] = [q[i + d], q[i]]; return q; });
+  const full = picked.length >= PLAN_MAX;
   return (
-    <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setPicked([]); }}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Partyabend planen</SheetTitle>
-          <SheetDescription>Spiele in der gewünschten Reihenfolge antippen. Nach jeder Partie ist das nächste dran – am Ende gibt es eine Siegerehrung.</SheetDescription>
+          <SheetDescription>
+            {step === "pick"
+              ? `Schritt 1 von 2: Spiele wählen (2 bis ${PLAN_MAX}). Nach jeder Partie ist das nächste dran – am Ende gibt es eine Siegerehrung.`
+              : "Schritt 2 von 2: Reihenfolge festlegen. Mit den Pfeilen verschieben."}
+          </SheetDescription>
         </SheetHeader>
-        {/* Kacheln im Raster: alle Spiele auf einen Blick, ohne Scrollen */}
-        <div className="grid grid-cols-4 gap-1.5 overflow-y-auto px-5 pt-1" data-testid="plan-games">
-          {ids.map((id) => {
-            const n = picked.indexOf(id);
-            const GIcon = gameIcon(id);
-            return (
-              <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={n >= 0} data-testid={`plan-${id}`}
-                className={cn("relative flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center outline-none focus-visible:ring-[3px] focus-visible:ring-ring", n >= 0 ? "bg-primary/12 ring-1 ring-inset ring-primary/35" : "glass")}>
-                <IconTile className="size-9"><GIcon className="size-6" /></IconTile>
-                <span className="line-clamp-2 w-full text-[0.7rem] leading-tight font-semibold">{getGame(id).info.name}</span>
-                {n >= 0 && <span className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{n + 1}</span>}
-              </button>
-            );
-          })}
-        </div>
-        <div className="px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Button className="w-full" disabled={picked.length < 2} data-testid="plan-start"
-            onClick={() => { ctx.dispatch({ type: "setPlan", games: picked }); onOpenChange(false); setPicked([]); }}>
-            <PartyPopper />{picked.length < 2 ? "Mindestens 2 Spiele wählen" : `Partyabend starten · ${picked.length} Spiele`}
-          </Button>
-        </div>
+        {step === "pick" ? (
+          <>
+            <GameSearch value={filter} onChange={setFilter} players={players} className="shrink-0 px-5 pt-1" />
+            {/* Zwei gut lesbare Spalten statt winziger Kacheln */}
+            <div className="grid grid-cols-2 content-start gap-1.5 overflow-y-auto px-5 pt-2" data-testid="plan-games">
+              {!shown.length && <div className="col-span-2"><NoGames onReset={() => setFilter(NO_FILTER)} /></div>}
+              {shown.map((id) => {
+                const n = picked.indexOf(id);
+                const g = getGame(id).info;
+                const GIcon = gameIcon(id);
+                return (
+                  <button key={id} type="button" onClick={() => toggle(id)} aria-pressed={n >= 0} disabled={n < 0 && full} data-testid={`plan-${id}`}
+                    className={cn("relative flex min-h-12 items-center gap-2 rounded-xl px-2 py-1.5 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-45", n >= 0 ? "bg-primary/12 ring-1 ring-inset ring-primary/35" : "glass")}>
+                    <IconTile className="size-8 shrink-0"><GIcon className="size-5" /></IconTile>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 text-sm leading-tight font-semibold">{g.name}</span>
+                      <span className="block truncate text-[0.7rem] text-muted-foreground">{g.duration}</span>
+                    </span>
+                    {n >= 0 && <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{n + 1}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="shrink-0 px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <Button className="w-full" disabled={picked.length < 2} data-testid="plan-next" onClick={() => setStep("order")}>
+                {picked.length < 2 ? "Mindestens 2 Spiele wählen" : <>Weiter: Reihenfolge · {picked.length} Spiele<ChevronRight /></>}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <ol className="flex min-h-0 flex-col gap-1.5 overflow-y-auto px-5 pt-1 pb-1" data-testid="plan-order">
+              {picked.map((id, i) => {
+                const g = getGame(id).info;
+                const GIcon = gameIcon(id);
+                const fits = fitsPlayers(g, players);
+                return (
+                  <li key={id} className="glass flex min-w-0 shrink-0 items-center gap-1 rounded-xl py-1.5 pr-1 pl-2">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{i + 1}</span>
+                    <IconTile className="size-8 shrink-0"><GIcon className="size-5" /></IconTile>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{g.name}</span>
+                      <span className={cn("block truncate text-[0.7rem]", fits ? "text-muted-foreground" : "text-destructive")}>
+                        {g.duration}{fits ? "" : players < g.minPlayers ? ` · ab ${g.minPlayers} Spielern` : ` · höchstens ${g.maxPlayers} Spieler`}
+                      </span>
+                    </span>
+                    <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`${g.name} nach oben`} className={ICON_BTN}><ChevronUp className="size-5" /></button>
+                    <button type="button" onClick={() => move(i, 1)} disabled={i === picked.length - 1} aria-label={`${g.name} nach unten`} className={ICON_BTN}><ChevronDown className="size-5" /></button>
+                    <button type="button" onClick={() => setPicked((p) => p.filter((x) => x !== id))} disabled={picked.length <= 2} aria-label={`${g.name} entfernen`} className={ICON_BTN}><X className="size-4" /></button>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="shrink-0 px-5 pt-2 text-center text-xs text-muted-foreground" data-testid="plan-duration">{picked.length} Spiele · {planDuration(picked.map((id) => getGame(id).info))}</p>
+            <div className="grid shrink-0 grid-cols-[auto_1fr] gap-2 px-5 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <Button variant="secondary" onClick={() => setStep("pick")} data-testid="plan-back"><ChevronLeft />Zurück</Button>
+              <Button data-testid="plan-start" onClick={() => { ctx.dispatch({ type: "setPlan", games: picked }); onOpenChange(false); }}>
+                <PartyPopper />Partyabend starten
+              </Button>
+            </div>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
 }
+
+const ICON_BTN = "grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30";
 
 function EveningSheet({ open, onOpenChange, onPlan }: { open: boolean; onOpenChange: (o: boolean) => void; onPlan: () => void }) {
   const ctx = useContext(EveningContext);

@@ -520,6 +520,10 @@ export const alles: GameLogic<AllesState, AllesAction> = {
   version: 2,
   turnBased: true,
   joinMidGame: true,
+  presets: [
+    { id: "kurz", label: "Kurz", hint: "bis 3.000", options: { target: 3000 } },
+    { id: "chaos", label: "Chaotisch", hint: "fiese Hausregeln", options: { chance: "5", pmMode: "choose", torte: true } },
+  ],
   settings: [
     {
       key: "diceMode", label: "Würfel", type: "choice", default: "real", inGame: true,

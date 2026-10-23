@@ -11,12 +11,13 @@ Stimmungen mit dem Modell „emotional“. Etwas schneller und höher als das Mo
 Aussprache: aussprache.txt ersetzt vor dem Sprechen ganze Wörter (Englisches, Abkürzungen, Vornamen). Was mit welcher
 Sprechweise erzeugt wurde, steht in stimme/quelle.json – ändert sich die Sprechweise, wird der Baustein neu erzeugt.
 
-Umgebung: SITE_URL (Standard: workers.dev), RELEASE_SECRET, MODEL_DIR (Modell „high“), EMO_DIR (Modell „emotional“),
+Umgebung: SITE_URL (Standard: spieltisch.endlab.de), RELEASE_SECRET, MODEL_DIR (Modell „high“), EMO_DIR (Modell „emotional“),
 SAETZE (Pfad zu saetze.json).
 """
 import hashlib
 import json
 import os
+import random
 import re
 import subprocess
 import sys
@@ -28,7 +29,7 @@ import urllib.request
 import sherpa_onnx
 import soundfile as sf
 
-SITE = os.environ.get("SITE_URL", "https://spieltisch.bjoern-ef9.workers.dev").rstrip("/")
+SITE = os.environ.get("SITE_URL", "https://spieltisch.endlab.de").rstrip("/")
 SECRET = os.environ.get("RELEASE_SECRET", "")
 MODEL = os.environ.get("MODEL_DIR", "vits-piper-de_DE-thorsten-high")
 EMO = os.environ.get("EMO_DIR", "vits-piper-de_DE-thorsten_emotional-medium")
@@ -116,10 +117,15 @@ def main() -> int:
     # Was gebraucht wird
     todo: dict[str, tuple[str, str]] = {}
 
-    def want(mood: str, text: str):
+    # Fest erwartet (Namen, Zahlen, Sätze) – der Bericht am Ende prüft genau diese
+    expected: dict[str, tuple[str, str]] = {}
+
+    def want(mood: str, text: str, fixed: bool = True):
         t = norm(text)
         if t and mood in SPEAKER:
             todo.setdefault(key(mood, t), (mood, t))
+            if fixed:
+                expected[key(mood, t)] = (mood, t)
 
     status, raw = request("GET", "/api/release/voice")
     if status == 403:
@@ -127,7 +133,7 @@ def main() -> int:
         return 1
     queued = json.loads(raw).get("items", []) if status == 200 else []
     for it in queued:
-        want(it.get("mood", ""), it.get("text", ""))
+        want(it.get("mood", ""), it.get("text", ""), fixed=False)
     print(f"Gemeldet: {len(queued)}")
     for line in open(os.path.join(HERE, "namen.txt"), encoding="utf-8"):
         if line.strip() and not line.startswith("#"):
@@ -144,7 +150,9 @@ def main() -> int:
         if k in have:
             todo.setdefault(k, (m, t))
     stale = lambda k, m, t: k not in have or (k in source and source[k][2] != sig(m, t))
-    missing = [(k, m, t) for k, (m, t) in todo.items() if stale(k, m, t)][:LIMIT]
+    missing = [(k, m, t) for k, (m, t) in todo.items() if stale(k, m, t)]
+    limited = len(missing) > LIMIT
+    missing = missing[:LIMIT]
     print(f"Zu erzeugen: {len(missing)}")
 
     done: list[str] = []
@@ -199,6 +207,51 @@ def main() -> int:
     if gone:
         request("POST", "/api/release/voice/done", json.dumps({"keys": gone}).encode("utf-8"))
     print(f"Neu: {len(done)} · erledigt gemeldet: {len(gone)} · gesamt: {len(have)}")
+    return audit(expected, have, limited)
+
+
+def mp3_ok(data: bytes) -> bool:
+    """Sieht nach MP3 aus: ID3-Kopf oder Rahmen-Sync, nicht winzig"""
+    return len(data) > 400 and (data[:3] == b"ID3" or (data[0] == 0xFF and data[1] & 0xE0 == 0xE0))
+
+
+def audit(expected: dict[str, tuple[str, str]], have: set[str], limited: bool) -> int:
+    """
+    Bericht (Audit P1-11): erwartete feste Bausteine gegen das Verzeichnis, je Stimmung; Stichprobe echter Dateien.
+    Rot, wenn eine Datei kaputt oder nicht ladbar ist; fehlende Bausteine stehen als Warnung im Bericht.
+    """
+    gaps = {k: v for k, v in expected.items() if k not in have}
+    lines = ["## Stimme: Bestand", "", "| Stimmung | erwartet | vorhanden | fehlt |", "| --- | ---: | ---: | ---: |"]
+    for mood in sorted({m for m, _ in expected.values()}):
+        exp = [k for k, (m, _) in expected.items() if m == mood]
+        miss = [k for k in exp if k in gaps]
+        lines.append(f"| {mood} | {len(exp)} | {len(exp) - len(miss)} | {len(miss)} |")
+    extra = len(have - set(expected))
+    lines += ["", f"Weitere im Verzeichnis (gemeldete Lücken, ältere Sätze): {extra}"]
+    if gaps:
+        lines += ["", "Fehlt (Auszug):", *[f"- {m}: {t}" for m, t in list(gaps.values())[:30]]]
+    # Stichprobe: Dateien wirklich laden und den Kopf prüfen
+    sample = random.sample(sorted(have), min(12, len(have)))
+    broken = []
+    for k in sample:
+        status, raw = request("GET", f"/api/asset/stimme/{k}.mp3", secret=False)
+        if status != 200 or not mp3_ok(raw):
+            broken.append(f"{k} ({status}, {len(raw)} Bytes)")
+    lines += ["", f"Stichprobe: {len(sample) - len(broken)} von {len(sample)} Dateien in Ordnung"]
+    lines += [f"- kaputt: {b}" for b in broken]
+    report = "\n".join(lines) + "\n"
+    print(report)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as f:
+            f.write(report)
+    if broken:
+        print(f"::error::{len(broken)} Stimmdateien kaputt oder nicht ladbar")
+        return 1
+    # Fehlende feste Bausteine vorerst als Warnung: der Lauf ist stündlich, einzelne nicht sprechbare Namen sollen ihn nicht dauerhaft rot machen
+    if gaps:
+        why = f"der nächste Lauf macht weiter (Limit {LIMIT})" if limited else "nach diesem Lauf noch nicht erzeugt"
+        print(f"::warning::{len(gaps)} feste Bausteine fehlen – {why}")
     return 0
 
 

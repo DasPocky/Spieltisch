@@ -1,5 +1,6 @@
 import { KATEGORIEN } from "@shared/games/quiz/fragen";
-import { KINDS, POINTS, quiz, type QAction, type QState } from "@shared/games/quiz/logic";
+import { deckNote, KINDS, POINTS, quiz, type QAction, type QState } from "@shared/games/quiz/logic";
+import type { RoomState } from "@shared/platform/room";
 import type { BoardProps, GameUI } from "@/games/types";
 import { LogList } from "@/platform/PlayersHistory";
 import { Board } from "./Board";
@@ -38,8 +39,14 @@ function HeaderExtra({ game: s }: BoardProps<QState, QAction>) {
   return <span className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold whitespace-nowrap ring-1 ring-inset ring-border">{s.phase === "over" ? "Ende" : `Frage ${Math.min(s.idx + 1, s.total)}/${s.total}`}</span>;
 }
 
+/** Lobby: Hinweis, wenn die Auswahl so keine Fragen ergäbe (die App nimmt dann alle Kategorien) */
+function SettingsExtra({ room }: { room: RoomState }) {
+  const note = deckNote(room.options);
+  return note ? <p role="status" className="rounded-xl bg-ice/15 px-3 py-2 text-sm" data-testid="quiz-deck-note">{note}</p> : null;
+}
+
 export const quizUI: GameUI<QState, QAction> = {
-  logic: quiz, Icon, Board, Rules, History, HeaderExtra,
+  logic: quiz, Icon, Board, Rules, History, HeaderExtra, SettingsExtra,
   log: (s) => s.log,
   overview: (s) => ({ cols: ["Punkte"], rows: Object.fromEntries(s.order.map((id) => [id, [s.scores[id] ?? 0]])) }),
 };

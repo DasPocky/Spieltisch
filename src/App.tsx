@@ -20,6 +20,7 @@ const TableSetup = lazy(() => import("@/pages/Table").then((m) => ({ default: m.
 const TableRoom = lazy(() => import("@/pages/Table").then((m) => ({ default: m.TableRoom })));
 const ModeratorPreview = lazy(() => import("@/pages/ModeratorPreview").then((m) => ({ default: m.ModeratorPreview })));
 const CardGallery = lazy(() => import("@/pages/CardGallery").then((m) => ({ default: m.CardGallery })));
+const CardSets = lazy(() => import("@/pages/CardSets").then((m) => ({ default: m.CardSets })));
 
 export default function App() {
   const route = useRoute();
@@ -34,6 +35,7 @@ export default function App() {
       {route.name === "gallery" && <Suspense><CardGallery /></Suspense>}
       {route.name === "moderator" && <Suspense><ModeratorPreview /></Suspense>}
       {route.name === "profile" && <AccessGate><AppShell tab="profil"><Profile /></AppShell></AccessGate>}
+      {route.name === "sets" && <AccessGate><AppShell tab="profil"><Suspense><CardSets id={route.id} kind={route.kind} /></Suspense></AppShell></AccessGate>}
       {route.name === "transfer" && <AccessGate><ProfileTransfer code={route.code} /></AccessGate>}
       {route.name === "groups" && <AccessGate><AppShell tab="gruppe"><Groups /></AppShell></AccessGate>}
       {route.name === "group" && <AccessGate><AppShell tab="gruppe"><Group key={route.code} code={route.code} /></AppShell></AccessGate>}

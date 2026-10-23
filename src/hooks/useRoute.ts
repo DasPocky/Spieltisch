@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
 import { renamedGameId } from "@shared/games/renamed";
+import { SET_KINDS, type SetKind } from "@shared/platform/cardsets";
+import { stripBase, withBase } from "@shared/platform/base";
 import { LOCAL_GAME_KEY } from "@/lib/storage";
 
 /** Bereiche der Verwaltung: /admin, /admin/live … */
-export type AdminSection = "start" | "live" | "statistik" | "spiele" | "leute" | "einstellungen" | "entwickler";
+export type AdminSection = "start" | "live" | "statistik" | "spiele" | "kartensets" | "leute" | "einstellungen" | "entwickler";
 
 export type Route =
   | { name: "home" }
@@ -13,6 +15,8 @@ export type Route =
   | { name: "room"; code: string }
   | { name: "admin"; section: AdminSection }
   | { name: "profile" }
+  /** Eigene Kartensets: Liste, ein Set, ein neues Set einer Art */
+  | { name: "sets"; id?: string; kind?: SetKind }
   | { name: "transfer"; code: string }
   | { name: "groups" }
   | { name: "group"; code: string }
@@ -24,10 +28,15 @@ export type Route =
   | { name: "table"; code: string };
 
 function parse(path: string): Route {
-  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|leute|einstellungen|entwickler))?\/?$/);
+  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|kartensets|leute|einstellungen|entwickler))?\/?$/);
   if (admin) return { name: "admin", section: (admin[1] ?? "start") as AdminSection };
   if (/^\/spiele\/?$/.test(path)) return { name: "games" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };
+  const sets = path.match(/^\/profil\/sets(?:\/(?:neu\/([a-z]+)|([a-z0-9]{12})))?\/?$/);
+  if (sets) {
+    if (sets[1]) return SET_KINDS.some((k) => k.id === sets[1]) ? { name: "sets", kind: sets[1] as SetKind } : { name: "sets" };
+    return sets[2] ? { name: "sets", id: sets[2] } : { name: "sets" };
+  }
   const transfer = path.match(/^\/profil\/uebernehmen\/([A-Za-z0-9-]{8,9})\/?$/);
   if (transfer) return { name: "transfer", code: transfer[1].toUpperCase().replace(/-/g, "") };
   if (/^\/gruppe\/?$/.test(path)) return { name: "groups" };
@@ -47,22 +56,23 @@ function parse(path: string): Route {
   const linked = game ? renamedGameId(game[1]) : null;
   if (linked && isGameId(linked)) {
     try { localStorage.setItem(LOCAL_GAME_KEY, linked); } catch { /* egal */ }
-    history.replaceState(null, "", "/lokal");
+    history.replaceState(null, "", withBase("/lokal"));
     return { name: "local" };
   }
   return { name: "home" };
 }
 
+/** Zu einem Pfad der App wechseln (logischer Pfad wie „/profil“ – der Basispfad kommt von selbst davor) */
 export function navigate(path: string, replace = false) {
-  if (replace) history.replaceState(null, "", path);
-  else history.pushState(null, "", path);
+  if (replace) history.replaceState(null, "", withBase(path));
+  else history.pushState(null, "", withBase(path));
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 export function useRoute(): Route {
-  const [route, setRoute] = useState(() => parse(location.pathname));
+  const [route, setRoute] = useState(() => parse(stripBase(location.pathname)));
   useEffect(() => {
-    const on = () => setRoute(parse(location.pathname));
+    const on = () => setRoute(parse(stripBase(location.pathname)));
     window.addEventListener("popstate", on);
     return () => window.removeEventListener("popstate", on);
   }, []);

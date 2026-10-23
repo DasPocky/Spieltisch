@@ -11,7 +11,11 @@ import { shuffle } from "../../platform/random";
 import { WATCH_ID } from "../../platform/protocol";
 import { playerName } from "../../platform/turns";
 import { GameError, type GameContext, type GameLogic, type Options } from "../../platform/types";
-import { catsUpTo, LEVELS, levelOf, wordIds, wordText } from "../stirnraten/cards";
+import { catsUpTo, LEVELS, levelOf, OWN_WORD, wordIds, wordText } from "../stirnraten/cards";
+import { mergedContent, OWN_MIN as OWN_MINS } from "../../platform/cardsets";
+
+/** So viele eigene Begriffe braucht „Nur eigene Begriffe“ mindestens */
+export const OWN_MIN = OWN_MINS.zeichnen;
 
 export type GuessMode = "rufen" | "tippen";
 export type Phase = "pick" | "draw" | "reveal" | "over";
@@ -47,6 +51,10 @@ export interface ZState {
   scores: Record<string, number>;
   /** schon gespielte Begriffe (kein Begriff zweimal) */
   used: string[];
+  /** eigene Begriffe (aus Kartensets, Kennung „x:<Begriff>“) – kommen zuerst zur Wahl; geheim wie der Stapel */
+  own?: string[];
+  /** nur eigene Begriffe (genug davon vorhanden) */
+  ownOnly?: boolean;
   last: Turn | null;
   log: string[];
 }
@@ -146,9 +154,13 @@ export const inkOf = (s: ZState) => s.strokes.reduce((t, k) => t + k.p.length, 0
 export const maskOf = (word: string) => word.replace(/[\p{L}\p{N}]/gu, "_");
 
 function newChoices(s: ZState, o: Options): string[] {
+  // Eigene Begriffe zuerst (noch nicht gespielte), aufgefüllt mit eingebauten – bei „nur eigene“ nur diese
+  const own = s.own ?? [];
+  const ownFresh = shuffle(own.filter((w) => !s.used.includes(w)));
+  if (s.ownOnly) return (ownFresh.length >= 3 ? ownFresh : shuffle(own)).slice(0, 3);
   const pool = drawableCats(o).flatMap(wordIds);
   const fresh = shuffle(pool.filter((w) => !s.used.includes(w)));
-  return (fresh.length >= 3 ? fresh : shuffle(pool)).slice(0, 3);
+  return [...ownFresh.slice(0, 3), ...(fresh.length >= 3 ? fresh : shuffle(pool))].slice(0, 3);
 }
 
 function startTurn(s: ZState, ctx: GameContext) {
@@ -191,6 +203,9 @@ function setup(ctx: GameContext): ZState {
     startedAt: null, seconds: Math.max(30, Math.min(Number(ctx.options.seconds) || 80, 240)), strokes: [], guesses: [], solved: [],
     scores: Object.fromEntries(order.map((id) => [id, 0])), used: [], last: null, log: [],
   };
+  const own = [...new Set(mergedContent(ctx.content).words.map((w) => w.trim()).filter((w) => w && !w.startsWith("bild:")))].map((w) => OWN_WORD + w);
+  if (own.length) s.own = own;
+  if (own.length >= OWN_MIN && ctx.options.own_only === true) s.ownOnly = true;
   startTurn(s, ctx);
   return s;
 }
@@ -318,6 +333,7 @@ export const zeichnen: GameLogic<ZState, ZAction> = {
       key: "level", label: "Begriffe", type: "choice", default: "familie",
       choices: LEVELS.map((l) => ({ value: l.id, label: l.name, hint: l.hint })),
     },
+    { key: "own_only", label: "Nur eigene Begriffe", hint: `statt der eingebauten Begriffe (ab ${OWN_MIN})`, type: "toggle", default: false, group: "Kartensets" },
   ],
   setup,
   apply,
@@ -370,6 +386,7 @@ export const zeichnen: GameLogic<ZState, ZAction> = {
         return g;
       }),
       used: [],
+      ...(s.own ? { own: [] } : {}),
     };
   },
 };

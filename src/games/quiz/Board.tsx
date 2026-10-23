@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, RotateCcw, Send } from "lucide-react";
-import { deadlineOf, type Answer, type QAction, type QState } from "@shared/games/quiz/logic";
+import { deadlineOf, OWN_CAT, OWN_KAT, type Answer, type QAction, type QState } from "@shared/games/quiz/logic";
 import { KAT_BY_ID } from "@shared/games/quiz/fragen";
 import { WATCH_ID } from "@shared/platform/protocol";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export function Board(props: P) {
   const sh = s.shown;
   if (!sh) return <p className="m-auto text-muted-foreground">Keine Frage gefunden.</p>;
   const entries = s.order.map((id) => ({ id, name: nameIn(players, id), score: s.scores[id] ?? 0 }));
-  const kat = KAT_BY_ID[sh.cat];
+  const kat = sh.cat === OWN_CAT ? OWN_KAT : KAT_BY_ID[sh.cat];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 pt-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

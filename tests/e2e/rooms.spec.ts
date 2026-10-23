@@ -4,7 +4,8 @@ import { ADMIN_PW, expectNoScroll, newPhone, shot } from "./util";
 /** Raum über „Raum öffnen“ mit eingeklappten Extras anlegen; gibt den Code zurück */
 async function openRoom(page: Page, name: string, pin: string, extras?: (p: Page) => Promise<void>): Promise<string> {
   await page.goto("/");
-  await page.getByRole("button", { name: "Raum öffnen" }).click();
+  await page.getByTestId("host-open").click();
+  await page.getByTestId("host-meet").click();
   await page.getByLabel("Dein Name").fill(name);
   await page.getByLabel(/PIN/).fill(pin);
   if (extras) {

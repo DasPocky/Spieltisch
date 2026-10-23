@@ -50,13 +50,14 @@ test("Kleines Handy: Start und Spiele passen ohne Scrollen", async ({ page }) =>
 });
 
 test("Blätter schließen mit der Zurück-Geste, Beitreten nimmt auch einen Link", async ({ page }) => {
-  await page.getByRole("button", { name: "Raum öffnen" }).click();
+  await page.getByTestId("host-open").click();
+  await page.getByTestId("host-meet").click();
   await expect(page.getByTestId("create-room")).toBeVisible();
   await expect(page.getByLabel("Dein Name")).toHaveValue("Anna");
   await page.goBack();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page).toHaveURL(/\/$/);
-  await page.getByRole("button", { name: "Beitreten", exact: true }).click();
+  await page.getByTestId("join-open").click();
   await page.getByLabel("Raumcode").fill("https://example.org/r/ab3cd");
   await expect(page.getByLabel("Raumcode")).toHaveValue("AB3CD");
   await shot(page, "05b-beitreten");

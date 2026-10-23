@@ -32,6 +32,8 @@ export interface Env {
   SENSITIVE?: RateLimit;
   /** R2-Speicher für größere Dateien (Fotos der Spieler). Fehlt er, sind Fotos aus. */
   FILES?: R2Bucket;
+  /** Gebaute Dateien der App (für Aufrufe unter /spieltisch) */
+  ASSETS?: Fetcher;
   /** Cloudflare Workers AI (Sprüche des Moderators). Lokal nicht verbunden – dann feste Texte. */
   AI?: { run(model: string, input: Record<string, unknown>): Promise<unknown> };
 }
