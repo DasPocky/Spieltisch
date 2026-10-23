@@ -6,7 +6,7 @@ Stand 23.10.2026. Grundlage: der Plan „EndLab – alle Projekte unter endlab.d
 
 **Der Kern stimmt.** Browser trennen Speicher (`localStorage`, Cookies, Service Worker, Cache) nach Herkunft (Schema + Host + Port), und auf dem iPhone hat jede installierte Web-App zusätzlich ihren eigenen Speicher. Ein gemeinsames Konto für mehrere Projekte geht deshalb nur mit **einer Adresse und einer installierten App**. Pfade unter `endlab.de` sind dafür der richtige Weg, Unterdomains wären es nicht.
 
-**Der wichtigste Grund für jetzt ist der Umzug, nicht das Konto.** Ein zweites Projekt gibt es noch nicht, ein gemeinsames Konto bringt heute also nichts. Aber jeder Wechsel der Adresse kostet einen Umzug der Profile (Übertragungs-Code je Gerät, neu installieren auf dem iPhone). Ziehen die Leute erst nach `spieltisch.endlab.de` und später nach `endlab.de/spieltisch`, müssten sie zweimal umziehen. **Darum: direkt auf die Zieladresse, einmal.** Die Idee „Hinweis auf workers.dev, zu spieltisch.endlab.de umzuziehen“ entfällt.
+**Ziel: eine einzige PWA für alle Projekte.** Weitere Projekte sollen dazukommen, ohne dass jemand eine zweite App installiert oder Daten verliert. Das geht nur, wenn von Anfang an alles unter `endlab.de` in **einer** App läuft – jedes neue Projekt landet dann automatisch in derselben App und demselben Speicher. Deshalb wird der Spieltisch schon jetzt umgebaut, bevor das zweite Projekt kommt: Jeder spätere Adresswechsel wäre ein Umzug für jedes Gerät (Übertragungs-Code, auf dem iPhone neu installieren), und mit jedem Nutzer teurer. **Darum direkt auf die Zieladresse, einmal.** Ziehen die Leute erst nach `spieltisch.endlab.de` und später nach `endlab.de/spieltisch`, müssten sie zweimal umziehen – die Idee „Hinweis auf workers.dev, zu spieltisch.endlab.de umzuziehen“ entfällt.
 
 **Was im Plan fehlt oder zu schwach steht:**
 
@@ -27,7 +27,7 @@ Stand 23.10.2026. Grundlage: der Plan „EndLab – alle Projekte unter endlab.d
 | Basispfad im Client | ein Helfer für alle Pfade (`apiUrl`, `appPath`), Vite `base`, Router schneidet den Basispfad ab | eine Stelle statt 120 – künftige Funktionen machen es automatisch richtig |
 | Worker | nimmt beide Formen an (mit und ohne `/spieltisch`), schneidet das Präfix am Anfang ab | alte Adressen, Vorschauen und Tests laufen unverändert weiter; schrittweise umstellbar |
 | Spieltisch als eigene App installierbar? | nein, nur noch „EndLab“ | eine zweite installierte App wäre auf dem iPhone ein zweites Konto |
-| Konto-Schlüssel `endlab:…` | **noch nicht umbenennen**, erst mit dem zweiten Projekt | jede Umbenennung ist eine Datenmigration auf jedem Gerät; ohne zweites Projekt kein Nutzen |
+| Konto-Schlüssel `endlab:…` | Profil-ID und Geräteschlüssel beim Umzug (E4) gleich unter `endlab:` ablegen, Spiel-Einstellungen behalten `spieltisch:` | der Umzug schreibt die Daten ohnehin neu – kein zusätzlicher Migrationsschritt, und das nächste Projekt findet das Konto sofort |
 | Alte Adressen | bleiben an, laden normal, ziehen in einem ruhigen Moment um | Vorschauen, alte Links und Fernseher brauchen sie; nichts darf hängen bleiben |
 
 ## Zeitplan (Pakete)
@@ -41,7 +41,7 @@ Reihenfolge der gesamten Arbeit, mit Platz für EndLab:
 5. **E3 Routen schalten:** `endlab.de/*` → Hub, `endlab.de/spieltisch*` → Spieltisch; `spieltisch.endlab.de` leitet um. *Grund: erst wenn E2 in der Vorschau durchgespielt ist.*
 6. **E4 Umzug live:** auf den alten Adressen im ruhigen Moment Übertragungs-Code holen und springen, Rückfall „Profil per Code übernehmen“, Hinweis zum Neu-Installieren, „Was ist neu“. *Grund: erst nach E3, sonst gibt es kein Ziel.*
 7. Parallel bzw. danach wie geplant: B2 Partyabend (berührt keine Pfade, kann neben E2 laufen), dann C1–C3 Bedienung mit den Basispfad-Helfern, dann Spielwellen nach Freigabe.
-8. **Später:** gemeinsames Konto `endlab:…`, wenn das zweite Projekt kommt.
+8. **Mit dem zweiten Projekt:** es liest das Konto aus `endlab:…` und bekommt einen eigenen Pfad und Worker – keine neue App.
 
 ## Noch zu klären bzw. zu prüfen
 
