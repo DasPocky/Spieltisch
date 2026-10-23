@@ -7,6 +7,8 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 **Leitlinie (aus der Analyse):** keine Neuentwicklung – erst Sicherheits- und Update-Fundament, dann **ein** Referenzspiel vollständig, von dort Spiel für Spiel. Je Schritt ein PR mit Screenshots, durchgespielt, Freigabe, Abschnitt „Für Spieler“ (→ `shared/news.ts`).
 
+**Adresse:** live unter `spieltisch.endlab.de` (Zwischenstand). Ziel `endlab.de/spieltisch` mit einer EndLab-App und einem Speicher – Bewertung, Entscheidungen und Reihenfolge in [endlab.md](endlab.md) ⏳.
+
 ## Phase 0 – Fundament: Updates, Versionen, Sicherheit 🔨
 
 | Punkt | Stand |
