@@ -67,10 +67,16 @@ function report(items: { mood: VoiceMood; text: string; key: string }[]) {
 }
 
 let playing: AudioBufferSourceNode[] = [];
-/** Laufende Ansage abbrechen (neue Ansage oder Vorlesen aus) */
-export function stopReal() {
+/** Zählt jedes Abbrechen – eine Ansage, die noch lädt, spielt nur, wenn seither nichts Neues kam */
+let generation = 0;
+const stopSources = () => {
   for (const s of playing) try { s.stop(); } catch { /* schon zu Ende */ }
   playing = [];
+};
+/** Laufende Ansage abbrechen (neue Ansage oder Vorlesen aus) – auch eine, die gerade noch lädt */
+export function stopReal() {
+  generation++;
+  stopSources();
 }
 
 /**
@@ -82,6 +88,7 @@ export async function speakReal(text: string, opts: { mood?: VoiceMood; onWord?:
   const out = voiceOut();
   if (!out) return false;
   const mood = opts.mood ?? "neutral";
+  const mine = generation;
   const have = await known();
   // Verzeichnis unbekannt (Netz weg): Gerätestimme, nichts melden
   if (!have) return false;
@@ -104,8 +111,11 @@ export async function speakReal(text: string, opts: { mood?: VoiceMood; onWord?:
   // Fehlt ein Satz ganz: lieber alles mit einer Stimme (Gerät)
   if (!complete || !keyed.length) return false;
   const bufs = await Promise.all(keyed.map((p) => load(out.ctx, p.key)));
+  // Während des Ladens kam eine neuere Ansage oder das Vorlesen wurde ausgeschaltet: diese verwerfen,
+  // ohne die neuere zu stoppen – und ohne Gerätestimme nachzusprechen
+  if (mine !== generation) return true;
   if (bufs.some((b) => !b)) return false;
-  stopReal();
+  stopSources();
   const { ctx } = out;
   let t = ctx.currentTime + 0.05;
   const sources: AudioBufferSourceNode[] = [];
