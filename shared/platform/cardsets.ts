@@ -135,6 +135,22 @@ export const setCount = (s: CardSetData) => (s.black?.length ?? 0) + (s.white?.l
 /** Alle Bildschlüssel eines Sets (zum Aufräumen) */
 export const setImages = (s: CardSetData) => [...(s.white ?? []), ...(s.words ?? [])].filter(isImage).map(imageKey);
 
+/** Verwaiste Bilder: so alt müssen sie mindestens sein (ein Editor, der gerade offen ist, hat sie noch nicht gespeichert) */
+export const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000;
+/** Verwaiste Bilder eines Profils höchstens so oft suchen */
+export const ORPHAN_SWEEP_MS = 60 * 60 * 1000;
+
+/**
+ * Welche Objekte im Bild-Ordner eines Profils verwaist sind: im Ordner, in keinem Set benutzt und älter als
+ * `minAge`. Schlüssel außerhalb des Ordners bleiben immer unberührt.
+ */
+export function orphanImages(objects: { key: string; uploaded: number }[], used: Iterable<string>, folder: string, now: number, minAge = ORPHAN_AGE_MS): string[] {
+  const dir = folder.endsWith("/") ? folder : `${folder}/`;
+  if (!/^k\/[0-9a-f]{16}\/$/.test(dir)) return [];
+  const keep = new Set(used);
+  return objects.filter((o) => o.key.startsWith(dir) && SET_IMAGE_KEY_RE.test(o.key) && !keep.has(o.key) && now - o.uploaded >= minAge).map((o) => o.key);
+}
+
 export const toInfo = (s: CardSet, by?: string): CardSetInfo => ({
   id: s.id, kind: s.kind, name: s.name, owner: s.owner, status: s.status, note: s.note, count: setCount(s), updatedAt: s.updatedAt,
   ...(s.kind === "schamlos" ? { black: s.black?.length ?? 0, white: s.white?.length ?? 0 } : {}), ...(by ? { by } : {}), ...(s.showName ? { showName: true } : {}),
