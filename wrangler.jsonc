@@ -4,9 +4,11 @@
   "main": "./worker/index.ts",
   "compatibility_date": "2026-09-01",
   "assets": {
-    // Alles außer /api/* liefert die React-App aus
+    // Alles außer /api/* liefert die React-App aus. Unter /spieltisch (endlab.de) reicht der Worker die Dateien
+    // ohne Präfix an ASSETS weiter – so gibt es die gebauten Dateien nur einmal
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/spieltisch/api/*"]
+    "run_worker_first": ["/api/*", "/spieltisch/*", "/spieltisch"]
   },
   "durable_objects": {
     "bindings": [

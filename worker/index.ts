@@ -43,6 +43,8 @@ export default {
       url = new URL(url);
       url.pathname = logical;
       request = new Request(url, request);
+      // Seiten und Dateien der App (alles außer /api): aus den gebauten Dateien, wie an der Wurzel
+      if (!logical.startsWith("/api/") && env.ASSETS) return env.ASSETS.fetch(request);
     }
     countRequest(env, ctx);
 

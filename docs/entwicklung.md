@@ -142,6 +142,8 @@ Die App kann unter einem Pfad laufen (Ziel: `endlab.de/spieltisch`, siehe [endla
 
 Feste Pfade wie `"/r/" + code` direkt in `location`/`history` vermeiden – immer über die Helfer.
 
+Bauen und prüfen mit Basispfad: `APP_BASE=/spieltisch npm run build && npx vite preview --port 5202`, dann `APP_BASE=/spieltisch PW_PORT=5202 npx playwright test basispfad --project=spiele --no-deps`. Vorschau-Builds bei Cloudflare (Zweig ≠ `main`) bauen automatisch mit `/spieltisch`; die Seite liegt dann unter `…workers.dev/spieltisch/` (die Wurzel geht weiter). Der Worker reicht `/spieltisch/*` ohne Präfix an `ASSETS` weiter.
+
 ## Versionen und Updates
 
 Es gibt vier getrennte Versionen:
