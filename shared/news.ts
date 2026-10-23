@@ -15,6 +15,14 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-favoriten",
+    date: "2026-10-23",
+    title: "Lieblingsspiele merken",
+    items: [
+      "In der Spielauswahl merkt der Stern neben jedem Spiel es vor – gemerkte Spiele stehen oben unter „Gemerkt“, auch im Partyabend-Planer zuerst.",
+    ],
+  },
+  {
     id: "2026-10-regelpakete",
     date: "2026-10-23",
     title: "Regeln mit einem Tipp",

@@ -13,6 +13,7 @@ import { Confirm } from "@/components/Confirm";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { PLAN_NOW_KEY } from "@/lib/createRoom";
+import { favoritesFirst, useFavorites } from "@/lib/favorites";
 
 /** Spielabend für Ergebnis-Bildschirme (die Spiele kennen den Raum nicht – der Rahmen reicht ihn durch) */
 export const EveningContext = createContext<{ room: RoomState; isHost: boolean; dispatch: (a: RoomAction) => void } | null>(null);
@@ -84,12 +85,14 @@ function PlanSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: bo
   const [picked, setPicked] = useState<string[]>([]);
   const [step, setStep] = useState<"pick" | "order">("pick");
   const [filter, setFilter] = useState(NO_FILTER);
+  const favs = useFavorites();
   // Jedes Öffnen beginnt mit einem leeren Entwurf
   useEffect(() => { if (open) { setPicked([]); setStep("pick"); setFilter(NO_FILTER); } }, [open]);
   if (!ctx) return null;
   const players = ctx.room.players.length;
   const ids = orderGames(GAME_IDS, config?.order ?? []).filter((id) => !config || accessFor(config, id) !== "off");
-  const shown = filterGames(ids, filter, players);
+  // Gemerkte Spiele (aus der Spielauswahl) zuerst
+  const shown = favoritesFirst(filterGames(ids, filter, players), favs);
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < PLAN_MAX ? [...p, id] : p));
   const move = (i: number, d: -1 | 1) => setPicked((p) => { const q = [...p]; [q[i], q[i + d]] = [q[i + d], q[i]]; return q; });
   const full = picked.length >= PLAN_MAX;
