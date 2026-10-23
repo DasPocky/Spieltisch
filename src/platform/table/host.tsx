@@ -49,11 +49,23 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
     setSay({ text, moment, at: Date.now(), ms });
     if (voice) void speak(text, { force: true, pitch: 1.1, mood: MOOD_VOICE[mood] });
   };
+  // Jede Ansage zählt hoch; eine späte KI-Antwort gilt nur, wenn seither nichts Neues kam,
+  // der Moderator noch an ist und dasselbe Spiel läuft (sonst verwerfen – nie in die nächste Partie sprechen)
+  const turnNo = useRef(0);
+  const live = useRef({ on, gameId: room.gameId });
+  live.current = { on, gameId: room.gameId };
+  useEffect(() => () => { turnNo.current++; }, []);
+  useEffect(() => { if (!on) turnNo.current++; }, [on]);
   const announce = (moment: Moment, who = "") => {
     if (!on) return;
+    const n = ++turnNo.current;
     // Seltene Momente mit frischem KI-Spruch (falls eingeschaltet) – sonst und bei jedem Problem die festen Texte
     if (ai && moment !== "dran" && moment !== "pech") {
-      void aiLine({ moment: moment as HostMoment, mood, name: who, game }).then((t) => show(moment, t ?? lineFor(mood, moment, who)));
+      const gameId = room.gameId;
+      void aiLine({ moment: moment as HostMoment, mood, name: who, game }).then((t) => {
+        if (n !== turnNo.current || !live.current.on || live.current.gameId !== gameId) return;
+        show(moment, t ?? lineFor(mood, moment, who));
+      });
       return;
     }
     show(moment, lineFor(mood, moment, who));
