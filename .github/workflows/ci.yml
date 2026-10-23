@@ -20,9 +20,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # Bekannte Sicherheitslücken in Abhängigkeiten melden (bricht den Lauf nicht ab – Hinweis in der Ausgabe)
+      # Sicherheitslücken: was ausgeliefert wird (ohne Werkzeuge), muss frei von schweren Befunden sein – sonst rot
       - run: npm audit --omit=dev --audit-level=high
-        continue-on-error: true
+      # Werkzeuge (Build, Tests, lokaler Server) laufen nie beim Nutzer: nur als Bericht in der Zusammenfassung
+      - name: Werkzeuge prüfen (Bericht)
+        if: always()
+        run: |
+          { echo "## Abhängigkeiten (alle, inkl. Werkzeuge)"; echo '```'; npm audit --audit-level=high 2>&1 | tail -25 || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
       # Zufallspartien: im PR eine kurze Runde, auf main die übliche, nachts gründlich
       - run: npm test
