@@ -47,7 +47,6 @@ function Shape({ id }: { id: string }) {
  */
 export function Welcome({ onDone }: { onDone: () => void }) {
   const [loaded, setLoaded] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const quick = useRef(typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches).current;
   const [name] = useState(myName);
@@ -61,21 +60,18 @@ export function Welcome({ onDone }: { onDone: () => void }) {
     setTimeout(onDone, quick ? 150 : 380);
   };
 
+  // Kein Takt mehr, der neu zeichnet: der Balken läuft als CSS-Animation (flüssig, auch wenn die App gerade lädt).
+  // Die Streifen füllen sich nach der Zeit, der letzte erst, wenn alles geladen ist – ist er voll, geht es weiter.
   useEffect(() => {
     void boot(setLoaded);
-    const start = performance.now();
-    const t = setInterval(() => setElapsed(performance.now() - start), 80);
-    return () => clearInterval(t);
+    const t = setTimeout(leave, quick ? QUICK_MS * 2 : MAX_MS);
+    return () => clearTimeout(t);
   }, []);
 
-  const min = quick ? QUICK_MS : MIN_MS;
-  useEffect(() => {
-    if ((elapsed >= min && loaded >= 1) || elapsed >= (quick ? QUICK_MS * 2 : MAX_MS)) leave();
-  });
-
-  // Der Balken folgt dem langsameren von Laden und Zeit – so füllt er sich gleichmäßig und erst ganz, wenn alles da ist
-  const progress = Math.min(loaded, elapsed / (min - 200));
   const strips = 5;
+  // Dauer je Streifen, so dass alle zusammen kurz vor der Mindestzeit voll sind
+  const each = ((quick ? QUICK_MS : MIN_MS) - 200) / strips;
+  const ready = loaded >= 1;
 
   return (
     <div role="status" aria-live="polite" aria-label={`Willkommen zurück, ${name}`} data-testid="welcome" onClick={leave}
@@ -100,7 +96,9 @@ export function Welcome({ onDone }: { onDone: () => void }) {
       <div className="mt-8 flex w-56 gap-1.5" aria-hidden="true" data-testid="welcome-progress">
         {Array.from({ length: strips }, (_, i) => (
           <span key={i} className="strip relative h-2.5 flex-1 overflow-hidden rounded-[3px] bg-foreground/10" style={{ rotate: `${[-2, 1.5, -1, 2, -1.5][i]}deg` }}>
-            <span className="absolute inset-0 origin-left bg-primary transition-transform duration-300" style={{ transform: `scaleX(${Math.max(0, Math.min(1, progress * strips - i))})` }} />
+            <span className="strip-fill absolute inset-0 origin-left bg-primary"
+              style={{ animationDuration: `${each}ms`, animationDelay: `${i * each}ms`, animationPlayState: i < strips - 1 || ready ? "running" : "paused" }}
+              onAnimationEnd={i === strips - 1 ? () => setTimeout(leave, 200) : undefined} />
           </span>
         ))}
       </div>
