@@ -145,6 +145,12 @@ Es gibt vier getrennte Versionen:
 
 Jede gespeicherte Änderung erhöht die **Revision** des Raums (`rev` in `state`/`ack`); Geräte verwerfen ältere Stände.
 
+## Ergebnisse und Partyabend
+
+- Partie zu Ende → Ergebnis-Aufträge für Profile und Gruppen (`queueResults`, gleicher Schreibvorgang wie das Ende), fällig nach `RESULT_DELAY_MS` (2 Min., Tests 1,5 s per `.dev.vars`). Sofort verbucht wird, sobald es weitergeht (Lobby, Nochmal, Start, Spielwechsel) oder der Raum leer ist; sonst weckt der Raum-Wecker (`alarm`) pünktlich, ohne das Raum-Ende vorzuziehen.
+- Rückgängig des Endes vor dem Verbuchen: Aufträge dieser Partie fallen weg. Danach (`booked`) lehnt der Server ab – die Empfänger zählen je Partie-Kennung nur einmal, ein zweites, anderes Ergebnis käme dort nie an.
+- Partyabend: nur freigegebene Spiele im Plan; beim Weiterschalten überspringt `skipBlockedPlan` gesperrte. Läuft ein Plan, zählt nur das geplante Spiel (Log-Eintrag mit `round` und `plan`).
+
 ## Zugriffsmodell
 
 Profil ≠ Gerät ≠ Spieler ≠ Rolle ≠ Verbindung:

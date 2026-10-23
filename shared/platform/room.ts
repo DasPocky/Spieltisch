@@ -72,7 +72,7 @@ export interface Evening {
   /** Namen merken – auch wer inzwischen gegangen ist, bleibt in der Wertung */
   names: Record<string, string>;
   /** Beendete Partien, älteste zuerst (höchstens 50) */
-  log: { gameId: string; winners: string[]; at: number }[];
+  log: { gameId: string; winners: string[]; at: number; round?: number; plan?: boolean }[];
   /** Partyabend: geplante Spiele der Reihe nach; `played` zählt die seit dem Plan beendeten Partien */
   plan?: { games: string[]; played: number };
 }
@@ -88,10 +88,15 @@ export function planStatus(e: Evening | undefined): { games: string[]; played: n
   return { games, played: n, next: games[n] ?? null, done: n >= games.length };
 }
 
-/** Partie gerade zu Ende gegangen? Dann zählt sie für den Spielabend. */
+/**
+ * Partie gerade zu Ende gegangen? Dann zählt sie für den Spielabend. Läuft ein Partyabend-Plan, zählt nur das
+ * geplante Spiel (Abendwertung und Fortschritt) – eine Partie zwischendurch ist nur zum Spaß.
+ */
 function recordEvening(prev: RoomState, next: RoomState): RoomState {
   const logic = roomGame(next);
   if (!prev.game || !next.game || logic.isOver(prev.game) || !logic.isOver(next.game) || !logic.results) return next;
+  const plan = planStatus(next.evening);
+  if (plan && !plan.done && plan.next !== next.gameId) return next;
   const results = logic.results(next.game, context(next, null));
   const winners = results.filter((r) => r.won).map((r) => r.id);
   const e: Evening = structuredClone(next.evening ?? { wins: {}, names: {}, log: [] });
@@ -100,9 +105,24 @@ function recordEvening(prev: RoomState, next: RoomState): RoomState {
     if (name) e.names[r.id] = name;
     e.wins[r.id] = (e.wins[r.id] ?? 0) + (r.won ? 1 : 0);
   }
-  e.log = [...e.log, { gameId: next.gameId, winners, at: Date.now() }].slice(-50);
-  if (e.plan && e.plan.played < e.plan.games.length) e.plan.played++;
+  const planned = !!(e.plan && e.plan.played < e.plan.games.length);
+  e.log = [...e.log, { gameId: next.gameId, winners, at: Date.now(), round: next.round, ...(planned ? { plan: true } : {}) }].slice(-50);
+  if (planned) e.plan!.played++;
   return { ...next, evening: e };
+}
+
+/**
+ * Partyabend: gesperrte Spiele (Verwaltung hat sie abgeschaltet) im Plan überspringen, damit nichts hängen bleibt.
+ * Steht danach ein freies Spiel an und die Lobby ist offen, ist es gleich gewählt. Gibt zurück, was übersprungen wurde.
+ */
+export function skipBlockedPlan(s: RoomState, allowed: (gameId: string) => boolean): string[] {
+  const plan = s.evening?.plan;
+  if (!plan) return [];
+  const skipped: string[] = [];
+  while (plan.played < plan.games.length && !allowed(plan.games[plan.played])) skipped.push(plan.games[plan.played++]);
+  const next = plan.games[plan.played];
+  if (skipped.length && next && s.phase === "lobby" && next !== s.gameId && isGameId(next)) { s.gameId = next; s.options = defaultOptions(getGame(next).settings); }
+  return skipped;
 }
 
 /** Spielabend als Rangliste: meiste Siege zuerst */
@@ -475,11 +495,14 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       const game = prev.undo[prev.undo.length - 1];
       let evening = prev.evening;
       // Das Ende der Partie wird zurückgenommen: dann zählt sie auch nicht mehr für den Spielabend
-      if (evening?.log.length && prev.game && logic.isOver(prev.game) && !logic.isOver(game)) {
-        const last = evening.log[evening.log.length - 1];
+      // (nur wenn diese Partie dort steht – eine ungeplante Partie während eines Plans stand nie drin)
+      const last = evening?.log[evening.log.length - 1];
+      const counted = !!last && last.gameId === prev.gameId && (last.round === undefined || last.round === prev.round);
+      if (evening && last && counted && prev.game && logic.isOver(prev.game) && !logic.isOver(game)) {
         evening = { ...evening, log: evening.log.slice(0, -1), wins: { ...evening.wins } };
         for (const id of last.winners) evening.wins[id] = Math.max(0, (evening.wins[id] ?? 0) - 1);
-        if (evening.plan && evening.plan.played > 0) evening.plan = { ...evening.plan, played: evening.plan.played - 1 };
+        // Alte Einträge ohne Merker: wie bisher, sonst nur wenn die Partie den Plan weitergebracht hat
+        if (evening.plan && evening.plan.played > 0 && (last.plan || last.round === undefined)) evening.plan = { ...evening.plan, played: evening.plan.played - 1 };
       }
       return { ...prev, game, undo, undone: (prev.undone ?? 0) + 1, evening };
     }

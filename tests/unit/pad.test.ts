@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { F7State } from "@shared/games/glueckssieben/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
-import { planStatus, type RoomState } from "@shared/platform/room";
+import { planStatus, skipBlockedPlan, type RoomState } from "@shared/platform/room";
 import { act, game, roomWith } from "./helpers";
 
 function start(gameId: string, options: Record<string, string | number>, n = 3) {
@@ -104,5 +104,41 @@ describe("Spielabend", () => {
     r = act(act(r, { type: "toLobby" }), { type: "setPlan", games: null });
     expect(planStatus(r.evening)).toBeNull();
     expect(r.evening?.log).toHaveLength(2);
+  });
+
+  it("Partyabend: eine Partie außerhalb des Plans zählt weder für den Abend noch für den Plan, ihr Rückgängig nimmt nichts weg", () => {
+    let r = roomWith(["Anna", "Ben", "Cem"]);
+    r = act(r, { type: "setPlan", games: ["glueckssieben", "maumau"] });
+    for (const [key, value] of Object.entries({ mode: "table", target: 100 })) r = act(r, { type: "setOption", key, value });
+    r = act(r, { type: "start" });
+    r = finishGlueckssieben(r, [["p1", 120], ["p2", 0], ["p3", 0]]);
+    expect(planStatus(r.evening)).toMatchObject({ played: 1, next: "maumau" });
+    // Zwischendurch etwas anderes als geplant (nochmal Glückssieben statt Mau-Mau): zählt nicht
+    r = act(act(r, { type: "toLobby" }), { type: "selectGame", gameId: "glueckssieben" });
+    for (const [key, value] of Object.entries({ mode: "table", target: 100 })) r = act(r, { type: "setOption", key, value });
+    r = act(r, { type: "start" });
+    r = finishGlueckssieben(r, [["p1", 0], ["p2", 130], ["p3", 0]]);
+    expect(r.evening?.wins).toEqual({ p1: 1, p2: 0, p3: 0 });
+    expect(r.evening?.log).toHaveLength(1);
+    expect(planStatus(r.evening)?.played).toBe(1);
+    // Rückgängig des ungeplanten Endes: die geplante Partie davor bleibt gezählt
+    r = act(r, { type: "undo" });
+    expect(r.evening?.log).toHaveLength(1);
+    expect(r.evening?.wins.p1).toBe(1);
+    expect(planStatus(r.evening)?.played).toBe(1);
+  });
+
+  it("Partyabend: abgeschaltete Spiele im Plan werden übersprungen, das nächste freie steht bereit", () => {
+    let r = roomWith(["Anna", "Ben", "Cem"]);
+    r = act(r, { type: "setPlan", games: ["glueckssieben", "maumau", "fuenfwuerfel"] });
+    const s = structuredClone(r);
+    expect(skipBlockedPlan(s, (g) => g !== "glueckssieben" && g !== "maumau")).toEqual(["glueckssieben", "maumau"]);
+    expect(planStatus(s.evening)).toMatchObject({ played: 2, next: "fuenfwuerfel" });
+    expect(s.gameId).toBe("fuenfwuerfel");
+    // Alles frei: nichts passiert; alles gesperrt: Plan ist durch, nichts hängt
+    expect(skipBlockedPlan(structuredClone(r), () => true)).toEqual([]);
+    const all = structuredClone(r);
+    skipBlockedPlan(all, () => false);
+    expect(planStatus(all.evening)?.done).toBe(true);
   });
 });
