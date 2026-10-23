@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-kritzelpost",
+    date: "2026-10-23",
+    title: "Neues Partyspiel: Kritzelpost",
+    items: [
+      "Stille Post mit Bildern: Jeder schreibt einen Satz, der Nächste zeichnet ihn, der Übernächste beschreibt die Zeichnung – am Ende blättert ihr gemeinsam durchs Album.",
+      "Man sieht immer nur die Seite davor. Mit Uhr je Schritt und Modus „Eisbrecher“: alle beginnen mit demselben Satz.",
+    ],
+  },
+  {
     id: "2026-10-regelpakete",
     date: "2026-10-23",
     title: "Regeln mit einem Tipp",

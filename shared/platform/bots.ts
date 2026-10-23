@@ -252,6 +252,20 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       if (Math.random() < 0.3) add({ type: "award", to: pick([...ids, null]) });
       break;
     }
+    case "kritzelpost": {
+      ["timeUp", "done"].forEach((type) => add({ type }));
+      add({ type: "page", dir: 1 });
+      if (Math.random() < 0.1) add({ type: "page", dir: -1 });
+      // Bots schreiben einen festen Satz und kritzeln ein paar Striche (lokal für jeden Spieler einzeln)
+      for (const id of ids) {
+        const player = online ? undefined : id;
+        moves.push(...anyone(g({ type: "write", text: "Ein Hund fährt Fahrrad", player })).filter((m) => !online || m.actor === id));
+        moves.push(...anyone(g({ type: "done", player })).filter((m) => !online || m.actor === id));
+        const pts = Array.from({ length: 2 + Math.floor(Math.random() * 5) }, () => [Math.random(), Math.random()] as [number, number]);
+        moves.push(...anyone(g({ type: "stroke", c: Math.floor(Math.random() * 9), w: Math.floor(Math.random() * 4), p: encodePoints(pts), player })).filter((m) => !online || m.actor === id));
+      }
+      break;
+    }
     case "einenacht": {
       const ids2 = r.players.map((p) => p.id);
       ["ready", "startNight", "next", "nightDone", "closeVote"].forEach((type) => add({ type }));
