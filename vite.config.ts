@@ -34,7 +34,8 @@ function buildInfo() {
 }
 
 export default defineConfig({
-  define: { __BUILD__: JSON.stringify(buildInfo()) },
+  // Basispfad (z. B. „/spieltisch“ unter endlab.de) – ohne Angabe läuft die App an der Wurzel wie bisher
+  define: { __BUILD__: JSON.stringify(buildInfo()), __APP_BASE__: JSON.stringify(process.env.APP_BASE ?? "") },
   plugins: [react(), tailwindcss(), cloudflare({ remoteBindings: false }), precacheList()],
   resolve: {
     alias: {

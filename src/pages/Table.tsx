@@ -1,3 +1,4 @@
+import { withBase } from "@shared/platform/base";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Piece } from "@/games/schamlos/Board";
 import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Sparkles, Tv, Video, VideoOff } from "lucide-react";
@@ -51,7 +52,7 @@ const useArrowKeys = () => useEffect(() => enableSpatialNav(), []);
 const newPin = () => String(randomInt(900000) + 100000);
 
 /** Link zum Beitreten fürs Handy: die PIN steht hinter # und geht so nicht an den Server */
-const joinLink = (code: string, pin: string) => `${location.origin}/r/${code}#pin=${pin}`;
+const joinLink = (code: string, pin: string) => `${location.origin}${withBase(`/r/${code}`)}#pin=${pin}`;
 
 /**
  * Großer Tisch aufbauen: neuen Raum für diesen Bildschirm öffnen oder einen laufenden Raum verbinden.

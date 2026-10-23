@@ -6,7 +6,7 @@
   "assets": {
     // Alles außer /api/* liefert die React-App aus
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/spieltisch/api/*"]
   },
   "durable_objects": {
     "bindings": [

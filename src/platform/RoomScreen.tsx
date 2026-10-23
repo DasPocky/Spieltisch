@@ -1,3 +1,4 @@
+import { withBase } from "@shared/platform/base";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useVoiceNames } from "./realVoice";
 import { toast } from "sonner";
@@ -218,7 +219,7 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
   const here = new Set(Object.values(room.members ?? {}));
   const joined = group.members.filter((m) => here.has(m.id));
   const share = async () => {
-    const url = `${location.origin}/r/${code}`;
+    const url = `${location.origin}${withBase(`/r/${code}`)}`;
     try {
       const text = `🎲 ${gameName} im Spieltisch – kommt rein! Raumcode ${code}, die PIN gibt's vom Host.`;
       if (navigator.share) { await navigator.share({ title: group.name, text, url }); return; }

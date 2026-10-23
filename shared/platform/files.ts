@@ -3,6 +3,7 @@
  * Hochladen nur über die Verwaltung; ausgeliefert unter /api/asset/<Ordner>/<Name>.
  * (Fotos der Spieler liegen im selben Bucket unter „r/“ – siehe photo.ts.)
  */
+import { url } from "./base";
 import { photoType } from "./photo";
 
 export interface FileFolder { id: string; label: string; hint: string; ext: string[] }
@@ -41,4 +42,4 @@ export function fileType(bytes: Uint8Array, path = ""): string | null {
   return photoType(bytes);
 }
 
-export const assetUrl = (path: string) => `/api/asset/${path}`;
+export const assetUrl = (path: string) => url(`/api/asset/${path}`);

@@ -6,6 +6,7 @@
  * Bilder (weiße Schamlos-Karten, Decknamen-Wörter) liegen in R2 unter `k/<profil-hash>/<zufall>`; im Set steht nur
  * der Schlüssel als „bild:<schlüssel>“. Alle Texte werden hier geprüft – am Server und im Editor gleich.
  */
+import { url } from "./base";
 import type { Frage } from "../games/quiz/fragen/typen";
 
 export type SetKind = "schamlos" | "decknamen" | "zeichnen" | "quiz";
@@ -68,7 +69,7 @@ export const SET_IMAGE_MAX_BYTES = 150_000;
 export const SET_IMAGE_SIZE = 512;
 export const isImage = (t: string) => t.startsWith(IMG_PREFIX);
 export const imageKey = (t: string) => t.slice(IMG_PREFIX.length);
-export const setImageUrl = (t: string) => `/api/kartenbild/${imageKey(t)}`;
+export const setImageUrl = (t: string) => url(`/api/kartenbild/${imageKey(t)}`);
 
 export const BLANK = "___";
 

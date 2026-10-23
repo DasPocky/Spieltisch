@@ -1,4 +1,8 @@
 import { isGameId } from "../shared/games";
+import { stripBase } from "../shared/platform/base";
+
+/** Pfad der App unter endlab.de */
+const APP_PREFIX = "/spieltisch";
 import { PROFILE_ID_RE, sanitizeResult, TRANSFER_CODE_RE } from "../shared/platform/profile";
 import { GROUP_CODE_RE, randomCode } from "../shared/platform/group";
 import { accessFor } from "../shared/platform/access";
@@ -31,7 +35,15 @@ const notOwner = () => json({ error: "Dieses Profil gehört zu einem anderen Ger
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
-    const url = new URL(request.url);
+    let url = new URL(request.url);
+    // Unter endlab.de liegt die App unter /spieltisch: das Präfix weg, der Rest bleibt wie an der Wurzel
+    // (beide Formen gelten – alte Adressen, Vorschauen und Tests rufen ohne Präfix auf)
+    const logical = stripBase(url.pathname, APP_PREFIX);
+    if (logical !== url.pathname) {
+      url = new URL(url);
+      url.pathname = logical;
+      request = new Request(url, request);
+    }
     countRequest(env, ctx);
 
     // Freigaben für alle (ohne Geheimnisse)

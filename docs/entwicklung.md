@@ -130,6 +130,18 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
 
+## Basispfad (endlab.de/spieltisch)
+
+Die App kann unter einem Pfad laufen (Ziel: `endlab.de/spieltisch`, siehe [endlab.md](endlab.md)). Im Code bleiben alle Pfade **logisch** (`/r/CODE`, `/profil`, `/api/…`):
+
+- `shared/platform/base.ts`: `BASE` (beim Bauen aus `APP_BASE`, sonst leer), `withBase`/`stripBase`/`url`.
+- Anfragen an `/api/…` bekommen den Basispfad zentral beim Start (`installBase` in `src/lib/base.ts`) – neuer Code ruft einfach `fetch("/api/…")`.
+- Router und `navigate`/`goTab` schneiden ihn ab bzw. setzen ihn davor; geteilte Links (Raum, Gruppe, Übertragen, Fernseher, Begleit-Handy) mit `withBase`, Bild- und Datei-Adressen über `url()`.
+- Der Worker nimmt beide Formen an (`/spieltisch/api/…` und `/api/…`) und schneidet das Präfix am Anfang ab.
+- Service Worker: nur der eigene Bereich wird an- bzw. abgemeldet (unter endlab.de gibt es weitere).
+
+Feste Pfade wie `"/r/" + code` direkt in `location`/`history` vermeiden – immer über die Helfer.
+
 ## Versionen und Updates
 
 Es gibt vier getrennte Versionen:

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
 import { renamedGameId } from "@shared/games/renamed";
 import { SET_KINDS, type SetKind } from "@shared/platform/cardsets";
+import { stripBase, withBase } from "@shared/platform/base";
 import { LOCAL_GAME_KEY } from "@/lib/storage";
 
 /** Bereiche der Verwaltung: /admin, /admin/live … */
@@ -55,22 +56,23 @@ function parse(path: string): Route {
   const linked = game ? renamedGameId(game[1]) : null;
   if (linked && isGameId(linked)) {
     try { localStorage.setItem(LOCAL_GAME_KEY, linked); } catch { /* egal */ }
-    history.replaceState(null, "", "/lokal");
+    history.replaceState(null, "", withBase("/lokal"));
     return { name: "local" };
   }
   return { name: "home" };
 }
 
+/** Zu einem Pfad der App wechseln (logischer Pfad wie „/profil“ – der Basispfad kommt von selbst davor) */
 export function navigate(path: string, replace = false) {
-  if (replace) history.replaceState(null, "", path);
-  else history.pushState(null, "", path);
+  if (replace) history.replaceState(null, "", withBase(path));
+  else history.pushState(null, "", withBase(path));
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 export function useRoute(): Route {
-  const [route, setRoute] = useState(() => parse(location.pathname));
+  const [route, setRoute] = useState(() => parse(stripBase(location.pathname)));
   useEffect(() => {
-    const on = () => setRoute(parse(location.pathname));
+    const on = () => setRoute(parse(stripBase(location.pathname)));
     window.addEventListener("popstate", on);
     return () => window.removeEventListener("popstate", on);
   }, []);
