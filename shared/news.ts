@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-start-klarer",
+    date: "2026-10-23",
+    title: "Startseite klarer: veranstalten, mitspielen, Fernseher",
+    items: [
+      "„Raum veranstalten“ fragt, was ihr vorhabt: ein Spiel, ein Partyabend oder erst mal treffen – es bleibt immer derselbe Raum.",
+      "„Mitspielen“ mit Code und „Fernseher“ stehen direkt darunter; der Fernseher zeigt den Tisch, gespielt wird am Handy.",
+    ],
+  },
+  {
     id: "2026-10-kartensets",
     date: "2026-10-23",
     title: "Neu: eigene Kartensets",

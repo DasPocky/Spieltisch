@@ -1,7 +1,7 @@
 import { withBase } from "@shared/platform/base";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Copy, Download, Layers, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Layers, Loader2, ShieldCheck, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { parseProfileId, PROFILE_ID_RE, TRANSFER_CODE_RE, type ProfileStats } from "@shared/platform/profile";
 import type { Avatar as AvatarData } from "@shared/platform/group";
@@ -279,10 +279,7 @@ export function Profile() {
       </Card>
       <NavRow icon={Sparkles} title="Neuigkeiten" sub="Was sich am Spieltisch zuletzt getan hat" onClick={() => setNews(true)} data-testid="news-link" />
       <NewsSheet open={news} onOpenChange={setNews} />
-      {!admin && (
-        <button type="button" onClick={() => navigate("/admin")} data-testid="admin-link"
-          className="mx-auto -mt-1 rounded-full px-3 py-1 text-xs text-muted-foreground/70 outline-none focus-visible:ring-2 focus-visible:ring-ring">Verwaltung</button>
-      )}
+      {!admin && <NavRow icon={ShieldCheck} outline title="Verwaltung" sub="Nur mit Admin-Passwort" onClick={() => navigate("/admin")} data-testid="admin-link" />}
     </main>
   );
 }

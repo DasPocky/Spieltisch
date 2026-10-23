@@ -9,6 +9,8 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 **Adresse:** live unter `spieltisch.endlab.de` (Zwischenstand). Ziel `endlab.de/spieltisch` mit einer EndLab-App und einem Speicher – Bewertung, Entscheidungen und Reihenfolge in [endlab.md](endlab.md) ⏳.
 
+**Bedienung (Audit 22.10., C1)** ✅: Startseite mit einer Hauptaktion „Raum veranstalten“ (Ein Spiel · Partyabend · Erst mal treffen – immer derselbe Raum), darunter „Mitspielen“ und „Fernseher“ (Adresse für den Fernseher, „Dieses Gerät ist der Fernseher“); Partyabend öffnet gleich die Planung; in der Lobby „Zum Treffpunkt“ und „Partyabend“ als Buttons statt Textlinks; Verwaltung im Profil als sichtbarer Eintrag; Fernseher-Seite: „Neuen Raum mit Fernseher“ oder „Bestehenden Raum zeigen“ (kein neuer Raum). Test `tests/e2e/navigation.spec.ts`. Als Nächstes (C2/C3): Spielauswahl mit Suche, zweistufiger Partyplan, Regel-Voreinstellungen je Spiel.
+
 ## Phase 0 – Fundament: Updates, Versionen, Sicherheit 🔨
 
 | Punkt | Stand |

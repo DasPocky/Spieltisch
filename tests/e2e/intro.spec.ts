@@ -22,7 +22,7 @@ test("Erster Start: Willkommen, Name und Avatar, Rundgang – danach begrüßt d
   await intro.getByRole("button", { name: "Weiter" }).click();
   await expect(intro.getByRole("heading", { name: "Schön, dass du da bist, Mia!" })).toBeVisible();
   await intro.getByRole("button", { name: "Kurz zeigen" }).click();
-  await expect(intro.getByRole("heading", { name: "Raum öffnen, Code teilen" })).toBeVisible();
+  await expect(intro.getByRole("heading", { name: "Raum veranstalten, Code teilen" })).toBeVisible();
   await intro.getByRole("button", { name: "Weiter" }).click();
   await intro.getByRole("button", { name: "Weiter" }).click();
   await intro.getByRole("button", { name: "Los geht's" }).click();
@@ -43,7 +43,7 @@ test("Erster Start: Überspringen geht jederzeit, ein Raum-Link führt direkt in
   await page.goto("/");
   await page.getByRole("button", { name: "Überspringen" }).click();
   await expect(page.getByTestId("onboarding")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Raum öffnen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Raum veranstalten" })).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("onboarding")).toHaveCount(0);
 });

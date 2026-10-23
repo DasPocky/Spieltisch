@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Check, ChevronRight, PartyPopper, Trophy } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { accessFor, orderGames } from "@shared/platform/access";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Confirm } from "@/components/Confirm";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { PLAN_NOW_KEY } from "@/lib/createRoom";
 
 /** Spielabend für Ergebnis-Bildschirme (die Spiele kennen den Raum nicht – der Rahmen reicht ihn durch) */
 export const EveningContext = createContext<{ room: RoomState; isHost: boolean; dispatch: (a: RoomAction) => void } | null>(null);
@@ -18,24 +19,33 @@ export const EveningContext = createContext<{ room: RoomState; isHost: boolean; 
  * Spielabend: Siege über alle Partien in diesem Raum, auch über verschiedene Spiele.
  * Eine Zeile mit den Besten, antippen öffnet die ganze Liste.
  */
-export function EveningLine({ className }: { className?: string }) {
+export function EveningLine({ className, beside }: { className?: string; beside?: ReactNode }) {
   const ctx = useContext(EveningContext);
   const [open, setOpen] = useState(false);
   const [planning, setPlanning] = useState(false);
   const e = ctx?.room.evening;
   const plan = planStatus(e);
+  // Gerade als Partyabend veranstaltet: die Planung öffnet sich gleich
+  const fresh = !!ctx?.isHost && ctx.room.phase === "lobby" && !plan;
+  useEffect(() => {
+    if (!fresh) return;
+    try {
+      const want = sessionStorage.getItem(PLAN_NOW_KEY);
+      if (want && location.pathname.endsWith(`/r/${want}`)) { sessionStorage.removeItem(PLAN_NOW_KEY); setPlanning(true); }
+    } catch { /* egal */ }
+  }, [fresh]);
   if (!ctx) return null;
   // Noch nichts gespielt, kein Plan: der Host kann einen Partyabend planen
   if (!e?.log.length && !plan) {
-    if (!ctx.isHost || ctx.room.phase !== "lobby") return null;
+    if (!ctx.isHost || ctx.room.phase !== "lobby") return beside ? <div className={className}>{beside}</div> : null;
     return (
-      <>
-        <button type="button" onClick={() => setPlanning(true)} data-testid="plan-open"
-          className={cn("flex w-full items-center justify-center gap-2 rounded-xl py-1.5 text-sm font-semibold text-primary", className)}>
-          <PartyPopper className="size-4" />Partyabend planen · Gesamtwertung
-        </button>
+      <div className={cn("grid gap-2", beside && "grid-cols-2", className)}>
+        {beside}
+        <Button variant="outline" size="sm" onClick={() => setPlanning(true)} data-testid="plan-open" className="min-w-0" aria-label="Partyabend planen">
+          <PartyPopper className="size-4 text-primary" />Partyabend
+        </Button>
         <PlanSheet open={planning} onOpenChange={setPlanning} />
-      </>
+      </div>
     );
   }
   const ranking = eveningRanking(e);
@@ -45,6 +55,7 @@ export function EveningLine({ className }: { className?: string }) {
     : `Spielabend · ${e!.log.length} ${e!.log.length === 1 ? "Partie" : "Partien"}`;
   return (
     <>
+      {beside && <div className={cn("mb-2", className)}>{beside}</div>}
       <button type="button" onClick={() => setOpen(true)} data-testid="evening"
         className={cn("glass flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring", className)}>
         {plan ? <PartyPopper className="size-4 shrink-0 text-primary" /> : <Trophy className="size-4 shrink-0 text-primary" />}
