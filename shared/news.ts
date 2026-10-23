@@ -15,6 +15,12 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-dame-international",
+    date: "2026-10-23",
+    title: "Dame 10 × 10 nach internationalen Regeln",
+    items: ["Auf dem großen Brett gilt jetzt der Mehrheitsschlag: Wer schlagen kann, muss so viele Steine schlagen wie möglich."],
+  },
+  {
     id: "2026-10-regelpakete",
     date: "2026-10-23",
     title: "Regeln mit einem Tipp",
