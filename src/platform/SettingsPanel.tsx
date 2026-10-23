@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn, fmt } from "@/lib/utils";
 import { Segmented } from "./Segmented";
 import { DeckPicker } from "./cards/DeckPicker";
+import { kindOfGame } from "@shared/platform/cardsets";
+import { SetPicker, setsFor } from "./SetPicker";
 
 /** Spiele mit Spielhilfen (siehe useHints) */
 export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles"]);
@@ -30,7 +32,7 @@ function extraTitle(hints: boolean, entry: boolean) {
  */
 export function settingsSummary(room: RoomState, online: boolean): string {
   const logic = getGame(room.gameId);
-  const shown = logic.settings.filter((def) => !def.showIf || def.showIf(room.options));
+  const shown = logic.settings.filter((def) => (!def.showIf || def.showIf(room.options)) && def.key !== "own_only");
   const parts: string[] = [];
   for (const def of shown.filter((d) => !d.group)) {
     const v = room.options[def.key] ?? def.default;
@@ -44,6 +46,8 @@ export function settingsSummary(room: RoomState, online: boolean): string {
   }
   if (online && logic.turnBased && !logic.ownTurnsOnly && room.entry !== "turn") parts.push(room.entry === "all" ? "Alle tippen" : "Nur Host tippt");
   if (HINT_GAMES.has(room.gameId) && room.noHints) parts.push("Hilfen aus");
+  const own = setsFor(room, kindOfGame(room.gameId)).length;
+  if (own) parts.push(`${own} eigene${own === 1 ? "s Set" : " Sets"}${room.options.own_only === true ? " (nur eigene)" : ""}`);
   return parts.join(" · ") || "Wie im Original";
 }
 
@@ -59,7 +63,10 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
   const logic = getGame(room.gameId);
   const Extra = getGameUI(room.gameId).SettingsExtra;
   const playing = room.phase === "playing";
-  const shown = logic.settings.filter((def) => (!def.showIf || def.showIf(room.options)) && (!inGame || def.inGame));
+  const setKind = kindOfGame(room.gameId);
+  // „Nur eigene …“ steht bei der Auswahl der eigenen Sets
+  const ownDef = setKind ? logic.settings.find((d) => d.key === "own_only") : undefined;
+  const shown = logic.settings.filter((def) => (!def.showIf || def.showIf(room.options)) && (!inGame || def.inGame) && def !== ownDef);
   const entryChoice = online && logic.turnBased && !logic.ownTurnsOnly && !inGame;
   const hints = HINT_GAMES.has(room.gameId);
   const groups = inGame ? [] : [...new Set(shown.map((d) => d.group).filter((g): g is string => !!g))];
@@ -82,6 +89,12 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
         </div>
       )}
       {Extra && !inGame && <Extra room={room} editable={editable && !playing} online={online} dispatch={dispatch} />}
+      {setKind && !inGame && (
+        <SetPicker room={room} editable={editable && !playing} online={online} dispatch={dispatch}
+          ownToggle={ownDef && (!ownDef.showIf || ownDef.showIf(room.options)) ? (enough) => (
+            <Setting def={ownDef} value={room.options[ownDef.key]} editable={editable && !playing && enough} onChange={(value) => dispatch({ type: "setOption", key: ownDef.key, value })} />
+          ) : undefined} />
+      )}
       {/* Grundeinstellungen immer sichtbar, Gruppen einklappbar (Hausregeln anfangs zu) */}
       {shown.filter((def) => inGame || !def.group).map(setting)}
       {groups.map((g) => (

@@ -14,6 +14,9 @@ import { myName, reportLocal } from "@/lib/profile";
 import { linkLocalPlayer, localLinks, reportGroupResult } from "@/lib/group";
 import type { GroupPick } from "@/platform/PlayerManager";
 import { AccessGate } from "@/platform/AccessGate";
+import { kindOfGame } from "@shared/platform/cardsets";
+import { cachedContent } from "@/lib/cardsets";
+import { setsFor } from "@/platform/SetPicker";
 
 const isOver = (r: RoomState) => r.phase === "playing" && !!r.game && roomGame(r).isOver(r.game);
 
@@ -138,7 +141,14 @@ export function LocalGame() {
       me={null}
       online={null}
       dispatch={(a: RoomAction) => run((s) => {
-        const next = applyRoomAction(s, a, null);
+        // Start mit eigenen Kartensets: Inhalte aus dem Gerätespeicher (beim Wählen gemerkt) – nur für den Start
+        const kind = (a.type === "start" || a.type === "restart") && s.sets?.length ? kindOfGame(s.gameId) : null;
+        const wanted = kind ? setsFor(s, kind).map((x) => x.id) : [];
+        const withContent = kind ? { ...s, content: cachedContent(wanted, kind) } : s;
+        const missing = wanted.length - (withContent.content?.sets.length ?? 0);
+        if (missing > 0) queueMicrotask(() => toast(missing === 1 ? "Ein gewähltes Kartenset ist nicht auf diesem Gerät – wählt es in den Einstellungen neu." : `${missing} gewählte Kartensets sind nicht auf diesem Gerät – wählt sie in den Einstellungen neu.`));
+        const next = applyRoomAction(withContent, a, null);
+        delete next.content;
         // Anderes Spiel gewählt: Standard-Einstellungen übernehmen
         return next.gameId !== s.gameId ? applyDefaults(next, siteConfigNow()?.defaults) : next;
       })}

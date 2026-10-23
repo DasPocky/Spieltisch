@@ -1,4 +1,3 @@
-import { isImage } from "@shared/platform/cardsets";
 import type { RoomState } from "@shared/platform/room";
 import { TEAM_NAME, type CNState, type Color } from "@shared/games/decknamen/logic";
 import type { TableModel } from "../../platform/table/model";
@@ -16,6 +15,6 @@ export function decknamenTable(room: RoomState): TableModel | null {
       const m = s.members[p.id];
       return [p.id, m?.team ? `${TEAM_NAME[m.team]}${m.chief ? " · Chef" : ""}` : "schaut zu"];
     })),
-    words5: { cols: 5, title, cells: s.words.map((w, i) => ({ text: isImage(w) ? "🖼" : w, tone: s.revealed[i] ? TONE[s.key[i]] : undefined })) },
+    words5: { cols: 5, title, cells: s.words.map((w, i) => ({ text: w, tone: s.revealed[i] ? TONE[s.key[i]] : undefined })) },
   };
 }

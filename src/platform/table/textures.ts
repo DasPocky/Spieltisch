@@ -9,6 +9,7 @@ import type { EinsCard } from "@shared/games/eins/logic";
 import { SuitIcon, SUIT_COLOR } from "@/platform/cards/PlayingCard";
 import { EinsCardView } from "@/games/eins/Board";
 import { cardText } from "@shared/games/schamlos/cards";
+import { isImage, setImageUrl } from "@shared/platform/cardsets";
 import type { TableDeck, TableModel } from "./model";
 import { pointXY } from "@shared/games/muehle/logic";
 import { layout } from "@/games/ludo/geometry";
@@ -117,6 +118,23 @@ function wrapText(g: CanvasRenderingContext2D, text: string, maxW: number, maxH:
   return { lines: [text], size: 20 };
 }
 
+/** Bild einer Bildkarte (eigene Kartensets) – null, wenn es nicht lädt (dann bleibt die Karte leer statt hängen) */
+function loadPicture(t: string): Promise<HTMLImageElement | null> {
+  return new Promise((ok) => {
+    const img = new Image();
+    const timer = setTimeout(() => ok(null), 8000);
+    img.onload = () => { clearTimeout(timer); ok(img); };
+    img.onerror = () => { clearTimeout(timer); ok(null); };
+    img.src = setImageUrl(t);
+  });
+}
+/** Bild eingepasst (ganz sichtbar, mittig) in den Kasten */
+function drawPicture(g: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  const s = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+  const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
+  g.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+}
+
 /** Schamlos-Karte: schwarz mit Lücken bzw. weiß mit Antwort, große Schrift – lesbar aus der Entfernung */
 async function drawWords(id: string): Promise<HTMLCanvasElement> {
   await document.fonts?.ready;
@@ -126,7 +144,13 @@ async function drawWords(id: string): Promise<HTMLCanvasElement> {
   const black = id.includes("-b-");
   g.fillStyle = black ? "#16171b" : "#fdfdfb"; rounded(g, 0, 0, w, h, 6 * u); g.fill();
   const raw = cardText(id);
-  const text = (raw.startsWith("bild:") ? "🖼" : raw).replaceAll("___", "______");
+  if (isImage(raw)) {
+    const img = await loadPicture(raw);
+    if (img) drawPicture(g, img, 9 * u, 9 * u, w - 18 * u, h - 34 * u);
+    brand(g, u, h, "rgba(0,0,0,.35)");
+    return c;
+  }
+  const text = raw.replaceAll("___", "______");
   const { lines, size } = wrapText(g, text, w - 18 * u, h - 34 * u, 15 * u);
   g.fillStyle = black ? "#ffffff" : "#16171b"; g.textAlign = "left"; g.textBaseline = "top";
   lines.forEach((l, i) => g.fillText(l, 9 * u, 9 * u + i * size * 1.18));
@@ -207,6 +231,14 @@ async function drawWordCard(text: string, tone: string | null): Promise<HTMLCanv
   const w = c.width, h = c.height, u = w / 100;
   const word = text.toUpperCase();
   g.fillStyle = tone ?? "#f3ead8"; rounded(g, 0, 0, w, h, 6 * u); g.fill();
+  // Bildkarte: das Bild statt des Worts (aufgedeckt halb durchsichtig über der Teamfarbe)
+  if (isImage(text)) {
+    const img = await loadPicture(text);
+    g.globalAlpha = tone ? 0.45 : 1;
+    if (img) drawPicture(g, img, 5 * u, 5 * u, w - 10 * u, h - 10 * u);
+    g.globalAlpha = 1;
+    return c;
+  }
   g.fillStyle = tone ? "rgba(255,255,255,.16)" : "#fffaf0"; rounded(g, 5 * u, 34 * u, w - 10 * u, 28 * u, 3 * u); g.fill();
   g.textAlign = "center"; g.textBaseline = "middle";
   g.fillStyle = tone ? "#ffffff" : "#2b2118";

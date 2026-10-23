@@ -88,6 +88,7 @@ Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff
 
 - `r/<Raum-Objekt-ID>/` – Fotos der Spieler; jeder Raum löscht seine Fotos, wenn er endet.
 - `assets/bilder/` – Bilder für Karten und Bühne
+- `k/<Kurz-Hash des Profils>/<Zufall>` – Bildkarten aus eigenen Kartensets (JPEG/PNG/WebP, höchstens 150 KB, im Gerät auf 512 px verkleinert). Ausgeliefert unter `/api/kartenbild/…` mit `nosniff` und `default-src 'none'`. **Schutz nur über den nicht erratbaren Namen** – wer die Adresse kennt (z. B. ein Mitspieler), kann das Bild laden; privat heißt hier „nicht auffindbar“, nicht „zugriffsgeschützt“. Gelöscht wird beim Ändern oder Löschen des Sets, und nur Bilder aus dem eigenen Ordner. Hochgeladene, aber nie gespeicherte Bilder bleiben liegen (Aufräumen offen, siehe Roadmap).
 
 Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`.
 

@@ -249,7 +249,7 @@ function Over({ room, game: s, isHost, dispatch }: BoardProps<CNState, CNAction>
       subtitle={s.assassin ? `Team ${TEAM_NAME[w ? other(w) : s.turn]} hat den Attentäter erwischt.` : "hat alle Agenten gefunden."}>
       {s.mode === "app" && (
         <div className="grid grid-cols-5 gap-1 text-[0.6rem] font-bold">
-          {s.words.map((word, i) => <span key={i} className="truncate rounded px-0.5 py-1" style={{ background: COLOR[s.key[i]], color: TEXT_ON[s.key[i]] }}>{isImage(word) ? "🖼" : word}</span>)}
+          {s.words.map((word, i) => <span key={i} className="truncate rounded px-0.5 py-1" style={{ background: COLOR[s.key[i]], color: TEXT_ON[s.key[i]] }}>{isImage(word) ? <img src={setImageUrl(word)} alt="Bildkarte" className="mx-auto h-5 object-contain" /> : word}</span>)}
         </div>
       )}
     </ResultScreen>

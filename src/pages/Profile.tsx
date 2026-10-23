@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Copy, Download, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Layers, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { parseProfileId, PROFILE_ID_RE, TRANSFER_CODE_RE, type ProfileStats } from "@shared/platform/profile";
 import type { Avatar as AvatarData } from "@shared/platform/group";
@@ -212,6 +212,12 @@ export function Profile() {
           </ul>
         )}
         <Button variant="secondary" onClick={() => goTab("/gruppe")}>{groups.codes.length ? "Gruppen verwalten" : "Gruppe erstellen oder beitreten"}</Button>
+      </Card>
+
+      <Card className="grid gap-2.5" data-testid="sets-card">
+        <h2 className="flex items-center gap-2 font-bold"><Layers className="size-4 text-ice" />Meine Kartensets</h2>
+        <p className="text-sm text-muted-foreground">Eigene Karten, Wörter und Fragen für Schamlos, Decknamen, Zeichnen & Raten und das Quiz.</p>
+        <Button variant="secondary" onClick={() => navigate("/profil/sets")} data-testid="sets-open">Kartensets verwalten</Button>
       </Card>
 
       <Card className="grid gap-2.5" data-testid="transfer">
