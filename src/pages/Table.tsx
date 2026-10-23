@@ -1,4 +1,6 @@
+import { withBase } from "@shared/platform/base";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Piece } from "@/games/schamlos/Board";
 import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Sparkles, Tv, Video, VideoOff } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
@@ -50,7 +52,7 @@ const useArrowKeys = () => useEffect(() => enableSpatialNav(), []);
 const newPin = () => String(randomInt(900000) + 100000);
 
 /** Link zum Beitreten fürs Handy: die PIN steht hinter # und geht so nicht an den Server */
-const joinLink = (code: string, pin: string) => `${location.origin}/r/${code}#pin=${pin}`;
+const joinLink = (code: string, pin: string) => `${location.origin}${withBase(`/r/${code}`)}#pin=${pin}`;
 
 /**
  * Großer Tisch aufbauen: neuen Raum für diesen Bildschirm öffnen oder einen laufenden Raum verbinden.
@@ -84,16 +86,16 @@ export function TableSetup() {
       <div className="grid w-full max-w-4xl gap-6 md:grid-cols-2">
         <section className="paper-note flex flex-col p-7">
           <span className="flex items-center gap-2 text-sm font-bold text-[#8a6f4e]"><Tv className="size-4" />Großer Tisch</span>
-          <h1 className="mt-2 text-3xl font-bold">Neuen Tisch aufbauen</h1>
-          <p className="mt-2 text-[#6b5640]">Dieser Bildschirm zeigt den Tisch. Mitspielen geht mit dem Handy: QR-Code scannen, Namen eingeben, fertig.</p>
+          <h1 className="mt-2 text-3xl font-bold">Neuen Raum mit Fernseher</h1>
+          <p className="mt-2 text-[#6b5640]">Dieser Bildschirm zeigt den Tisch, er spielt selbst nicht mit. Mitspielen geht mit dem Handy: QR-Code scannen, Namen eingeben, fertig.</p>
           <div className="min-h-6 flex-1" />
           <Button size="lg" className="h-13 rounded-2xl text-base" disabled={busy || !online} onClick={() => void open()} data-testid="table-new">
-            {busy ? <Loader2 className="size-5 animate-spin" /> : <Tv className="size-5" />}Tisch aufbauen
+            {busy ? <Loader2 className="size-5 animate-spin" /> : <Tv className="size-5" />}Raum eröffnen
           </Button>
         </section>
         <section className="paper-note p-7">
-          <h2 className="text-2xl font-bold">Laufenden Raum zeigen</h2>
-          <p className="mt-2 text-[#6b5640]">Ihr spielt schon? Raumcode und PIN eingeben – der Tisch erscheint hier.</p>
+          <h2 className="text-2xl font-bold">Bestehenden Raum zeigen</h2>
+          <p className="mt-2 text-[#6b5640]">Ihr seid schon in einem Raum? Raumcode und PIN eingeben – der Tisch erscheint hier, es entsteht kein neuer Raum.</p>
           <form className="mt-5 grid gap-3" onSubmit={(e) => { e.preventDefault(); connect(); }}>
             <div className="grid gap-1.5">
               <Label htmlFor="tc">Raumcode</Label>
@@ -624,7 +626,7 @@ function WordsScreen({ words, name, count }: { words: NonNullable<TableModel["wo
             <li key={i} data-testid="studio-answer"
               className={cn("flex flex-col justify-center gap-[1.5cqh] rounded-[2cqh] bg-[#fbf7ef] p-[3cqh] text-[4.8cqh] leading-snug font-semibold text-[#141018] transition-[transform,opacity]",
                 words.pick !== null && (words.pick === i ? "scale-105 ring-[0.8cqh] ring-[#ff7a59]" : "opacity-45"))}>
-              <span>{fillIn(words.prompt, cards).map((p, k) => <span key={k} className={p.fill ? "text-[#c2492e]" : "opacity-60"}>{p.text}</span>)}</span>
+              <span>{fillIn(words.prompt, cards).map((p, k) => <span key={k} className={p.fill ? "text-[#c2492e]" : "opacity-60"}><Piece text={p.text} className="max-h-[22cqh]" /></span>)}</span>
               {words.pick === i && words.pickBy && <span className="text-[4cqh] font-bold text-[#c2492e]">Punkt für {name(words.pickBy)}!</span>}
             </li>
           ))}

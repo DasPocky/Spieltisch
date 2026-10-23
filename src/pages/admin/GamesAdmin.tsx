@@ -132,7 +132,7 @@ function DefaultsSheet({ gameId, onClose }: { gameId: string | null; onClose: ()
           <SheetDescription>Gilt für neue Räume und lokale Spiele, sofort. In der Lobby lässt sich alles weiter ändern.</SheetDescription>
         </SheetHeader>
         <div className="overflow-y-auto px-5 pt-3 pb-4">
-          {logic.settings.length ? <SettingsPanel key={id} room={room} editable online={false} dispatch={dispatch} title={false} />
+          {logic.settings.length ? <SettingsPanel key={id} room={room} editable online={false} dispatch={dispatch} title={false} presets={false} />
             : <p className="text-muted-foreground">{logic.info.name} hat keine Einstellungen.</p>}
         </div>
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-border px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">

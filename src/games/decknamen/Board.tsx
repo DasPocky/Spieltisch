@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isImage, setImageUrl } from "@shared/platform/cardsets";
 import { Eye, KeyRound, Shuffle } from "lucide-react";
 import { countLabel, notReady, other, remaining, TEAM_NAME, UNLIMITED, type CNAction, type CNState, type Color, type Team } from "@shared/games/decknamen/logic";
 import type { Player } from "@shared/platform/types";
@@ -96,12 +97,14 @@ function Teams({ room, game: s, me, isHost, act }: BoardProps<CNState, CNAction>
 function WordCard({ word, color, revealed, hint, onClick, disabled }: { word: string; color: Color; revealed: boolean; hint: boolean; onClick?: () => void; disabled: boolean }) {
   const shown = revealed || hint;
   return (
-    <button type="button" onClick={onClick} disabled={disabled} aria-label={`${word}${revealed ? ` (${color === "neutral" ? "Passant" : color === "attentaeter" ? "Attentäter" : TEAM_NAME[color]})` : ""}`}
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={`${isImage(word) ? "Bildkarte" : word}${revealed ? ` (${color === "neutral" ? "Passant" : color === "attentaeter" ? "Attentäter" : TEAM_NAME[color]})` : ""}`}
       className={cn("relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-lg px-0.5 text-center font-bold leading-tight shadow outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
         "text-[clamp(0.55rem,2.9vw,0.95rem)] [hyphens:auto]", !revealed && "bg-paper text-paper-ink", revealed && "opacity-90", !disabled && !revealed && "active:scale-95")}
       style={revealed ? { background: COLOR[color], color: TEXT_ON[color] } : hint && shown ? { boxShadow: `inset 0 0 0 3px ${COLOR[color]}`, background: color === "attentaeter" ? "#3a3a40" : undefined, color: color === "attentaeter" ? "#fff" : undefined } : undefined}
       lang="de">
-      <span className={cn("break-words", revealed && "line-through decoration-2 opacity-80")}>{word}</span>
+      {isImage(word)
+        ? <img src={setImageUrl(word)} alt="Bildkarte" className={cn("max-h-full w-full rounded object-contain", revealed && "opacity-50")} />
+        : <span className={cn("break-words", revealed && "line-through decoration-2 opacity-80")}>{word}</span>}
     </button>
   );
 }
@@ -246,7 +249,7 @@ function Over({ room, game: s, isHost, dispatch }: BoardProps<CNState, CNAction>
       subtitle={s.assassin ? `Team ${TEAM_NAME[w ? other(w) : s.turn]} hat den Attentäter erwischt.` : "hat alle Agenten gefunden."}>
       {s.mode === "app" && (
         <div className="grid grid-cols-5 gap-1 text-[0.6rem] font-bold">
-          {s.words.map((word, i) => <span key={i} className="truncate rounded px-0.5 py-1" style={{ background: COLOR[s.key[i]], color: TEXT_ON[s.key[i]] }}>{word}</span>)}
+          {s.words.map((word, i) => <span key={i} className="truncate rounded px-0.5 py-1" style={{ background: COLOR[s.key[i]], color: TEXT_ON[s.key[i]] }}>{isImage(word) ? <img src={setImageUrl(word)} alt="Bildkarte" className="mx-auto h-5 object-contain" /> : word}</span>)}
         </div>
       )}
     </ResultScreen>

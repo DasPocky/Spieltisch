@@ -4,6 +4,7 @@ import { DurableObject } from "cloudflare:workers";
 import { addResult, emptyStats, MAX_PROFILE_GROUPS, PROFILE_ID_RE, PROFILE_KEY_RE, TRANSFER_MS, type ProfileStats, type RecentGame } from "../shared/platform/profile";
 import { GROUP_CODE_RE, sanitizeAvatar } from "../shared/platform/group";
 import { cleanName } from "../shared/platform/room";
+import { MAX_SETS_PER_PROFILE, SetError, toInfo, type CardSet, type CardSetInfo, type SetStatus } from "../shared/platform/cardsets";
 import { Env, settingsOf } from "./env";
 import { hashPin } from "./http";
 
@@ -55,6 +56,39 @@ export class ProfileStore extends DurableObject<Env> {
     s.groups = member ? [code, ...rest].slice(0, MAX_PROFILE_GROUPS) : rest;
     this.stats = s;
     await this.save();
+  }
+
+  // ----- Eigene Kartensets (je Set ein Eintrag „set:<id>“) -----
+
+  async sets(): Promise<CardSetInfo[]> {
+    const all = await this.ctx.storage.list<CardSet>({ prefix: "set:" });
+    return [...all.values()].map((s) => toInfo(s)).sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async set(id: string): Promise<CardSet | null> {
+    return (await this.ctx.storage.get<CardSet>(`set:${id}`)) ?? null;
+  }
+
+  /** Neu anlegen oder ändern – schon bekannte Sets behalten ihren Besitzer */
+  async putSet(set: CardSet): Promise<CardSet> {
+    const old = await this.set(set.id);
+    if (!old && (await this.ctx.storage.list({ prefix: "set:" })).size >= MAX_SETS_PER_PROFILE) throw new SetError(`Höchstens ${MAX_SETS_PER_PROFILE} Sets pro Profil.`);
+    await this.ctx.storage.put(`set:${set.id}`, set);
+    await this.ctx.storage.setAlarm(Date.now() + PROFILE_TTL_MS);
+    return set;
+  }
+
+  async deleteSet(id: string): Promise<CardSet | null> {
+    const old = await this.set(id);
+    if (old) await this.ctx.storage.delete(`set:${id}`);
+    return old;
+  }
+
+  /** Die Verwaltung hat entschieden (frei / abgelehnt mit Grund) */
+  async setStatus(id: string, status: SetStatus, note?: string): Promise<void> {
+    const old = await this.set(id);
+    if (!old) return;
+    await this.ctx.storage.put(`set:${id}`, { ...old, status, note: note || undefined });
   }
 
   // ----- Geräteschlüssel: wer das Profil nutzen darf (die ID allein reicht nicht) -----

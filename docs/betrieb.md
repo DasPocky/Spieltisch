@@ -1,5 +1,9 @@
 # Betrieb
 
+## Adressen
+
+Live unter **https://spieltisch.endlab.de** (eigene Domain des Workers, `routes` in `wrangler.jsonc`). Die Zone `endlab.de` liegt bei Cloudflare (Nameserver von INWX dorthin delegiert, DNSSEC an, SSL „Full (strict)“, HTTPS erzwungen). `endlab.de` zeigt eine kleine Startseite (eigener Worker `endlab-start`, `www` leitet dorthin). Die alte Adresse `spieltisch.bjoern-ef9.workers.dev` bleibt erreichbar, weil Profile und Geräteschlüssel im Browser je Adresse liegen; Vorschauen je Zweig laufen weiter über workers.dev.
+
 ## Deployment
 
 Cloudflare Workers Builds baut jeden Push auf `main` (Build `npm run build`, Deploy-Befehl `node scripts/release.mjs`). Das Skript
@@ -88,6 +92,7 @@ Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff
 
 - `r/<Raum-Objekt-ID>/` – Fotos der Spieler; jeder Raum löscht seine Fotos, wenn er endet.
 - `assets/bilder/` – Bilder für Karten und Bühne
+- `k/<Kurz-Hash des Profils>/<Zufall>` – Bildkarten aus eigenen Kartensets (JPEG/PNG/WebP, höchstens 150 KB, im Gerät auf 512 px verkleinert). Ausgeliefert unter `/api/kartenbild/…` mit `nosniff` und `default-src 'none'`. **Schutz nur über den nicht erratbaren Namen** – wer die Adresse kennt (z. B. ein Mitspieler), kann das Bild laden; privat heißt hier „nicht auffindbar“, nicht „zugriffsgeschützt“. Gelöscht wird beim Ändern oder Löschen des Sets, und nur Bilder aus dem eigenen Ordner. Hochgeladene, aber nie gespeicherte Bilder bleiben liegen (Aufräumen offen, siehe Roadmap).
 
 Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Typ und Inhalt werden geprüft, höchstens 25 MB). Ausgeliefert unter `/api/asset/<Ordner>/<Name>`.
 
@@ -95,7 +100,7 @@ Dateien unter `assets/` lädt die Verwaltung hoch (Einstellungen → Dateien; Ty
 
 Ansagen spielt das Gerät aus Bausteinen ab: feste Satzteile je Stimmung, Namen und Zahlen einzeln (`shared/platform/voice.ts`, `src/platform/realVoice.ts`). Jeder Baustein liegt als `stimme/<Prüfsumme>.mp3` in R2, die Liste aller in `stimme/index.json`. Fehlt ein Baustein, meldet das Gerät ihn (`POST /api/voice/missing`, geprüft und je Adresse begrenzt) und spricht diesmal mit der Gerätestimme.
 
-Die GitHub-Aktion **Stimme** (`.github/workflows/stimme.yml`, stündlich, bei Änderungen an den Ansagen und per Knopf) erzeugt mit Thorsten (deutsche Neuronalstimme mit Stimmungen, CC0, über sherpa-onnx) alle festen Satzteile (`scripts/stimme/saetze.ts`), die Vornamen aus `scripts/stimme/namen.txt`, die Zahlen 0–300 und die gemeldeten Lücken (`GET /api/release/voice`), lädt neue Bausteine über `PUT /api/release/files/stimme/…` hoch, schreibt das Verzeichnis neu und meldet Erledigtes (`POST /api/release/voice/done`). Braucht das GitHub-Secret `RELEASE_SECRET` (gleicher Wert wie das Worker-Secret); andere Adresse als workers.dev über die Variable `SITE_URL`. Lokal: `SITE_URL=http://localhost:5199 RELEASE_SECRET=… MODEL_DIR=… python3 scripts/stimme/erzeugen.py`.
+Die GitHub-Aktion **Stimme** (`.github/workflows/stimme.yml`, stündlich, bei Änderungen an den Ansagen und per Knopf) erzeugt mit Thorsten (deutsche Neuronalstimme mit Stimmungen, CC0, über sherpa-onnx) alle festen Satzteile (`scripts/stimme/saetze.ts`), die Vornamen aus `scripts/stimme/namen.txt`, die Zahlen 0–300 und die gemeldeten Lücken (`GET /api/release/voice`), lädt neue Bausteine über `PUT /api/release/files/stimme/…` hoch, schreibt das Verzeichnis neu und meldet Erledigtes (`POST /api/release/voice/done`). Braucht das GitHub-Secret `RELEASE_SECRET` (gleicher Wert wie das Worker-Secret); andere Adresse als spieltisch.endlab.de über die Variable `SITE_URL`. Lokal: `SITE_URL=http://localhost:5199 RELEASE_SECRET=… MODEL_DIR=… python3 scripts/stimme/erzeugen.py`.
 
 Klang: mittleres Tempo, etwas höher als das Modell (Werte `STYLE` in `erzeugen.py`). Aussprache: `scripts/stimme/aussprache.txt` (Schreibung = Sprechweise, z. B. `Kevin = Kevvin`; prüfen ohne Hören mit `scripts/stimme/lautschrift.py`); `stimme/quelle.json` merkt sich je Baustein Text und Sprechweise – ändert sich eine Zeile, erzeugt der nächste Lauf die betroffenen Bausteine neu. Klingt ein Wort falsch, genügt eine Zeile dort.
 

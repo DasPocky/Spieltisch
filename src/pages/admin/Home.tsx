@@ -12,6 +12,7 @@ import { goSection, SectionTile } from "./nav";
 import { useDev } from "@/lib/dev";
 import { StatusBar } from "./Status";
 import { Tile } from "./shared";
+import { useWaitingSets } from "./CardSetsAdmin";
 
 /** Offene Räume, alle 15 Sekunden frisch – für Admin-Start und Live */
 export function useAdminRooms() {
@@ -36,6 +37,7 @@ export function AdminHome() {
   const { config, api, save } = useAdmin();
   const { rooms, load } = useAdminRooms();
   const devOn = useDev().on;
+  const waitingSets = useWaitingSets();
   const [stats, setStats] = useState<SiteStats | null>(null);
   useEffect(() => { api<SiteStats>("/api/admin/stats").then(setStats).catch(() => { /* ohne Zahlen */ }); }, [api]);
 
@@ -84,6 +86,7 @@ export function AdminHome() {
         <SectionTile id="live" info={rooms ? `${rooms.length} ${rooms.length === 1 ? "Raum" : "Räume"} · ${online ?? 0} online` : undefined} />
         <SectionTile id="statistik" info={stats ? `${sumStats(stats.totals).started + sumStats(stats.totals).local} Partien seit Beginn` : undefined} />
         <SectionTile id="spiele" info={`${Object.keys(GAMES).length - off - coded} frei${coded ? ` · ${coded} mit Code` : ""}${off ? ` · ${off} aus` : ""}`} />
+        <SectionTile id="kartensets" info={waitingSets ? `${waitingSets} ${waitingSets === 1 ? "Vorschlag wartet" : "Vorschläge warten"}` : undefined} />
         <SectionTile id="leute" />
         <SectionTile id="einstellungen" info={`Look: ${LOOKS.find((l) => l.id === config.look)?.name ?? config.look}`} />
         {devOn && <SectionTile id="entwickler" />}

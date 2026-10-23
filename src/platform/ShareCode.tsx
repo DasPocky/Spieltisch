@@ -1,10 +1,11 @@
+import { withBase } from "@shared/platform/base";
 import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 /** Raumcode groß anzeigen und Link teilen. Die PIN gehört bewusst nicht in den Link. */
 export function ShareCode({ code, gameName }: { code: string; gameName?: string }) {
-  const url = `${location.origin}/r/${code}`;
+  const url = `${location.origin}${withBase(`/r/${code}`)}`;
   const share = async () => {
     try {
       // Kurz und klar: wer einlädt, was gespielt wird, wie man reinkommt – die PIN sagt der Host selbst

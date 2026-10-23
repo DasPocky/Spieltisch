@@ -67,10 +67,12 @@ export interface SiteFeatures {
   ai: boolean;
   /** Stirnraten: Das Stirn-Handy filmt die Runde (bleibt auf dem Gerät) – standardmäßig an */
   recording: boolean;
+  /** Eigene Kartensets: Spieler legen Karten, Wörter und Fragen an und wählen sie in der Lobby – standardmäßig an */
+  sets: boolean;
 }
 
 export const DEFAULT_LIMITS: SiteLimits = { roomHours: 168, maxPlayers: 20, maxRooms: 0 };
-export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true, local: false, offline: false, ai: false, recording: true };
+export const DEFAULT_FEATURES: SiteFeatures = { online: true, call: true, groups: true, profiles: true, local: false, offline: false, ai: false, recording: true, sets: true };
 export const DEFAULT_ARCHIVE_DAYS = 30;
 export const MAX_BANNER = 200;
 

@@ -1,6 +1,7 @@
+import { withBase } from "@shared/platform/base";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Copy, Download, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Layers, Loader2, ShieldCheck, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { parseProfileId, PROFILE_ID_RE, TRANSFER_CODE_RE, type ProfileStats } from "@shared/platform/profile";
 import type { Avatar as AvatarData } from "@shared/platform/group";
@@ -26,6 +27,7 @@ import { NewsSheet } from "@/platform/WhatsNew";
 import { InstallCard } from "@/platform/InstallHint";
 import { goTab } from "@/platform/shell/AppShell";
 import { useAdminDevice } from "@/lib/admin";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";
@@ -54,6 +56,7 @@ export function Profile() {
   const file = useRef<HTMLInputElement>(null);
   const groups = useMyGroups();
   const admin = useAdminDevice();
+  const config = useSiteConfig();
   const otherCode = parseProfileId(other);
   const otherOk = TRANSFER_CODE_RE.test(otherCode) || PROFILE_ID_RE.test(otherCode);
   // Aus dem Menü einer Partie gekommen: zurück dorthin
@@ -214,15 +217,21 @@ export function Profile() {
         <Button variant="secondary" onClick={() => goTab("/gruppe")}>{groups.codes.length ? "Gruppen verwalten" : "Gruppe erstellen oder beitreten"}</Button>
       </Card>
 
+      {config?.features.sets !== false && <Card className="grid gap-2.5" data-testid="sets-card">
+        <h2 className="flex items-center gap-2 font-bold"><Layers className="size-4 text-ice" />Meine Kartensets</h2>
+        <p className="text-sm text-muted-foreground">Eigene Karten, Wörter und Fragen für Schamlos, Decknamen, Zeichnen & Raten und das Quiz.</p>
+        <Button variant="secondary" onClick={() => navigate("/profil/sets")} data-testid="sets-open">Kartensets verwalten</Button>
+      </Card>}
+
       <Card className="grid gap-2.5" data-testid="transfer">
         <h2 className="flex items-center gap-2 font-bold"><Smartphone className="size-4 text-ice" />Auf neues Handy übertragen</h2>
         <p className="text-sm text-muted-foreground">Statistik, Name, Avatar und Gruppen ziehen mit um. Der Code gilt 15 Minuten und nur einmal – nicht weitergeben.</p>
         {transfer ? (
           <div className="grid gap-2.5">
-            <QrCode value={`${location.origin}/profil/uebernehmen/${transfer.code}`} className="mx-auto w-48" label="QR-Code zum Übertragen" />
+            <QrCode value={`${location.origin}${withBase(`/profil/uebernehmen/${transfer.code}`)}`} className="mx-auto w-48" label="QR-Code zum Übertragen" />
             <div className="flex items-center gap-2">
               <code className="flex-1 rounded-lg bg-navy-950/60 px-3 py-2 text-center font-mono text-xl tracking-[0.2em]" data-testid="transfer-code">{formatTransfer(transfer.code)}</code>
-              <Button variant="secondary" size="icon" aria-label="Link kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/profil/uebernehmen/${transfer.code}`); toast("Link kopiert"); }}><Copy /></Button>
+              <Button variant="secondary" size="icon" aria-label="Link kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}${withBase(`/profil/uebernehmen/${transfer.code}`)}`); toast("Link kopiert"); }}><Copy /></Button>
             </div>
             <p className="text-center text-xs text-muted-foreground">Mit dem neuen Handy scannen oder dort im Profil eingeben · gültig bis {clock(transfer.until)} Uhr</p>
           </div>
@@ -270,10 +279,7 @@ export function Profile() {
       </Card>
       <NavRow icon={Sparkles} title="Neuigkeiten" sub="Was sich am Spieltisch zuletzt getan hat" onClick={() => setNews(true)} data-testid="news-link" />
       <NewsSheet open={news} onOpenChange={setNews} />
-      {!admin && (
-        <button type="button" onClick={() => navigate("/admin")} data-testid="admin-link"
-          className="mx-auto -mt-1 rounded-full px-3 py-1 text-xs text-muted-foreground/70 outline-none focus-visible:ring-2 focus-visible:ring-ring">Verwaltung</button>
-      )}
+      {!admin && <NavRow icon={ShieldCheck} outline title="Verwaltung" sub="Nur mit Admin-Passwort" onClick={() => navigate("/admin")} data-testid="admin-link" />}
     </main>
   );
 }

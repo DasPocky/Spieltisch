@@ -3,9 +3,11 @@
  * Wird vom Durable Object (online) und vom Browser (lokal) gleichermaßen genutzt.
  * Spielzüge reicht der Raum nach der Rechteprüfung an das jeweilige Spiel weiter.
  */
+import { MAX_SET_NAME, MAX_SETS_IN_GAME, SET_ID_RE, SET_KINDS, type GameContent, type SetKind } from "./cardsets";
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { renameGameFields, renamedGameId } from "../games/renamed";
 import { legacyGame } from "../legacy";
+import { presetsOf, presetValues } from "./presets";
 import { sanitizeAvatar, type Avatar } from "./avatar";
 import { sanitizeAccess, type RoomAccess } from "./directory";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
@@ -46,6 +48,10 @@ export interface RoomState {
   /** Avatar je Spieler (online setzt ihn der Server beim Beitritt, lokal das Gerät) */
   /** Treffpunkt-Ansicht in der Lobby (nur online) */
   meet?: boolean;
+  /** Gewählte eigene Kartensets (Kennung, Name, Art) – gelten für Spiele der passenden Art */
+  sets?: RoomSet[];
+  /** Inhalte der gewählten eigenen Kartensets für den nächsten Start – bleibt auf Server bzw. Gerät, geht nie an Mitspieler */
+  content?: GameContent;
   avatars?: Record<string, Avatar>;
   /** Spieler → Mitglieds-ID in seiner Gruppe (öffentlich innerhalb der Gruppe, keine Profil-ID) */
   members?: Record<string, string>;
@@ -133,6 +139,7 @@ export type RoomAction =
   | { type: "toLobby" }
   | { type: "selectGame"; gameId: string }
   | { type: "setOption"; key: string; value: OptionValue }
+  | { type: "setPreset"; id: string }
   | { type: "setEntry"; mode: EntryMode }
   | { type: "setHostTools"; on: boolean }
   | { type: "setHints"; on: boolean }
@@ -154,7 +161,12 @@ export type RoomAction =
   | { type: "resetEvening" }
   /** Host: Partyabend planen (Spiele der Reihe nach) oder beenden (null) */
   | { type: "setPlan"; games: string[] | null }
+  /** Host: eigene Kartensets für die nächsten Partien wählen (leer = nur eingebaute Karten) */
+  | { type: "setSets"; sets: RoomSet[] }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
+
+/** Ein gewähltes Kartenset im Raum (ohne Inhalt) */
+export interface RoomSet { id: string; name: string; kind?: SetKind }
 
 export function cleanName(name: unknown): string {
   return String(name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
@@ -274,7 +286,7 @@ export function playerLimits(room: RoomState): { min: number; max: number; note?
 }
 
 function context(room: RoomState, actorId: string | null): GameContext {
-  return { players: room.players, hostId: room.hostId, actorId, options: room.options, now: Date.now(), round: room.round };
+  return { players: room.players, hostId: room.hostId, actorId, options: room.options, now: Date.now(), round: room.round, content: room.content };
 }
 
 export function addPlayer(prev: RoomState, p: { id: string; name: string }): RoomState {
@@ -352,6 +364,21 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (next && next !== s.gameId && isGameId(next)) { s.gameId = next; s.options = defaultOptions(getGame(next).settings); }
       return s;
     }
+    case "setSets": {
+      hostOnly();
+      if (!Array.isArray(a.sets) || a.sets.length > MAX_SETS_IN_GAME * SET_KINDS.length) throw new GameError(`Höchstens ${MAX_SETS_IN_GAME} Sets.`);
+      const seen = new Set<string>();
+      const sets = a.sets.filter((x) => x && SET_ID_RE.test(String(x.id)) && !seen.has(String(x.id)) && seen.add(String(x.id))).map((x): RoomSet => {
+        const kind = SET_KINDS.find((k) => k.id === x.kind)?.id;
+        return { id: String(x.id), name: String(x.name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_SET_NAME) || "Eigenes Set", ...(kind ? { kind } : {}) };
+      });
+      // Je Art höchstens sechs (Sets ohne Art zählen für jede)
+      if (SET_KINDS.some((k) => sets.filter((x) => !x.kind || x.kind === k.id).length > MAX_SETS_IN_GAME)) throw new GameError(`Höchstens ${MAX_SETS_IN_GAME} Sets je Spiel.`);
+      const s = structuredClone(prev);
+      if (sets.length) s.sets = sets; else delete s.sets;
+      delete s.content;
+      return s;
+    }
     case "setPlan": {
       hostOnly();
       const s = structuredClone(prev);
@@ -378,6 +405,15 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       if (s.phase === "playing" && s.game && logic.onOptionsChanged) {
         s.game = logic.onOptionsChanged(s.game, prev.options, context(s, actorId));
       }
+      return s;
+    }
+    case "setPreset": {
+      hostOnly();
+      if (prev.phase === "playing") throw new GameError("Das lässt sich nur in der Lobby ändern.");
+      const p = presetsOf(logic).find((x) => x.id === a.id);
+      if (!p) throw new GameError("Diese Regeln gibt es nicht.");
+      const s = structuredClone(prev);
+      for (const [k, v] of Object.entries(presetValues(logic, p))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
       return s;
     }
     case "setEntry": {
@@ -510,7 +546,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
 /** Was eine Person vom Raum sehen darf (versteckte Informationen entfernt das Spiel selbst). */
 export function viewRoom(full: RoomState, viewerId: string | null): RoomState {
   // Frühere Spielstände enthalten verdeckte Karten – Spieler erfahren nur, wie viele es gibt
-  const { undo, ...rest } = full;
+  const { undo, content: _content, ...rest } = full;
   const room: RoomState = { ...rest, undoCount: undo?.length ?? 0 };
   const logic = roomGame(room);
   if (!room.game || !logic.view) return room;
