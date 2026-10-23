@@ -2,7 +2,7 @@
 
 Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zusammen spielen – jeder am eigenen Handy, mit Chat, Sprache und Video direkt am Tisch.
 
-**Live:** https://spieltisch.bjoern-ef9.workers.dev/
+**Live:** https://spieltisch.endlab.de/
 
 <p align="center"><img src="docs/images/banner.png" alt="Spieltisch – Startseite, Fünf Würfel mit 3D-Würfeln und Eins!"></p>
 

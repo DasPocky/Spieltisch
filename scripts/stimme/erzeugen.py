@@ -11,7 +11,7 @@ Stimmungen mit dem Modell „emotional“. Etwas schneller und höher als das Mo
 Aussprache: aussprache.txt ersetzt vor dem Sprechen ganze Wörter (Englisches, Abkürzungen, Vornamen). Was mit welcher
 Sprechweise erzeugt wurde, steht in stimme/quelle.json – ändert sich die Sprechweise, wird der Baustein neu erzeugt.
 
-Umgebung: SITE_URL (Standard: workers.dev), RELEASE_SECRET, MODEL_DIR (Modell „high“), EMO_DIR (Modell „emotional“),
+Umgebung: SITE_URL (Standard: spieltisch.endlab.de), RELEASE_SECRET, MODEL_DIR (Modell „high“), EMO_DIR (Modell „emotional“),
 SAETZE (Pfad zu saetze.json).
 """
 import hashlib
@@ -28,7 +28,7 @@ import urllib.request
 import sherpa_onnx
 import soundfile as sf
 
-SITE = os.environ.get("SITE_URL", "https://spieltisch.bjoern-ef9.workers.dev").rstrip("/")
+SITE = os.environ.get("SITE_URL", "https://spieltisch.endlab.de").rstrip("/")
 SECRET = os.environ.get("RELEASE_SECRET", "")
 MODEL = os.environ.get("MODEL_DIR", "vits-piper-de_DE-thorsten-high")
 EMO = os.environ.get("EMO_DIR", "vits-piper-de_DE-thorsten_emotional-medium")

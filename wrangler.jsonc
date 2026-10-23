@@ -24,6 +24,11 @@
     { "tag": "v4", "new_sqlite_classes": ["GroupStore"] }
   ],
   "observability": { "enabled": true },
+  // Eigene Domain (DNS-Eintrag und Zertifikat legt Cloudflare selbst an). Die workers.dev-Adresse bleibt erreichbar:
+  // Profile und Geräteschlüssel liegen im Browser je Adresse – wer dort spielt, zieht per Übertragungs-Code um.
+  "routes": [{ "pattern": "spieltisch.endlab.de", "custom_domain": true }],
+  "workers_dev": true,
+  "preview_urls": true,
   // Nicht geheim und deshalb hier statt im Dashboard: dort gesetzte Variablen löscht jeder Deploy.
   // Das Gegenstück REALTIME_APP_TOKEN bleibt ein Secret (wrangler secret put).
   // CF_ACCOUNT_ID und WORKER_NAME braucht das Freischalten wartender Updates (mit dem Secret DEPLOY_TOKEN).
