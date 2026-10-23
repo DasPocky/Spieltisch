@@ -342,6 +342,10 @@ export const ludo: GameLogic<LudoState, LudoAction> = {
   turnBased: true,
   joinMidGame: false,
   playerLimits: (o) => ({ min: 2, max: rulesOf(o).board, note: rulesOf(o).board === 4 ? "5–6 Spieler: Brett auf „6 Farben“ stellen" : undefined }),
+  presets: [
+    { id: "streng", label: "Streng", hint: "erst mit 6, schlagen Pflicht", options: { start: "home", mustHit: true } },
+    { id: "locker", label: "Locker", hint: "1 raus, springen", options: { outOn1: true, goalJump: true } },
+  ],
   settings: [
     {
       key: "dice", label: "Würfel", type: "choice", default: "app",

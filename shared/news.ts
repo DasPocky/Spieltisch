@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-regelpakete",
+    date: "2026-10-23",
+    title: "Regeln mit einem Tipp",
+    items: [
+      "In den Einstellungen steht oben „Regeln“: Standard wie im Original oder ein Paket wie „Kurz“ – bei Eins!, Alles oder nichts, Mau-Mau, Ludo und Dame.",
+      "Wer einzelne Hausregeln ändert, sieht „Eigene“ mit der Zahl der Änderungen. „Standard“ bringt alles zurück.",
+    ],
+  },
+  {
     id: "2026-10-auswahl-suche",
     date: "2026-10-23",
     title: "Spiele schneller finden, Partyabend in zwei Schritten",

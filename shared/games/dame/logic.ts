@@ -153,6 +153,10 @@ export const dame = duelGame<DameState, DameAction>({
     duration: "15–30 Min.",
   },
   version: 1,
+  presets: [
+    { id: "englisch", label: "Englisch", hint: "kurze Damen", options: { flying: false, back: false } },
+    { id: "frei", label: "Ohne Zwang", hint: "freiwillig schlagen", options: { capture: "free" } },
+  ],
   settings: [
     {
       key: "size", label: "Brett", type: "choice", default: "8",

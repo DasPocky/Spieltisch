@@ -219,6 +219,9 @@ export const maumau: GameLogic<MauMauState, MauMauAction> = {
   turnBased: true,
   ownTurnsOnly: true,
   joinMidGame: false,
+  presets: [
+    { id: "mehr", label: "Mehr Regeln", hint: "9, Ass, Bube", options: { reverse9: true, againA: true, unterOnUnter: true } },
+  ],
   settings: [
     {
       key: "mode", label: "Karten", type: "choice", default: "app",

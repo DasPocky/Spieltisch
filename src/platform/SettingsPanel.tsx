@@ -12,6 +12,7 @@ import { DeckPicker } from "./cards/DeckPicker";
 import { kindOfGame } from "@shared/platform/cardsets";
 import { SetPicker, setsFor } from "./SetPicker";
 import { siteConfigNow } from "@/hooks/useSiteConfig";
+import { changedRules, currentPreset, presetKeys, presetsOf } from "@shared/platform/presets";
 
 /** Spiele mit Spielhilfen (siehe useHints) */
 export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles"]);
@@ -41,8 +42,13 @@ export function settingsSummary(room: RoomState, online: boolean): string {
     else if (def.type === "number") parts.push(`${def.label} ${fmt(Number(v))}`);
     else if (v === true && def.label.length <= 22) parts.push(def.label);
   }
+  // Ein Regelpaket wie „Kurz“ steht mit Namen da, seine Hausregeln zählen nicht extra
+  const preset = currentPreset(logic, room.options);
+  const named = preset && preset !== "standard" ? logic.presets?.find((p) => p.id === preset) : undefined;
+  if (named) parts.push(`Regeln: ${named.label}`);
+  const covered = new Set(named ? presetKeys(logic) : []);
   for (const g of new Set(shown.map((d) => d.group).filter((x): x is string => !!x))) {
-    const n = shown.filter((d) => d.group === g && changedFrom(d, room.options[d.key])).length;
+    const n = shown.filter((d) => d.group === g && !covered.has(d.key) && changedFrom(d, room.options[d.key])).length;
     if (n) parts.push(/Hausregel/.test(g) ? `${n} ${n === 1 ? "Hausregel" : "Hausregeln"}` : `${g}: ${n} geändert`);
   }
   if (online && logic.turnBased && !logic.ownTurnsOnly && room.entry !== "turn") parts.push(room.entry === "all" ? "Alle tippen" : "Nur Host tippt");
@@ -57,9 +63,11 @@ export function settingsSummary(room: RoomState, online: boolean): string {
  * Ändern darf nur der Host (lokal: jeder), alle anderen sehen sie.
  * `inGame`: nur was sich während der Partie ändern lässt (fürs Menü), ohne Gruppen.
  */
-export function SettingsPanel({ room, editable, online, dispatch, className, inGame = false, title = true }: {
+export function SettingsPanel({ room, editable, online, dispatch, className, inGame = false, title = true, presets = true }: {
   room: RoomState; editable: boolean; online: boolean; dispatch: (a: RoomAction) => void; className?: string;
   inGame?: boolean; title?: boolean;
+  /** Regelpakete zeigen (nicht in der Verwaltung: dort zählen die einzelnen Standards) */
+  presets?: boolean;
 }) {
   const logic = getGame(room.gameId);
   const Extra = getGameUI(room.gameId).SettingsExtra;
@@ -96,6 +104,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
             <Setting def={ownDef} value={room.options[ownDef.key]} editable={editable && !playing && enough} onChange={(value) => dispatch({ type: "setOption", key: ownDef.key, value })} />
           ) : undefined} />
       )}
+      {presets && !inGame && <Presets room={room} editable={editable && !playing} dispatch={dispatch} />}
       {/* Grundeinstellungen immer sichtbar, Gruppen einklappbar (Hausregeln anfangs zu) */}
       {shown.filter((def) => inGame || !def.group).map(setting)}
       {groups.map((g) => (
@@ -113,6 +122,28 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
         </Group>
       )}
     </section>
+  );
+}
+
+/**
+ * Regeln auf einen Blick: Standard, die Pakete des Spiels (z. B. „Kurz“) und – wenn einzelne Hausregeln
+ * geändert sind – „Eigene“ mit der Zahl der Änderungen. Ein Tipp setzt alle Regeln des Pakets.
+ */
+function Presets({ room, editable, dispatch }: { room: RoomState; editable: boolean; dispatch: (a: RoomAction) => void }) {
+  const logic = getGame(room.gameId);
+  // Pakete, deren Regeln gerade gar nicht gelten (z. B. Hausregeln bei echten Karten), bleiben weg
+  const visible = new Set(logic.settings.filter((d) => !d.showIf || d.showIf(room.options)).map((d) => d.key));
+  const current = currentPreset(logic, room.options);
+  const all = presetsOf(logic).filter((p) => p.id === "standard" || p.id === current || Object.keys(p.options).some((k) => visible.has(k)));
+  if (all.length < 2 && current) return null;
+  const n = changedRules(logic, room.options);
+  const options = [...all.map((p) => ({ value: p.id, label: p.label, hint: p.hint })),
+    ...(current ? [] : [{ value: "eigene", label: "Eigene", hint: `${n} ${n === 1 ? "Änderung" : "Änderungen"}` }])];
+  return (
+    <div data-testid="presets">
+      <Segmented label="Regeln" value={current ?? "eigene"} editable={editable} options={options}
+        onChange={(id) => { if (id !== "eigene") dispatch({ type: "setPreset", id }); }} />
+    </div>
   );
 }
 
