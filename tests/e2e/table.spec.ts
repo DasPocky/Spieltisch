@@ -385,6 +385,7 @@ test("Partyabend: Host plant zwei Spiele, nach der Partie ist das nächste dran,
     await anna.getByTestId("plan-open").click();
     await anna.getByTestId("plan-vier").click();
     await anna.getByTestId("plan-maumau").click();
+    await anna.getByTestId("plan-next").click();
     await shot(anna, "92-partyabend-planen");
     await anna.getByTestId("plan-start").click();
     await expect(screen.getByTestId("table-plan")).toContainText("Vier in einer Reihe → Mau-Mau");

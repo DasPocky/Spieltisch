@@ -19,6 +19,7 @@ import { savedAccess, siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig
 import { accessFor, orderGames } from "@shared/platform/access";
 import { GAME_CATEGORIES } from "@shared/platform/types";
 import { IconTile } from "./Logo";
+import { filterGames, GameSearch, NoGames, NO_FILTER } from "./GameSearch";
 import { Leave, MenuSheet, type MenuProps } from "./MenuSheet";
 import { PlayerManager, type GroupPick } from "./PlayerManager";
 import { Avatar, AvatarContext, roomAvatars } from "./Avatar";
@@ -261,7 +262,7 @@ function Lobby(props: Props & { isHost: boolean }) {
         <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
           playLabel={isHost ? "Spiel wählen" : "Zur Spiel-Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} onPhoto={props.onPhoto} />
         {isHost && (
-          <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online
+          <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online players={room.players.length}
             onPick={(id) => {
               setPick(false);
               void loadGameUI(id).then(() => { dispatch({ type: "selectGame", gameId: id }); dispatch({ type: "setMeet", on: false }); }, () => toast("Das Spiel lädt gerade nicht – kurz Netz prüfen."));
@@ -339,7 +340,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
         )}
       </div>
 
-      <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online={!!code}
+      <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online={!!code} players={room.players.length}
         onPick={(id) => { setPick(false); void loadGameUI(id).then(() => dispatch({ type: "selectGame", gameId: id }), () => toast("Das Spiel lädt gerade nicht – kurz Netz prüfen.")); }} />
 
       <Sheet open={settings} onOpenChange={setSettings}>
@@ -361,10 +362,14 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
 }
 
 /** „Was spielt ihr?“ – Spielauswahl der Lobby, lokal wie online */
-function GamePicker({ open, onOpenChange, gameIds, current, online, onPick }: {
-  open: boolean; onOpenChange: (o: boolean) => void; gameIds: string[]; current: string; online: boolean; onPick: (id: string) => void;
+function GamePicker({ open, onOpenChange, gameIds, current, online, players, onPick }: {
+  open: boolean; onOpenChange: (o: boolean) => void; gameIds: string[]; current: string; online: boolean; players: number; onPick: (id: string) => void;
 }) {
   const locked = (id: string) => { const c = siteConfigNow(); return !!c && accessFor(c, id) === "code" && !savedAccess(); };
+  const [filter, setFilter] = useState(NO_FILTER);
+  // Jedes Öffnen beginnt ohne Suche – auch wenn das Blatt nach der Wahl von außen geschlossen wurde
+  useEffect(() => { if (open) setFilter(NO_FILTER); }, [open]);
+  const shown = filterGames(gameIds, filter, players);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
@@ -372,10 +377,12 @@ function GamePicker({ open, onOpenChange, gameIds, current, online, onPick }: {
           <SheetTitle>Was spielt ihr?</SheetTitle>
           <SheetDescription>{online ? "Alle bleiben im Raum – das Spiel kannst du jederzeit in der Lobby wechseln." : "Die Spieler bleiben – das Spiel kannst du jederzeit in der Lobby wechseln."}</SheetDescription>
         </SheetHeader>
-        <div className="overflow-y-auto px-5 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <GameSearch value={filter} onChange={setFilter} players={players} className="shrink-0 px-5 pt-1" />
+        <div className="overflow-y-auto px-5 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]" data-testid="pick-list">
+          {!shown.length && <NoGames onReset={() => setFilter(NO_FILTER)} />}
           {/* Nach Art gruppiert – bei vielen Spielen findet man so schneller */}
           {GAME_CATEGORIES.map((cat) => {
-            const ids = gameIds.filter((id) => getGame(id).info.category === cat);
+            const ids = shown.filter((id) => getGame(id).info.category === cat);
             if (!ids.length) return null;
             return (
               <section key={cat} aria-label={cat} className="mt-3 grid gap-1.5">

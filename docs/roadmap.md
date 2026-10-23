@@ -9,7 +9,9 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 
 **Adresse:** live unter `spieltisch.endlab.de` (Zwischenstand). Ziel `endlab.de/spieltisch` mit einer EndLab-App und einem Speicher – Bewertung, Entscheidungen und Reihenfolge in [endlab.md](endlab.md) ⏳.
 
-**Bedienung (Audit 22.10., C1)** ✅: Startseite mit einer Hauptaktion „Raum veranstalten“ (Ein Spiel · Partyabend · Erst mal treffen – immer derselbe Raum), darunter „Mitspielen“ und „Fernseher“ (Adresse für den Fernseher, „Dieses Gerät ist der Fernseher“); Partyabend öffnet gleich die Planung; in der Lobby „Zum Treffpunkt“ und „Partyabend“ als Buttons statt Textlinks; Verwaltung im Profil als sichtbarer Eintrag; Fernseher-Seite: „Neuen Raum mit Fernseher“ oder „Bestehenden Raum zeigen“ (kein neuer Raum). Test `tests/e2e/navigation.spec.ts`. Als Nächstes (C2/C3): Spielauswahl mit Suche, zweistufiger Partyplan, Regel-Voreinstellungen je Spiel.
+**Bedienung (Audit 22.10., C1)** ✅: Startseite mit einer Hauptaktion „Raum veranstalten“ (Ein Spiel · Partyabend · Erst mal treffen – immer derselbe Raum), darunter „Mitspielen“ und „Fernseher“ (Adresse für den Fernseher, „Dieses Gerät ist der Fernseher“); Partyabend öffnet gleich die Planung; in der Lobby „Zum Treffpunkt“ und „Partyabend“ als Buttons statt Textlinks; Verwaltung im Profil als sichtbarer Eintrag; Fernseher-Seite: „Neuen Raum mit Fernseher“ oder „Bestehenden Raum zeigen“ (kein neuer Raum). Test `tests/e2e/navigation.spec.ts`. Als Nächstes (C3): Regel-Voreinstellungen je Spiel.
+
+**Spielauswahl und Partyplan (C2)** ✅: Suche in der Spielauswahl (Name, Beschreibung, Art; Umlaute egal) und Schalter „Für N“ (nur Spiele, die zur Spielerzahl passen), „Kein Spiel passt dazu“ mit Ausweg; jedes Öffnen beginnt ohne Suche. Partyabend in zwei Schritten: wählen (zwei lesbare Spalten, Suche) → Reihenfolge (Pfeile, Entfernen, Gesamtdauer, Hinweis „ab N Spielern“), „Zurück“ behält den Entwurf, Abbrechen verwirft ihn. Tests `tests/unit/gameSearch.test.ts`, `tests/e2e/auswahl.spec.ts`. Offen: Favoriten.
 
 ## Phase 0 – Fundament: Updates, Versionen, Sicherheit 🔨
 
