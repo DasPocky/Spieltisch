@@ -10,7 +10,7 @@ import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type S
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import { BOT_PREFIX } from "../shared/platform/bots";
-import { isBotLevel, playBot } from "../shared/platform/botSkill";
+import { botDelay, isBotLevel, playBot } from "../shared/platform/botSkill";
 import { shuffle } from "../shared/platform/random";
 import { fromBase64, PHOTO_MAX_B64, PHOTO_MAX_BYTES, photoType } from "../shared/platform/photo";
 import {
@@ -1131,7 +1131,7 @@ export class GameRoom extends DurableObject<Env> {
       void (async () => {
         for (const id of shuffle(this.room?.state.bots ?? [])) if (await this.botStep(id)) return;
       })();
-    }, 900 + Math.floor(Math.random() * 900));
+    }, botDelay(s));
   }
 
   /** Ein Zug eines Bots wie eine normale Aktion: speichern, zählen, allen schicken. false, wenn er nichts tun kann. */
