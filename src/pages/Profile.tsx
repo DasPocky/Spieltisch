@@ -1,3 +1,4 @@
+import { withBase } from "@shared/platform/base";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Copy, Download, Layers, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
@@ -227,10 +228,10 @@ export function Profile() {
         <p className="text-sm text-muted-foreground">Statistik, Name, Avatar und Gruppen ziehen mit um. Der Code gilt 15 Minuten und nur einmal – nicht weitergeben.</p>
         {transfer ? (
           <div className="grid gap-2.5">
-            <QrCode value={`${location.origin}/profil/uebernehmen/${transfer.code}`} className="mx-auto w-48" label="QR-Code zum Übertragen" />
+            <QrCode value={`${location.origin}${withBase(`/profil/uebernehmen/${transfer.code}`)}`} className="mx-auto w-48" label="QR-Code zum Übertragen" />
             <div className="flex items-center gap-2">
               <code className="flex-1 rounded-lg bg-navy-950/60 px-3 py-2 text-center font-mono text-xl tracking-[0.2em]" data-testid="transfer-code">{formatTransfer(transfer.code)}</code>
-              <Button variant="secondary" size="icon" aria-label="Link kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/profil/uebernehmen/${transfer.code}`); toast("Link kopiert"); }}><Copy /></Button>
+              <Button variant="secondary" size="icon" aria-label="Link kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}${withBase(`/profil/uebernehmen/${transfer.code}`)}`); toast("Link kopiert"); }}><Copy /></Button>
             </div>
             <p className="text-center text-xs text-muted-foreground">Mit dem neuen Handy scannen oder dort im Profil eingeben · gültig bis {clock(transfer.until)} Uhr</p>
           </div>

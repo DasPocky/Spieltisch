@@ -1,3 +1,4 @@
+import { withBase } from "@shared/platform/base";
 import { useState } from "react";
 import { Bot, Loader2, Minus, Plus, WifiOff } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
@@ -71,7 +72,7 @@ export function DevSection() {
         <Confirm title="Lokale Daten zurücksetzen?" description="Name, Spielstände, Einstellungen und Gruppen auf diesem Gerät sind weg. Die Verwaltung bleibt angemeldet, das Profil auf dem Server bleibt." confirmLabel="Zurücksetzen"
           onConfirm={() => {
             wipeLocal(KEEP);
-            location.href = "/";
+            location.href = withBase("/");
           }}>
           <Button variant="ghost" size="sm" className="justify-self-start text-destructive">Lokale Daten zurücksetzen</Button>
         </Confirm>

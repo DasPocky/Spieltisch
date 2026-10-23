@@ -3,6 +3,7 @@
  * Quadrat; der Server prüft Größe und Inhalt (echte JPEG-, PNG- oder WebP-Datei) und speichert unter einem nicht
  * erratbaren Namen. Wer im Raum ist, sieht den Namen im Spielstand; endet der Raum, werden seine Fotos gelöscht.
  */
+import { url } from "./base";
 
 /** Höchstgröße einer Datei – ein verkleinertes Quadrat hat meist 10–30 KB */
 export const PHOTO_MAX_BYTES = 120_000;
@@ -37,4 +38,4 @@ export function fromBase64(s: string): Uint8Array | null {
 }
 
 /** Adresse, unter der das Foto ausgeliefert wird */
-export const photoUrl = (key: string) => `/api/photo/${key}`;
+export const photoUrl = (key: string) => url(`/api/photo/${key}`);
