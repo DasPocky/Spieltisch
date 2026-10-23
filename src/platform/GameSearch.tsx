@@ -1,6 +1,7 @@
 import { Search, Users, X } from "lucide-react";
 import { getGame } from "@shared/games";
 import { fitsPlayers, gameMatches } from "@/lib/gameSearch";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface GameFilter { query: string; fit: boolean }
@@ -41,7 +42,7 @@ export function NoGames({ onReset }: { onReset: () => void }) {
   return (
     <div className="grid justify-items-center gap-2 py-6 text-center text-sm text-muted-foreground" data-testid="game-none">
       Kein Spiel passt dazu.
-      <button type="button" onClick={onReset} className="rounded-lg px-3 py-1.5 font-semibold text-primary underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">Alle Spiele zeigen</button>
+      <Button variant="secondary" onClick={onReset}>Alle Spiele zeigen</Button>
     </div>
   );
 }

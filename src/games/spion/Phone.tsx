@@ -84,7 +84,7 @@ export function Phone({ room, game: s, me, isHost, act }: P & { me: string }) {
           <Chips list={order.filter((id) => id !== me)} players={players} label="Wen fragst du?" disabled={(id) => id === s.prevAsker && order.length > 2}
             onPick={(id) => act({ type: "ask", to: id })} />
         ) : playing && (s.prevAsker !== me || order.length <= 2) ? (
-          <button type="button" className="mt-1.5 text-sm font-semibold text-ice" onClick={() => act({ type: "ask", to: me })}>Ich wurde gefragt – jetzt frage ich</button>
+          <Button variant="secondary" size="sm" className="mt-1.5" onClick={() => act({ type: "ask", to: me })}>Ich wurde gefragt – jetzt frage ich</Button>
         ) : null}
       </Asker>
       <PlaceList s={s} mode={playing ? "cross" : "read"} />

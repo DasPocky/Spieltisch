@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ListPlus, Shuffle, SkipForward, Video, X } from "lucide-react";
+import { Check, Download, ListPlus, Shuffle, SkipForward, Video, X } from "lucide-react";
 import { CAT_BY_ID, catName, CUSTOM, STYLE_BY_ID, wordText } from "@shared/games/stirnraten/cards";
 import { choosable, deadlineOf, explainers, teamName, type StirnState } from "@shared/games/stirnraten/logic";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { nameOf, Panel } from "@/games/werwolf/parts";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
@@ -230,7 +230,7 @@ function PlayScreen({ room, game: s, act }: P) {
       </div>
       <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold opacity-70">
         <span>{live ? "↺ nach hinten: weiter" : "◀ tippen: weiter"}</span>
-        <button type="button" className="rounded-full px-2 py-1 underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring" onClick={() => act({ type: "stop" })}>Zug beenden</button>
+        <Button variant="outline" size="sm" className="rounded-full ring-current/50" onClick={() => act({ type: "stop" })}>Zug beenden</Button>
         <span>{live ? "nicken: richtig ↻" : "tippen: richtig ▶"}</span>
       </div>
     </div>
@@ -309,7 +309,7 @@ function Review({ room, game: s, act, steer, forehead }: P & { steer: boolean; f
               <SheetHeader><SheetTitle>Video der Runde</SheetTitle><SheetDescription>Nur auf diesem Gerät – nichts wird hochgeladen.</SheetDescription></SheetHeader>
               <div className="grid gap-3 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
                 <video src={video.url} controls playsInline className="max-h-[55vh] w-full rounded-xl bg-black" />
-                <a href={video.url} download={`stirnraten-${s.turn + 1}.${video.type.includes("mp4") ? "mp4" : "webm"}`} className="text-center text-sm font-semibold text-ice underline">Video speichern</a>
+                <a href={video.url} download={`stirnraten-${s.turn + 1}.${video.type.includes("mp4") ? "mp4" : "webm"}`} className={buttonVariants({ variant: "secondary" })}><Download />Video speichern</a>
               </div>
             </SheetContent>
           </Sheet>

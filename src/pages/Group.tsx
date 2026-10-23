@@ -230,7 +230,7 @@ function GroupHome({ group, active }: { group: GroupView; active: boolean }) {
         )}
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>{group.members.length} {group.members.length === 1 ? "Mitglied" : "Mitglieder"} · Code <b className="font-semibold tracking-wider text-foreground" data-testid="group-code">{group.code}</b></span>
-          {active ? <ActiveBadge /> : <button type="button" className="font-semibold text-primary" onClick={() => setActive(group.code)}>Als aktive Gruppe nutzen</button>}
+          {active ? <ActiveBadge /> : <Button variant="secondary" size="sm" onClick={() => setActive(group.code)}>Als aktive Gruppe nutzen</Button>}
         </div>
       </div>
 

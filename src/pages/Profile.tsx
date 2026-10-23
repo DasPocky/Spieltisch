@@ -146,7 +146,7 @@ export function Profile() {
             <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>Fertig</Button>
           </div>
         ) : (
-          <button type="button" className="justify-self-start text-sm font-semibold text-primary" onClick={() => setPicking(true)}>Avatar ändern</button>
+          <Button variant="secondary" size="sm" className="justify-self-start" onClick={() => setPicking(true)}>Avatar ändern</Button>
         )}
         <p className="text-xs leading-snug text-muted-foreground">
           Online zählt jede Partie in deinem Raum. Lokal (ein Handy für alle) zählt der Spieler, der genauso heißt wie du.

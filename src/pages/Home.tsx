@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Copy, DoorOpen, Gamepad2, LogIn, MessagesSquare, PartyPopper, Plus, Smartphone, Tv, Users } from "lucide-react";
+import { ChevronRight, Copy, Gamepad2, LogIn, MessagesSquare, PartyPopper, Plus, Smartphone, Tv, Users } from "lucide-react";
 import { toast } from "sonner";
 import { withBase } from "@shared/platform/base";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -79,11 +79,7 @@ export function Home() {
         {config?.banner && <p className="text-in rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
         {online && <RoomRow title="Deine Räume" cards={rooms.mine} mine testId="my-rooms" />}
         {online && <RoomRow title="Offene Räume" cards={rooms.open} testId="open-rooms" />}
-        {online && rooms.loaded && !anyRooms && (
-          <p className="text-in flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-border ring-dashed lg:hidden" data-testid="no-rooms">
-            <DoorOpen className="size-4.5 shrink-0" />Gerade ist kein Raum offen – veranstalte einen oder spiel mit Code mit.
-          </p>
-        )}
+        {/* Keine Räume: kein Platzhalter – „Raum veranstalten“ und „Mitspielen“ stehen ohnehin unten */}
         {(localOn || online) && <QuickGames games={ids} featured={config?.featured ?? []} order={config?.order ?? []} local={localOn}
           onPick={(id) => { if (localOn) playLocal(ids, locked, id); else newRoom(id); }} onAll={() => goTab("/spiele")} />}
         {features?.groups !== false && <GroupCard />}

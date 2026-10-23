@@ -41,6 +41,7 @@ test("Erster Start: Überspringen geht jederzeit, ein Raum-Link führt direkt in
   await page.goto("/r/ABCDE");
   await expect(page.getByTestId("onboarding")).toHaveCount(0);
   await page.goto("/");
+  await shot(page, "ux-onboarding-ueberspringen");
   await page.getByRole("button", { name: "Überspringen" }).click();
   await expect(page.getByTestId("onboarding")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Raum veranstalten" })).toBeVisible();

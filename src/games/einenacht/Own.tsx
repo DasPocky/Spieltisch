@@ -31,9 +31,9 @@ export function OwnNarrator({ s, players, options, act }: { s: ONState; players:
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2.5 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       {speechSupported() && s.phase !== "reveal" && (
-        <button type="button" onClick={() => setSpeech(!speech)} className="flex shrink-0 items-center gap-2 self-end text-sm font-semibold text-muted-foreground">
+        <Button variant="outline" size="sm" onClick={() => setSpeech(!speech)} aria-pressed={speech} className="self-end text-muted-foreground">
           {speech ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}Vorlesen {speech ? "an" : "aus"}
-        </button>
+        </Button>
       )}
       {s.phase === "reveal" && (
         <>

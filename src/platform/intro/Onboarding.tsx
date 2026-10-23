@@ -93,7 +93,7 @@ export function Onboarding({ onDone, start = "hello" }: { onDone: () => void; st
     <div className={cn("intro-bg fixed inset-0 z-[60] flex flex-col overflow-hidden", leaving && "intro-out")} data-testid="onboarding">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         <div className="flex h-10 shrink-0 items-center justify-end">
-          {step !== "tour?" && <button type="button" onClick={finish} className="rounded-full px-3 py-1.5 text-sm font-semibold text-muted-foreground">Überspringen</button>}
+          {step !== "tour?" && <Button variant="outline" size="sm" className="rounded-full text-muted-foreground" onClick={finish}>Überspringen</Button>}
         </div>
 
         {step === "hello" && (

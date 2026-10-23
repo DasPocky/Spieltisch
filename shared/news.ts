@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-klare-knoepfe",
+    date: "2026-10-23",
+    title: "Klare Knöpfe statt Textlinks",
+    items: [
+      "Was etwas auslöst, sieht jetzt wie ein Knopf aus – etwa „Raum für alle schließen“ (rot, mit Rückfrage), „Hängt etwas?“, „Überspringen“ und „Vorlesen an/aus“.",
+      "Ist gerade kein Raum offen, bleibt die Startseite ruhig: kein leerer Kasten mehr.",
+    ],
+  },
+  {
     id: "2026-10-regelpakete",
     date: "2026-10-23",
     title: "Regeln mit einem Tipp",

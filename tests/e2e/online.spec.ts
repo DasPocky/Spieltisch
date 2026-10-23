@@ -100,6 +100,8 @@ test("Zwei Handys spielen online in einem Raum", async ({ browser }) => {
 
   // Host schließt den Raum – der Gast fliegt raus
   await host.getByRole("button", { name: "Menü" }).click();
+  await host.getByRole("button", { name: "Raum für alle schließen" }).scrollIntoViewIfNeeded();
+  await shot(host, "ux-menue-raum-schliessen");
   await host.getByRole("button", { name: "Raum für alle schließen" }).click();
   await host.getByRole("button", { name: "Schließen", exact: true }).click();
   await expect(guest.getByRole("heading", { name: "Raum beendet" })).toBeVisible();
