@@ -1,3 +1,4 @@
+import type { GameContent } from "./cardsets";
 /**
  * Die einheitliche Schnittstelle, die jedes Spiel erfüllt. Diese Datei enthält nur den Teil,
  * den Server und Client gemeinsam brauchen (Zustand, Aktionen, Rechte, Einstellungen).
@@ -52,6 +53,8 @@ export interface GameContext {
   now: number;
   /** Wie viele Partien in diesem Raum schon gestartet wurden (beim Start: die bisherigen) – z. B. damit „Nochmal“ die anfangende Farbe wechselt */
   round?: number;
+  /** Inhalte aus eigenen Kartensets (beim Start vom Server bzw. Gerät geladen) – Spiele übernehmen sie in ihren Spielstand */
+  content?: GameContent;
 }
 
 /**

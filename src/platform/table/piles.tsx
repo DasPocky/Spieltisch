@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { TableModel } from "./model";
+import { isImage, setImageUrl } from "@shared/platform/cardsets";
 
 /**
  * Bausteine für Zahlenkarten-Spiele am Tisch (über 3D- und flachem Tisch gleich):
@@ -54,7 +55,9 @@ export function FeltWords({ words }: { words: NonNullable<TableModel["words5"]> 
         {words.cells.map((c, i) => (
           <span key={i} data-testid="table-word" data-open={!!c.tone}
             className="grid h-[11cqh] place-items-center truncate rounded-[1.2cqh] px-[0.8cqw] text-[3.6cqh] font-bold uppercase shadow-[0_3px_8px_rgb(0_0_0/0.3)]"
-            style={c.tone ? { background: c.tone, color: "#fff" } : { background: "#fbf7ef", color: "#2b2118" }}>{c.text}</span>
+            style={c.tone ? { background: c.tone, color: "#fff" } : { background: "#fbf7ef", color: "#2b2118" }}>
+            {isImage(c.text) ? <img src={setImageUrl(c.text)} alt="Bildkarte" className={cn("max-h-full max-w-full object-contain", c.tone && "opacity-50")} /> : c.text}
+          </span>
         ))}
       </div>
     </div>

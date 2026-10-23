@@ -1,6 +1,6 @@
 import type { RoomState } from "@shared/platform/room";
 import { KAT_BY_ID } from "@shared/games/quiz/fragen";
-import { deadlineOf, type QState } from "@shared/games/quiz/logic";
+import { deadlineOf, OWN_CAT, OWN_KAT, type QState } from "@shared/games/quiz/logic";
 import type { TableModel } from "../../platform/table/model";
 import { LETTERS, solution, TONES } from "./text";
 
@@ -11,7 +11,7 @@ export function quizTable(room: RoomState): TableModel | null {
   const name = (id: string) => room.players.find((p) => p.id === id)?.name ?? "";
   const notes = Object.fromEntries(room.players.map((p) => [p.id, `${s.scores[p.id] ?? 0} Pkt.${s.phase === "ask" && s.answered.includes(p.id) ? " · ✓" : ""}`]));
   const sh = s.shown;
-  const kat = KAT_BY_ID[sh.cat];
+  const kat = sh.cat === OWN_CAT ? OWN_KAT : KAT_BY_ID[sh.cat];
   const reveal = s.phase === "reveal";
   const key = s.last?.key;
   return {

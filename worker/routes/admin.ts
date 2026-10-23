@@ -10,7 +10,7 @@ import { type AdminRoomAction } from "../../shared/platform/admin";
 import { isBotLevel } from "../../shared/platform/botSkill";
 import { ASSET_PREFIX, assetPath, FILE_MAX_BYTES, fileType } from "../../shared/platform/files";
 import { Env, settingsOf, profileOf, groupOf } from "../env";
-import { readBody, badRequest, json, withTimeout, makeCode } from "../http";
+import { readBody, readBytes, badRequest, json, withTimeout, makeCode } from "../http";
 import { WATCH_PATH } from "../rooms";
 import { AdminCred } from "../settings";
 
@@ -23,9 +23,8 @@ export function adminCred(request: Request, password?: unknown): AdminCred {
 /** Datei (Rohdaten im Body) in R2 ablegen – aus der Verwaltung und aus der GitHub-Aktion „Dateien einspielen“ */
 export async function putAsset(env: Env, path: string, request: Request): Promise<Response> {
   if (!env.FILES) return json({ ok: false, error: "Der Dateispeicher ist nicht verbunden." }, 503);
-  if (Number(request.headers.get("content-length") ?? 0) > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.length > FILE_MAX_BYTES) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
+  const bytes = await readBytes(request, FILE_MAX_BYTES);
+  if (!bytes) return json({ ok: false, error: "Die Datei ist zu groß (höchstens 25 MB)." }, 413);
   const type = fileType(bytes, path);
   if (!type) return json({ ok: false, error: "Der Inhalt passt nicht zur Endung." }, 400);
   await env.FILES.put(ASSET_PREFIX + path, bytes, { httpMetadata: { contentType: type } });
@@ -37,7 +36,8 @@ function auditLabel(path: string, body: Record<string, unknown>): string {
   const room = path.match(/\/rooms\/([A-Z0-9]+)/)?.[1];
   const action = body.action && typeof body.action === "object" ? String((body.action as { type?: unknown }).type ?? "") : "";
   const what = path.replace(/^\/api\/admin\/?/, "").replace(/\/[A-Z0-9]{5}(\/|$)/, "/…$1") || "einstellungen";
-  return `${room ? `Raum ${room}: ` : ""}${what}${action ? ` (${action})` : ""}`;
+  const review = /\/sets\/[a-z0-9]{12}\/review$/.test(path) ? (body.ok === true ? " (freigegeben)" : " (abgelehnt)") : "";
+  return `${room ? `Raum ${room}: ` : ""}${what}${action ? ` (${action})` : ""}${review}`;
 }
 
 export async function handleAdmin(request: Request, env: Env, path: string): Promise<Response> {
@@ -89,6 +89,27 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
   if (path === "/api/admin/health" && request.method === "GET") return json(await settings.healthList());
 
   if (path === "/api/admin/stats" && request.method === "GET") return json(await settings.statsGet());
+
+  // Kartensets der Spieler: Vorschläge prüfen, freigeben, ablehnen (mit Grund) oder wieder aus der Liste nehmen
+  if (path === "/api/admin/sets" && request.method === "GET") return json({ sets: await settings.adminSets() });
+  const cset = path.match(/^\/api\/admin\/sets\/([a-z0-9]{12})(?:\/(review))?$/);
+  if (cset && !cset[2] && request.method === "GET") {
+    const set = await settings.listedSet(cset[1], false);
+    return set ? json({ set }) : json({ ok: false, error: "Dieses Set gibt es nicht (mehr)." }, 404);
+  }
+  if (cset && cset[2] && request.method === "POST") {
+    const ok = body.ok === true;
+    const note = typeof body.note === "string" ? body.note.replace(/\s+/g, " ").trim().slice(0, 200) : "";
+    // Geprüft wird genau die Fassung, die die Verwaltung gesehen hat – inzwischen geändert: erst neu ansehen
+    const seen = typeof body.at === "number" ? body.at : NaN;
+    const now = await settings.listedSet(cset[1], false);
+    if (!now) return json({ ok: false, error: "Dieses Set gibt es nicht (mehr)." }, 404);
+    if (now.updatedAt !== seen) return json({ ok: false, error: "Das Set wurde inzwischen geändert – bitte neu ansehen." }, 409);
+    const set = await settings.reviewSet(cset[1], ok, note);
+    if (!set) return json({ ok: false, error: "Dieses Set gibt es nicht (mehr)." }, 404);
+    await profileOf(env, set.owner).setStatus(set.id, set.status, note);
+    return json({ ok: true, status: set.status });
+  }
 
   // Dateien der App in R2 (Ordner assets/): auflisten, hochladen (PUT, Rohdaten), löschen
   if (path === "/api/admin/files" && request.method === "GET") {

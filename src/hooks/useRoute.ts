@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { isGameId } from "@shared/games";
 import { renamedGameId } from "@shared/games/renamed";
+import { SET_KINDS, type SetKind } from "@shared/platform/cardsets";
 import { LOCAL_GAME_KEY } from "@/lib/storage";
 
 /** Bereiche der Verwaltung: /admin, /admin/live … */
-export type AdminSection = "start" | "live" | "statistik" | "spiele" | "leute" | "einstellungen" | "entwickler";
+export type AdminSection = "start" | "live" | "statistik" | "spiele" | "kartensets" | "leute" | "einstellungen" | "entwickler";
 
 export type Route =
   | { name: "home" }
@@ -13,6 +14,8 @@ export type Route =
   | { name: "room"; code: string }
   | { name: "admin"; section: AdminSection }
   | { name: "profile" }
+  /** Eigene Kartensets: Liste, ein Set, ein neues Set einer Art */
+  | { name: "sets"; id?: string; kind?: SetKind }
   | { name: "transfer"; code: string }
   | { name: "groups" }
   | { name: "group"; code: string }
@@ -24,10 +27,15 @@ export type Route =
   | { name: "table"; code: string };
 
 function parse(path: string): Route {
-  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|leute|einstellungen|entwickler))?\/?$/);
+  const admin = path.match(/^\/admin(?:\/(live|statistik|spiele|kartensets|leute|einstellungen|entwickler))?\/?$/);
   if (admin) return { name: "admin", section: (admin[1] ?? "start") as AdminSection };
   if (/^\/spiele\/?$/.test(path)) return { name: "games" };
   if (/^\/profil\/?$/.test(path)) return { name: "profile" };
+  const sets = path.match(/^\/profil\/sets(?:\/(?:neu\/([a-z]+)|([a-z0-9]{12})))?\/?$/);
+  if (sets) {
+    if (sets[1]) return SET_KINDS.some((k) => k.id === sets[1]) ? { name: "sets", kind: sets[1] as SetKind } : { name: "sets" };
+    return sets[2] ? { name: "sets", id: sets[2] } : { name: "sets" };
+  }
   const transfer = path.match(/^\/profil\/uebernehmen\/([A-Za-z0-9-]{8,9})\/?$/);
   if (transfer) return { name: "transfer", code: transfer[1].toUpperCase().replace(/-/g, "") };
   if (/^\/gruppe\/?$/.test(path)) return { name: "groups" };

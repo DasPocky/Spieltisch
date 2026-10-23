@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Copy, Download, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Download, Layers, Loader2, Smartphone, Sparkles, Trophy, Upload, Users, Volume2 } from "lucide-react";
 import { getGame, isGameId } from "@shared/games";
 import { parseProfileId, PROFILE_ID_RE, TRANSFER_CODE_RE, type ProfileStats } from "@shared/platform/profile";
 import type { Avatar as AvatarData } from "@shared/platform/group";
@@ -26,6 +26,7 @@ import { NewsSheet } from "@/platform/WhatsNew";
 import { InstallCard } from "@/platform/InstallHint";
 import { goTab } from "@/platform/shell/AppShell";
 import { useAdminDevice } from "@/lib/admin";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { VoiceSettings } from "@/platform/VoiceSettings";
 import { IconTile } from "@/platform/Logo";
 import { playSound } from "@/platform/sound";
@@ -54,6 +55,7 @@ export function Profile() {
   const file = useRef<HTMLInputElement>(null);
   const groups = useMyGroups();
   const admin = useAdminDevice();
+  const config = useSiteConfig();
   const otherCode = parseProfileId(other);
   const otherOk = TRANSFER_CODE_RE.test(otherCode) || PROFILE_ID_RE.test(otherCode);
   // Aus dem Menü einer Partie gekommen: zurück dorthin
@@ -213,6 +215,12 @@ export function Profile() {
         )}
         <Button variant="secondary" onClick={() => goTab("/gruppe")}>{groups.codes.length ? "Gruppen verwalten" : "Gruppe erstellen oder beitreten"}</Button>
       </Card>
+
+      {config?.features.sets !== false && <Card className="grid gap-2.5" data-testid="sets-card">
+        <h2 className="flex items-center gap-2 font-bold"><Layers className="size-4 text-ice" />Meine Kartensets</h2>
+        <p className="text-sm text-muted-foreground">Eigene Karten, Wörter und Fragen für Schamlos, Decknamen, Zeichnen & Raten und das Quiz.</p>
+        <Button variant="secondary" onClick={() => navigate("/profil/sets")} data-testid="sets-open">Kartensets verwalten</Button>
+      </Card>}
 
       <Card className="grid gap-2.5" data-testid="transfer">
         <h2 className="flex items-center gap-2 font-bold"><Smartphone className="size-4 text-ice" />Auf neues Handy übertragen</h2>

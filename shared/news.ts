@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-kartensets",
+    date: "2026-10-23",
+    title: "Neu: eigene Kartensets",
+    items: [
+      "Im Profil unter „Meine Kartensets“ eigene Karten, Wörter, Begriffe und Fragen anlegen – für Schamlos, Decknamen, Zeichnen & Raten und das Quiz, auch mit Bildern.",
+      "In der Lobby unter Einstellungen wählen; mit genug eigenen Karten auch „Nur eigene“. Sets bleiben privat, bis ihr sie für alle vorschlagt und die Verwaltung sie freigibt.",
+    ],
+  },
+  {
     id: "2026-10-quiz",
     date: "2026-10-20",
     title: "Neu: Quiz & Schätzen",

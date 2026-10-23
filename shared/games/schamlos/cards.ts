@@ -5,6 +5,7 @@
  * Eine Karte wird über ihre ID angesprochen: Set, Farbe und Nummer, z. B. „frech-w-12“.
  * Neue Karten hinten anhängen – so bleiben die IDs laufender Partien gültig.
  */
+import { isImage, setImageUrl } from "../../platform/cardsets";
 import * as frech from "./sets/frech";
 import * as ab18 from "./sets/ab18";
 import * as plus from "./sets/plus";
@@ -58,10 +59,24 @@ export function deckFor(sets: readonly string[]): Deck {
   return { black: use.flatMap((s) => ids(s, "b")).filter(ok), white: use.flatMap((s) => ids(s, "w")).filter(ok) };
 }
 
-/** Text einer Karte */
+/**
+ * Eigene Karten (aus Kartensets der Spieler) tragen ihren Text in der Kennung: „x:<Text>“ bzw. „x:bild:<Schlüssel>“.
+ * So braucht niemand die Sets selbst – wer die Karte sieht, sieht ihren Text.
+ */
+export const OWN_PREFIX = "x:";
+export const ownCard = (text: string) => `${OWN_PREFIX}${text}`;
+
+/** Text einer Karte (Bildkarten: „bild:…“, siehe cardImage) */
 export function cardText(id: string): string {
+  if (id.startsWith(OWN_PREFIX)) return id.slice(OWN_PREFIX.length);
   const [set, kind, n] = id.split("-");
   return DATA[set]?.[kind === "b" ? "black" : "white"]?.[Number(n)] ?? "";
+}
+
+/** Bildkarte? Dann die Adresse des Bilds */
+export function cardImage(id: string): string | null {
+  const t = cardText(id);
+  return isImage(t) ? setImageUrl(t) : null;
 }
 
 /** Wie viele Lücken eine schwarze Karte hat (mindestens eine – ohne Lücke kommt die Antwort ans Ende) */

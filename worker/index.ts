@@ -7,6 +7,7 @@ import { PIN_RE, ROOM_CODE_RE } from "../shared/platform/protocol";
 import { Env, settingsOf, profileOf, transferOf } from "./env";
 import { allowed, countFail, limited, readBody, badRequest, json, withTimeout, makeCode, sameSecret } from "./http";
 import { GAME_IDS } from "./settings";
+import { handleSets, serveSetImage } from "./routes/sets";
 import { handleGroups } from "./routes/groups";
 import { handleAdmin, putAsset } from "./routes/admin";
 import { handleCall } from "./routes/call";
@@ -129,6 +130,9 @@ export default {
     }
 
     if (url.pathname === "/api/groups" || url.pathname.startsWith("/api/groups/")) return handleGroups(request, env, url.pathname);
+    if (url.pathname === "/api/sets" || url.pathname.startsWith("/api/sets/")) return handleSets(request, env, url);
+    const setImage = url.pathname.match(/^\/api\/kartenbild\/(k\/[0-9a-f]{16}\/[a-z0-9]{20})$/);
+    if (setImage && request.method === "GET") return serveSetImage(env, setImage[1]);
 
     const prof = url.pathname.match(/^\/api\/profile\/([A-Z0-9]+)(\/result)?$/);
     if (prof) {
