@@ -536,33 +536,36 @@ export class GameRoom extends DurableObject<Env> {
       if (id) seen[playerId] = [...(seen[playerId] ?? []), id].slice(-30);
       if (msg.action.type === "removePlayer") this.kick(msg.action.id);
       const kind = msg.action.type;
+      // Partie zu Ende: Ergebnis-Aufträge gleich mit dem Spielstand speichern (ein Schreibvorgang)
+      const finished = this.queueResults(before);
       await this.persist(["start", "restart", "toLobby", "selectGame", "removePlayer"].includes(kind));
       if (id) this.send(ws, { type: "ack", id, rev: this.room.rev ?? 0 });
       this.broadcast();
       if (kind === "start" || kind === "restart") await this.count("started");
-      // Früher nicht angekommene Ergebnisse nachreichen
+      if (finished) await this.count("finished");
+      // Neue und früher nicht angekommene Ergebnisse schicken
       if (this.room.results?.length) await this.flushResults();
-      await this.recordIfFinished(before);
     }
   }
 
-  /** Partie gerade zu Ende gegangen: zählen und Ergebnisse in die Profile der Mitspieler schreiben */
-  private async recordIfFinished(before: RoomState): Promise<void> {
+  /**
+   * Partie gerade zu Ende gegangen? Dann die Ergebnisse für die Profile und Gruppen der Mitspieler vormerken – vor dem
+   * Speichern, damit Spielstand und Aufträge zusammen auf der Platte landen (fällt der Raum dazwischen aus, fehlt keins).
+   * Geschickt wird danach (`flushResults`); was schiefgeht, versucht der Raum später nochmal.
+   */
+  private queueResults(before: RoomState): boolean {
     const room = this.room;
     const now = room?.state;
-    if (!room || !now || now.phase !== "playing" || !now.game) return;
+    if (!room || !now || now.phase !== "playing" || !now.game) return false;
     const logic = roomGame(now);
     const was = before.phase === "playing" && before.game && before.gameId === now.gameId && before.round === now.round && logic.isOver(before.game);
-    if (was || !logic.isOver(now.game)) return;
-    await this.count("finished");
+    if (was || !logic.isOver(now.game)) return false;
     // Testräume schreiben nichts in Profile und Gruppen
-    if (room.test || !logic.results || !room.profiles) return;
+    if (room.test || !logic.results || !room.profiles) return true;
     const ctx = { players: now.players, hostId: now.hostId, actorId: null, options: now.options, now: Date.now() };
     const jobs = resultJobs(room, now.gameId, now.round, logic.results(now.game, ctx), Date.now());
-    // Erst merken, dann schreiben – was schiefgeht, versucht der Raum später nochmal
     room.results = [...(room.results ?? []), ...jobs].slice(-60);
-    await this.ctx.storage.put("room", room);
-    await this.flushResults();
+    return true;
   }
 
   /** Offene Ergebnisse an Profile und Gruppen schicken; was nicht ankommt, bleibt für den nächsten Versuch */
@@ -614,9 +617,13 @@ export class GameRoom extends DurableObject<Env> {
       delete this.room.call[att.playerId];
       await this.persist();
     }
-    // Letzter Großer Tisch weg: Couch-Kamera aus dem Videochat
-    if (att?.table && this.room?.call?.[TABLE_CALL_ID] && !this.hasTable(ws)) {
-      delete this.room.call[TABLE_CALL_ID];
+    // Letzter Großer Tisch weg: Couch-Kamera aus dem Videochat, seine Schlüssel und Sitzungen gelten nicht mehr
+    // (ein Tisch, der neu verbindet, bekommt einen frischen Schlüssel)
+    if (att?.table && this.room && !this.hasTable(ws) && (this.room.call?.[TABLE_CALL_ID] || this.room.tableKeys?.length)) {
+      if (this.room.call) delete this.room.call[TABLE_CALL_ID];
+      delete this.room.tableKeys;
+      const sessions = this.room.callSessions ?? {};
+      for (const s of Object.keys(sessions)) if (sessions[s] === TABLE_CALL_ID) delete sessions[s];
       await this.persist();
     }
     // Gast vor der Tür hat die Verbindung verloren: Eintrag bleibt kurz stehen (Funkloch), erst danach fällt er weg
@@ -815,13 +822,15 @@ export class GameRoom extends DurableObject<Env> {
     if (typeof msg.pairCode === "string" && !hasToken) {
       const pair = PAIR_CODE_RE.test(msg.pairCode) ? room.pairs?.[msg.pairCode] : undefined;
       const now = Date.now();
-      // Einmal eingelöst, gilt der Code nur noch für denselben Tab (Funkloch, doppelter Aufbau) – nicht für andere Geräte
-      const other = pair?.usedBy !== undefined && pair.usedBy !== (msg.nonce ?? null);
-      if (!pair || pair.until < now || other || !room.tokens[pair.id] || !inRoom(room.state, pair.id)) {
+      // Einmal eingelöst, gilt der Code nur noch für denselben Tab (Funkloch, doppelter Aufbau) – nicht für andere Geräte.
+      // Ohne Kennung des Tabs gibt es keinen Code: sonst ließe er sich ohne Kennung beliebig oft einlösen
+      const nonce = typeof msg.nonce === "string" && ACTION_ID_RE.test(msg.nonce) ? msg.nonce : null;
+      const other = pair?.usedBy !== undefined && pair.usedBy !== nonce;
+      if (!pair || !nonce || pair.until < now || other || !room.tokens[pair.id] || !inRoom(room.state, pair.id)) {
         this.send(ws, { type: "error", code: "rejected", fatal: true, message: "Der Kopplungs-Code ist abgelaufen. Lass dir am Rechner einen neuen zeigen." });
         return;
       }
-      if (pair.usedBy === undefined) { pair.usedBy = msg.nonce ?? null; await this.ctx.storage.put("room", room); }
+      if (pair.usedBy === undefined) { pair.usedBy = nonce; await this.ctx.storage.put("room", room); }
       ws.serializeAttachment({ playerId: pair.id, companion: true } satisfies Attachment);
       this.dropOldSockets(pair.id, ws);
       this.send(ws, { type: "joined", playerId: pair.id, token: room.tokens[pair.id] });
@@ -1142,9 +1151,13 @@ export class GameRoom extends DurableObject<Env> {
     const res = playBot(before, id, true, room.code ?? "");
     if (!res) return false;
     room.state = res.next;
+    const finished = this.queueResults(before);
     await this.persist();
     this.broadcast();
-    await this.recordIfFinished(before);
+    if (finished) {
+      await this.count("finished");
+      await this.flushResults();
+    }
     return true;
   }
 
