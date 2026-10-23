@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, DoorOpen, LogIn, Plus, Smartphone, Tv, Users } from "lucide-react";
+import { ChevronRight, Copy, DoorOpen, Gamepad2, LogIn, MessagesSquare, PartyPopper, Plus, Smartphone, Tv, Users } from "lucide-react";
+import { toast } from "sonner";
+import { withBase } from "@shared/platform/base";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { GAME_LIST } from "@/games";
 import { useGames } from "@/hooks/useGames";
@@ -31,7 +34,7 @@ function runningLocal(): string | null {
 
 /**
  * Start-Tab: Begrüßung, eigene und offene Räume, Schnellstart und Gruppe – unten fest die Hauptaktionen
- * „Raum öffnen“ und „Beitreten“ (und „Ein Handy für alle“, wenn der Admin es eingeschaltet hat).
+ * „Raum veranstalten“ (Ein Spiel · Partyabend · Erst mal treffen), „Mitspielen“ und „Fernseher“ (und „Ein Handy für alle“, wenn der Admin es eingeschaltet hat).
  * Name und PIN fragt ein Blatt von unten, das Spiel wählt ihr in der Lobby.
  * Auf großen Bildschirmen stehen die Hauptaktionen oben als zwei Karten: „Großer Tisch“ und „Selbst mitspielen“.
  */
@@ -39,6 +42,8 @@ export function Home() {
   const { config, ids, locked, features, onlineOff, online, localOn } = useGames();
   const [plan, setPlan] = useState<RoomPlan | null>(null);
   const [joining, setJoining] = useState(false);
+  const [hosting, setHosting] = useState(false);
+  const [tv, setTv] = useState(false);
   const [running] = useState(runningLocal);
   const [name] = useState(myName);
   const [avatar] = useState(myAvatar);
@@ -46,6 +51,12 @@ export function Home() {
   const anyRooms = rooms.mine.length + rooms.open.length > 0;
   // Ein Raumtyp für alles: ohne Spiel geht es im Treffpunkt los, mit Schnellstart-Spiel gleich in die Lobby
   const newRoom = (gameId?: string) => setPlan(gameId ? { gameId, pickGame: false } : { gameId: defaultGame(ids, locked), pickGame: false, meet: true });
+  /** „Raum veranstalten“: ein Spiel, ein Partyabend oder erst mal treffen – immer derselbe Raum */
+  const host = (kind: "game" | "party" | "meet") => {
+    setHosting(false);
+    const gameId = defaultGame(ids, locked);
+    setPlan(kind === "game" ? { gameId, pickGame: true } : kind === "party" ? { gameId, pickGame: false, party: true } : { gameId, pickGame: false, meet: true });
+  };
 
   return (
     <main className={cn("mx-auto flex w-full max-w-xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3 lg:max-w-6xl lg:px-10 lg:pt-10", anyRooms && "has-rooms")}>
@@ -62,7 +73,7 @@ export function Home() {
       </header>
 
       <DesktopHero top={!name} online={online} onlineOff={onlineOff} localOn={localOn} running={running}
-        onRoom={() => newRoom()} onJoin={() => setJoining(true)} onLocal={() => playLocal(ids, locked)} />
+        onRoom={() => setHosting(true)} onJoin={() => setJoining(true)} onLocal={() => playLocal(ids, locked)} />
 
       <div className="mt-4 grid shrink-0 grid-cols-[minmax(0,1fr)] gap-2.5 lg:mt-6 lg:gap-4">
         {config?.banner && <p className="text-in rounded-2xl bg-primary/12 px-4 py-2.5 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/25" data-testid="banner">{config.banner}</p>}
@@ -70,7 +81,7 @@ export function Home() {
         {online && <RoomRow title="Offene Räume" cards={rooms.open} testId="open-rooms" />}
         {online && rooms.loaded && !anyRooms && (
           <p className="text-in flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-sm text-muted-foreground ring-1 ring-inset ring-border ring-dashed lg:hidden" data-testid="no-rooms">
-            <DoorOpen className="size-4.5 shrink-0" />Gerade ist kein Raum offen – öffne einen oder tritt mit Code bei.
+            <DoorOpen className="size-4.5 shrink-0" />Gerade ist kein Raum offen – veranstalte einen oder spiel mit Code mit.
           </p>
         )}
         {(localOn || online) && <QuickGames games={ids} featured={config?.featured ?? []} order={config?.order ?? []} local={localOn}
@@ -86,15 +97,22 @@ export function Home() {
           <NavRow icon={Smartphone} tile onClick={() => playLocal(ids, locked)} title="Ein Handy für alle"
             sub={running ? `${running} läuft noch – weiter` : "Herumreichen oder in die Mitte legen"} />
         )}
-        <div className="flex gap-2">
-          <Button size="lg" className="h-14 flex-1 rounded-2xl text-base" disabled={!online} onClick={() => newRoom()}>
-            <Plus className="size-5" />{onlineOff ? "Online abgeschaltet" : online ? "Raum öffnen" : "Raum öffnen – offline"}
+        {/* Eine Hauptaktion, darunter die beiden anderen Wege */}
+        <Button size="lg" className="h-14 w-full rounded-2xl text-base" disabled={!online} onClick={() => setHosting(true)} data-testid="host-open">
+          <Plus className="size-5" />{onlineOff ? "Online abgeschaltet" : online ? "Raum veranstalten" : "Veranstalten – offline"}
+        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="lg" variant="secondary" className="h-12 min-w-0 rounded-2xl px-3 text-base" disabled={!online} onClick={() => setJoining(true)} data-testid="join-open">
+            <LogIn className="size-5" />Mitspielen
           </Button>
-          <Button size="lg" variant="secondary" className="h-14 rounded-2xl px-4 text-base" disabled={!online} onClick={() => setJoining(true)}>
-            <LogIn className="size-5" />Beitreten
+          <Button size="lg" variant="secondary" className="h-12 min-w-0 rounded-2xl px-3 text-base" disabled={!online} onClick={() => setTv(true)} data-testid="tv-open" aria-label="Auf dem Fernseher zeigen">
+            <Tv className="size-5" />Fernseher
           </Button>
         </div>
       </div>
+
+      <HostSheet open={hosting} onOpenChange={setHosting} onPick={host} />
+      <TvSheet open={tv} onOpenChange={setTv} />
 
       <CreateRoomSheet plan={plan} onClose={() => setPlan(null)} />
       <JoinSheet open={joining} onClose={() => setJoining(false)} online={online} />
@@ -123,11 +141,11 @@ function DesktopHero({ top, online, onlineOff, localOn, running, onRoom, onJoin,
       <section className="desk-hero glass flex flex-col rounded-3xl p-7">
         <span className="self-start rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground">Am Rechner</span>
         <h2 className="mt-3 text-2xl font-bold leading-tight">Hier selbst mitspielen</h2>
-        <p className="mt-2 text-muted-foreground">Öffne einen Raum oder tritt mit Code bei. Die anderen kommen mit Handy oder Rechner dazu.</p>
+        <p className="mt-2 text-muted-foreground">Veranstalte einen Raum oder spiel mit Code mit. Die anderen kommen mit Handy oder Rechner dazu.</p>
         <div className="min-h-4 flex-1" />
         <div className="flex flex-wrap gap-2.5">
-          <Button size="lg" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onRoom}><Plus className="size-5" />Raum öffnen</Button>
-          <Button size="lg" variant="secondary" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onJoin}><LogIn className="size-5" />Beitreten</Button>
+          <Button size="lg" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onRoom}><Plus className="size-5" />Raum veranstalten</Button>
+          <Button size="lg" variant="secondary" className="h-12 rounded-2xl px-5 text-base" disabled={!online} onClick={onJoin}><LogIn className="size-5" />Mitspielen</Button>
           {localOn && <Button size="lg" variant="ghost" className="h-12 rounded-2xl px-4 text-base" onClick={onLocal}><Smartphone className="size-5" />{running ? `${running} weiterspielen` : "Reihum an einem Gerät"}</Button>}
         </div>
       </section>
@@ -216,5 +234,51 @@ function QuickGames({ games, featured, order, onPick, onAll, local }: { games: s
         </button>
       </div>
     </section>
+  );
+}
+
+/** „Raum veranstalten“: was ihr vorhabt – es entsteht immer derselbe Raum, ihr könnt jederzeit wechseln */
+function HostSheet({ open, onOpenChange, onPick }: { open: boolean; onOpenChange: (o: boolean) => void; onPick: (kind: "game" | "party" | "meet") => void }) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Raum veranstalten</SheetTitle>
+          <SheetDescription>Was habt ihr vor? Es ist immer derselbe Raum – umentscheiden geht jederzeit.</SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-2 px-5 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <NavRow icon={Gamepad2} tile title="Ein Spiel" sub="Spiel wählen, Leute einladen, los" onClick={() => onPick("game")} data-testid="host-game" />
+          <NavRow icon={PartyPopper} tile title="Partyabend" sub="Mehrere Spiele nacheinander, Gesamtwertung" onClick={() => onPick("party")} data-testid="host-party" />
+          <NavRow icon={MessagesSquare} tile title="Erst mal treffen" sub="Reden, sehen, schreiben – gespielt wird später" onClick={() => onPick("meet")} data-testid="host-meet" />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/** „Auf dem Fernseher zeigen“: der Fernseher öffnet die Tisch-Adresse – er spielt nicht mit, er zeigt nur */
+function TvSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const address = `${location.host}${withBase("/tisch")}`;
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Auf dem Fernseher zeigen</SheetTitle>
+          <SheetDescription>Der Fernseher zeigt den Tisch für alle – mitgespielt wird weiter am Handy.</SheetDescription>
+        </SheetHeader>
+        <div className="grid gap-3 px-5 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <p className="text-sm">Am Fernseher oder Laptop diese Adresse öffnen:</p>
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-xl bg-muted px-3 py-2.5 text-center font-mono text-lg" data-testid="tv-address">{address}</code>
+            <Button variant="secondary" size="icon" aria-label="Adresse kopieren" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}${withBase("/tisch")}`); toast("Adresse kopiert"); }}><Copy /></Button>
+          </div>
+          <ul className="grid gap-1.5 text-sm text-muted-foreground">
+            <li><b className="text-foreground">Ihr seid schon in einem Raum?</b> Dort „Bestehenden Raum zeigen“ und Raumcode und PIN eingeben.</li>
+            <li><b className="text-foreground">Noch kein Raum?</b> Dort „Raum eröffnen“ – dann scannt ihr den QR-Code am Fernseher.</li>
+          </ul>
+          <Button variant="outline" onClick={() => navigate("/tisch")} data-testid="tv-here">Dieses Gerät ist der Fernseher</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

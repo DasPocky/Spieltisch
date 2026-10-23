@@ -11,7 +11,8 @@ async function phoneAs(browser: Browser, name: string): Promise<Page> {
 /** Raum mit Namen und Sichtbarkeit öffnen, Spiel wählen; gibt den Code zurück */
 async function openRoom(page: Page, pin: string, room: { name: string; visibility?: RegExp; game?: string }): Promise<string> {
   await page.goto("/");
-  await page.getByRole("button", { name: "Raum öffnen" }).click();
+  await page.getByTestId("host-open").click();
+  await page.getByTestId("host-meet").click();
   await page.getByLabel(/PIN/).fill(pin);
   await page.getByTestId("room-more").click();
   await page.getByLabel("Raumname (optional)").fill(room.name);

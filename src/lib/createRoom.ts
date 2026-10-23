@@ -19,6 +19,8 @@ export interface NewRoom {
   room?: Partial<RoomAccess>;
   /** Aus einem Blatt heraus: dessen Verlaufseintrag ersetzen (siehe useBackClose) */
   replace?: boolean;
+  /** Partyabend: gleich nach dem Öffnen die Planung zeigen */
+  party?: boolean;
 }
 
 /** Raum auf dem Server anlegen und den Code zurückgeben. Wirft mit einer lesbaren Meldung, wenn es nicht klappt. */
@@ -37,10 +39,15 @@ export async function postRoom({ pin, gameId, meet = false, room }: Pick<NewRoom
 }
 
 /** Legt einen Online-Raum an und geht hinein. Wirft mit einer lesbaren Meldung, wenn es nicht klappt. */
-export async function createRoom({ name, pin, gameId, pickGame = false, meet = false, room, replace = false }: NewRoom): Promise<void> {
+/** Sitzungsmarke: diesen neuen Raum gleich als Partyabend planen */
+export const PLAN_NOW_KEY = "spieltisch:planNow";
+
+export async function createRoom({ name, pin, gameId, pickGame = false, meet = false, party = false, room, replace = false }: NewRoom): Promise<void> {
   const code = await postRoom({ pin, gameId, meet, room });
   try { localStorage.setItem(NAME_KEY, cleanName(name)); } catch { /* egal */ }
   setPendingJoin(code, { name: cleanName(name), pin });
   if (pickGame && !meet) try { sessionStorage.setItem(pickGameKey(code), "1"); } catch { /* egal */ }
+  // Partyabend: in der Lobby öffnet sich gleich die Planung
+  if (party) try { sessionStorage.setItem(PLAN_NOW_KEY, code); } catch { /* egal */ }
   navigate(`/r/${code}`, replace);
 }

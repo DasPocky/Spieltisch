@@ -2,7 +2,7 @@ import { withBase } from "@shared/platform/base";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useVoiceNames } from "./realVoice";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal, Smartphone } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal, Smartphone, MessagesSquare } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { tableModel } from "./table/model";
@@ -310,12 +310,11 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
       {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
       {call && <CallInvite call={call} />}
-      {code && isHost && (
-        <button type="button" onClick={() => dispatch({ type: "setMeet", on: true })} className="mt-2 w-full rounded-xl py-1.5 text-sm font-semibold text-primary">
-          Erst mal nur reden? Zum Treffpunkt
-        </button>
-      )}
-      <EveningLine className="mt-2" />
+      <EveningLine className="mt-2" beside={code && isHost ? (
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="w-full min-w-0" data-testid="to-meet">
+          <MessagesSquare className="size-4 text-primary" />Zum Treffpunkt
+        </Button>
+      ) : undefined} />
 
       <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
       <p className="mb-2 px-1 text-sm text-muted-foreground">

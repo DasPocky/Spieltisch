@@ -13,7 +13,8 @@ test("Unter /spieltisch: Raum öffnen, Link teilen, beitreten, spielen – alle 
   await anna.goto(`${BASE}/`);
   await expect(anna).toHaveURL(new RegExp(`${BASE}/$`));
   await anna.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
-  await anna.getByRole("button", { name: "Raum öffnen" }).click();
+  await anna.getByTestId("host-open").click();
+  await anna.getByTestId("host-meet").click();
   await anna.getByLabel("Dein Name").fill("Anna");
   await anna.getByLabel(/PIN/).fill("4242");
   await anna.getByRole("button", { name: "Öffnen", exact: true }).click();

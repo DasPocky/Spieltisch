@@ -46,7 +46,8 @@ test("Startseite: Lobby, dann Spiel – lokal wie online, ohne Scrollen", async 
 
   // Online: erst den Raum erstellen, dann in der Lobby das Spiel wählen
   await page.goto("/");
-  await page.getByRole("button", { name: "Raum öffnen" }).click();
+  await page.getByTestId("host-open").click();
+  await page.getByTestId("host-meet").click();
   await expect(page.getByTestId("create-room")).toBeVisible();
   await expectNoScroll(page);
   await shot(page, "01d-home-online");
@@ -217,7 +218,8 @@ test("Ohne Netz: Hinweis oben, Online gesperrt, lokal geht weiter", async ({ pag
   await context.setOffline(true);
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
   await expect(page.getByTestId("offline-bar")).toContainText("Kein Netz");
-  await expect(page.getByRole("button", { name: /Raum öffnen/ })).toBeDisabled();
+  await expect(page.getByTestId("host-open")).toBeDisabled();
+  await expect(page.getByTestId("join-open")).toBeDisabled();
   await shot(page, "02-offline-home");
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   await expect(page.getByTestId("game-card")).toBeVisible();
