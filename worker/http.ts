@@ -55,11 +55,15 @@ export interface RateLimit { limit(o: { key: string }): Promise<{ success: boole
 /**
  * Sicherheitsrelevante Wege: lokal höchstens `maxFails` Fehlversuche in 10 Minuten, dazu global
  * die Cloudflare-Grenze für alle Versuche (großzügig – ein Haushalt teilt sich oft eine Adresse).
+ * Fehlt die globale Bremse, scheitert sie oder antwortet sie nicht binnen `GLOBAL_LIMIT_MS`, gilt nur die
+ * lokale (bewusst offen statt zu: sonst sperrt ein Ausfall alle aus; die lokale Grenze bleibt, und Schlüssel
+ * wie Übertragungs-Codes sind zu lang zum Durchprobieren).
  */
+export const GLOBAL_LIMIT_MS = 1000;
 export async function limited(global: RateLimit | undefined, bucket: string, ip: string, maxFails: number): Promise<boolean> {
   if (tooManyFails(bucket, ip, maxFails)) return false;
   if (!global) return true;
-  try { return (await global.limit({ key: `${bucket}:${ip}` })).success; } catch { return true; }
+  try { return (await withTimeout(global.limit({ key: `${bucket}:${ip}` }), GLOBAL_LIMIT_MS)).success; } catch { return true; }
 }
 /** JSON-Objekt aus der Anfrage – null bei Unsinn, Listen oder zu großem Inhalt */
 export async function readBody(request: Request, max = 8000): Promise<Record<string, unknown> | null> {
