@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, Crown } from "lucide-react";
 import type { SchamlosAction, SchamlosState } from "@shared/games/schamlos/logic";
 import { cardText, fillIn } from "@shared/games/schamlos/cards";
+import { isImage, setImageUrl } from "@shared/platform/cardsets";
 import { playerName } from "@shared/platform/turns";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
@@ -12,13 +13,19 @@ import { ResultScreen } from "@/platform/ResultScreen";
 
 type P = BoardProps<SchamlosState, SchamlosAction>;
 
+/** Text einer Karte bzw. eines eingesetzten Stücks – Bildkarten (aus eigenen Sets) als Bild */
+export function Piece({ text, className }: { text: string; className?: string }) {
+  if (isImage(text)) return <img src={setImageUrl(text)} alt="Bildkarte" className={cn("inline-block max-h-24 rounded-lg align-middle", className)} />;
+  return <>{text}</>;
+}
+
 /** Schwarze Karte – mit eingesetzten Antworten, sobald welche gewählt sind */
 export function BlackCard({ prompt, answers = [], className }: { prompt: string; answers?: string[]; className?: string }) {
   const parts = fillIn(prompt, answers);
   return (
     <div className={cn("rounded-2xl bg-[#1b1e25] p-4 text-lg font-bold leading-snug text-white shadow-lg hyphens-auto [overflow-wrap:anywhere] lg:p-7 lg:text-3xl", className)} data-testid="black-card">
       {parts.map((p, i) => p.fill
-        ? <span key={i} className={cn(answers.length ? "text-[#ffb59c]" : "tracking-widest text-white/50")}>{answers.length ? p.text : "______"}</span>
+        ? <span key={i} className={cn(answers.length ? "text-[#ffb59c]" : "tracking-widest text-white/50")}>{answers.length ? <Piece text={p.text} /> : "______"}</span>
         : <span key={i}>{p.text}</span>)}
     </div>
   );
@@ -26,7 +33,7 @@ export function BlackCard({ prompt, answers = [], className }: { prompt: string;
 
 /** Satz einer Antwort als Fließtext – für die Auswahl des Zars */
 function Sentence({ prompt, cards }: { prompt: string; cards: string[] }) {
-  return <>{fillIn(prompt, cards).map((p, i) => <span key={i} className={p.fill ? "font-bold text-primary" : undefined}>{p.text}</span>)}</>;
+  return <>{fillIn(prompt, cards).map((p, i) => <span key={i} className={p.fill ? "font-bold text-primary" : undefined}><Piece text={p.text} /></span>)}</>;
 }
 
 export function Board(props: P) {
@@ -107,7 +114,7 @@ function Pick({ game: s, me, act, local, name, room }: Sub) {
             <button key={c} type="button" onClick={() => toggle(c)} aria-pressed={i >= 0}
               className={cn("relative min-h-20 rounded-xl bg-white p-3 text-left hyphens-auto [overflow-wrap:anywhere] text-[0.95rem] font-semibold leading-snug lg:min-h-36 lg:p-4 lg:text-xl lg:hover:-translate-y-0.5 text-[#1b1e25] shadow-sm ring-1 ring-black/10 transition active:scale-[0.98]",
                 i >= 0 && "ring-3 ring-primary")}>
-              {cardText(c)}
+              <Piece text={cardText(c)} className="max-h-32 w-full object-contain" />
               {i >= 0 && s.blanks > 1 && <span className="absolute top-1 right-1 grid size-5 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{i + 1}</span>}
             </button>
           );

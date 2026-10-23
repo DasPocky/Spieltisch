@@ -1,9 +1,10 @@
 /** Kleine Helfer rund um localStorage – alles in try/catch, weil Storage fehlen kann. */
+import { withBase } from "@shared/platform/base";
 import type { GameId } from "@shared/games";
 import { formerGameId, renamedGameId, renameStored } from "@shared/games/renamed";
 
 /** WebSocket-Adresse auf demselben Server (wss, wenn die Seite über https läuft) */
-export const wsUrl = (path: string) => `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${path}`;
+export const wsUrl = (path: string) => `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${withBase(path)}`;
 
 /** Alle Schlüssel der App beginnen so */
 export const KEY_PREFIX = "spieltisch:";

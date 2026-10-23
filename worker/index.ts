@@ -1,4 +1,8 @@
 import { isGameId } from "../shared/games";
+import { stripBase } from "../shared/platform/base";
+
+/** Pfad der App unter endlab.de */
+const APP_PREFIX = "/spieltisch";
 import { PROFILE_ID_RE, sanitizeResult, TRANSFER_CODE_RE } from "../shared/platform/profile";
 import { GROUP_CODE_RE, randomCode } from "../shared/platform/group";
 import { accessFor } from "../shared/platform/access";
@@ -7,6 +11,7 @@ import { PIN_RE, ROOM_CODE_RE } from "../shared/platform/protocol";
 import { Env, settingsOf, profileOf, transferOf } from "./env";
 import { allowed, countFail, limited, readBody, badRequest, json, withTimeout, makeCode, sameSecret } from "./http";
 import { GAME_IDS } from "./settings";
+import { handleSets, serveSetImage } from "./routes/sets";
 import { handleGroups } from "./routes/groups";
 import { handleAdmin, putAsset } from "./routes/admin";
 import { handleCall } from "./routes/call";
@@ -30,7 +35,17 @@ const notOwner = () => json({ error: "Dieses Profil gehört zu einem anderen Ger
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
-    const url = new URL(request.url);
+    let url = new URL(request.url);
+    // Unter endlab.de liegt die App unter /spieltisch: das Präfix weg, der Rest bleibt wie an der Wurzel
+    // (beide Formen gelten – alte Adressen, Vorschauen und Tests rufen ohne Präfix auf)
+    const logical = stripBase(url.pathname, APP_PREFIX);
+    if (logical !== url.pathname) {
+      url = new URL(url);
+      url.pathname = logical;
+      request = new Request(url, request);
+      // Seiten und Dateien der App (alles außer /api): aus den gebauten Dateien, wie an der Wurzel
+      if (!logical.startsWith("/api/") && env.ASSETS) return env.ASSETS.fetch(request);
+    }
     countRequest(env, ctx);
 
     // Freigaben für alle (ohne Geheimnisse)
@@ -129,6 +144,9 @@ export default {
     }
 
     if (url.pathname === "/api/groups" || url.pathname.startsWith("/api/groups/")) return handleGroups(request, env, url.pathname);
+    if (url.pathname === "/api/sets" || url.pathname.startsWith("/api/sets/")) return handleSets(request, env, url);
+    const setImage = url.pathname.match(/^\/api\/kartenbild\/(k\/[0-9a-f]{16}\/[a-z0-9]{20})$/);
+    if (setImage && request.method === "GET") return serveSetImage(env, setImage[1]);
 
     const prof = url.pathname.match(/^\/api\/profile\/([A-Z0-9]+)(\/result)?$/);
     if (prof) {

@@ -385,6 +385,7 @@ test("Partyabend: Host plant zwei Spiele, nach der Partie ist das nächste dran,
     await anna.getByTestId("plan-open").click();
     await anna.getByTestId("plan-vier").click();
     await anna.getByTestId("plan-maumau").click();
+    await anna.getByTestId("plan-next").click();
     await shot(anna, "92-partyabend-planen");
     await anna.getByTestId("plan-start").click();
     await expect(screen.getByTestId("table-plan")).toContainText("Vier in einer Reihe → Mau-Mau");
@@ -687,6 +688,48 @@ test("Decknamen am Tisch: 25 Wörter in der Mitte, Hinweis darüber, aufgedeckte
     await expect(screen.locator('[data-testid="table-word"][data-open="true"]')).toHaveCount(1);
     await screen.waitForTimeout(500);
     await shot(screen, "9g-tisch-decknamen");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Decknamen am Tisch mit eigenen Bildkarten: das Bild liegt auf dem Tisch statt eines Platzhalters", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { decknamen: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const phones = [];
+    for (const n of ["Anna", "Ben", "Cem", "Dora"]) phones.push(await joinByLink(browser, code, pin, n));
+    const anna = phones[0];
+    // Annas Set: 24 Wörter und ein Bild (hochgeladen wie im Editor)
+    const me = await anna.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:profile") ?? "{}") as { id: string; key: string });
+    const headers = { "x-profile": me.id, "x-profile-key": me.key };
+    const up = await anna.request.post("/api/sets/image", { headers, data: (await import("node:fs")).readFileSync("tests/fixtures/bildkarte.png") });
+    const { value } = await up.json() as { value: string };
+    const words = [...Array.from({ length: 24 }, (_, i) => `Wort${i + 1}`), value];
+    baseExpect((await anna.request.put("/api/sets/tischbildset", { headers, data: { kind: "decknamen", name: "Tischbilder", data: { words } } })).ok()).toBe(true);
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-decknamen").click();
+    await openSettings(anna);
+    await anna.getByTestId("set-pick").click();
+    await anna.getByRole("checkbox", { name: "Tischbilder" }).click();
+    await anna.getByTestId("set-pick-done").click();
+    await anna.getByRole("checkbox", { name: /Nur eigene Wörter/ }).click();
+    await closeSettings(anna);
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    for (const [i, p] of phones.entries()) await p.getByRole("button", { name: `${["Anna", "Ben", "Cem", "Dora"][i]}: Team ${i < 2 ? "Rot" : "Blau"}` }).click();
+    await anna.getByRole("button", { name: "Anna: Chef" }).click();
+    await phones[2].getByRole("button", { name: "Cem: Chef" }).click();
+    await anna.getByRole("button", { name: "Los geht's" }).click();
+    await expect(screen.getByTestId("table-word")).toHaveCount(25);
+    await expect(screen.getByTestId("table-words").getByRole("img", { name: "Bildkarte" })).toHaveCount(1);
+    await screen.waitForTimeout(1500);
+    await shot(screen, "9g-tisch-decknamen-bild");
   } finally {
     await setConfig(request, ALL_ON);
   }

@@ -17,7 +17,7 @@ import { ONBOARDED_KEY } from "./intro";
 type Step = "hello" | "me" | "tour?" | "tour";
 
 const TOUR = [
-  { icon: Users, title: "Raum öffnen, Code teilen", text: "Jeder spielt am eigenen Handy. Wer Raumcode und PIN hat, ist dabei – laufende Räume siehst du auf dem Start." },
+  { icon: Users, title: "Raum veranstalten, Code teilen", text: "Jeder spielt am eigenen Handy. Wer Raumcode und PIN hat, ist dabei – laufende Räume siehst du auf dem Start." },
   { icon: Video, title: "Treffpunkt", text: "Reden, sehen, schreiben – mit oder ohne Spiel. Video und Chat sind in jedem Raum mit dabei." },
   { icon: Trophy, title: "Eure Gruppe", text: "Für die feste Runde: Siege landen in eurer Bestenliste, Mitglieder holt ihr mit einem Tipp in den Raum." },
 ];

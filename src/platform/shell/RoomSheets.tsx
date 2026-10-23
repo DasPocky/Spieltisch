@@ -18,8 +18,8 @@ import { DEFAULT_ACCESS, type RoomAccess } from "@shared/platform/directory";
 import { cn } from "@/lib/utils";
 
 
-/** Was „Raum öffnen“ anlegt: Spiel (vorgewählt oder in der Lobby wählen) bzw. erst einmal nur Treffpunkt */
-export interface RoomPlan { gameId: string; pickGame: boolean; meet?: boolean }
+/** Was „Raum veranstalten“ anlegt: Spiel (vorgewählt oder gleich wählen), Partyabend oder erst einmal nur Treffpunkt – immer derselbe Raum */
+export interface RoomPlan { gameId: string; pickGame: boolean; meet?: boolean; party?: boolean }
 
 /** Name und PIN – mehr braucht ein neuer Raum nicht. Der Name ist aus dem Profil vorausgefüllt. */
 export function CreateRoomForm({ plan }: { plan: RoomPlan }) {
@@ -32,14 +32,14 @@ export function CreateRoomForm({ plan }: { plan: RoomPlan }) {
   const ok = cleanName(name).length > 0 && PIN_RE.test(pin);
   const create = async () => {
     setBusy(true); setError(null);
-    try { await createRoom({ name, pin, gameId: plan.gameId, pickGame: plan.pickGame, meet: plan.meet, room: access, replace: true }); }
+    try { await createRoom({ name, pin, gameId: plan.gameId, pickGame: plan.pickGame, meet: plan.meet, party: plan.party, room: access, replace: true }); }
     catch (e) { setError(e instanceof Error ? e.message : "Keine Verbindung zum Server."); }
     finally { setBusy(false); }
   };
   const Icon = gameIcon(plan.gameId);
   return (
     <form className="grid gap-3.5" data-testid="create-room" onSubmit={(e) => { e.preventDefault(); if (ok && !busy) void create(); }}>
-      {!plan.pickGame && !plan.meet && (
+      {!plan.pickGame && !plan.meet && !plan.party && (
         <p className="flex items-center gap-2.5 rounded-2xl bg-primary/10 p-2 pr-3 text-sm">
           <IconTile className="size-9 shrink-0 rounded-xl"><Icon className="size-5.5" /></IconTile>
           <span className="min-w-0"><b>{getGame(plan.gameId).info.name}</b> steht im Raum gleich bereit.</span>
@@ -63,13 +63,13 @@ export function CreateRoomForm({ plan }: { plan: RoomPlan }) {
       </button>
       {more && <RoomAccessForm value={access} onChange={setAccess} idPrefix="new-room" />}
       <Button type="submit" size="lg" disabled={!ok || busy}>{busy && <Loader2 className="animate-spin" />}Öffnen</Button>
-      <p className="-mt-1 text-sm text-muted-foreground">Mitspieler brauchen Raumcode und PIN. Du bist Host{plan.meet ? " – ein Spiel wählt ihr, wann ihr wollt." : plan.pickGame ? " und wählst gleich das Spiel." : "."}</p>
+      <p className="-mt-1 text-sm text-muted-foreground">Mitspieler brauchen Raumcode und PIN. Du bist Host{plan.party ? " und planst gleich die Spiele des Abends." : plan.meet ? " – ein Spiel wählt ihr, wann ihr wollt." : plan.pickGame ? " und wählst gleich das Spiel." : "."}</p>
       {error && <p role="alert" className="rounded-xl bg-destructive/15 p-3 text-sm text-destructive">{error}</p>}
     </form>
   );
 }
 
-/** „Raum öffnen“ als Blatt von unten */
+/** „Raum veranstalten“ als Blatt von unten */
 export function CreateRoomSheet({ plan, onClose }: { plan: RoomPlan | null; onClose: () => void }) {
   useBackClose(!!plan, onClose);
   return (
@@ -77,8 +77,8 @@ export function CreateRoomSheet({ plan, onClose }: { plan: RoomPlan | null; onCl
       {/* Name steht schon da: gleich in die PIN */}
       <SheetContent onOpenAutoFocus={(e) => { e.preventDefault(); document.getElementById(readStr(NAME_KEY) ? "pin" : "name")?.focus(); }}>
         <SheetHeader>
-          <SheetTitle>Raum öffnen</SheetTitle>
-          <SheetDescription>Reden, sehen, schreiben – und spielen, jeder am eigenen Handy</SheetDescription>
+          <SheetTitle>{plan?.party ? "Partyabend veranstalten" : plan?.meet ? "Treffpunkt öffnen" : "Raum veranstalten"}</SheetTitle>
+          <SheetDescription>Ein Raum für alles: reden, sehen, schreiben und spielen – jeder am eigenen Handy</SheetDescription>
         </SheetHeader>
         <div className="overflow-y-auto px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">{plan && <CreateRoomForm plan={plan} />}</div>
       </SheetContent>
@@ -92,7 +92,7 @@ const codeOf = (v: string) => {
   return (link ? link[1] : v).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
 };
 
-/** „Beitreten“: Raumcode eingeben (oder Link einfügen), danach fragt der Raum nach Name und PIN */
+/** „Mitspielen“: Raumcode eingeben (oder Link einfügen), danach fragt der Raum nach Name und PIN */
 export function JoinSheet({ open, onClose, online }: { open: boolean; onClose: () => void; online: boolean }) {
   const [code, setCode] = useState("");
   const ok = ROOM_CODE_RE.test(code);

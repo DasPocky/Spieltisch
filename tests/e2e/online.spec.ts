@@ -14,7 +14,7 @@ async function createRoom(host: Page, name: string, pin: string): Promise<string
 
 async function joinRoom(page: Page, code: string, name: string, pin: string) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Beitreten", exact: true }).click();
+  await page.getByTestId("join-open").click();
   await page.getByLabel("Raumcode").fill(code);
   await page.getByRole("button", { name: "Weiter" }).click();
   await expect(page.getByText(`Alles oder nichts · Raum`)).toBeVisible();

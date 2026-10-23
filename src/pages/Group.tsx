@@ -1,3 +1,4 @@
+import { withBase } from "@shared/platform/base";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Check, ChevronLeft, Loader2, LogOut, Pencil, QrCode as QrIcon, Share2, Trophy, Users, X } from "lucide-react";
@@ -18,7 +19,7 @@ import { QrCode } from "@/platform/QrCode";
 import { NavRow } from "@/platform/NavRow";
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "–");
-export const groupLink = (code: string) => `${location.origin}/g/${code}`;
+export const groupLink = (code: string) => `${location.origin}${withBase(`/g/${code}`)}`;
 
 function Page({ children, back }: { children: ReactNode; back?: string }) {
   return (

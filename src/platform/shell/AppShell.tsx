@@ -1,3 +1,4 @@
+import { stripBase, withBase } from "@shared/platform/base";
 import type { ReactNode } from "react";
 import { Dices, House, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import { WhatsNew } from "@/platform/WhatsNew";
@@ -19,13 +20,14 @@ interface TabState { tab?: boolean }
  * zwischen den anderen Tabs wird er nur ersetzt. Zurück auf „Start“ geht den Eintrag zurück statt einen neuen anzulegen.
  */
 export function goTab(path: string) {
-  if (path === location.pathname) return;
+  const here = stripBase(location.pathname);
+  if (path === here) return;
   const state = history.state as TabState | null;
   if (path === "/") {
     if (state?.tab) { history.back(); return; }
-    history.replaceState(null, "", "/");
-  } else if (location.pathname === "/") history.pushState({ tab: true }, "", path);
-  else history.replaceState(state?.tab ? { tab: true } : null, "", path);
+    history.replaceState(null, "", withBase("/"));
+  } else if (here === "/") history.pushState({ tab: true }, "", withBase(path));
+  else history.replaceState(state?.tab ? { tab: true } : null, "", withBase(path));
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 

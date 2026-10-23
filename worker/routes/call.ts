@@ -1,7 +1,7 @@
 /** HTTP: /api/rooms/:code/call – Sprach- und Videochat über Cloudflare Realtime, nur für Mitspieler des Raums */
 import { CALL_SESSION_RE, ROOM_CODE_RE } from "../../shared/platform/protocol";
 import { Env } from "../env";
-import { json } from "../http";
+import { json, readText } from "../http";
 
 /** Lokale Statistik: höchstens 20 Meldungen je Adresse in 10 Minuten (pro Worker-Instanz, grob reicht) */
 export const REALTIME_API = "https://rtc.live.cloudflare.com/v1/apps";
@@ -14,8 +14,8 @@ export type CallOp = "new" | "tracks" | "renegotiate" | "close";
 export async function handleCall(request: Request, env: Env, code: string): Promise<Response> {
   if (!env.REALTIME_APP_ID || !env.REALTIME_APP_TOKEN) return json({ error: "Der Sprachchat ist nicht eingerichtet." }, 503);
   if (!ROOM_CODE_RE.test(code)) return json({ error: "Ungültiger Raumcode." }, 400);
-  const text = await request.text();
-  if (text.length > MAX_CALL_BODY) return json({ error: "Zu groß." }, 413);
+  const text = await readText(request, MAX_CALL_BODY);
+  if (text === null) return json({ error: "Zu groß." }, 413);
   let body: { playerId?: unknown; token?: unknown; op?: unknown; session?: unknown; payload?: unknown };
   try { body = JSON.parse(text); } catch { return json({ error: "Ungültige Anfrage." }, 400); }
   const op = body.op as CallOp;

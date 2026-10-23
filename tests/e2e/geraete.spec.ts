@@ -24,11 +24,11 @@ test("Desktop: Startseite mit Seitenleiste, Tastatur erreicht die Hauptaktionen,
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Bereiche" })).toBeVisible();
   await expectNamedControls(page);
-  // Mit Tab zu „Raum öffnen“
+  // Mit Tab zu „Raum veranstalten“
   let reached = false;
   for (let i = 0; i < 40 && !reached; i++) {
     await page.keyboard.press("Tab");
-    reached = await page.evaluate(() => /Raum öffnen|Hier selbst mitspielen/.test(document.activeElement?.textContent ?? ""));
+    reached = await page.evaluate(() => /Raum veranstalten|Hier selbst mitspielen/.test(document.activeElement?.textContent ?? ""));
   }
   expect(reached).toBe(true);
   await shot(page, "g1-desktop-start");
@@ -38,7 +38,8 @@ test("Desktop: Raum am Rechner, Handy tritt bei, Partie passt ohne Scrollen", as
   const page = await desktop(browser);
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
-  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByRole("button", { name: "Raum veranstalten" }).first().click();
+  await page.getByTestId("host-meet").click();
   await page.getByLabel("Dein Name").fill("Anna");
   await page.getByLabel(/PIN/).fill("6060");
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
@@ -86,7 +87,8 @@ test("Am Rechner am Tisch mitspielen (Mau-Mau): Tisch aus eigener Sicht, Hand da
     await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
     await page.goto("/");
     await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
-    await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+    await page.getByRole("button", { name: "Raum veranstalten" }).first().click();
+    await page.getByTestId("host-meet").click();
     await page.getByLabel("Dein Name").fill("Anna");
     await page.getByLabel(/PIN/).fill("7070");
     await page.getByRole("button", { name: "Öffnen", exact: true }).click();
@@ -131,7 +133,8 @@ test("Handy als Begleiter: QR am Rechner, Handy wird zweites Gerät desselben Sp
   const page = await desktop(browser);
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
-  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByRole("button", { name: "Raum veranstalten" }).first().click();
+  await page.getByTestId("host-meet").click();
   await page.getByLabel("Dein Name").fill("Anna");
   await page.getByLabel(/PIN/).fill("8080");
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
@@ -169,7 +172,8 @@ test("Am Rechner am Tisch mitspielen (Eins!): eigene Hand unter dem Tisch, Tasta
     await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
     await page.goto("/");
     await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "eins"));
-    await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+    await page.getByRole("button", { name: "Raum veranstalten" }).first().click();
+    await page.getByTestId("host-meet").click();
     await page.getByLabel("Dein Name").fill("Anna");
     await page.getByLabel(/PIN/).fill("7171");
     await page.getByRole("button", { name: "Öffnen", exact: true }).click();
@@ -212,7 +216,8 @@ test("Private Hand: am Rechner liegt der Tisch für alle, die Karten nur auf dem
   await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("spieltisch:lastGame", "maumau"));
-  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByRole("button", { name: "Raum veranstalten" }).first().click();
+  await page.getByTestId("host-meet").click();
   await page.getByLabel("Dein Name").fill("Anna");
   await page.getByLabel(/PIN/).fill("7272");
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();
@@ -255,7 +260,8 @@ async function deskGame(browser: Browser, gameId: string, pin: string, more: str
   await page.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
   await page.goto("/");
   await page.evaluate((g) => localStorage.setItem("spieltisch:lastGame", g), gameId);
-  await page.getByRole("button", { name: /Raum öffnen|Hier selbst mitspielen/ }).first().click();
+  await page.getByRole("button", { name: "Raum veranstalten" }).first().click();
+  await page.getByTestId("host-meet").click();
   await page.getByLabel("Dein Name").fill("Anna");
   await page.getByLabel(/PIN/).fill(pin);
   await page.getByRole("button", { name: "Öffnen", exact: true }).click();

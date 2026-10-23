@@ -12,6 +12,7 @@ import { LiveSection } from "./Live";
 import { StatsSection } from "./Stats";
 import { GamesSection } from "./GamesAdmin";
 import { PeopleSection } from "./People";
+import { CardSetsSection } from "./CardSetsAdmin";
 import { SettingsSection } from "./Settings";
 import { DevSection } from "./Dev";
 
@@ -60,6 +61,7 @@ function Layout({ section }: { section: AdminSection }) {
           {section === "live" && <LiveSection />}
           {section === "statistik" && <StatsSection />}
           {section === "spiele" && <GamesSection />}
+          {section === "kartensets" && <CardSetsSection />}
           {section === "leute" && <PeopleSection />}
           {section === "einstellungen" && <SettingsSection />}
           {section === "entwickler" && <DevSection />}

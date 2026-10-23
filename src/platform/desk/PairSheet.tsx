@@ -1,3 +1,4 @@
+import { withBase } from "@shared/platform/base";
 import { useEffect, useRef, useState } from "react";
 import { Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ export function PairButton({ code, onPair, pairing }: { code: string; onPair: ()
     asked.current = Date.now();
     onPair();
   }, [open, valid, onPair]);
-  const link = valid ? `${location.origin}/r/${code}#pair=${pairing!.code}` : "";
+  const link = valid ? `${location.origin}${withBase(`/r/${code}`)}#pair=${pairing!.code}` : "";
   const left = valid ? Math.ceil((pairing!.until - now) / 1000) : 0;
   return (
     <>

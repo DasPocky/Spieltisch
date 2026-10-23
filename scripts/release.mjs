@@ -6,15 +6,15 @@
  * Ohne Rückmeldung (kein RELEASE_SECRET, Worker nicht erreichbar, alte Version ohne /api/release) geht sie sofort live –
  * so bleibt nie ein Update liegen. Geht das Hochladen allein nicht (z. B. neue Durable-Object-Klassen), wird klassisch deployt.
  *
- * Umgebung im Build: RELEASE_SECRET (gleicher Wert wie das Worker-Secret), LIVE_URL (optional, Standard: workers.dev-Adresse),
+ * Umgebung im Build: RELEASE_SECRET (gleicher Wert wie das Worker-Secret), LIVE_URL (optional, Standard: spieltisch.endlab.de),
  * WORKERS_CI_COMMIT_SHA und WORKERS_CI_BRANCH (setzt Cloudflare selbst). Nur auf main – andere Zweige laden nur eine Vorschau hoch.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-/** Adresse der laufenden Version (Standard: workers.dev dieses Kontos) */
-const LIVE = process.env.LIVE_URL || "https://spieltisch.bjoern-ef9.workers.dev";
+/** Adresse der laufenden Version */
+const LIVE = process.env.LIVE_URL || "https://spieltisch.endlab.de";
 /** Gebaute Seite (Vite + Cloudflare-Plugin) */
 const CLIENT = "dist/client";
 
