@@ -15,4 +15,4 @@ Nach der Vorlage [Mau-Mau](maumau.md). Stand: Oktober 2026. Schamlos hat keine S
 | Moderator: Kartenzar und Rundenpunkt werden angesagt | `src/platform/table/host.tsx` (Moment „zar“, „punkt“) |
 | Bots legen und wählen | `shared/platform/bots.ts` (Fall „schamlos“), `tests/unit/simulate.test.ts` |
 
-Offen: Paket B (eigene Kartensets mit Freigabe, Bildkarten) – siehe Roadmap.
+Eigene Kartensets (Paket B) mit Freigabe und Bildkarten: eigenes [Abnahmeblatt](kartensets.md).
