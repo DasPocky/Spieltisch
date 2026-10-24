@@ -17,6 +17,7 @@ test("Spielauswahl: Suche, passend zur Spielerzahl, nichts gefunden mit Ausweg",
   // Nichts gefunden: Ausweg zeigt wieder alles
   await page.getByTestId("game-search").fill("gibtsnicht");
   await expect(page.getByTestId("game-none")).toBeVisible();
+  await shot(page, "ux-keine-spiele-passen");
   await page.getByRole("button", { name: "Alle Spiele zeigen" }).click();
   await expect(page.getByTestId("game-search")).toHaveValue("");
   await expect(list.locator("[data-testid^=pick-]")).toHaveCount(all);

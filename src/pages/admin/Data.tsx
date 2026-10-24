@@ -75,7 +75,7 @@ export function DataTab({ api, onReset }: { api: Api; onReset: (c: SiteConfig) =
               <span><span className="block font-semibold">{WHAT[k][0]}</span><span className="block text-xs text-muted-foreground">{WHAT[k][1]}</span></span>
             </label>
           ))}
-          <button type="button" className="justify-self-start text-sm font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setWhat([...WIPE_KINDS])}>Alles auswählen</button>
+          <Button variant="outline" size="sm" className="justify-self-start" onClick={() => setWhat([...WIPE_KINDS])}>Alles auswählen</Button>
           {what.length === WIPE_KINDS.length && (
             <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm" data-testid="fresh-start">Kompletter Neustart: Jedes Handy löscht beim nächsten Öffnen einmal seine Daten (Name, Profil, Spielstände) und beginnt frisch mit dem Willkommen – auch dieses, nur die Anmeldung in der Verwaltung bleibt.</p>
           )}

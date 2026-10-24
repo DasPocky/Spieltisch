@@ -41,9 +41,9 @@ function Device({ s, players, act, options }: { s: ONState; players: Player[]; a
   return (
     <Wrap>
       {speechSupported() && s.phase !== "reveal" && (
-        <button type="button" onClick={() => setSpeech(!speech)} className="flex shrink-0 items-center gap-2 self-end text-sm font-semibold text-muted-foreground">
+        <Button variant="outline" size="sm" onClick={() => setSpeech(!speech)} aria-pressed={speech} className="self-end text-muted-foreground">
           {speech ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}Vorlesen {speech ? "an" : "aus"}
-        </button>
+        </Button>
       )}
       {s.phase === "reveal" && <PassAround s={s} players={players} act={act} />}
       {s.phase === "night" && step && <DeviceStep key={`${step}-${s.pending.length}`} s={s} players={players} act={act} auto={auto} options={options} />}

@@ -284,6 +284,8 @@ test("Werwolf online: Hauptmannwahl und Stichwahl am Handy", async ({ browser })
   // Der Host beendet die Nacht (so bleibt nichts hängen, falls jemand nicht reagiert)
   // Überspringen steht erst da, wenn etwas hängt – oder auf „Hängt etwas?“
   await host.getByRole("button", { name: "Menü" }).click();
+  await host.getByRole("button", { name: "Hängt etwas?" }).scrollIntoViewIfNeeded();
+  await shot(host, "ux-menue-haengt-etwas");
   await host.getByRole("button", { name: "Hängt etwas?" }).click();
   await host.getByRole("button", { name: /Nacht beenden/ }).click();
   await host.getByRole("button", { name: "Ja, weiter" }).click();

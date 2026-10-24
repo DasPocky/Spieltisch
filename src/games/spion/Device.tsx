@@ -104,7 +104,7 @@ export function Device({ room, game: s, act }: P) {
         <Button size="lg" variant="secondary" className="whitespace-nowrap px-3" onClick={() => setStep("reveal")}><VenetianMask />Spion rät</Button>
       </div>
       <div className="flex shrink-0 items-center justify-between px-1">
-        <button type="button" className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground" onClick={() => setStep("peek")}><Eye className="size-4" />Karte nochmal ansehen</button>
+        <Button variant="outline" size="sm" onClick={() => setStep("peek")}><Eye className="size-4" />Karte nochmal ansehen</Button>
         <RulesSheet gameId={room.gameId} />
       </div>
     </>
