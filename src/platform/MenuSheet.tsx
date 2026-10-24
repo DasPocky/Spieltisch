@@ -44,8 +44,8 @@ export interface MenuProps {
 const STALL_MS = 20_000;
 
 /**
- * Ein Menü für Lobby und Partie, feste Abschnitte nach Häufigkeit:
- * Partie · Spieler & Verlauf · Regeln · Einladen · Mein Gerät · Verlassen. Leere Abschnitte fallen weg.
+ * Ein Menü für Lobby und Partie, feste Gruppen: Spielleitung (nur Host, in der Partie) · Dieses Spiel · Raum (online)
+ * · Mein Gerät · Beenden (Gefährliches ganz unten). Leere Gruppen fallen weg.
  * Raum-Einstellungen stehen in der Lobby; hier nur, was sich während der Partie ändern lässt.
  */
 export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave, onCloseRoom, onClaimHost, manage, tv, onRemote }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch"> & {
@@ -82,14 +82,18 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
             <SheetDescription>{role}</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto px-5 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            {board && (isHost || hostAway) && (
-              <Section title="Partie">
-                {isHost && <HostActions room={room} board={board} online={online} dispatch={dispatch} />}
-                {hostAway && onClaimHost && (
-                  <Button variant="ice" className="justify-start" onClick={onClaimHost}><Crown />Host ist offline – Host übernehmen</Button>
-                )}
-                {isHost && Extras && <Extras {...board} />}
-                {isHost && (hasInGameSettings(room) || code) && (
+            {/* Host ist weg: übernehmen steht ganz oben, damit nichts hängen bleibt */}
+            {hostAway && onClaimHost && (
+              <Section title="Host" hideTitle>
+                <Button variant="ice" className="justify-start" onClick={onClaimHost}><Crown />Host ist offline – Host übernehmen</Button>
+              </Section>
+            )}
+
+            {/* Nur der Host: Werkzeuge für die laufende Partie */}
+            {board && isHost && (
+              <Section title="Spielleitung" icon={Crown} sub={code ? "nur du als Host" : undefined}>
+                <HostActions room={room} board={board} online={online} dispatch={dispatch} />
+                {(hasInGameSettings(room) || code) && (
                   <Collapsible title="Einstellungen ändern" testId="ingame-settings">
                     {code && (
                       <label className="flex items-center gap-3 text-sm">
@@ -106,29 +110,31 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
               </Section>
             )}
 
-            {/* Spieleigenes für alle, z. B. Decknamen „Dein Team“ */}
-            {board && !isHost && Extras && <Extras {...board} />}
-
-            {board && (
-              <Section title="Spieler & Verlauf" hideTitle>
-                <Row icon={History} label="Spieler & Verlauf" sub={last} onClick={() => { setOpen(false); setPlayers(true); }} />
-                <EveningLine className="rounded-xl" />
-              </Section>
-            )}
-
-            <Section title="Regeln" hideTitle>
+            {/* Für alle: Regeln, Spieler & Verlauf, Spielabend – zuletzt Spieleigenes (Team wechseln, Aufgeben, Stapel mischen) */}
+            <Section title="Dieses Spiel">
               <RulesSheet gameId={room.gameId}>
                 <Row icon={BookOpen} label={`Regeln: ${name}`} />
               </RulesSheet>
+              {board && <Row icon={History} label="Spieler & Verlauf" sub={last} onClick={() => { setOpen(false); setPlayers(true); }} />}
+              {board && <EveningLine className="rounded-xl" />}
+              {board && Extras && <Extras {...board} />}
             </Section>
 
             {code && (
-              <Section title="Raum" hideTitle>
+              <Section title="Raum">
+                {/* In der Lobby steht der Raumcode schon auf der Seite */}
+                {board && (
+                  <Collapsible title="Jemanden einladen" badge={<span className="text-xs font-normal tracking-[0.18em] text-muted-foreground">{code}</span>} testId="invite">
+                    <ShareCode code={code} gameName={name} />
+                    <p className="-mt-2 px-1 text-xs text-muted-foreground">Die PIN steht nicht im Link – sag sie dazu.</p>
+                  </Collapsible>
+                )}
                 <Collapsible title="Raum & Zugang" badge={<span className="truncate text-xs font-normal text-muted-foreground">{accessSummary(room.access ?? DEFAULT_ACCESS)}</span>} testId="room-settings">
                   <RoomSettings room={room} isHost={isHost} dispatch={dispatch} />
                 </Collapsible>
-                <Collapsible title="Großer Tisch" badge={<span className="truncate text-xs font-normal text-muted-foreground">{tv ? "verbunden" : "Fernseher als Tisch"}</span>} testId="big-table">
+                <Collapsible title="Großer Tisch" badge={<span className="truncate text-xs font-normal text-muted-foreground">{tv ? (isHost ? "verbunden · Fernbedienung" : "verbunden") : "Fernseher als Tisch"}</span>} testId="big-table">
                   {tv && isHost && onRemote && <Remote onRemote={onRemote} />}
+                  {tv && !isHost && <p className="px-1 text-sm text-muted-foreground">Der Große Tisch ist verbunden. Bedienen kann ihn der Host.</p>}
                   {!tv && <p className="px-1 text-sm text-muted-foreground" data-testid="big-table-help">
                     Auf dem großen Bildschirm <b className="text-foreground">{location.host}/tisch</b> öffnen, „Laufenden Raum zeigen“ wählen und
                     Raumcode <b className="tracking-wider text-foreground">{code}</b> mit eurer PIN eingeben. Dort sehen alle Stapel, Ablage und wer dran ist – eure Karten bleiben auf den Handys.
@@ -137,18 +143,8 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
               </Section>
             )}
 
-            {/* In der Lobby steht der Raumcode schon auf der Seite */}
-            {code && board && (
-              <Section title="Einladen" hideTitle>
-                <Collapsible title="Jemanden einladen" badge={<span className="text-xs font-normal tracking-[0.18em] text-muted-foreground">{code}</span>} testId="invite">
-                  <ShareCode code={code} gameName={name} />
-                  <p className="-mt-2 px-1 text-xs text-muted-foreground">Die PIN steht nicht im Link – sag sie dazu.</p>
-                </Collapsible>
-              </Section>
-            )}
-
-            <Section title="Mein Gerät" hideTitle>
-              <Collapsible title="Mein Gerät" badge={<span className="text-xs font-normal text-muted-foreground">Ansicht, Töne, hell/dunkel</span>} testId="my-device">
+            <Section title="Mein Gerät">
+              <Collapsible title="Ansicht & Töne" badge={<span className="text-xs font-normal text-muted-foreground">nur dieses Handy</span>} testId="my-device">
                 <MyDevice room={room} />
               </Collapsible>
             </Section>
@@ -279,11 +275,17 @@ function Row({ icon, label, sub, onClick, ...rest }: { icon: typeof History; lab
   return <NavRow icon={icon} outline title={label} sub={sub} onClick={onClick} {...rest} />;
 }
 
-/** Abschnitt mit kleiner Überschrift (auch für Spiele in MenuExtras) */
-export function Section({ title, hideTitle, children }: { title: string; hideTitle?: boolean; children: ReactNode }) {
+/** Abschnitt mit kleiner Überschrift (auch für Spiele in MenuExtras); `icon`/`sub` z. B. für „Spielleitung · nur du als Host“ */
+export function Section({ title, hideTitle, icon: Icon, sub, children }: { title: string; hideTitle?: boolean; icon?: typeof History; sub?: string; children: ReactNode }) {
   return (
     <section className={cn("mt-5 grid gap-2 first:mt-2", hideTitle && "mt-3")} aria-label={hideTitle ? title : undefined}>
-      {!hideTitle && <h3 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>}
+      {!hideTitle && (
+        <div className="flex items-center gap-1.5 px-1">
+          {Icon && <Icon className="size-3.5 text-primary" />}
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>
+          {sub && <span className="text-xs text-muted-foreground">· {sub}</span>}
+        </div>
+      )}
       {children}
     </section>
   );

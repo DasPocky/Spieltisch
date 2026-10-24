@@ -41,7 +41,7 @@ export function CallInvite({ call }: { call: CallControls }) {
   if (call.phase !== "off") return null;
   const inCall = Object.keys(call.peers).length;
   return (
-    <div className="glass mt-2 flex items-center gap-3 rounded-2xl py-2.5 pr-2.5 pl-4" data-testid="call-invite">
+    <div className="glass flex items-center gap-3 rounded-2xl py-2 pr-2 pl-4" data-testid="call-invite">
       <Phone className="size-4.5 shrink-0 text-primary" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">Audio & Video</div>

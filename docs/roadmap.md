@@ -41,6 +41,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 | Audit 22.10. P1-01: Partyabend nur mit freigegebenen Spielen – Plan, Weiterschalten und Start prüft der Server; abgeschaltete Spiele im Plan werden übersprungen (mit Hinweis) | ✅ |
 | Audit 22.10. P1-02: Bei laufendem Plan zählt nur das geplante Spiel für Abendwertung und Fortschritt; Rückgängig nimmt nur zurück, was die Partie gezählt hat | ✅ |
 | Audit 22.10. P1-03: Ergebnisse werden 2 Minuten nach dem Ende verbucht (sofort, wenn es weitergeht oder alle gegangen sind) – bis dahin lässt sich das Ende zurücknehmen, danach ist die Partie gewertet | ✅ |
+| Audit 22.10. P2-19/P2-21/P3-25: Lobby mit Rangfolge (Spiel → Mitspieler + Einladen → Einstellungen → Start, Reden/Partyabend/Treffpunkt klein darunter, Gäste ohne Host-Aktionen); Menü in Gruppen Spielleitung (nur Host) · Dieses Spiel · Raum · Mein Gerät · Beenden; Begriffsliste in `docs/entwicklung.md`. Test `tests/e2e/lobbymenue.spec.ts` | ✅ |
 | Analyse F-14: Betriebskennzahlen je Tag (Beitritte, Wiederverbindungen, abgelehnte Züge, kaputte Nachrichten) | ✅ |
 | CI: `npm audit` als Hinweis | ✅ · Branch-Schutz auf „Handy-Tests (Playwright)“ und „Build & Unit-Tests“ in GitHub einschalten ⏳ (Einstellung in GitHub) |
 
