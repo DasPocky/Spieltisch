@@ -121,7 +121,6 @@ export const SPRACHE: FragenKategorie = {
     ["Welche dieser Sprachen ist eine germanische Sprache?", "Niederländisch", "Finnisch", "Ungarisch", "Rumänisch"], // Quelle: https://de.wikipedia.org/wiki/Germanische_Sprachen
     ["Welche Plansprache veröffentlichte Ludwik Zamenhof?", "Esperanto", "Volapük", "Interlingua", "Latino sine flexione"], // Quelle: https://de.wikipedia.org/wiki/Esperanto
     ["Welche Sprache spricht man vor allem in Angola?", "Portugiesisch", "Französisch", "Englisch", "Spanisch"], // Quelle: https://de.wikipedia.org/wiki/Angola
-    ["Welche Sprache spricht die Mehrheit in der Provinz Québec?", "Französisch", "Englisch", "Spanisch", "Italienisch"], // Quelle: https://de.wikipedia.org/wiki/Qu%C3%A9bec_(Provinz)
     ["Welche Sprache ist Amtssprache im Iran?", "Persisch", "Arabisch", "Türkisch", "Kurdisch"], // Quelle: https://de.wikipedia.org/wiki/Iran
     ["Wie heißt eine der japanischen Silbenschriften?", "Hiragana", "Hangeul", "Devanagari", "Kyrillisch"], // Quelle: https://de.wikipedia.org/wiki/Hiragana
     ["In welcher Schrift schreibt man Hindi?", "Devanagari", "Hiragana", "Hangeul", "Kyrillisch"], // Quelle: https://de.wikipedia.org/wiki/Devanagari
@@ -136,7 +135,6 @@ export const SPRACHE: FragenKategorie = {
     ["Wie heißen die alten Schriftzeichen der Germanen?", "Runen", "Glyphen", "Kanji", "Lettern"], // Quelle: https://de.wikipedia.org/wiki/Runen
     ["Wie viele Buchstaben hat das griechische Alphabet?", 24, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/Griechisches_Alphabet
     ["Wie viele Buchstaben hat das russische Alphabet?", 33, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/Russisches_Alphabet
-    ["Wie viele Grundzeichen hat die Hiragana-Schrift?", 46, "Zeichen"], // Quelle: https://de.wikipedia.org/wiki/Hiragana
     ["In welchem Jahr erschien Luthers vollständige Bibelübersetzung?", 1534, ""], // Quelle: https://de.wikipedia.org/wiki/Lutherbibel
     ["Wie viele Buchstaben hat das hebräische Alphabet?", 22, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/Hebr%C3%A4isches_Alphabet
     ["Wie viele Buchstaben hat das arabische Alphabet?", 28, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/Arabisches_Alphabet
@@ -149,7 +147,6 @@ export const SPRACHE: FragenKategorie = {
     ["In welchem Jahr wurde die koreanische Schrift verkündet?", 1446, ""], // Quelle: https://de.wikipedia.org/wiki/Koreanisches_Alphabet
     ["Wie viele Vokalbuchstaben hat das Alphabet ohne Umlaute?", 5, ""], // Quelle: https://de.wikipedia.org/wiki/Vokal
     ["In welchem Jahr einigte sich eine Konferenz in Berlin auf eine einheitliche deutsche Rechtschreibung?", 1901, ""], // Quelle: https://de.wikipedia.org/wiki/II._Orthographische_Konferenz
-    ["Wie viele Buchstaben hat das türkische Alphabet?", 29, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/T%C3%BCrkisches_Alphabet
     ["Wie viele Buchstaben hat das polnische Alphabet?", 32, "Buchstaben"], // Quelle: https://de.wikipedia.org/wiki/Polnisches_Alphabet
     ["In welchem Jahr führte die Türkei das lateinische Alphabet ein?", 1928, ""], // Quelle: https://de.wikipedia.org/wiki/T%C3%BCrkisches_Alphabet
     ["Die Fälle in der üblichen Reihenfolge:", ["Nominativ", "Genitiv", "Dativ", "Akkusativ"]], // Quelle: https://de.wikipedia.org/wiki/Kasus
