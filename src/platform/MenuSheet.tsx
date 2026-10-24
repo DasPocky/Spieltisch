@@ -148,7 +148,8 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
             )}
 
             <Section title="Mein Gerät">
-              {device && <DeviceRow device={device} onOpen={() => { setOpen(false); setDeviceOpen(true); }} />}
+              {/* Ein Handy für alle: nichts zu wechseln – die Zeile spart sich das Menü */}
+              {device && device.role !== "shared" && <DeviceRow device={device} onOpen={() => { setOpen(false); setDeviceOpen(true); }} />}
               <Collapsible title="Ansicht & Töne" badge={<span className="text-xs font-normal text-muted-foreground">nur dieses Handy</span>} testId="my-device">
                 <MyDevice room={room} />
               </Collapsible>
