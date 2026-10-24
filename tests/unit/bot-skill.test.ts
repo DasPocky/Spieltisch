@@ -162,7 +162,7 @@ describe("Bots ohne Bewertung", () => {
 });
 
 describe("Abnahme: Bots", () => {
-  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]], ["alles", [2, 3]], ["maexchen", [2, 4]], ["fischen", [2, 4]], ["hellseher", [3]], ["herzen", [3, 4]], ["stapelbau", [2, 3]], ["himmelskarten", [2, 4]], ["glueckssieben", [3, 4]], ["zehnphasen", [2, 4]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
+  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]], ["alles", [2, 3]], ["maexchen", [2, 4]], ["fischen", [2, 4]], ["hellseher", [3]], ["herzen", [3, 4]], ["schocken", [2, 4]], ["stapelbau", [2, 3]], ["himmelskarten", [2, 4]], ["glueckssieben", [3, 4]], ["zehnphasen", [2, 4]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
     for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
       for (const n of counts) {
         let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));
