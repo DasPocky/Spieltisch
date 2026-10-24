@@ -86,3 +86,18 @@ test("Quiz an einem Handy: Frage zeigen, alle rufen, auflösen und antippen, wer
   await page.getByRole("button", { name: /\+100 für 1/ }).click();
   await expect(page.getByText("Frage 2/10")).toBeVisible();
 });
+
+test("Quiz-Kategorien: Wissenschaft & Technik und Sprache & Wörter in den Einstellungen, einzeln abschaltbar", async ({ browser }) => {
+  const anna = await newPhone(browser);
+  await createRoom(anna, "quiz", "Anna", "5124");
+  await openSettings(anna);
+  for (const name of [/Wissenschaft & Technik/, /Sprache & Wörter/]) {
+    const box = anna.getByRole("checkbox", { name });
+    await box.scrollIntoViewIfNeeded();
+    await expect(box).toHaveAttribute("aria-checked", "true");
+  }
+  await anna.getByRole("checkbox", { name: /Sprache & Wörter/ }).click();
+  await expect(anna.getByRole("checkbox", { name: /Sprache & Wörter/ })).toHaveAttribute("aria-checked", "false");
+  await expectNoScroll(anna);
+  await shot(anna, "quiz-kategorien");
+});
