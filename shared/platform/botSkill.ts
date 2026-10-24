@@ -16,6 +16,7 @@ import { PER_COLOR, PIECES, trackLen, type LudoState } from "../games/ludo/logic
 import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
 import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf as maexValue, type MaexState } from "../games/maexchen/logic";
 import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
+import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
 import { cardPoints as p10Points, colorOf as p10Color, extend as p10Extend, findPhase, PHASES, isSkip as p10Skip, isWild as p10Wild, valueOf as p10Value, type P10Card, type P10State } from "../games/zehnphasen/logic";
@@ -365,6 +366,20 @@ const scoreHellseher: Scorer = (view, a, _after, me) => {
   return wins ? -100 - p : p;
 };
 
+// ---------------------------------------------------------------- Herzen (unter dem Stich bleiben, Strafkarten abwerfen)
+
+const scoreHerzen: Scorer = (view, a, _after, me) => {
+  const s = view.game as HzState;
+  const hand = s.hands[me] ?? [];
+  if (a.type === "nextRound") return 10;
+  if (a.type === "pass") {
+    const best = hzPass(hand);
+    return (a.cards as string[]).filter((c) => best.includes(c as never)).length;
+  }
+  if (a.type !== "play") return -50;
+  return a.card === hzSuggest(s, hand, view.options) ? 100 : -hzPoints(a.card as never);
+};
+
 // ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
 
 const scoreStapelbau: Scorer = (view, a, after, me) => {
@@ -515,7 +530,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -582,6 +597,16 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     const bids = Array.from({ length: s.round + 1 }, (_, bid) => bid);
     return [...HS_SUITS.map((suit) => ({ type: "trump", suit })), ...bids.map((bid) => ({ type: "bid", bid })), ...bids.map((bid) => ({ type: "secretBid", bid })),
       ...(s.hands[me] ?? []).map((card) => ({ type: "play", card })), { type: "nextRound" }];
+  },
+  herzen: (view, me) => {
+    const s = view.game as HzState;
+    const hand = s.hands[me] ?? [];
+    const out: A[] = [{ type: "nextRound" }, ...hand.map((card) => ({ type: "play", card }))];
+    if (s.phase === "pass" && hand.length >= 3) {
+      // der Vorschlag und zwei schlichtere Wahlen (die ersten bzw. letzten drei Karten)
+      for (const cards of [hzPass(hand), hand.slice(0, 3), hand.slice(-3)]) out.push({ type: "pass", cards });
+    }
+    return out;
   },
   maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
   alles: (view) => (view.options.diceMode !== "app" || view.options.cards === "real" ? null

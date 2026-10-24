@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-herzen",
+    date: "2026-10-24",
+    title: "Neues Kartenspiel: Herzen",
+    items: [
+      "Stiche vermeiden für 3 bis 6: jedes Herz kostet einen Punkt, die Pik-Dame dreizehn – wer bei 100 Punkten am wenigsten hat, gewinnt.",
+      "Vor jeder Runde gebt ihr drei Karten weiter (links, rechts, gegenüber, keine), die Kreuz-Zwei spielt aus, Herz erst nach „Herz gebrochen“.",
+      "Wer alle Strafkarten holt, schießt den Mond: 0 für ihn, 26 für alle anderen. Mit Bots, an einem Handy für alle und mit Vorlesen.",
+    ],
+  },
+  {
     id: "2026-10-quiz-wissen",
     date: "2026-10-24",
     title: "Quiz: Wissenschaft, Sprache und die Bühne",

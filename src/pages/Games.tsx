@@ -25,6 +25,7 @@ export function Games() {
   const sorted = [...featured.filter((id) => ordered.includes(id)), ...ordered.filter((id) => !featured.includes(id))];
   const cats = GAME_CATEGORIES.filter((c) => games.some((g) => g.info.category === c));
   const shown = sorted.map((id) => games.find((g) => g.id === id)!).filter((g) => !cat || g.info.category === cat);
+  const dense = shown.length > 24;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3">
@@ -39,15 +40,16 @@ export function Games() {
           </button>
         ))}
       </div>
-      <ul className="games-grid mt-3 grid grid-cols-4 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]" data-testid="game-grid">
+      {/* Ab 25 Spielen fünf Spalten, damit das Raster auf dem Handy ohne Scrollen bleibt */}
+      <ul className={cn("games-grid mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]", dense ? "grid-cols-5 gap-1.5" : "grid-cols-4")} data-testid="game-grid">
         {shown.map(({ id, info, Icon }) => (
           <li key={id}>
             <button type="button" onClick={() => setOpen(id)} data-testid={`game-${id}`}
-              className="glass relative flex w-full min-w-0 flex-col items-center gap-0.5 rounded-2xl px-0.5 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
+              className="glass relative flex h-full w-full min-w-0 flex-col items-center gap-0.5 rounded-2xl px-0.5 pt-2 pb-1.5 outline-none transition active:scale-[0.96] focus-visible:ring-[3px] focus-visible:ring-ring">
               {featured.includes(id) && <span className="absolute top-1 right-1 rounded-full bg-primary px-1 text-[0.55rem] font-bold leading-tight text-primary-foreground">NEU</span>}
               {locked(id) && <Lock className="absolute top-1.5 left-1.5 size-3.5 text-muted-foreground" aria-label="mit Zugangscode" />}
               <IconTile className="game-tile-icon size-10 rounded-xl"><Icon className="size-6.5" /></IconTile>
-              <span className="w-full truncate px-0.5 text-center text-[0.72rem] font-semibold">{info.name}</span>
+              <span className={cn("w-full px-0.5 text-center font-semibold", dense ? "line-clamp-2 hyphens-auto break-words text-[0.66rem] leading-tight" : "truncate text-[0.72rem]")}>{info.name}</span>
               <span className="game-tile-players flex items-center gap-0.5 text-[0.65rem] text-muted-foreground"><Users className="size-3" />{players(info.minPlayers, info.maxPlayers)}</span>
             </button>
           </li>
