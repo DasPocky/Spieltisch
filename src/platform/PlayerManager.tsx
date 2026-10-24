@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useSyncExternalStore } from "react";
 import { ArrowDown, ArrowUp, Bot, Plus, Shuffle, X } from "lucide-react";
 import { getGame } from "@shared/games";
 import { shuffle } from "@shared/platform/random";
@@ -14,6 +14,15 @@ import { Avatar, AvatarContext, AvatarPicker } from "./Avatar";
 import { Bubble } from "./chat/Chat";
 import { PhotoRow } from "./Photo";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+
+/** Kleine Handys (wenig Höhe): Spielerliste schon ab 3 Spielern zweispaltig und schmaler */
+const LOW = "(max-height: 700px)";
+const subscribeLow = (l: () => void) => {
+  if (typeof matchMedia !== "function") return () => undefined;
+  const m = matchMedia(LOW); m.addEventListener("change", l); return () => m.removeEventListener("change", l);
+};
+const lowNow = () => typeof matchMedia === "function" && matchMedia(LOW).matches;
+const useLow = () => useSyncExternalStore(subscribeLow, lowNow, () => false);
 
 /** Spieler aus der aktiven Gruppe – damit das Ergebnis der Partie in der Bestenliste landet */
 export interface GroupPick { code: string; member: string; avatar: AvatarData }
@@ -33,8 +42,11 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
   const [edit, setEdit] = useState<string | null>(null);
   const avatars = useContext(AvatarContext) ?? {};
   const editing = room.players.find((p) => p.id === edit) ?? null;
-  // Ab 5 Spielern zwei Spalten – so passen auch 8 ohne Scrollen auf den Schirm
-  const two = room.players.length > 4;
+  // Ab 5 Spielern zwei Spalten – so passen auch 8 ohne Scrollen auf den Schirm; auf kleinen Handys schon ab 3 und schmaler
+  // (Reihenfolge ändert der Host dann über Antippen des Avatars, Entfernen bleibt in der Zeile)
+  const low = useLow();
+  const two = room.players.length > 4 || (low && room.players.length > 2);
+  const slim = two && low;
   // Reihenfolge auslosen – mit dem fairen Zufall wie beim Würfeln und Mischen
   const shuffleOrder = () => dispatch({ type: "orderPlayers", ids: shuffle(room.players.map((p) => p.id)) });
   const devOn = useDev().on;
@@ -50,19 +62,20 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
   return (
     <div>
       {editable && room.players.length > 2 && room.phase === "lobby" && (
-        <div className="mb-1.5 flex justify-end">
+        // Kleine Handys: „Mischen“ rückt neben die Überschrift „Mitspieler“
+        <div className={cn("mb-1.5 flex justify-end", slim && "relative -mt-7 mb-1")}>
           <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={shuffleOrder}><Shuffle className="size-3.5" />Mischen</Button>
         </div>
       )}
-      <ol className={cn("grid gap-1.5", two && "grid-cols-2")} data-testid="players">
+      <ol className={cn("grid gap-1.5", two && "grid-cols-2", slim && "gap-1")} data-testid="players">
         {room.players.map((p, i) => {
           const mine = me === null || p.id === me || editable;
           return (
-            <li key={p.id} className={cn("glass relative flex min-w-0 items-center rounded-xl", two ? "h-12 gap-1.5 pr-0.5 pl-1.5" : "h-13 gap-2.5 pr-1.5 pl-2")}>
+            <li key={p.id} className={cn("glass relative flex min-w-0 items-center rounded-xl", slim ? "h-9 gap-1.5 pr-0 pl-1.5 text-sm" : two ? "h-12 gap-1.5 pr-0.5 pl-1.5" : "h-13 gap-2.5 pr-1.5 pl-2")}>
               <Bubble playerId={p.id} side />
               <button type="button" disabled={!mine} onClick={() => setEdit(p.id)} aria-label={`Avatar von ${p.name} ändern`}
                 className="relative shrink-0 rounded-full outline-none transition active:scale-95 focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
-                <Avatar avatar={avatars[p.id]} name={p.name} className={two ? "size-8" : "size-9 text-[1.2em]"} />
+                <Avatar avatar={avatars[p.id]} name={p.name} className={slim ? "size-7" : two ? "size-8" : "size-9 text-[1.2em]"} />
                 <span className="absolute -top-1 -left-1 grid size-4 place-items-center rounded-full bg-background text-[0.6rem] font-bold tabular-nums ring-1 ring-border">{i + 1}</span>
                 {online && <span className={cn("absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-background", online.has(p.id) ? "bg-ok" : "bg-foreground/30")}
                   aria-label={online.has(p.id) ? "online" : "offline"} />}
@@ -73,7 +86,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
                   {p.id === me && <span className="font-normal text-muted-foreground"> (du)</span>}
                   {!two && online && p.id === room.hostId && <span className="font-normal text-muted-foreground"> · Host</span>}
                 </span>
-                {two && online && p.id === room.hostId && <span className="block text-[0.7rem] text-muted-foreground">Host</span>}
+                {two && online && p.id === room.hostId && <span className="block text-[0.7rem] leading-none text-muted-foreground">Host</span>}
               </span>
               {editable && !two && i > 0 && (
                 <Button variant="ghost" size="icon" aria-label={`${p.name} nach oben`} onClick={() => dispatch({ type: "movePlayer", id: p.id, dir: -1 })}>
@@ -87,7 +100,7 @@ export function PlayerManager({ room, me, online, editable, dispatch, onAddLocal
                 confirmLabel="Entfernen"
                 onConfirm={() => dispatch({ type: "removePlayer", id: p.id })}
               >
-                <Button variant="ghost" size="icon" aria-label={`${p.name} entfernen`} className={cn("text-muted-foreground", two && "size-9")}><X /></Button>
+                <Button variant="ghost" size="icon" aria-label={`${p.name} entfernen`} className={cn("text-muted-foreground", slim ? "size-8" : two && "size-9")}><X /></Button>
               </Confirm>}
             </li>
           );
