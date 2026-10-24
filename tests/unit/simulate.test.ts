@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { DECKS } from "@shared/cards/deck";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
+import type { HzState } from "@shared/games/herzen/logic";
 import type { P10State } from "@shared/games/zehnphasen/logic";
 import type { SbState } from "@shared/games/stapelbau/logic";
 import type { EinsState } from "@shared/games/eins/logic";
@@ -59,6 +60,14 @@ function checkCards(r: RoomState) {
     // abgespielte Stiche liegen beiseite: Karten im Spiel = 60 − gespielte Stiche × Spieler
     const played = Object.values(s.tricks).reduce((t, n) => t + n, 0) * Object.keys(s.hands).length;
     expect(all.length + played).toBe(60);
+  }
+  if (r.gameId === "herzen") {
+    const s = r.game as HzState;
+    const all = [...s.trick.map((p) => p.card), ...Object.values(s.hands).flat()];
+    expect(new Set(all).size).toBe(all.length);
+    // gespielte Stiche liegen beiseite
+    const played = Object.values(s.tricks).reduce((t, n) => t + n, 0) * Object.keys(s.hands).length;
+    if (s.phase === "play") expect(all.length + played).toBe(52 - s.removed.length);
   }
   if (r.gameId === "fischen" && !(r.game as FischenState).table) {
     const s = r.game as FischenState;
@@ -176,6 +185,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["hellseher", 5, { secret: true, length: "half" }],
   ["hellseher", 3, { mode: "table", noEven: true }],
   ["hellseher", 4, { mode: "table", secret: true, length: "half" }],
+  ["herzen", 4, {}],
+  ["herzen", 3, { target: "50", moon: false }],
+  ["herzen", 5, { pass: "left", firstPoints: true }],
+  ["herzen", 6, { pass: "none", target: "50" }],
   ["fischen", 2, {}],
   ["fischen", 5, { luckyAgain: false, deck: "de32" }],
   ["fischen", 8, { deck: "fr52" }],
