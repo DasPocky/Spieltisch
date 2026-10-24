@@ -47,3 +47,17 @@ test("Regelpakete: Standard, Kurz, Wild – einzelne Hausregel macht „Eigene�
   await expect(rules.getByRole("radio", { name: /Wild/ })).toHaveCount(0);
   await expect(rules.getByRole("radio", { name: /Kurz/ })).toBeVisible();
 });
+
+test("Werwolf: Rollen-Pakete Einsteiger und Komplex", async ({ page }) => {
+  await createRoom(page, "werwolf", "Anna", "8282");
+  await openSettings(page);
+  const rules = page.getByRole("radiogroup", { name: "Regeln" });
+  await expect(rules.getByRole("radio")).toHaveCount(3);
+  await rules.getByRole("radio", { name: /Komplex/ }).click();
+  await expect(rules.getByRole("radio", { name: /Komplex/ })).toHaveAttribute("aria-checked", "true");
+  await shot(page, "c4-werwolf-pakete");
+  await rules.getByRole("radio", { name: /Einsteiger/ }).click();
+  await expect(rules.getByRole("radio", { name: /Einsteiger/ })).toHaveAttribute("aria-checked", "true");
+  await closeSettings(page);
+  await expect(page.getByTestId("settings-summary")).toContainText("Regeln: Einsteiger");
+});

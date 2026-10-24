@@ -2,7 +2,7 @@ import { withBase } from "@shared/platform/base";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useVoiceNames } from "./realVoice";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal, Smartphone, MessagesSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Send, SlidersHorizontal, Smartphone, MessagesSquare, Star } from "lucide-react";
 import { GAME_IDS, getGame } from "@shared/games";
 import { canPlayTurn, currentPlayerId, playerLimits, roomGame, skipLabel, type RoomAction, type RoomState } from "@shared/platform/room";
 import { tableModel } from "./table/model";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { pickGameKey } from "@/lib/createRoom";
 import { takeGamePick } from "@/lib/pickGame";
 import { LAST_GAME_KEY } from "@/lib/storage";
+import { toggleFavorite, useFavorites } from "@/lib/favorites";
 import { savedAccess, siteConfigNow, useSiteConfig } from "@/hooks/useSiteConfig";
 import { accessFor, orderGames } from "@shared/platform/access";
 import { GAME_CATEGORIES } from "@shared/platform/types";
@@ -361,6 +362,8 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
   );
 }
 
+const FAV_GROUP = "Gemerkt";
+
 /** „Was spielt ihr?“ – Spielauswahl der Lobby, lokal wie online */
 function GamePicker({ open, onOpenChange, gameIds, current, online, players, onPick }: {
   open: boolean; onOpenChange: (o: boolean) => void; gameIds: string[]; current: string; online: boolean; players: number; onPick: (id: string) => void;
@@ -370,6 +373,12 @@ function GamePicker({ open, onOpenChange, gameIds, current, online, players, onP
   // Jedes Öffnen beginnt ohne Suche – auch wenn das Blatt nach der Wahl von außen geschlossen wurde
   useEffect(() => { if (open) setFilter(NO_FILTER); }, [open]);
   const shown = filterGames(gameIds, filter, players);
+  const favs = useFavorites();
+  // Gemerkte Spiele nur in ihrer eigenen Gruppe, nicht doppelt weiter unten
+  const groups: [string, string[]][] = [
+    [FAV_GROUP, shown.filter((id) => favs.includes(id))],
+    ...GAME_CATEGORIES.map((cat): [string, string[]] => [cat, shown.filter((id) => !favs.includes(id) && getGame(id).info.category === cat)]),
+  ].filter(([, ids]) => ids.length > 0) as [string, string[]][];
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
@@ -380,30 +389,33 @@ function GamePicker({ open, onOpenChange, gameIds, current, online, players, onP
         <GameSearch value={filter} onChange={setFilter} players={players} className="shrink-0 px-5 pt-1" />
         <div className="overflow-y-auto px-5 pt-1 pb-[calc(1.5rem+env(safe-area-inset-bottom))]" data-testid="pick-list">
           {!shown.length && <NoGames onReset={() => setFilter(NO_FILTER)} />}
-          {/* Nach Art gruppiert – bei vielen Spielen findet man so schneller */}
-          {GAME_CATEGORIES.map((cat) => {
-            const ids = shown.filter((id) => getGame(id).info.category === cat);
-            if (!ids.length) return null;
-            return (
-              <section key={cat} aria-label={cat} className="mt-3 grid gap-1.5">
-                <h3 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{cat}</h3>
-                {ids.map((id) => {
-                  const g = getGame(id).info;
-                  const GIcon = gameIcon(id);
-                  return (
-                    <button key={id} type="button" onClick={() => onPick(id)} aria-current={id === current || undefined} data-testid={`pick-${id}`}
-                      className={cn("flex items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === current ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
+          {/* Gemerkte Spiele oben, der Rest nach Art gruppiert – bei vielen Spielen findet man so schneller */}
+          {groups.map(([title, ids]) => (
+            <section key={title} aria-label={title} className="mt-3 grid gap-1.5" data-testid={title === FAV_GROUP ? "pick-favorites" : undefined}>
+              <h3 className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>
+              {ids.map((id) => {
+                const g = getGame(id).info;
+                const GIcon = gameIcon(id);
+                const fav = favs.includes(id);
+                return (
+                  <div key={id} className="flex items-stretch gap-1.5">
+                    <button type="button" onClick={() => onPick(id)} aria-current={id === current || undefined} data-testid={`pick-${id}`}
+                      className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring", id === current ? "bg-navy-600/60 ring-1 ring-inset ring-navy-300/50" : "glass")}>
                       <IconTile className="size-9"><GIcon className="size-6" /></IconTile>
                       <span className="min-w-0 flex-1">
                         <span className="block leading-tight font-semibold">{g.name}{siteConfigNow()?.featured.includes(id) && <span className="ml-1.5 rounded-full bg-primary/14 px-1.5 py-px align-[1px] text-[0.65rem] font-bold text-primary">NEU</span>}{locked(id) && <Lock className="ml-1 inline size-3.5 align-[-1px] text-muted-foreground" aria-label="mit Zugangscode" />}</span>
                         <span className="block text-xs text-muted-foreground">{g.minPlayers === g.maxPlayers ? g.minPlayers : `${g.minPlayers}–${g.maxPlayers}`} Spieler · {g.duration}</span>
                       </span>
                     </button>
-                  );
-                })}
-              </section>
-            );
-          })}
+                    <button type="button" onClick={() => toggleFavorite(id)} aria-pressed={fav} aria-label={fav ? `Nicht mehr merken: ${g.name}` : `Merken: ${g.name}`} data-testid={`fav-${id}`}
+                      className="grid w-11 shrink-0 place-items-center rounded-2xl text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+                      <Star className={cn("size-5", fav && "fill-primary text-primary")} />
+                    </button>
+                  </div>
+                );
+              })}
+            </section>
+          ))}
         </div>
       </SheetContent>
     </Sheet>

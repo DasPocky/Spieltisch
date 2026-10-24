@@ -58,10 +58,10 @@ test("Admin: Spiel abschalten und hinter Zugangscode legen", async ({ page, requ
   await page.goto("/");
   await page.getByRole("button", { name: /Ein Handy für alle/ }).click();
   await page.getByTestId("game-card").click();
-  await expect(page.getByRole("button", { name: /^Alles oder nichts/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Fünf Würfel/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Glückssieben/ })).toHaveAccessibleName(/Glückssieben/);
-  await expect(page.getByRole("button", { name: /^Glückssieben/ }).getByLabel("mit Zugangscode")).toBeVisible();
+  await expect(page.getByTestId("pick-alles")).toBeVisible();
+  await expect(page.getByTestId("pick-fuenfwuerfel")).toHaveCount(0);
+  await expect(page.getByTestId("pick-glueckssieben")).toHaveAccessibleName(/Glückssieben/);
+  await expect(page.getByTestId("pick-glueckssieben").getByLabel("mit Zugangscode")).toBeVisible();
 
   // Fünf Würfel über den alten Link: geschlossen
   await page.goto("/spiel/fuenfwuerfel");
