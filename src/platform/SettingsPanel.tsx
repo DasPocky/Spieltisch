@@ -112,7 +112,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
           {shown.filter((d) => d.group === g && !d.chip).map(setting)}
           {shown.some((d) => d.group === g && d.chip) && (
             <div className="flex flex-wrap gap-1.5">{shown.filter((d) => d.group === g && d.chip).map((d) => (
-              <Chip key={d.key} label={d.label} checked={room.options[d.key] === true} editable={editable && !playing}
+              <Chip key={d.key} label={d.label} hint={"hint" in d ? d.hint : undefined} checked={room.options[d.key] === true} editable={editable && !playing}
                 onChange={(value) => dispatch({ type: "setOption", key: d.key, value })} />
             ))}</div>
           )}
@@ -198,11 +198,11 @@ function Setting({ def, value, editable, onChange }: { def: SettingDef; value: u
 }
 
 /** Schalter als Chip: an = gefüllt, aus = nur Umriss */
-function Chip({ label, checked, editable, onChange }: { label: string; checked: boolean; editable: boolean; onChange: (v: boolean) => void }) {
+function Chip({ label, hint, checked, editable, onChange }: { label: string; hint?: string; checked: boolean; editable: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button type="button" role="checkbox" aria-checked={checked} disabled={!editable} onClick={() => onChange(!checked)}
-      className={cn("min-h-9 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-60",
-        checked ? "bg-primary text-primary-foreground ring-primary" : "text-muted-foreground ring-border")}>
+    <button type="button" role="checkbox" aria-checked={checked} disabled={!editable} onClick={() => onChange(!checked)} title={hint}
+      className={cn("min-h-9 rounded-full px-3 py-1 text-[0.8rem] font-semibold ring-1 ring-inset outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-60",
+        checked ? "bg-primary/12 text-primary ring-primary/50" : "text-muted-foreground line-through decoration-1 ring-border")}>
       {label}
     </button>
   );
