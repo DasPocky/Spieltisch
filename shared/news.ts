@@ -21,6 +21,7 @@ export const NEWS: NewsEntry[] = [
     items: [
       "Was etwas auslöst, sieht jetzt wie ein Knopf aus – etwa „Raum für alle schließen“ (rot, mit Rückfrage), „Hängt etwas?“, „Überspringen“ und „Vorlesen an/aus“.",
       "Ist gerade kein Raum offen, bleibt die Startseite ruhig: kein leerer Kasten mehr.",
+    ],
   },
   {
     id: "2026-10-werwolf-pakete",
