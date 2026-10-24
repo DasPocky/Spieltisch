@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { VierState } from "@shared/games/vier/logic";
 import { allCaptures, type DameState } from "@shared/games/dame/logic";
 import { chooseBotMove, seeded, type BotLevel } from "@shared/platform/botSkill";
@@ -14,8 +14,21 @@ const start = (gameId: string, names = ["A", "B"]) => {
   return act(r, { type: "start" }, "p1");
 };
 
-/** Eine Partie zwischen zwei Bots – gibt die Gewinner zurück */
+/**
+ * Eine Partie zwischen zwei Bots – gibt die Gewinner zurück. Ganz wiederholbar: auch Mischen, Austeilen und Würfeln
+ * laufen über den Startwert (sonst schwankt das Ergebnis von Lauf zu Lauf, und ein roter Lauf ließe sich nicht nachspielen).
+ */
 function duel(gameId: string, levels: Record<string, BotLevel>, seed: string): string[] {
+  const rand = seeded(`deal:${seed}`);
+  const spy = vi.spyOn(crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView | null>(arr: T): T => {
+    const v = arr as unknown as Uint8Array | Uint32Array;
+    const max = v instanceof Uint8Array ? 256 : 4294967296;
+    for (let i = 0; i < v.length; i++) v[i] = Math.floor(rand() * max);
+    return arr;
+  });
+  try { return play(gameId, levels, seed); } finally { spy.mockRestore(); }
+}
+function play(gameId: string, levels: Record<string, BotLevel>, seed: string): string[] {
   let r = start(gameId, Object.keys(levels).map((_, i) => "ABCD"[i]));
   for (let i = 0; i < 2000 && !roomGame(r).isOver(r.game); i++) {
     const cur = roomGame(r).currentPlayerId(r.game);
@@ -31,6 +44,14 @@ function duel(gameId: string, levels: Record<string, BotLevel>, seed: string): s
 }
 
 describe("Bots mit Spielstärke", () => {
+  it("Eine ganze Partie ist mit demselben Startwert wiederholbar (Austeilen eingeschlossen)", () => {
+    const levels: Record<string, BotLevel> = { p1: "schwer", p2: "zufall", p3: "zufall" };
+    const a = duel("hellseher", levels, "wdh1"), b = duel("hellseher", levels, "wdh1");
+    expect(b).toEqual(a);
+    const deal = (seed: string) => { const rand = seeded(`deal:${seed}`); return [rand(), rand()]; };
+    expect(deal("x")).toEqual(deal("x"));
+  }, 60_000);
+
   it("Startwert-Zufall ist wiederholbar", () => {
     const a = seeded("x"), b = seeded("x"), c = seeded("y");
     const xs = [a(), a(), a()];
@@ -102,6 +123,8 @@ describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
     }
     return { strong, games };
   }
+  // Feste Partien (Startwert je Partie): das Ergebnis ist bei jedem Lauf gleich. Gemessen mit 150 zufälligen Partien
+  // gewinnt Hellseher „schwer“ 143 (95 %) – mit zufälligem Austeilen fiel er bei 9 Partien rund jeden 14. Lauf unter 80 %.
   it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
     const { strong, games } = share(gameId, n);
     expect(games).toBeGreaterThanOrEqual(n * 0.6);

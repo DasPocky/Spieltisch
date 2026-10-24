@@ -173,7 +173,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
       await settings.directoryRemove("grp", id);
     } else {
       if (!PROFILE_ID_RE.test(id)) return json({ error: "Ungültiges Profil." }, 400);
-      await profileOf(env, id).wipe();
+      await profileOf(env, id).wipe(id);
       await settings.directoryRemove("prf", id);
     }
     return json({ ok: true });
@@ -190,7 +190,7 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
     await Promise.all([
       ...open.map((c) => env.ROOMS.get(env.ROOMS.idFromName(c)).adminClose().catch(() => false)),
       ...groups.map((c) => groupOf(env, c).wipe().catch(() => undefined)),
-      ...profiles.map((id) => profileOf(env, id).wipe().catch(() => undefined)),
+      ...profiles.map((id) => profileOf(env, id).wipe(id).catch(() => undefined)),
     ]);
     // Schließen meldet Räume im Verlauf als beendet – wurde der Verlauf mit gelöscht, dort auch weg
     if (kinds.includes("archive") && open.length) await settings.wipe(["archive"]);

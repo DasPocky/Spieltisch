@@ -1,48 +1,98 @@
-import { describe, expect, it, vi } from "vitest";
-import { pieceKey, sentences, VOICE_INDEX } from "@shared/platform/voice";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { pieceKey } from "@shared/platform/voice";
 
-/** Gerät mit WebAudio nachgestellt: wer gestartet und wer gestoppt wurde */
-const started: string[] = [];
-const stopped: string[] = [];
-const ctx = {
-  currentTime: 0,
-  decodeAudioData: async (b: ArrayBuffer) => ({ duration: 0.01, label: new TextDecoder().decode(b) }),
-  createBufferSource() {
-    const src = {
-      buffer: null as null | { label: string },
-      onended: null as null | (() => void),
-      connect() {},
-      start() { started.push(src.buffer!.label); setTimeout(() => src.onended?.(), 5); },
-      stop() { stopped.push(src.buffer!.label); },
+// Echte Stimme am Gerät: Meldungen fehlender Bausteine und Zwischenspeicher dürfen nichts dauerhaft verschlucken
+vi.mock("../../src/platform/sound", () => ({
+  voiceOut: () => ({
+    out: {},
+    ctx: {
+      currentTime: 0,
+      decodeAudioData: async () => ({ duration: 0.01 }),
+      createBufferSource: () => {
+        const src: { onended?: () => void; buffer: unknown; connect(): void; start(): void; stop(): void } = {
+          buffer: null, connect() {}, stop() {},
+          start() { setTimeout(() => src.onended?.(), 0); },
+        };
+        return src;
+      },
+    },
+  }),
+}));
+
+type Handler = (url: string, init?: RequestInit) => Promise<Response> | Response;
+let handler: Handler;
+const posts: string[][] = [];
+let shift = 0;
+const later = (ms: number) => { shift += ms; };
+const realNow = Date.now.bind(Date);
+beforeEach(() => {
+  vi.resetModules();
+  shift = 0;
+  vi.spyOn(Date, "now").mockImplementation(() => realNow() + shift);
+  posts.length = 0;
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === "/api/voice/missing") posts.push((JSON.parse(String(init?.body)) as { items: { text: string }[] }).items.map((i) => i.text));
+    return handler(url, init);
+  }));
+});
+const load = () => import("../../src/platform/realVoice");
+const index = (keys: string[]) => new Response(JSON.stringify({ keys }), { status: 200 });
+
+describe("Echte Stimme am Gerät", () => {
+  it("Fehlgeschlagene Meldung wird beim nächsten Mal wiederholt", async () => {
+    let online = false;
+    handler = (url) => {
+      if (url.endsWith("index.json")) return index([]);
+      if (url === "/api/voice/missing") return online ? new Response("{}") : Promise.reject(new Error("offline"));
+      return new Response(null, { status: 404 });
     };
-    return src;
-  },
-};
-vi.mock("../../src/platform/sound", () => ({ voiceOut: () => ({ ctx, out: {} }) }));
+    const { speakReal } = await load();
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+    online = true;
+    // Gleich danach noch nicht (kein Dauerfeuer), nach einer Minute wieder
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    expect(posts.length).toBe(1);
+    later(61_000);
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(posts).toEqual([["Hallo Welt."], ["Hallo Welt."]]);
+    // Erfolgreich gemeldet: nicht nach einer Minute, erst nach einer Stunde wieder
+    later(61_000);
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    expect(posts.length).toBe(2);
+    later(60 * 60_000);
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    expect(posts.length).toBe(3);
+  });
 
-describe("Echte Stimme", () => {
-  it("eine ältere Ansage, die langsamer lädt, überholt die neuere nicht", async () => {
-    const { speakReal, stopReal } = await import("../../src/platform/realVoice");
-    const key = async (t: string) => pieceKey("neutral", sentences(t)[0]);
-    const [a, b] = [await key("Anna ist dran."), await key("Ben ist dran.")];
-    let release!: () => void;
-    const slow = new Promise<void>((r) => { release = r; });
-    vi.stubGlobal("fetch", async (url: string) => {
-      if (url.endsWith(VOICE_INDEX)) return new Response(JSON.stringify({ keys: [a, b] }));
-      if (url.includes(a)) await slow;
-      return new Response(url.includes(a) ? "A" : "B");
-    });
-    // wie speak(): erst abbrechen, dann sprechen
-    stopReal();
-    const first = speakReal("Anna ist dran.");
-    await new Promise((r) => setTimeout(r, 20));
-    stopReal();
-    const second = speakReal("Ben ist dran.");
-    await expect(second).resolves.toBe(true);
-    release();
-    // Die alte zählt als erledigt (keine Gerätestimme), spielt aber nicht und stoppt die neue nicht
-    await expect(first).resolves.toBe(true);
-    expect(started).toEqual(["B"]);
-    expect(stopped).toEqual([]);
+  it("Ein fehlgeschlagener Abruf eines Bausteins bleibt nicht im Speicher hängen", async () => {
+    const key = await pieceKey("neutral", "Hallo Welt.");
+    let uploaded = false;
+    handler = (url) => {
+      if (url.endsWith("index.json")) return index([key]);
+      if (url.endsWith(`${key}.mp3`)) return uploaded ? new Response(new ArrayBuffer(8)) : new Response(null, { status: 404 });
+      return new Response("{}");
+    };
+    const { speakReal } = await load();
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    uploaded = true;
+    expect(await speakReal("Hallo Welt.")).toBe(true);
+  });
+
+  it("Ohne Verzeichnis (Abruf gescheitert) wird nichts als fehlend gemeldet und bald neu gefragt", async () => {
+    const key = await pieceKey("neutral", "Hallo Welt.");
+    let up = false;
+    handler = (url) => {
+      if (url.endsWith("index.json")) return up ? index([key]) : Promise.reject(new Error("offline"));
+      if (url.endsWith(".mp3")) return new Response(new ArrayBuffer(8));
+      return new Response("{}");
+    };
+    const { speakReal } = await load();
+    expect(await speakReal("Hallo Welt.")).toBe(false);
+    expect(posts).toEqual([]);
+    up = true;
+    later(61_000);
+    expect(await speakReal("Hallo Welt.")).toBe(true);
   });
 });

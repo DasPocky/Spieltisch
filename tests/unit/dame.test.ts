@@ -129,3 +129,38 @@ describe("Dame", () => {
     expect(g(r).colors).toEqual(["p2", "p1"]);
   });
 });
+
+describe("Dame 10×10 (international): Mehrheitsschlag", () => {
+  /** Feldname wie „c3“ → Index (10×10) */
+  const sq10 = (n: string) => (Number(n.slice(1)) - 1) * 10 + "abcdefghij".indexOf(n[0]);
+  function pos10(w: string[], b: string[]): RoomState {
+    const r = start({ size: "10" });
+    const board = Array(100).fill(0);
+    for (const x of w) board[sq10(x.replace("K", ""))] = x.startsWith("K") ? 2 : 1;
+    for (const x of b) board[sq10(x.replace("K", ""))] = x.startsWith("K") ? -2 : -1;
+    return { ...r, game: { ...g(r), board, turn: 0, blow: [], quiet: 0 } };
+  }
+  const names10 = (s: DameState, o: Record<string, unknown> = { size: "10" }) =>
+    legalMoves(s, o as never).map((m) => [m.from, ...m.path].map((i) => `${"abcdefghij"[i % 10]}${Math.floor(i / 10) + 1}`).join("-")).sort();
+  const mv10 = (r: RoomState, from: string, ...path: string[]) => game(r, { type: "move", from: sq10(from), path: path.map(sq10) });
+
+  it("nur die Schlagfolge mit den meisten Steinen ist erlaubt", () => {
+    // a1×c3×a5 (zwei Steine) gegen h2×f4 (einer): international nur die zwei
+    const r = pos10(["a1", "h2"], ["b2", "b4", "g3", "a9"]);
+    expect(names10(g(r))).toEqual(["a1-c3-a5"]);
+    expect(() => mv10(r, "h2", "f4")).toThrow(/Mehrheitsschlag/);
+    expect(g(mv10(r, "a1", "c3", "a5")).board.filter((v) => v < 0)).toHaveLength(2);
+  });
+
+  it("gleich viele: freie Wahl; ohne Schlagzwang (Pusten, frei) gilt keine Mehrheit", () => {
+    const r = pos10(["a1", "h2"], ["b2", "g3", "a9"]);
+    expect(names10(g(r))).toEqual(["a1-c3", "h2-f4"]);
+    const two = pos10(["a1", "h2"], ["b2", "b4", "g3", "a9"]);
+    expect(names10(g(two), { size: "10", capture: "free" })).toEqual(expect.arrayContaining(["a1-c3-a5", "h2-f4"]));
+  });
+
+  it("8×8 (deutsch) bleibt bei freier Wahl zwischen Schlägen", () => {
+    const r = pos(start(), ["a1", "h2"], ["b2", "b4", "g3", "a7"]);
+    expect(names(g(r))).toEqual(["a1-c3-a5", "h2-f4"]);
+  });
+});

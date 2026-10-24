@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanSetData, cleanSetName, kindOfGame, mergedContent, MAX_ITEMS, SetError, setImages, type GameContent } from "@shared/platform/cardsets";
+import { cleanSetData, cleanSetName, kindOfGame, mergedContent, MAX_ITEMS, ORPHAN_AGE_MS, orphanImages, SetError, setImages, type GameContent } from "@shared/platform/cardsets";
 import { act, game, roomWith } from "./helpers";
 import { readBody, readBytes } from "../../worker/http";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
@@ -169,5 +169,48 @@ describe("Anfragen: Größe vor dem Einlesen begrenzt", () => {
     expect(await readBody(req(JSON.stringify({ a: "ä".repeat(50) })), 60)).toEqual({ a: "ä".repeat(50) });
     expect(await readBody(req(JSON.stringify({ a: "x".repeat(100) })), 60)).toBeNull();
     expect(await readBody(req("[1]"))).toBeNull();
+  });
+});
+
+describe("Kartensets: verwaiste Bilder", () => {
+  const DIR = "k/0123456789abcdef";
+  const key = (r: string) => `${DIR}/${r.padEnd(20, "a")}`;
+  const now = 10 * ORPHAN_AGE_MS;
+  const old = now - ORPHAN_AGE_MS - 1;
+
+  it("nur ungenutzte und alte Bilder aus dem eigenen Ordner", () => {
+    const objs = [
+      { key: key("benutzt"), uploaded: old },
+      { key: key("verwaist"), uploaded: old },
+      { key: key("frisch"), uploaded: now - 1000 },
+      { key: key("grenze"), uploaded: now - ORPHAN_AGE_MS },
+    ];
+    expect(orphanImages(objs, [key("benutzt")], DIR, now)).toEqual([key("verwaist"), key("grenze")]);
+    // Mit Schrägstrich am Ende gleich
+    expect(orphanImages(objs, [key("benutzt")], `${DIR}/`, now)).toEqual([key("verwaist"), key("grenze")]);
+  });
+
+  it("fremde Ordner, ähnliche Präfixe und seltsame Schlüssel bleiben unberührt", () => {
+    const objs = [
+      { key: "k/fedcba9876543210/" + "a".repeat(20), uploaded: old },
+      { key: `${DIR}0/${"a".repeat(20)}`, uploaded: old },
+      { key: `${DIR}/zu-kurz`, uploaded: old },
+      { key: `assets/${"a".repeat(20)}`, uploaded: old },
+    ];
+    expect(orphanImages(objs, [], DIR, now)).toEqual([]);
+  });
+
+  it("ungültiger Ordner löscht nichts", () => {
+    const objs = [{ key: key("x"), uploaded: old }];
+    expect(orphanImages(objs, [], "k", now)).toEqual([]);
+    expect(orphanImages(objs, [], "", now)).toEqual([]);
+    expect(orphanImages(objs, [], "k/0123", now)).toEqual([]);
+  });
+
+  it("Bilder aus Sets zählen als benutzt (auch in Kopien)", () => {
+    const a = { white: [`bild:${key("eins")}`, "Text"] }, b = { words: [`bild:${key("eins")}`, `bild:${key("zwei")}`] };
+    const used = [...setImages(a), ...setImages(b)];
+    const objs = ["eins", "zwei", "drei"].map((r) => ({ key: key(r), uploaded: old }));
+    expect(orphanImages(objs, used, DIR, now)).toEqual([key("drei")]);
   });
 });
