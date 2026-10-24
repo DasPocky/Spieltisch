@@ -43,7 +43,7 @@ export function settingsSummary(room: RoomState, online: boolean): string {
     else if (v === true && def.label.length <= 22) parts.push(def.label);
   }
   // Ein Regelpaket wie „Kurz“ steht mit Namen da, seine Hausregeln zählen nicht extra
-  const preset = currentPreset(logic, room.options);
+  const preset = currentPreset(logic, room.options, room.players.length);
   const named = preset && preset !== "standard" ? logic.presets?.find((p) => p.id === preset) : undefined;
   if (named) parts.push(`Regeln: ${named.label}`);
   const covered = new Set(named ? presetKeys(logic) : []);
@@ -133,8 +133,8 @@ function Presets({ room, editable, dispatch }: { room: RoomState; editable: bool
   const logic = getGame(room.gameId);
   // Pakete, deren Regeln gerade gar nicht gelten (z. B. Hausregeln bei echten Karten), bleiben weg
   const visible = new Set(logic.settings.filter((d) => !d.showIf || d.showIf(room.options)).map((d) => d.key));
-  const current = currentPreset(logic, room.options);
-  const all = presetsOf(logic).filter((p) => p.id === "standard" || p.id === current || Object.keys(p.options).some((k) => visible.has(k)));
+  const current = currentPreset(logic, room.options, room.players.length);
+  const all = presetsOf(logic).filter((p) => p.id === "standard" || p.id === current || Object.keys({ ...p.options, ...p.byPlayers?.(room.players.length) }).some((k) => visible.has(k)));
   if (all.length < 2 && current) return null;
   const n = changedRules(logic, room.options);
   const options = [...all.map((p) => ({ value: p.id, label: p.label, hint: p.hint })),

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { planStatus, startVoted, tallyVote, VOTE_SECONDS, voteWinner, type RoomState } from "@shared/platform/room";
+import { expireVote, voteDueAt } from "../../worker/room/vote";
 import { act, game, roomWith } from "./helpers";
 
 /** Glückssieben mit Punkteblock schnell zu Ende spielen */
@@ -68,6 +69,25 @@ describe("Abstimmen über das nächste Spiel", () => {
     r = act(r, { type: "endVote" }, "p3");
     expect(r.vote?.winner).toBe("eins");
     expect(() => act(r, { type: "vote", gameId: "eins" }, "p1")).toThrow(/nicht abgestimmt/);
+  });
+
+  it("Server-Wecker: nach Ablauf wertet der Raum selbst aus, vorher und danach nichts zu tun", () => {
+    let r = roomWith(["Anna", "Ben", "Cem"]);
+    expect(voteDueAt(r)).toBeNull();
+    r = act(r, { type: "startVote", games: ["maumau", "eins"] });
+    r = act(r, { type: "vote", gameId: "eins" }, "p2");
+    const at = voteDueAt(r)!;
+    expect(at).toBe(r.vote!.endsAt);
+    expect(expireVote(r, at - 5_000)).toBeNull();
+    const done = expireVote(r, at)!;
+    expect(done.vote?.winner).toBe("eins");
+    expect(done.gameId).toBe("eins");
+    expect(voteDueAt(done)).toBeNull();
+    expect(expireVote(done, at + 60_000)).toBeNull();
+    // Ohne Host (alle weg) geht es genauso
+    expect(expireVote({ ...r, hostId: null }, at)?.vote?.winner).toBe("eins");
+    // Abgebrochen: kein Wecker mehr nötig
+    expect(voteDueAt(act(r, { type: "endVote", cancel: true }))).toBeNull();
   });
 
   it("Passt die Spielerzahl nicht, bleibt der Gewinner in der Lobby gewählt", () => {

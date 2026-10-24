@@ -29,6 +29,7 @@ import type { RoomData, Knock, Attachment, ResultJob } from "./room/types";
 export { JOIN_RETRY_MS } from "./room/join";
 import { joinedAs, rememberJoin, retryJoin } from "./room/join";
 import { appendChat, chatMessage, getsChat } from "./room/chat";
+import { expireVote, voteDueAt } from "./room/vote";
 import { resultEvent, resultJobs } from "./room/results";
 
 /** So lange nach dem Partie-Ende lässt sich das Ende noch zurücknehmen – erst dann zählt das Ergebnis in Profilen und Gruppen */
@@ -549,22 +550,7 @@ export class GameRoom extends DurableObject<Env> {
         const now = this.room.state;
         if (config && now.gameId !== before.gameId) { now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[now.gameId]); shortRules(now); }
         // Abstimmung entschieden: Gewinner gleich starten (mit Admin-Standards, eigenen Kartensets und Freigabe wie beim Start)
-        if (now.vote?.winner) {
-          const winner = now.vote.winner;
-          config ??= await settingsOf(this.env).config();
-          if (winner !== before.gameId) { now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[winner]); shortRules(now); }
-          if (!(await allowedNow())(winner)) { delete now.vote; }
-          else {
-            const kind = now.sets?.length && config.features.sets ? kindOfGame(winner) : null;
-            if (kind) {
-              const host = now.hostId;
-              const wanted = now.sets!.filter((x) => !x.kind || x.kind === kind).slice(0, MAX_SETS_IN_GAME).map((x) => x.id);
-              try { now.content = await loadContent(this.env, wanted, kind, host ? this.room.profiles?.[host] : undefined); } catch { /* ohne eigene Karten */ }
-            }
-            this.room.state = startVoted(now);
-            delete this.room.state.content;
-          }
-        }
+        if (now.vote?.winner) config = await this.launchVoted(before, config);
       } catch (e) {
         // Kennzahl: welche Art von Zug abgelehnt wurde (Spielaktion mit ihrem Typ)
         const a = msg.action as { type: string; action?: { type?: unknown } };
@@ -652,6 +638,8 @@ export class GameRoom extends DurableObject<Env> {
   /** Nächster Zeitpunkt, zu dem ein Ergebnis fällig wird */
   private nextDue(): number | null {
     const dues = (this.room?.results ?? []).map((j) => j.due ?? 0).filter((d) => d > Date.now());
+    const vote = this.room ? voteDueAt(this.room.state) : null;
+    if (vote !== null) dues.push(Math.max(vote, Date.now() + 1000));
     return dues.length ? Math.min(...dues) : null;
   }
 
@@ -755,9 +743,47 @@ export class GameRoom extends DurableObject<Env> {
     this.broadcast();
   }
 
+  /** Entschiedene Abstimmung: Gewinner gleich starten (mit Admin-Standards, eigenen Kartensets und Freigabe wie beim Start) */
+  private async launchVoted(before: RoomState, config: SiteConfig | null): Promise<SiteConfig> {
+    const room = this.room!;
+    const now = room.state;
+    const winner = now.vote!.winner!;
+    const c = config ?? (await settingsOf(this.env).config());
+    if (winner !== before.gameId) { now.options = withDefaults(roomGame(now).settings, now.options, c.defaults?.[winner]); shortRules(now); }
+    const access = accessFor(c, winner);
+    if (access === "off" || (access === "code" && !room.unlocked)) { delete now.vote; return c; }
+    const kind = now.sets?.length && c.features.sets ? kindOfGame(winner) : null;
+    if (kind) {
+      const host = now.hostId;
+      const wanted = now.sets!.filter((x) => !x.kind || x.kind === kind).slice(0, MAX_SETS_IN_GAME).map((x) => x.id);
+      try { now.content = await loadContent(this.env, wanted, kind, host ? room.profiles?.[host] : undefined); } catch { /* ohne eigene Karten */ }
+    }
+    room.state = startVoted(now);
+    delete room.state.content;
+    return c;
+  }
+
+  /** Abstimmung abgelaufen, aber kein Handy hat ausgewertet: der Raum wertet selbst aus */
+  private async expireVoteNow(): Promise<boolean> {
+    const room = this.room;
+    if (!room) return false;
+    const before = room.state;
+    const next = expireVote(before);
+    if (!next) return false;
+    room.state = next;
+    try { if (next.vote?.winner) await this.launchVoted(before, null); } catch { delete room.state.content; }
+    const started = room.state.round > before.round;
+    await this.persist(true);
+    this.broadcast();
+    if (started) await this.count("started");
+    return true;
+  }
+
   /** Lebensdauer abgelaufen: Ist jemand da, verlängern – sonst den Raum löschen (Dauerräume bleiben). */
   async alarm(): Promise<void> {
     if (!this.room) return;
+    // Abstimmung fällig: selbst auswerten (persist stellt den Wecker danach neu)
+    if (await this.expireVoteNow()) return;
     if (this.room.results?.length) await this.flushResults();
     const ms = await this.lifeMs();
     const due = this.nextDue();
