@@ -129,6 +129,8 @@ test("Schocken am Großen Tisch: Würfel in der Mitte, Deckel an den Plätzen", 
     // Jeder würfelt einmal und lässt stehen – dann liegt die Wertung auf dem Tisch
     for (let k = 0; k < 12 && !(await phones[0].getByTestId("round-summary").isVisible()); k++) for (const p of phones) await step(p);
     await expect(screen.getByTestId("table-view")).toContainText("bekommt");
+    // die Wertung steht nur einmal (in der Mitte), nicht noch oben im Verlauf
+    await expect(screen.getByTestId("table-news")).toHaveCount(0);
     await shot(screen, "schocken-fernseher");
   } finally {
     await setConfig(request, ALL_ON);
