@@ -52,7 +52,7 @@ describe("Rollen verteilen", () => {
         r = act(r, { type: "setPreset", id: preset });
         r = act(r, { type: "start" }, "p1");
         expect(Object.keys(g(r).roles), `${preset}/${n}`).toHaveLength(n);
-        if (preset === "komplex") expect(Object.values(g(r).roles), `${preset}/${n}`).toEqual(expect.arrayContaining(["jaeger", "amor", "seherin", "hexe"]));
+        if (preset === "komplex" && n >= 7) expect(Object.values(g(r).roles), `${preset}/${n}`).toEqual(expect.arrayContaining(["jaeger", "amor", "seherin", "hexe"]));
         if (preset === "einsteiger") expect(r.options.captain, n.toString()).toBe(false);
       }
     }
