@@ -41,7 +41,7 @@ export function Games() {
         ))}
       </div>
       {/* Ab 25 Spielen fünf Spalten, damit das Raster auf dem Handy ohne Scrollen bleibt */}
-      <ul className={cn("games-grid mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]", dense ? "grid-cols-5 gap-1.5" : "grid-cols-4")} data-testid="game-grid">
+      <ul className={cn("games-grid mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]", dense ? "grid-cols-5 gap-1.5" : "grid-cols-4", shown.length > 25 && "games-tight")} data-testid="game-grid">
         {shown.map(({ id, info, Icon }) => (
           <li key={id}>
             <button type="button" onClick={() => setOpen(id)} data-testid={`game-${id}`}

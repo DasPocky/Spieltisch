@@ -20,6 +20,7 @@ import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
 import type { MuehleState } from "../games/muehle/logic";
 import type { VierState } from "../games/vier/logic";
 import type { SchamlosState } from "../games/schamlos/logic";
+import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -186,6 +187,22 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       ["tBidsDone", "tFinish"].forEach((type) => add({ type }));
       if (Math.random() < 0.02) add({ type: "tBack" });
+      break;
+    }
+    case "schocken": {
+      const s = r.game as ShState;
+      add({ type: "next" });
+      if (s.table) {
+        const play = shInPlay(s);
+        const [winner, loser] = shuffleInPlace([...play]);
+        add({ type: "tally", winner, loser, count: pick([1, 1, 1, 2, 3, 4, 5, 6, "aus"] as (number | "aus")[]) });
+        break;
+      }
+      add({ type: "roll" });
+      add({ type: "roll" });
+      add({ type: "stop" });
+      add({ type: "turn" });
+      for (let i = 0; i < 3; i++) add({ type: "hold", i });
       break;
     }
     case "herzen": {

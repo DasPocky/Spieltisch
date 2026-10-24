@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-schocken",
+    date: "2026-10-24",
+    title: "Neues Würfelspiel: Schocken",
+    items: [
+      "Drei Würfel, bis zu drei Würfe, Einsen herauslegen – für 2 bis 10. Der Beginner legt vor, wie oft alle würfeln dürfen.",
+      "Der höchste Wurf bestimmt, wie viele Deckel der niedrigste bekommt: Schock aus, Schock 6 bis 2, General, Straße, Zahl. Wer alle 13 hat, verliert die Hälfte.",
+      "Zwei Hälften und ein Finale (oder kurz: eine Hälfte), Sechsen drehen als Hausregel, mit Bots, an einem Handy für alle, mit Vorlesen – oder mit echten Würfeln, dann zählt die App die Deckel.",
+    ],
+  },
+  {
     id: "2026-10-herzen",
     date: "2026-10-24",
     title: "Neues Kartenspiel: Herzen",

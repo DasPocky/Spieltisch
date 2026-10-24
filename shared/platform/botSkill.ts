@@ -16,6 +16,7 @@ import { PER_COLOR, PIECES, trackLen, type LudoState } from "../games/ludo/logic
 import { ALL_CATS, scoreFor, type Cat, type FuenfWuerfelState } from "../games/fuenfwuerfel/logic";
 import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf as maexValue, type MaexState } from "../games/maexchen/logic";
 import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
+import { handOf as shHand, suggest as shSuggest, type ShState } from "../games/schocken/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -380,6 +381,19 @@ const scoreHerzen: Scorer = (view, a, _after, me) => {
   return a.card === hzSuggest(s, hand, view.options) ? 100 : -hzPoints(a.card as never);
 };
 
+// ---------------------------------------------------------------- Schocken (Einsen herauslegen, nicht der Schlechteste sein)
+
+const scoreSchocken: Scorer = (view, a, _after, me) => {
+  const s = view.game as ShState;
+  if (a.type === "next") return 10;
+  const plan = shSuggest(s, me, view.options);
+  if (plan.type === "stop") return a.type === "stop" ? 100 : -shHand(s.dice).score / 1000;
+  if (plan.type === "turn") return a.type === "turn" ? 100 : -10;
+  if (a.type === "hold") return s.held[a.i as number] !== plan.hold[a.i as number] ? 20 : -20;
+  if (a.type === "roll") return plan.hold.every((h, i) => h === s.held[i]) || !s.dice.length || s.turned ? 30 : 0;
+  return -50;
+};
+
 // ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
 
 const scoreStapelbau: Scorer = (view, a, after, me) => {
@@ -530,7 +544,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, schocken: scoreSchocken, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -598,6 +612,7 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     return [...HS_SUITS.map((suit) => ({ type: "trump", suit })), ...bids.map((bid) => ({ type: "bid", bid })), ...bids.map((bid) => ({ type: "secretBid", bid })),
       ...(s.hands[me] ?? []).map((card) => ({ type: "play", card })), { type: "nextRound" }];
   },
+  schocken: (view) => ((view.game as ShState).table ? null : [{ type: "next" }, { type: "roll" }, { type: "stop" }, { type: "turn" }, ...[0, 1, 2].map((i) => ({ type: "hold", i }))]),
   herzen: (view, me) => {
     const s = view.game as HzState;
     const hand = s.hands[me] ?? [];
