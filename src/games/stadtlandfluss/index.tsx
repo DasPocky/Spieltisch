@@ -40,7 +40,13 @@ function History({ game: s }: BoardProps<SlfState, SlfAction>) {
 }
 
 function HeaderExtra({ game: s }: BoardProps<SlfState, SlfAction>) {
-  return <span className="rounded-full bg-secondary px-3 py-1 text-sm font-semibold whitespace-nowrap ring-1 ring-inset ring-border" data-testid="slf-round">Runde {Math.min(s.round + 1, s.rounds)}/{s.rounds}</span>;
+  // Kurz halten: der lange Spielname braucht den Platz im Kopf („Runde“ nur auf breiten Handys)
+  const n = Math.min(s.round + 1, s.rounds);
+  return (
+    <span className="rounded-full bg-secondary px-2.5 py-1 text-sm whitespace-nowrap text-muted-foreground ring-1 ring-inset ring-border" data-testid="slf-round" aria-label={`Runde ${n} von ${s.rounds}`}>
+      <span className="max-[430px]:hidden">Runde </span><b className="text-foreground tabular-nums">{n}</b>/{s.rounds}
+    </span>
+  );
 }
 
 export const stadtlandflussUI: GameUI<SlfState, SlfAction> = {
