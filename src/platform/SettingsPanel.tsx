@@ -109,7 +109,13 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
       {shown.filter((def) => inGame || !def.group).map(setting)}
       {groups.map((g) => (
         <Group key={g} title={g} storeKey={`${room.gameId}:${g}`} changed={shown.filter((d) => d.group === g && changedFrom(d, room.options[d.key])).length}>
-          {shown.filter((d) => d.group === g).map(setting)}
+          {shown.filter((d) => d.group === g && !d.chip).map(setting)}
+          {shown.some((d) => d.group === g && d.chip) && (
+            <div className="flex flex-wrap gap-1.5">{shown.filter((d) => d.group === g && d.chip).map((d) => (
+              <Chip key={d.key} label={d.label} checked={room.options[d.key] === true} editable={editable && !playing}
+                onChange={(value) => dispatch({ type: "setOption", key: d.key, value })} />
+            ))}</div>
+          )}
         </Group>
       ))}
       {inGame ? hintBox : (entryChoice || hints) && (
@@ -189,6 +195,17 @@ function Setting({ def, value, editable, onChange }: { def: SettingDef; value: u
         </label>
       );
   }
+}
+
+/** Schalter als Chip: an = gefüllt, aus = nur Umriss */
+function Chip({ label, checked, editable, onChange }: { label: string; checked: boolean; editable: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={checked} disabled={!editable} onClick={() => onChange(!checked)}
+      className={cn("min-h-9 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-60",
+        checked ? "bg-primary text-primary-foreground ring-primary" : "text-muted-foreground ring-border")}>
+      {label}
+    </button>
+  );
 }
 
 /**

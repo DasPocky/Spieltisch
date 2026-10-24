@@ -280,7 +280,7 @@ export const quiz: GameLogic<QState, QAction> = {
     },
     ...KINDS.map((k) => ({ key: `art_${k.id}`, label: k.name, type: "toggle" as const, default: true, group: "Arten", hint: k.hint })),
     ...KATEGORIEN.filter((k) => k.stufe !== "kinder").map((k) => ({
-      key: `kat_${k.id}`, label: `${k.emoji} ${k.name}`, type: "toggle" as const, default: true, group: "Kategorien",
+      key: `kat_${k.id}`, label: `${k.emoji} ${k.name}`, type: "toggle" as const, default: true, group: "Kategorien", chip: true,
       showIf: (o: Options) => o.level !== "kinder",
     })),
     { key: "own_only", label: "Nur eigene Fragen", hint: "statt der eingebauten Fragen", type: "toggle", default: false, group: "Kartensets" },
