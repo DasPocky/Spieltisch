@@ -127,6 +127,8 @@ export interface SceneOptions {
 export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "hoch", opts: SceneOptions = {}): TableScene {
   const q = renderSettings(quality);
   const renderer = new WebGLRenderer({ canvas, antialias: q.antialias, alpha: true });
+  // Für Tests: belegter Grafikspeicher (Geometrien, Texturen) – nur im Entwicklungsmodus
+  if (import.meta.env.DEV) (window as unknown as { __tableMemory?: () => { geometries: number; textures: number } }).__tableMemory = () => ({ ...renderer.info.memory });
   // Stufe „hoch“: volle Pixeldichte bis 2-fach – auf 4K-Fernsehern und Retina-Bildschirmen scharf
   renderer.setPixelRatio(q.pixelRatio);
   const aniso = renderer.capabilities.getMaxAnisotropy();
@@ -210,7 +212,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     return mat;
   };
   // Karton ist dünn: knapp ein halber Millimeter (sichtbar bleibt eine feine Kante)
-  const cardGeo = (d: TableDeck) => new BoxGeometry(CARD_W, 0.0025, CARD_W * CARD_RATIO[d]);
+  const cardGeos = new Map<TableDeck, BoxGeometry>();
+  const cardGeo = (d: TableDeck) => { let g = cardGeos.get(d); if (!g) cardGeos.set(d, (g = new BoxGeometry(CARD_W, 0.0025, CARD_W * CARD_RATIO[d]))); return g; };
   function cardMesh(d: TableDeck, face: string | null) {
     const back = new MeshStandardMaterial({ map: backTex(d), roughness: 0.5, transparent: true, alphaTest: 0.5 });
     const front = face ? faceMat(d, face) : back;
@@ -313,7 +316,23 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     rig.setHome(homeRect, viewYaw);
   }
 
+  /**
+   * Beim Neuaufbau: Geometrien und Materialien des alten Aufbaus freigeben (sonst wächst der Grafikspeicher mit jedem Zug).
+   * Geteilte bleiben: zwischengespeicherte Materialien und Grundformen. Texturen bleiben immer (eigener Zwischenspeicher).
+   */
+  function freeLive() {
+    const shared = new Set<object>([edge, contactGeo, numGeo, dieGeo, ...cardGeos.values(), ...mats.values(), ...pipMats.values()]);
+    if (contactMat) shared.add(contactMat);
+    live.traverse((o) => {
+      const m = o as Mesh;
+      if (!m.isMesh) return;
+      if (!shared.has(m.geometry)) m.geometry.dispose();
+      for (const mat of Array.isArray(m.material) ? m.material : [m.material]) if (!shared.has(mat)) mat.dispose();
+    });
+  }
+
   function draw(model: TableModel | null, seats: string[]) {
+    freeLive();
     live.clear();
     anims = [];
     into = live;
@@ -924,6 +943,7 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   return {
     update, resize, seatPoints, feltRect,
     dispose() {
+      freeLive();
       cancelAnimationFrame(raf);
       for (const t of textures.values()) t.dispose();
       room.env.dispose();

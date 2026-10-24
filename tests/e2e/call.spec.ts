@@ -115,7 +115,7 @@ test("Jeder Raum ist Treffpunkt: erst reden, sehen, schreiben – dann ein Spiel
   await expect(anna.getByTestId("meet").getByTestId("chat-list")).toContainText("Bin da");
   await shot(ben, "84-meet");
   // Nicht-Host schaut in die Spiel-Lobby, der Host wählt das Spiel
-  await expect(ben.getByTestId("meet-play")).toHaveText("Zur Spiel-Lobby");
+  await expect(ben.getByTestId("meet-play")).toHaveText("Zur Lobby");
   await anna.getByTestId("meet-play").click();
   await anna.getByTestId("pick-fuenfwuerfel").click();
   await expect(anna.getByTestId("game-card")).toContainText("Fünf Würfel");

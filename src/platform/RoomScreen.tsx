@@ -231,7 +231,7 @@ function GroupShare({ room, code, gameName }: { room: RoomState; code: string; g
     } catch { /* abgebrochen */ }
   };
   return (
-    <div className="glass mt-2 flex items-center gap-3 rounded-2xl py-2.5 pr-2.5 pl-4" data-testid="group-share">
+    <div className="glass mt-2 flex items-center gap-3 rounded-2xl py-2 pr-2 pl-4" data-testid="group-share">
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold">{group.name}</div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -262,7 +262,7 @@ function Lobby(props: Props & { isHost: boolean }) {
     return (
       <>
         <Meet room={room} me={me} online={online} call={props.call} chat={props.chat}
-          playLabel={isHost ? "Spiel wählen" : "Zur Spiel-Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} onPhoto={props.onPhoto} />
+          playLabel={isHost ? "Spiel wählen" : "Zur Lobby"} onPlay={() => (isHost ? setPick(true) : setLocal(true))} onPhoto={props.onPhoto} />
         {isHost && (
           <GamePicker open={pick} onOpenChange={setPick} gameIds={gameIds} current={room.gameId} online players={room.players.length}
             onPick={(id) => {
@@ -303,33 +303,29 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
         className="glass flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
         <IconTile className="size-11"><Icon className="size-7" /></IconTile>
         <span className="min-w-0 flex-1">
-          <span className="block text-xs text-muted-foreground">Gespielt wird</span>
-          <span className="block font-semibold">{info.name} <span className="font-normal text-muted-foreground">· {range} Spieler</span></span>
-          {limits.note && <span className="block text-xs text-muted-foreground">{limits.note}</span>}
+          <span className="block text-xs text-muted-foreground [@media(max-height:640px)]:sr-only">Gespielt wird</span>
+          <span className="block leading-tight font-semibold">{info.name}</span>
+          <span className="block text-xs text-muted-foreground">{range} Spieler{limits.note ? ` · ${limits.note}` : ""}</span>
         </span>
         {canPick && <span className="flex items-center text-sm font-semibold text-primary">Wechseln<ChevronRight className="size-4" /></span>}
       </button>
       <UpdatedNote room={room} />
-      {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
-      {code && <GroupShare room={room} code={code} gameName={info.name} />}
-      {call && <CallInvite call={call} />}
-      <EveningLine className="mt-2" beside={code && isHost ? (<>
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" data-testid="to-meet" aria-label="Zum Treffpunkt">
-          <MessagesSquare className="size-4 text-primary" />Treffpunkt
-        </Button>
-        {/* Online: alle stimmen über das nächste Spiel ab */}
-        {canPick && <VoteButton variant="outline" size="sm" className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" />}
-      </>) : undefined} />
 
-      <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
-      <p className="mb-2 px-1 text-sm text-muted-foreground">
+      {/* Rangfolge: was gespielt wird → wer mitspielt (und wer noch dazukommt) → Einstellungen → Start. Nebensachen darunter. */}
+      <h2 className="mt-4 mb-0.5 px-1 font-semibold [@media(max-height:640px)]:mt-3">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
+      <p className="mb-2 px-1 text-sm text-muted-foreground [@media(max-height:640px)]:sr-only">
         Gespielt wird in dieser Reihenfolge.
       </p>
       <PlayerManager room={room} me={me} online={online} editable={isHost} dispatch={dispatch} onAddLocal={onAddLocal} onPhoto={onPhoto} />
+      {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} compact /></div>}
+      {code && <GroupShare room={room} code={code} gameName={info.name} />}
 
       {/* Einstellungen als eine Zeile – alles Weitere im Sheet */}
       <NavRow icon={SlidersHorizontal} onClick={() => setSettings(true)} data-testid="settings-summary" className="mt-3"
-        title="Einstellungen" sub={settingsSummary(room, !!code)} />
+        title="Einstellungen" sub={isHost ? settingsSummary(room, !!code) : `Legt der Host fest · ${settingsSummary(room, !!code)}`} />
+
+      {/* Zweitrangig: reden, Partyabend, Treffpunkt – klein und zusammen */}
+      <LobbyMore isHost={isHost} canPick={canPick} code={code} call={call} dispatch={dispatch} />
 
       <div className="min-h-4 flex-1" />
       {/* Start bleibt immer sichtbar unten */}
@@ -362,6 +358,23 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
         </SheetContent>
       </Sheet>
     </section>
+  );
+}
+
+/** Lobby, zweitrangig: Audio & Video, Partyabend und (Host) Treffpunkt – fällt weg, wenn nichts davon passt */
+function LobbyMore({ isHost, canPick, code, call, dispatch }: { isHost: boolean; canPick: boolean; code?: string; call?: CallControls; dispatch: (a: RoomAction) => void }) {
+  return (
+    <div className="mt-3 grid gap-2 empty:hidden" data-testid="lobby-more">
+      {/* Kleines Handy: Audio & Video steht ohnehin oben in der Kopfzeile */}
+      {call && <div className="[@media(max-height:700px)]:hidden"><CallInvite call={call} /></div>}
+      <EveningLine beside={code && isHost ? (<>
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" data-testid="to-meet" aria-label="Zum Treffpunkt">
+          <MessagesSquare className="size-4 text-primary" />Treffpunkt
+        </Button>
+        {/* Online: alle stimmen über das nächste Spiel ab */}
+        {canPick && <VoteButton variant="outline" size="sm" className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" />}
+      </>) : undefined} />
+    </div>
   );
 }
 
