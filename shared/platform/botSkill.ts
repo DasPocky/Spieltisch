@@ -655,3 +655,10 @@ export function playBot(room: RoomState, botId: string, online: boolean, seed = 
   if (!online && room.phase === "playing" && room.game && roomGame(room).currentPlayerId(room.game) !== botId) return null;
   return chooseBotMove(room, botId, level, online, seed);
 }
+
+/** Wartezeit vor dem nächsten Bot-Zug: kurz und etwas zufällig, dazu die Lesepause des Spiels */
+export function botDelay(room: RoomState, rnd = Math.random()): number {
+  let extra = 0;
+  try { if (room.game) extra = Math.max(0, Math.min(15_000, roomGame(room).botPause?.(room.game) ?? 0)); } catch { /* ohne Pause */ }
+  return 900 + Math.floor(rnd * 900) + extra;
+}
