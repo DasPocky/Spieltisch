@@ -147,7 +147,7 @@ test("Quiz: alle Kategorien abgewählt – Hinweis, trotzdem Fragen", async ({ p
   await startLocal(page, "quiz", ["Anna", "Ben"], {
     start: false,
     settings: async (p) => {
-      for (const name of [/Allgemeinwissen/, /Erde & Länder/, /Geschichte/, /Natur & Tiere/, /Musik, Kunst/, /Sport & Spiel/, /Essen & Trinken/]) {
+      for (const name of [/Allgemeinwissen/, /Erde & Länder/, /Geschichte/, /Natur & Tiere/, /Musik, Kunst/, /Sport & Spiel/, /Essen & Trinken/, /Wissenschaft & Technik/, /Sprache & Wörter/]) {
         await p.getByRole("checkbox", { name }).click();
       }
       await expect(p.getByTestId("quiz-deck-note")).toBeVisible();

@@ -84,6 +84,8 @@ export interface TableModel {
   quiz?: {
     head: string; question: string; options: { text: string; letter: string; tone: string; right?: boolean }[];
     endsAt: number | null; status: string; points: { name: string; p: number }[];
+    /** Bühne: Schild je Pult – beim Fragen nur „hat geantwortet“ (nie die Antwort), nach dem Auflösen richtig/falsch und Punkte */
+    marks?: Record<string, QuizMark>;
   };
   /** Wortraster in der Mitte (z. B. Decknamen): Karten mit Text, aufgedeckte farbig; `title` steht darüber */
   words5?: { cells: { text: string; tone?: string }[]; cols: number; title?: string };
@@ -116,6 +118,9 @@ export interface TableModel {
     pickBy: string | null;
   };
 }
+
+/** Schild am Pult beim Quiz auf der Bühne */
+export interface QuizMark { text: string; tone: "idle" | "done" | "right" | "wrong" }
 
 export { TABLE_GAMES } from "@shared/platform/modes";
 
