@@ -109,13 +109,13 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
       {shown.filter((def) => inGame || !def.group).map(setting)}
       {groups.map((g) => (
         <Group key={g} title={g} storeKey={`${room.gameId}:${g}`} changed={shown.filter((d) => d.group === g && changedFrom(d, room.options[d.key])).length}>
-          {shown.filter((d) => d.group === g && !d.chip).map(setting)}
           {shown.some((d) => d.group === g && d.chip) && (
             <div className="flex flex-wrap gap-1.5">{shown.filter((d) => d.group === g && d.chip).map((d) => (
               <Chip key={d.key} label={d.label} hint={"hint" in d ? d.hint : undefined} checked={room.options[d.key] === true} editable={editable && !playing}
                 onChange={(value) => dispatch({ type: "setOption", key: d.key, value })} />
             ))}</div>
           )}
+          {shown.filter((d) => d.group === g && !d.chip).map(setting)}
         </Group>
       ))}
       {inGame ? hintBox : (entryChoice || hints) && (
@@ -194,7 +194,24 @@ function Setting({ def, value, editable, onChange }: { def: SettingDef; value: u
           <span><span className="font-semibold">{def.label}</span>{def.hint && <span className="block text-xs text-muted-foreground">{def.hint}</span>}</span>
         </label>
       );
+    case "text":
+      return <TextSetting def={def} value={String(value ?? def.default)} editable={editable} onChange={onChange} />;
   }
+}
+
+/** Freier Text: wird beim Verlassen des Feldes oder mit Eingabe übernommen */
+function TextSetting({ def, value, editable, onChange }: { def: Extract<SettingDef, { type: "text" }>; value: string; editable: boolean; onChange: (v: string) => void }) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const commit = () => { if (text.trim() !== value) onChange(text); };
+  return (
+    <label className="grid gap-1 text-sm">
+      <span className="font-semibold">{def.label}{def.hint && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{def.hint}</span>}</span>
+      <input value={text} disabled={!editable} maxLength={def.maxLength} placeholder={def.placeholder} onChange={(e) => setText(e.target.value)} onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }} data-testid={`setting-${def.key}`}
+        className="h-10 rounded-lg bg-background px-3 text-base ring-1 ring-inset ring-border outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:opacity-60" />
+    </label>
+  );
 }
 
 /** Schalter als Chip: an = gefüllt, aus = nur Umriss */

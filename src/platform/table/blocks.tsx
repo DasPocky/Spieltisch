@@ -82,7 +82,7 @@ export function FeltTabletop({ top }: { top: NonNullable<TableModel["tabletop"]>
 export function FeltSign({ sign }: { sign: NonNullable<TableModel["sign"]> }) {
   return (
     <div className="paper-note grid place-items-center gap-[1.5cqh] px-[5cqw] py-[4cqh] text-center" data-testid="table-sign">
-      <span className="text-[9cqh] leading-tight font-bold">{sign.title}</span>
+      <span className={cn("leading-tight font-bold", sign.big ? "text-[26cqh] leading-none font-black text-[#c2492e]" : "text-[9cqh]")}>{sign.title}</span>
       {sign.sub && <span className="text-[4.5cqh] font-semibold opacity-75">{sign.sub}</span>}
     </div>
   );

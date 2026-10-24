@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-stadtlandfluss",
+    date: "2026-10-24",
+    title: "Neues Partyspiel: Stadt-Land-Fluss",
+    items: [
+      "Ein Buchstabe, alle schreiben gleichzeitig am eigenen Handy: Stadt, Land, Fluss, Name, Beruf, Tier – oder eure eigenen Kategorien.",
+      "Wer zuerst alles hat, ruft „Stopp!“ und die anderen haben noch ein paar Sekunden. Danach seht ihr alle Antworten und könnt mit dem Daumen runter ablehnen.",
+      "20, 10 oder 5 Punkte je Antwort – kleine Tippfehler zählen als gleich. Pakete „Kurz“ und „Kinder“ sind dabei.",
+    ],
+  },
+  {
     id: "2026-10-geraete",
     date: "2026-10-24",
     title: "Mein Gerät ist …",
