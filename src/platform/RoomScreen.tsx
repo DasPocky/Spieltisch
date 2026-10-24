@@ -36,7 +36,7 @@ import { ChatButton, ChatContext, ChatPanel, type ChatControls } from "./chat/Ch
 import { Meet } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
-import { EveningContext, EveningLine } from "./Evening";
+import { EveningContext, EveningLine, VoteButton, VoteOverlay } from "./Evening";
 import { KnockBar, type KnockEntry } from "./KnockBar";
 import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
 import { setDeskPrivate, setDeskView, useDesk, useDeskPrivate } from "./desk/desk";
@@ -112,7 +112,8 @@ export function RoomScreen(props: Props) {
     <AvatarContext.Provider value={avatars}>
     <ChatContext.Provider value={props.chat ?? null}>
     <CallContext.Provider value={props.call ? { call: props.call, me } : null}>
-    <EveningContext.Provider value={{ room, isHost, dispatch }}>
+    <EveningContext.Provider value={{ room, isHost, dispatch, me, online: !!code }}>
+    {code && <VoteOverlay />}
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing && ui.wide && "lg:max-w-6xl", atTable && "max-w-none lg:px-6", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="room-head flex h-14 shrink-0 items-center justify-between">
         {playing ? (
@@ -312,11 +313,13 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
       {code && <div className="mt-2"><ShareCode code={code} gameName={info.name} /></div>}
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
       {call && <CallInvite call={call} />}
-      <EveningLine className="mt-2" beside={code && isHost ? (
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="w-full min-w-0" data-testid="to-meet">
-          <MessagesSquare className="size-4 text-primary" />Zum Treffpunkt
+      <EveningLine className="mt-2" beside={code && isHost ? (<>
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" data-testid="to-meet" aria-label="Zum Treffpunkt">
+          <MessagesSquare className="size-4 text-primary" />Treffpunkt
         </Button>
-      ) : undefined} />
+        {/* Online: alle stimmen über das nächste Spiel ab */}
+        {canPick && <VoteButton variant="outline" size="sm" className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" />}
+      </>) : undefined} />
 
       <h2 className="mt-4 mb-0.5 px-1 font-semibold">Mitspieler <span className="font-normal text-muted-foreground">· {n}</span></h2>
       <p className="mb-2 px-1 text-sm text-muted-foreground">

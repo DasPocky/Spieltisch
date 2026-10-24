@@ -5,7 +5,8 @@ import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Sparkles, Tv, Vid
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { prefs, setPref, usePrefs } from "@/lib/prefs";
-import { eveningRanking, planStatus, type RoomState } from "@shared/platform/room";
+import { eveningRanking, planStatus, tallyVote, voters, type RoomState } from "@shared/platform/room";
+import { useCountdown } from "@/platform/Countdown";
 import { getGame } from "@shared/games";
 import { randomInt } from "@shared/platform/random";
 import { Button } from "@/components/ui/button";
@@ -250,6 +251,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   const fallback = playing && !model && !sham;
   const host = room.players.find((p) => p.id === room.hostId);
   const plan = planStatus(room.evening);
+  const voting = !!room.vote && !room.vote.winner;
   const [felt, setFelt] = useState<FeltRect | null>(null);
   useTableSound(room, model);
   const [mood, setMood] = useState(readMood);
@@ -284,7 +286,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
       <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
         {stage ? (
           <StudioStage room={room} online={online} model={model} sham={sham} reacts={reacts} videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo}>
-            {!playing && (plan && plan.played > 0 ? <PartyBoard room={room} /> : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />)}
+            {voting ? <VoteBoard room={room} /> : !playing && (plan && plan.played > 0 ? <PartyBoard room={room} /> : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />)}
           </StudioStage>
         ) : (
           <TableStage room={room} online={online} model={fallback ? null : model} sham={sham} showSeats={!fallback} onFelt={setFelt} reacts={reacts}
@@ -300,7 +302,8 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
         </header>
 
         {moderator.on && <HostCorner say={moderator.say} mood={mood} />}
-        {!playing && !stage && <OnFelt rect={felt}>{plan && plan.played > 0
+        {voting && !stage && <OnFelt rect={felt} className="z-20"><VoteBoard room={room} /></OnFelt>}
+        {!playing && !stage && !voting && <OnFelt rect={felt}>{plan && plan.played > 0
           ? <PartyBoard room={room} />
           : <Lobby code={code} pin={pin} count={room.players.length} host={host?.name} plan={plan?.games} />}</OnFelt>}
         {fallback && <Fallback room={room} code={code} online={online} />}
@@ -755,6 +758,36 @@ function PartyBoard({ room }: { room: RoomState }) {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+/** Abstimmung am Fernseher: Vorschläge mit Stimmen live und Restzeit */
+function VoteBoard({ room }: { room: RoomState }) {
+  const v = room.vote!;
+  const tally = tallyVote(room);
+  const who = voters(room);
+  const left = useCountdown(v.endsAt, false);
+  const max = Math.max(1, ...Object.values(tally));
+  return (
+    <div className="paper-note pointer-events-auto flex max-h-[92cqh] w-[min(88cqw,150cqh)] flex-col gap-[2.4cqh] p-[4cqh]" data-testid="vote-board">
+      <div className="flex items-baseline justify-between gap-[2cqw]">
+        <div className="text-[3.6cqh] font-bold uppercase tracking-[0.2em] text-[#8a6f4e]">Abstimmung · {Object.keys(v.votes).filter((id) => who.includes(id)).length} von {who.length}</div>
+        <div className="text-[5cqh] font-bold tabular-nums text-[#ff7a59]">{left ?? 0} s</div>
+      </div>
+      <h2 className="text-[8cqh] font-bold leading-tight">Was spielen wir als Nächstes?</h2>
+      <ol className="grid gap-[1.6cqh]">
+        {v.games.map((g) => (
+          <li key={g} className="relative overflow-hidden rounded-[1.6cqh] bg-[#efe3cc] px-[2cqh] py-[1.4cqh]">
+            <span className="absolute inset-y-0 left-0 bg-[#ff7a59]/35 transition-[width] duration-500" style={{ width: `${((tally[g] ?? 0) / max) * 100}%` }} />
+            <span className="relative flex items-center gap-[2cqw] text-[5.6cqh] font-semibold">
+              <span className="min-w-0 flex-1 truncate">{getGame(g).info.name}</span>
+              <span className="font-bold tabular-nums" data-testid={`vote-board-${g}`}>{tally[g] ?? 0}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="text-[3.4cqh] text-[#8a6f4e]">Abstimmen am Handy · bei Gleichstand entscheidet der Zufall</p>
     </div>
   );
 }

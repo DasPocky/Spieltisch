@@ -70,7 +70,12 @@ export interface RoomState {
   photos?: Record<string, string>;
   /** Spielstärke je Bot („leicht“ … „schwer“, siehe botSkill.ts) – fehlt: zufällig */
   botLevels?: Record<string, "zufall" | "leicht" | "mittel" | "schwer">;
+  /** Abstimmung über das nächste Spiel (nur online) – `winner` gesetzt: entschieden, der Server startet es gleich */
+  vote?: RoomVote;
 }
+
+/** Abstimmung über das nächste Spiel: Vorschläge, Stimme je Spieler, Ende spätestens bei `endsAt` */
+export interface RoomVote { games: string[]; votes: Record<string, string>; endsAt: number; winner?: string }
 
 export interface Evening {
   /** Siege je Spieler-ID */
@@ -80,11 +85,75 @@ export interface Evening {
   /** Beendete Partien, älteste zuerst (höchstens 50) */
   log: { gameId: string; winners: string[]; at: number; round?: number; plan?: boolean }[];
   /** Partyabend: geplante Spiele der Reihe nach; `played` zählt die seit dem Plan beendeten Partien */
-  plan?: { games: string[]; played: number };
+  plan?: { games: string[]; played: number; short?: boolean };
 }
 
 /** Höchstens so viele Spiele in einem Partyabend */
 export const PLAN_MAX = 8;
+
+/** Abstimmung: so viele Vorschläge und so lange (Sekunden) */
+export const VOTE_MIN = 2;
+export const VOTE_MAX = 4;
+export const VOTE_SECONDS = 30;
+
+/** Wer abstimmen soll: alle im Raum außer Testspielern (Bots blockieren nie) */
+export const voters = (s: RoomState): string[] => [...s.players, ...(s.bench ?? [])].map((p) => p.id).filter((id) => !s.bots?.includes(id));
+
+/** Stimmen je Vorschlag (nur gültige Stimmen von Leuten im Raum) */
+export function tallyVote(s: RoomState): Record<string, number> {
+  const v = s.vote;
+  const out: Record<string, number> = Object.fromEntries((v?.games ?? []).map((g) => [g, 0]));
+  if (!v) return out;
+  for (const [id, g] of Object.entries(v.votes)) if (g in out && inRoom(s, id)) out[g]++;
+  return out;
+}
+
+/** Gewinner der Abstimmung: meiste Stimmen, Gleichstand (auch ohne Stimmen) per Zufall */
+export function voteWinner(s: RoomState, rand: () => number = Math.random): string | null {
+  const t = tallyVote(s);
+  const best = Math.max(...Object.values(t));
+  const top = Object.keys(t).filter((g) => t[g] === best);
+  return top.length ? top[Math.min(top.length - 1, Math.floor(rand() * top.length))] : null;
+}
+
+/** Spiel wählen (Standard-Einstellungen); läuft ein Partyabend mit „kurzen Runden“, gleich das Paket „Kurz“ */
+function pickGame(s: RoomState, id: string) {
+  if (s.gameId !== id) { s.gameId = id; s.options = defaultOptions(getGame(id).settings); }
+  shortRules(s);
+}
+
+/** Partyabend mit kurzen Runden: hat das gewählte Spiel ein Paket „Kurz“, gilt es (sonst Standard) */
+export function shortRules(s: RoomState) {
+  if (!s.evening?.plan?.short || s.phase !== "lobby") return;
+  const logic = getGame(s.gameId);
+  const p = presetsOf(logic).find((x) => x.id === "kurz");
+  if (p) for (const [k, v] of Object.entries(presetValues(logic, p))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
+}
+
+/** Abstimmung entschieden: zurück in die Lobby, Gewinner wählen (im Partyabend als nächstes Spiel) */
+function decideVote(s: RoomState, winner: string) {
+  s.vote = { ...s.vote!, winner };
+  if (s.phase === "playing") { s.phase = "lobby"; s.game = null; s.undo = []; seatBench(s); }
+  const plan = s.evening?.plan;
+  if (plan && plan.played < plan.games.length && plan.games[plan.played] !== winner) {
+    const rest = plan.games.slice(plan.played);
+    const at = rest.indexOf(winner);
+    if (at >= 0) rest.splice(at, 1); else if (plan.games.length >= PLAN_MAX) rest.shift();
+    plan.games = [...plan.games.slice(0, plan.played), winner, ...rest];
+  }
+  pickGame(s, winner);
+}
+
+/**
+ * Entschiedene Abstimmung: Gewinner gleich starten (als Host). Geht das nicht (Spielerzahl passt nicht),
+ * bleibt er in der Lobby gewählt. In beiden Fällen ist die Abstimmung danach vorbei.
+ */
+export function startVoted(s: RoomState): RoomState {
+  if (!s.vote?.winner) return s;
+  const clean: RoomState = { ...s };
+  delete clean.vote;
+  try { return applyRoomAction(clean, { type: "start" }, s.hostId); } catch { return clean; }
+}
 
 /** Stand des Partyabends: nächstes Spiel (null = durch) – null, wenn kein Plan */
 export function planStatus(e: Evening | undefined): { games: string[]; played: number; next: string | null; done: boolean } | null {
@@ -127,7 +196,7 @@ export function skipBlockedPlan(s: RoomState, allowed: (gameId: string) => boole
   const skipped: string[] = [];
   while (plan.played < plan.games.length && !allowed(plan.games[plan.played])) skipped.push(plan.games[plan.played++]);
   const next = plan.games[plan.played];
-  if (skipped.length && next && s.phase === "lobby" && next !== s.gameId && isGameId(next)) { s.gameId = next; s.options = defaultOptions(getGame(next).settings); }
+  if (skipped.length && next && s.phase === "lobby" && next !== s.gameId && isGameId(next)) pickGame(s, next);
   return skipped;
 }
 
@@ -180,7 +249,13 @@ export type RoomAction =
   /** Host: Spielabend-Wertung auf null */
   | { type: "resetEvening" }
   /** Host: Partyabend planen (Spiele der Reihe nach) oder beenden (null) */
-  | { type: "setPlan"; games: string[] | null }
+  | { type: "setPlan"; games: string[] | null; short?: boolean }
+  /** Host: Abstimmung über das nächste Spiel starten (2–4 Vorschläge) – in der Lobby oder nach einer Partie */
+  | { type: "startVote"; games: string[] }
+  /** Jeder im Raum: Stimme abgeben oder ändern */
+  | { type: "vote"; gameId: string }
+  /** Auswerten (Host jederzeit, alle nach Ablauf der Zeit), Host: selbst wählen (`gameId`) oder abbrechen (`cancel`) */
+  | { type: "endVote"; gameId?: string; cancel?: boolean }
   /** Host: eigene Kartensets für die nächsten Partien wählen (leer = nur eingebaute Karten) */
   | { type: "setSets"; sets: RoomSet[] }
   | { type: "game"; action: { type: string } & Record<string, unknown> };
@@ -373,15 +448,17 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       s.game = current.setup(context(s, actorId));
       s.round++;
       s.undo = [];
+      delete s.vote;
       return s;
     }
     case "toLobby": {
       hostOnly();
       const s: RoomState = { ...structuredClone(prev), phase: "lobby", game: null, undo: [] };
+      delete s.vote;
       seatBench(s);
       // Partyabend: das nächste geplante Spiel steht gleich bereit
       const next = planStatus(s.evening)?.next;
-      if (next && next !== s.gameId && isGameId(next)) { s.gameId = next; s.options = defaultOptions(getGame(next).settings); }
+      if (next && next !== s.gameId && isGameId(next)) pickGame(s, next);
       return s;
     }
     case "setSets": {
@@ -404,16 +481,56 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       const s = structuredClone(prev);
       if (!a.games?.length) { if (s.evening) delete s.evening.plan; return s; }
       if (!Array.isArray(a.games) || a.games.length > PLAN_MAX || !a.games.every((g) => typeof g === "string" && isGameId(g))) throw new GameError("Diesen Plan gibt es so nicht.");
-      s.evening = { ...(s.evening ?? { wins: {}, names: {}, log: [] }), plan: { games: [...a.games], played: 0 } };
-      if (s.phase === "lobby" && s.gameId !== a.games[0]) { s.gameId = a.games[0]; s.options = defaultOptions(getGame(a.games[0]).settings); }
+      s.evening = { ...(s.evening ?? { wins: {}, names: {}, log: [] }), plan: { games: [...a.games], played: 0, ...(a.short === true ? { short: true } : {}) } };
+      if (s.phase === "lobby") pickGame(s, a.games[0]);
+      return s;
+    }
+    case "startVote": {
+      hostOnly();
+      if (prev.phase === "playing" && !(prev.game && logic.isOver(prev.game))) throw new GameError("Abstimmen geht in der Lobby oder nach der Partie.");
+      const games = Array.isArray(a.games) ? a.games : [];
+      if (games.length < VOTE_MIN || games.length > VOTE_MAX || new Set(games).size !== games.length || !games.every((g) => typeof g === "string" && isGameId(g)))
+        throw new GameError(`Zum Abstimmen ${VOTE_MIN} bis ${VOTE_MAX} verschiedene Spiele wählen.`);
+      return { ...structuredClone(prev), vote: { games: [...games], votes: {}, endsAt: Date.now() + VOTE_SECONDS * 1000 } };
+    }
+    case "vote": {
+      const v = prev.vote;
+      if (!v || v.winner) throw new GameError("Gerade wird nicht abgestimmt.");
+      if (actorId !== null && !inRoom(prev, actorId)) throw new GameError("Du bist nicht in diesem Raum.");
+      if (!v.games.includes(a.gameId)) throw new GameError("Das steht nicht zur Wahl.");
+      const s = structuredClone(prev);
+      s.vote!.votes[actorId ?? "local"] = a.gameId;
+      // Alle (außer Bots) haben gewählt: gleich auswerten
+      const who = voters(s);
+      if (who.length && who.every((id) => id in s.vote!.votes)) decideVote(s, voteWinner(s)!);
+      return s;
+    }
+    case "endVote": {
+      const v = prev.vote;
+      // Schon entschieden (z. B. hat ein anderes Handy nach Ablauf schon ausgewertet): nichts zu tun
+      if ((!v || v.winner) && !a.cancel && a.gameId === undefined) return prev;
+      if (!v || v.winner) throw new GameError("Gerade wird nicht abgestimmt.");
+      const s = structuredClone(prev);
+      if (a.cancel) { hostOnly(); delete s.vote; return s; }
+      if (a.gameId !== undefined) {
+        hostOnly();
+        if (!v.games.includes(a.gameId)) throw new GameError("Das steht nicht zur Wahl.");
+        decideVote(s, a.gameId);
+        return s;
+      }
+      // Auswerten: der Host jederzeit, alle anderen, sobald die Zeit um ist (niemand bleibt hängen)
+      if (!isHost && Date.now() < v.endsAt - 500) throw new GameError("Die Abstimmung läuft noch.");
+      decideVote(s, voteWinner(s)!);
       return s;
     }
     case "selectGame": {
       hostOnly();
       if (prev.phase !== "lobby") throw new GameError("Erst zurück in die Lobby, dann ein anderes Spiel wählen.");
       if (!isGameId(a.gameId)) throw new GameError("Dieses Spiel gibt es nicht.");
-      if (a.gameId === prev.gameId) return prev;
-      return { ...structuredClone(prev), gameId: a.gameId, options: defaultOptions(getGame(a.gameId).settings) };
+      if (a.gameId === prev.gameId && !prev.vote) return prev;
+      const s: RoomState = { ...structuredClone(prev), gameId: a.gameId, options: a.gameId === prev.gameId ? prev.options : defaultOptions(getGame(a.gameId).settings) };
+      delete s.vote;
+      return s;
     }
     case "setOption": {
       hostOnly();

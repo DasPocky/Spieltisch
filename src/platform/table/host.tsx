@@ -2,6 +2,7 @@ import type { VoiceMood } from "@shared/platform/voice";
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Smile } from "lucide-react";
 import { eveningRanking, planStatus, roomGame, type RoomState } from "@shared/platform/room";
+import { getGame } from "@shared/games";
 import type { PlayerResult } from "@shared/platform/types";
 import { setPref, usePrefs } from "@/lib/prefs";
 import { readStr, writeStr } from "@/lib/storage";
@@ -109,6 +110,19 @@ export function useTableHost(room: RoomState, model: TableModel | null, mood: Mo
     if (now.pickBy && now.pickBy !== prev.pickBy) { announce("punkt", name(now.pickBy)); return; }
     if (now.turn && now.turn !== prev.turn) announce(sham ? "zar" : "dran", name(now.turn));
   }, [playing, over, turn, pickBy, partyDone]);
+
+  // Abstimmung: Vorschläge ansagen, danach das Ergebnis (wie ein Spielleiter am Tisch)
+  const vote = room.vote && !room.vote.winner ? room.vote : null;
+  const lastVote = useRef(vote);
+  useEffect(() => {
+    const prev = lastVote.current;
+    lastVote.current = vote;
+    if (!on || vote?.endsAt === prev?.endsAt) return;
+    if (vote) {
+      const names = vote.games.map((g) => getGame(g).info.name);
+      show("hallo", `Abstimmung! Zur Wahl stehen ${names.slice(0, -1).join(", ")} und ${names[names.length - 1]}. Stimmt am Handy ab – ihr habt ${Math.max(0, Math.round((vote.endsAt - Date.now()) / 1000))} Sekunden.`);
+    } else if (prev && playing && prev.games.includes(room.gameId)) show("hallo", `Entschieden: Als Nächstes spielen wir ${getGame(room.gameId).info.name}!`);
+  }, [vote?.endsAt, on]);
 
   // Sprechblase nach der Sprechdauer ausblenden
   useEffect(() => {
