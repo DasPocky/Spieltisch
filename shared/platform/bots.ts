@@ -13,6 +13,7 @@ import { fits as sbFits, type SbState } from "../games/stapelbau/logic";
 import { canPlay as einsCanPlay, COLORS, type EinsState } from "../games/eins/logic";
 import type { WerwolfState } from "../games/werwolf/logic";
 import { SUITS as HS_SUITS, type HsState } from "../games/hellseher/logic";
+import { canPlay as hzCanPlay, type HzState } from "../games/herzen/logic";
 import { POINT_STEPS } from "../games/alles/logic";
 import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../games/maexchen/logic";
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
@@ -185,6 +186,20 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       ["tBidsDone", "tFinish"].forEach((type) => add({ type }));
       if (Math.random() < 0.02) add({ type: "tBack" });
+      break;
+    }
+    case "herzen": {
+      const s = r.game as HzState;
+      // Weitergeben: online jeder für sich, lokal das Gerät für jeden – drei zufällige Karten
+      if (s.phase === "pass") for (const id of ids) {
+        if (s.passing[id]) continue;
+        const cards = shuffleInPlace([...(s.hands[id] ?? [])]).slice(0, 3);
+        if (online) moves.push({ action: g({ type: "pass", cards }), actor: id });
+        else add({ type: "pass", player: id, cards });
+      }
+      const hand = s.hands[s.curId ?? ""] ?? [];
+      for (const card of hand) if (hzCanPlay(s, hand, card, r.options) || Math.random() < 0.05) add({ type: "play", card });
+      add({ type: "nextRound" });
       break;
     }
     case "schamlos": {
