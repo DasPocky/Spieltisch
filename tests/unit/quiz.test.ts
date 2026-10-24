@@ -5,6 +5,7 @@ import { isFolge, isWahl, isZahl } from "@shared/games/quiz/fragen/typen";
 import { viewRoom, type RoomState } from "@shared/platform/room";
 import { WATCH_ID } from "@shared/platform/protocol";
 import { act, game, roomWith } from "./helpers";
+import { quizTable } from "@/games/quiz/table";
 
 const g = (r: RoomState) => r.game as QState;
 function start(n = 3, options: Record<string, string | number | boolean> = {}) {
@@ -88,6 +89,24 @@ describe("Quiz & Schätzen – Ablauf", () => {
     r = game(r, { type: "next" }, a);
     expect(g(r).idx).toBe(1);
     expect(g(r).phase).toBe("ask");
+  });
+
+  it("Bühne: Pult-Schild verrät vor dem Auflösen nur, wer geantwortet hat – danach richtig/falsch und Punkte", () => {
+    let r = start(3, only("wahl"));
+    const [a, b, c] = ids(r);
+    const key = g(r).key as number;
+    const marks = (x: RoomState) => quizTable(viewRoom(x, WATCH_ID))!.quiz!.marks!;
+    // richtig oder falsch geantwortet: am Fernseher dasselbe Schild
+    const right = game(r, { type: "answer", value: key }, a), wrong = game(r, { type: "answer", value: (key + 1) % 4 }, a);
+    expect(marks(right)).toEqual(marks(wrong));
+    expect(marks(right)[a]).toEqual({ text: "hat geantwortet", tone: "done" });
+    expect(marks(right)[b].tone).toBe("idle");
+    r = game(right, { type: "answer", value: (key + 1) % 4 }, b);
+    r = game(r, { type: "reveal" }, a);
+    expect(marks(r)[a].tone).toBe("right");
+    expect(marks(r)[a].text).toMatch(/^richtig \+\d+/);
+    expect(marks(r)[b]).toEqual({ text: "falsch", tone: "wrong" });
+    expect(marks(r)[c]).toEqual({ text: "keine Antwort", tone: "idle" });
   });
 
   it("Schätzen: am nächsten dran gewinnt, gleich nah teilt sich den Platz, genau trifft gibt Bonus", () => {

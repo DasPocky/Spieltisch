@@ -15,6 +15,15 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-quiz-wissen",
+    date: "2026-10-24",
+    title: "Quiz: Wissenschaft, Sprache und die Bühne",
+    items: [
+      "Zwei neue Quiz-Kategorien: „Wissenschaft & Technik“ (Physik, Chemie, Biologie, Sterne, Mathe, Erfindungen) und „Sprache & Wörter“ (Wortherkunft, Redewendungen, Grammatik, Fremdwörter, Rechtschreibung, Sprachen der Welt) – zusammen fast 300 Fragen, jede mit Quelle.",
+      "Das Quiz läuft jetzt auch auf der Bühne am Fernseher: Frage und Antworten groß auf der Leinwand, an jedem Pult steht, wer schon geantwortet hat – nach dem Auflösen richtig oder falsch und die Punkte.",
+    ],
+  },
+  {
     id: "2026-10-reste",
     date: "2026-10-24",
     title: "Lobby, Abstimmen und Werwolf-Pakete",
