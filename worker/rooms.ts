@@ -7,7 +7,7 @@ import { PROFILE_ID_RE } from "../shared/platform/profile";
 import { GROUP_CODE_RE, randomCode, sanitizeAvatar } from "../shared/platform/group";
 import { accessFor, withDefaults, type GameDefaults, type SiteConfig } from "../shared/platform/access";
 import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type StatKind } from "../shared/platform/admin";
-import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, skipBlockedPlan, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
+import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, shortRules, skipBlockedPlan, startVoted, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import { BOT_PREFIX } from "../shared/platform/bots";
 import { botDelay, isBotLevel, playBot } from "../shared/platform/botSkill";
@@ -512,6 +512,10 @@ export class GameRoom extends DurableObject<Env> {
         const blocked = msg.action.games.filter((g) => typeof g === "string" && !ok(g));
         if (blocked.length) { this.send(ws, { type: "error", message: "Im Plan ist ein Spiel, das gerade nicht freigegeben ist.", id: id ?? undefined }); return; }
       }
+      if (msg.action.type === "startVote" && Array.isArray(msg.action.games)) {
+        const ok = await allowedNow();
+        if (msg.action.games.some((g) => typeof g === "string" && !ok(g))) { this.send(ws, { type: "error", message: "Zur Wahl steht ein Spiel, das gerade nicht freigegeben ist.", id: id ?? undefined }); return; }
+      }
       if ((msg.action.type === "start" || msg.action.type === "restart") && !(await allowedNow())(this.room.state.gameId)) {
         this.send(ws, { type: "error", message: "Dieses Spiel ist gerade abgeschaltet – wählt ein anderes.", id: id ?? undefined });
         return;
@@ -543,7 +547,24 @@ export class GameRoom extends DurableObject<Env> {
         if (missingSets > 0) this.send(ws, { type: "error", message: missingSets === 1 ? "Ein gewähltes Kartenset gibt es nicht mehr – es spielen die übrigen Karten." : `${missingSets} gewählte Kartensets gibt es nicht mehr – es spielen die übrigen Karten.` });
         // Anderes Spiel gewählt: Standard-Einstellungen des Admins übernehmen
         const now = this.room.state;
-        if (config && now.gameId !== before.gameId) now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[now.gameId]);
+        if (config && now.gameId !== before.gameId) { now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[now.gameId]); shortRules(now); }
+        // Abstimmung entschieden: Gewinner gleich starten (mit Admin-Standards, eigenen Kartensets und Freigabe wie beim Start)
+        if (now.vote?.winner) {
+          const winner = now.vote.winner;
+          config ??= await settingsOf(this.env).config();
+          if (winner !== before.gameId) { now.options = withDefaults(roomGame(now).settings, now.options, config.defaults?.[winner]); shortRules(now); }
+          if (!(await allowedNow())(winner)) { delete now.vote; }
+          else {
+            const kind = now.sets?.length && config.features.sets ? kindOfGame(winner) : null;
+            if (kind) {
+              const host = now.hostId;
+              const wanted = now.sets!.filter((x) => !x.kind || x.kind === kind).slice(0, MAX_SETS_IN_GAME).map((x) => x.id);
+              try { now.content = await loadContent(this.env, wanted, kind, host ? this.room.profiles?.[host] : undefined); } catch { /* ohne eigene Karten */ }
+            }
+            this.room.state = startVoted(now);
+            delete this.room.state.content;
+          }
+        }
       } catch (e) {
         // Kennzahl: welche Art von Zug abgelehnt wurde (Spielaktion mit ihrem Typ)
         const a = msg.action as { type: string; action?: { type?: unknown } };
@@ -568,14 +589,15 @@ export class GameRoom extends DurableObject<Env> {
       if (kind === "toLobby" || kind === "setPlan" || kind === "selectGame") skipped = skipBlockedPlan(this.room.state, await allowedNow());
       // Partie zu Ende: Ergebnis-Aufträge gleich mit dem Spielstand speichern (ein Schreibvorgang)
       const finished = this.queueResults(before);
-      await this.persist(["start", "restart", "toLobby", "selectGame", "removePlayer"].includes(kind));
+      const started = this.room.state.round > before.round;
+      await this.persist(started || ["start", "restart", "toLobby", "selectGame", "removePlayer"].includes(kind));
       if (id) this.send(ws, { type: "ack", id, rev: this.room.rev ?? 0 });
       this.broadcast();
-      if (kind === "start" || kind === "restart") await this.count("started");
+      if (started) await this.count("started");
       if (finished) await this.count("finished");
       if (skipped.length) this.send(ws, { type: "error", message: `Übersprungen, weil gerade nicht freigegeben: ${skipped.map((g) => (isGameId(g) ? roomGame({ ...this.room!.state, gameId: g }).info.name : g)).join(", ")}.` });
       // Fällige und früher nicht angekommene Ergebnisse schicken – geht es weiter (Lobby, Nochmal, Spielwechsel), gleich alle
-      if (this.room.results?.length) await this.flushResults(["toLobby", "restart", "start", "selectGame"].includes(kind));
+      if (this.room.results?.length) await this.flushResults(started || ["toLobby", "restart", "start", "selectGame"].includes(kind));
       if (finished) await this.scheduleEnd();
     }
   }

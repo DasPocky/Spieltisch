@@ -36,7 +36,7 @@ import { ChatButton, ChatContext, ChatPanel, type ChatControls } from "./chat/Ch
 import { Meet } from "./chat/Meet";
 import { useGameFeedback } from "./useGameFeedback";
 import { RoomHints } from "@/lib/prefs";
-import { EveningContext, EveningLine } from "./Evening";
+import { EveningContext, EveningLine, VoteButton, VoteOverlay } from "./Evening";
 import { KnockBar, type KnockEntry } from "./KnockBar";
 import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
 import { setDeskPrivate, setDeskView, useDesk, useDeskPrivate } from "./desk/desk";
@@ -112,7 +112,8 @@ export function RoomScreen(props: Props) {
     <AvatarContext.Provider value={avatars}>
     <ChatContext.Provider value={props.chat ?? null}>
     <CallContext.Provider value={props.call ? { call: props.call, me } : null}>
-    <EveningContext.Provider value={{ room, isHost, dispatch }}>
+    <EveningContext.Provider value={{ room, isHost, dispatch, me, online: !!code }}>
+    {code && <VoteOverlay />}
     <div className={cn("mx-auto flex max-w-xl flex-col px-4", playing && ui.wide && "lg:max-w-6xl", atTable && "max-w-none lg:px-6", playing ? "h-dvh-safe overflow-clip" : "min-h-dvh-safe")}>
       <header className="room-head flex h-14 shrink-0 items-center justify-between">
         {playing ? (
@@ -324,7 +325,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
         title="Einstellungen" sub={isHost ? settingsSummary(room, !!code) : `Legt der Host fest · ${settingsSummary(room, !!code)}`} />
 
       {/* Zweitrangig: reden, Partyabend, Treffpunkt – klein und zusammen */}
-      <LobbyMore isHost={isHost} code={code} call={call} dispatch={dispatch} />
+      <LobbyMore isHost={isHost} canPick={canPick} code={code} call={call} dispatch={dispatch} />
 
       <div className="min-h-4 flex-1" />
       {/* Start bleibt immer sichtbar unten */}
@@ -361,16 +362,18 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
 }
 
 /** Lobby, zweitrangig: Audio & Video, Partyabend und (Host) Treffpunkt – fällt weg, wenn nichts davon passt */
-function LobbyMore({ isHost, code, call, dispatch }: { isHost: boolean; code?: string; call?: CallControls; dispatch: (a: RoomAction) => void }) {
+function LobbyMore({ isHost, canPick, code, call, dispatch }: { isHost: boolean; canPick: boolean; code?: string; call?: CallControls; dispatch: (a: RoomAction) => void }) {
   return (
     <div className="mt-3 grid gap-2 empty:hidden" data-testid="lobby-more">
       {/* Kleines Handy: Audio & Video steht ohnehin oben in der Kopfzeile */}
       {call && <div className="[@media(max-height:700px)]:hidden"><CallInvite call={call} /></div>}
-      <EveningLine beside={code && isHost ? (
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="w-full min-w-0" data-testid="to-meet">
-          <MessagesSquare className="size-4 text-primary" /><span className="max-[359px]:hidden">Zum&nbsp;</span>Treffpunkt
+      <EveningLine beside={code && isHost ? (<>
+        <Button variant="outline" size="sm" onClick={() => dispatch({ type: "setMeet", on: true })} className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" data-testid="to-meet" aria-label="Zum Treffpunkt">
+          <MessagesSquare className="size-4 text-primary" />Treffpunkt
         </Button>
-      ) : undefined} />
+        {/* Online: alle stimmen über das nächste Spiel ab */}
+        {canPick && <VoteButton variant="outline" size="sm" className="h-auto w-full min-w-0 flex-col gap-0.5 px-1 py-1.5 text-xs" />}
+      </>) : undefined} />
     </div>
   );
 }

@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-abstimmen",
+    date: "2026-10-24",
+    title: "Partyabend: Abstimmen über das nächste Spiel",
+    items: [
+      "In der Lobby und nach jeder Partie kann der Host „Abstimmen“ starten: zwei bis vier Spiele stehen zur Wahl, alle tippen am Handy, der Fernseher zählt live mit.",
+      "Das Spiel mit den meisten Stimmen startet sofort. Nach 30 Sekunden wird ausgewertet, bei Gleichstand entscheidet der Zufall – der Host kann vorher auswerten, selbst wählen oder abbrechen.",
+      "Neu im Partyabend-Planer: „Kurze Runden“ – Spiele mit kurzen Regeln spielen sie, alle anderen wie gewohnt.",
+    ],
+  },
+  {
     id: "2026-10-lobby-menue",
     date: "2026-10-24",
     title: "Aufgeräumte Lobby und klares Menü",

@@ -4,7 +4,7 @@ import type { RoomAction } from "@shared/platform/room";
 import { Button } from "@/components/ui/button";
 import { cn, fmt } from "@/lib/utils";
 import { wantGamePick } from "@/lib/pickGame";
-import { EveningLine } from "./Evening";
+import { EveningLine, VoteButton } from "./Evening";
 import type { ScoreEntry } from "./Scoreboard";
 import { AvatarContext } from "./Avatar";
 
@@ -115,7 +115,11 @@ export function EndActions({ isHost, dispatch, children }: { isHost: boolean; di
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
       <EveningLine />
-      <Button size="lg" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
+      <div className="flex gap-2">
+        <Button size="lg" className="min-w-0 flex-1" onClick={() => dispatch({ type: "restart" })}>Nochmal spielen</Button>
+        {/* Online: alle stimmen über das nächste Spiel ab */}
+        <VoteButton size="lg" />
+      </div>
       {children}
       <div className="grid grid-cols-2 gap-2">
         <Button variant="secondary" className="px-2 whitespace-nowrap" onClick={() => { wantGamePick(); dispatch({ type: "toLobby" }); }}>Spiel wechseln</Button>
