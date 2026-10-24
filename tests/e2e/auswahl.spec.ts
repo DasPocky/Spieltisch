@@ -83,3 +83,38 @@ test("Partyabend: Abbrechen verwirft den Entwurf", async ({ page }) => {
   await expect(page.getByTestId("plan-vier")).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByTestId("plan-next")).toBeDisabled();
 });
+
+test("Spielauswahl: Spiele merken – oben in „Gemerkt“, bleibt nach Neuladen, wieder entfernen", async ({ page }) => {
+  await createRoom(page, "maumau", "Anna", "7474");
+  await page.getByTestId("game-card").click();
+  const favs = page.getByTestId("pick-favorites");
+  await expect(favs).toHaveCount(0);
+  await page.getByRole("button", { name: "Merken: Werwolf" }).click();
+  await page.getByTestId("fav-quiz").click();
+  await expect(page.getByRole("button", { name: "Nicht mehr merken: Werwolf" })).toHaveAttribute("aria-pressed", "true");
+  // Oben in „Gemerkt“ und nicht doppelt weiter unten
+  await expect(page.getByTestId("pick-list").locator("section").first()).toHaveAttribute("aria-label", "Gemerkt");
+  await expect(favs.locator("[data-testid^=pick-]")).toHaveCount(2);
+  await expect(page.getByTestId("pick-werwolf")).toHaveCount(1);
+  // Suche filtert auch die Gemerkten
+  await page.getByTestId("game-search").fill("quiz");
+  await expect(favs.getByTestId("pick-quiz")).toBeVisible();
+  await expect(page.getByTestId("pick-werwolf")).toHaveCount(0);
+  await page.getByTestId("game-search").fill("");
+  await expectNoScroll(page);
+  await shot(page, "c4-favoriten");
+
+  // Nach dem Neuladen noch da – auch im Partyabend-Planer zuerst
+  await page.reload();
+  await page.getByTestId("game-card").click();
+  await expect(favs.locator("[data-testid^=pick-]")).toHaveCount(2);
+  await page.getByRole("button", { name: "Nicht mehr merken: Werwolf" }).click();
+  await page.getByTestId("fav-quiz").click();
+  await expect(page.getByTestId("fav-quiz")).toHaveAttribute("aria-pressed", "false");
+  await expect(favs).toHaveCount(0);
+  await expect(page.getByTestId("pick-werwolf")).toHaveCount(1);
+  await page.getByRole("button", { name: "Merken: Werwolf" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("plan-open").click();
+  await expect(page.getByTestId("plan-games").locator("button").first()).toHaveAttribute("data-testid", "plan-werwolf");
+});

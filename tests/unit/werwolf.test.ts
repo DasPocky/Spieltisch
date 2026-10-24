@@ -43,6 +43,20 @@ describe("Rollen verteilen", () => {
     expect(g(r).narratorId).toBe("p1");
     expect(g(r).stepwise).toBe(true);
   });
+
+  it("jedes Rollen-Paket startet mit 5 und mit 12 Spielern", () => {
+    const names = Array.from({ length: 12 }, (_, i) => `Spieler ${i + 1}`);
+    for (const preset of ["standard", "einsteiger", "komplex"]) {
+      for (const n of [5, 12]) {
+        let r = act(roomWith(names.slice(0, n)), { type: "selectGame", gameId: "werwolf" });
+        r = act(r, { type: "setPreset", id: preset });
+        r = act(r, { type: "start" }, "p1");
+        expect(Object.keys(g(r).roles), `${preset}/${n}`).toHaveLength(n);
+        if (preset === "komplex") expect(Object.values(g(r).roles), `${preset}/${n}`).toEqual(expect.arrayContaining(["jaeger", "amor", "seherin", "hexe"]));
+        if (preset === "einsteiger") expect(r.options.captain, n.toString()).toBe(false);
+      }
+    }
+  });
 });
 
 describe("Geheime Sicht", () => {

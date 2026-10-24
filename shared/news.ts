@@ -15,6 +15,22 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-werwolf-pakete",
+    date: "2026-10-23",
+    title: "Werwolf: Rollen-Pakete",
+    items: [
+      "Bei Werwolf gibt es unter „Regeln“ jetzt „Einsteiger“ (ohne Hauptmann) und „Komplex“ (dazu Jäger und Amor) – beide schon ab 5 Spielern.",
+    ],
+  },
+  {
+    id: "2026-10-favoriten",
+    date: "2026-10-23",
+    title: "Lieblingsspiele merken",
+    items: [
+      "In der Spielauswahl merkt der Stern neben jedem Spiel es vor – gemerkte Spiele stehen oben unter „Gemerkt“, auch im Partyabend-Planer zuerst.",
+    ],
+  },
+  {
     id: "2026-10-dame-international",
     date: "2026-10-23",
     title: "Dame 10 × 10 nach internationalen Regeln",

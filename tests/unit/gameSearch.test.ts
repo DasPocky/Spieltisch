@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GAME_IDS, getGame } from "@shared/games";
 import { fitsPlayers, fold, gameMatches, planDuration } from "../../src/lib/gameSearch";
+import { favoritesFirst } from "../../src/lib/favorites";
 
 const info = (id: string) => getGame(id).info;
 
@@ -31,5 +32,12 @@ describe("Spielsuche", () => {
     expect(d("10–20 Min.", "15 Min.")).toBe("ca. 25–35 Min.");
     expect(d("30–60 Min.", "45–90 Min.")).toBe("ca. 1,5–2,5 Std.");
     expect(d("30 Min.", "30 Min.")).toBe("ca. 1 Std.");
+  });
+});
+
+describe("Gemerkte Spiele", () => {
+  it("kommen nach vorn, sonst bleibt die Reihenfolge", () => {
+    expect(favoritesFirst(["a", "b", "c", "d"], ["c", "x", "a"])).toEqual(["a", "c", "b", "d"]);
+    expect(favoritesFirst(["a", "b"], [])).toEqual(["a", "b"]);
   });
 });
