@@ -32,11 +32,11 @@ function useWide(): boolean {
 }
 
 /** Kann diese Partie hier am Tisch gespielt werden? (`possible`) – und ist das gerade gewählt? (`on`) */
-export function useDesk(room: RoomState, me: string | null): { possible: boolean; on: boolean } {
+export function useDesk(room: RoomState, me: string | null): { possible: boolean; on: boolean; /** großer Bildschirm */ wide: boolean } {
   const config = useSiteConfig();
   const admin = useAdminDevice();
   const wide = useWide();
   const view = useDeskView();
   const possible = wide && me !== null && room.phase === "playing" && !!room.game && modeAllowed(config?.modes, room.gameId, "desk", admin);
-  return { possible, on: possible && view === "table" };
+  return { possible, on: possible && view === "table", wide };
 }

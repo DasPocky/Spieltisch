@@ -9,8 +9,11 @@ import { QrCode } from "@/platform/QrCode";
  * Am Rechner: Handy als Begleiter koppeln – QR-Code mit einem kurzen Einmal-Code (5 Minuten).
  * Das Handy wird zweites Gerät desselben Spielers: Kamera und Mikro, Chat, die eigenen Karten.
  */
-export function PairButton({ code, onPair, pairing }: { code: string; onPair: () => void; pairing: { code: string; until: number } | null }) {
-  const [open, setOpen] = useState(false);
+export function PairButton({ code, onPair, pairing, open: openProp, onOpenChange }: { code: string; onPair: () => void; pairing: { code: string; until: number } | null;
+  /** von außen öffnen (Blatt „Mein Gerät ist …“) */ open?: boolean; onOpenChange?: (open: boolean) => void }) {
+  const [openSelf, setOpenSelf] = useState(false);
+  const open = openProp ?? openSelf;
+  const setOpen = (o: boolean) => { setOpenSelf(o); onOpenChange?.(o); };
   const [now, setNow] = useState(Date.now());
   useEffect(() => { if (!open) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [open]);
   const valid = pairing && pairing.until > now;

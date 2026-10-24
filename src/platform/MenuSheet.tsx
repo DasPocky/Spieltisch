@@ -25,6 +25,7 @@ import { ShareCode } from "./ShareCode";
 import { Collapsible, lastLog, PlayersSheet } from "./PlayersHistory";
 import { EveningLine } from "./Evening";
 import { accessSummary, RoomAccessForm } from "./RoomAccessForm";
+import { DeviceRow, DeviceSheet, type DeviceControls } from "./DeviceSheet";
 import { DEFAULT_ACCESS, type RoomAccess } from "@shared/platform/directory";
 
 export interface MenuProps {
@@ -48,11 +49,14 @@ const STALL_MS = 20_000;
  * · Mein Gerät · Beenden (Gefährliches ganz unten). Leere Gruppen fallen weg.
  * Raum-Einstellungen stehen in der Lobby; hier nur, was sich während der Partie ändern lässt.
  */
-export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave, onCloseRoom, onClaimHost, manage, tv, onRemote }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch"> & {
+export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave, onCloseRoom, onClaimHost, manage, tv, onRemote, device }: MenuProps & Pick<BoardProps, "room" | "me" | "online" | "isHost" | "dispatch"> & {
   /** „Spieler verwalten“ für „Spieler & Verlauf“ (Host) */
   manage?: ReactNode;
+  /** Rolle dieses Geräts und die passenden Wechsel */
+  device?: DeviceControls;
 }) {
   const [open, setOpen] = useState(false);
+  const [deviceOpen, setDeviceOpen] = useState(false);
   const [players, setPlayers] = useState(false);
   const ui = getGameUI(room.gameId, room.phase === "playing" ? room.gameVersion : undefined);
   const name = getGame(room.gameId).info.name;
@@ -144,6 +148,8 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
             )}
 
             <Section title="Mein Gerät">
+              {/* Ein Handy für alle: nichts zu wechseln – die Zeile spart sich das Menü */}
+              {device && device.role !== "shared" && <DeviceRow device={device} onOpen={() => { setOpen(false); setDeviceOpen(true); }} />}
               <Collapsible title="Ansicht & Töne" badge={<span className="text-xs font-normal text-muted-foreground">nur dieses Handy</span>} testId="my-device">
                 <MyDevice room={room} />
               </Collapsible>
@@ -170,6 +176,7 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
           </div>
         </SheetContent>
       </Sheet>
+      {device && <DeviceSheet device={device} open={deviceOpen} onOpenChange={setDeviceOpen} />}
       {board && <PlayersSheet open={players} onOpenChange={setPlayers} ui={ui} board={board} manage={manage} />}
     </>
   );
@@ -310,7 +317,7 @@ function RoomSettings({ room, isHost, dispatch }: Pick<BoardProps, "room" | "isH
  * Fernbedienung für den Großen Tisch – am Fernseher selbst gibt es keine Knöpfe: Ton und Lautstärke, offene Hand verdecken,
  * Moderator (an/aus, Charakter, Vorlesen), Videos an den Plätzen, Ansicht Tisch/Bühne, Kamera zurück zur Grundansicht.
  */
-function Remote({ onRemote }: { onRemote: (cmd: RemoteCmd) => void }) {
+export function Remote({ onRemote }: { onRemote: (cmd: RemoteCmd) => void }) {
   const keys: [RemoteCmd, string, typeof Volume2][] = [
     ["sound", "Ton", VolumeX], ["quieter", "Leiser", Volume1], ["louder", "Lauter", Volume2],
     ["host", "Moderator", Smile], ["mood", "Charakter", Sparkles], ["voice", "Vorlesen", Mic],
