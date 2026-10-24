@@ -55,9 +55,13 @@ test("Großer Tisch: Bildschirm baut auf, Handys treten per QR-Link bei, Mau-Mau
   const turn = screen.locator('[data-testid="table-seat"][data-turn="true"]');
   await expect(turn).toHaveCount(1);
   const mover = (await turn.textContent())?.includes("Anna") ? anna : ben;
+  // Grafikspeicher vor und nach ein paar Zügen: der Neuaufbau gibt den alten Aufbau frei (Audit P2-16)
+  const geometries = () => screen.evaluate(() => (window as unknown as { __tableMemory?: () => { geometries: number } }).__tableMemory?.().geometries ?? 0);
+  const before = await geometries();
   await mover.getByRole("button", { name: /ziehen/i }).first().click();
   await expect(screen.getByTestId("table-seat").filter({ hasText: /· [67]/ })).toHaveCount(1);
   await shot(screen, "91-table-maumau");
+  expect(await geometries()).toBeLessThanOrEqual(before + 4);
   // Der Tisch zeigt keine fremden Karten – nur die Anzahl
   await expect(screen.getByTestId("hand")).toHaveCount(0);
   // Reaktion vom Handy schwebt über dem Platz am Tisch – Text-Nachrichten bleiben auf den Handys
