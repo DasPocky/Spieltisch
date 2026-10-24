@@ -14,7 +14,7 @@ import { PROFILE_ID_RE } from "../../shared/platform/profile";
 import { photoType } from "../../shared/platform/photo";
 import {
   type GameContent,
-  cleanSetData, cleanSetName, IMG_PREFIX, SET_ID_RE, SET_IMAGE_MAX_BYTES, SET_KINDS, setImages, SetError, type CardSet, type CardSetData, type SetKind,
+  cleanSetData, cleanSetName, IMG_PREFIX, ORPHAN_SWEEP_MS, orphanImages, SET_ID_RE, SET_IMAGE_MAX_BYTES, SET_KINDS, setImages, SetError, type CardSet, type CardSetData, type SetKind,
 } from "../../shared/platform/cardsets";
 import { Env, profileOf, settingsOf } from "../env";
 import { allowed, json, readBody, readBytes } from "../http";
@@ -28,13 +28,55 @@ const rand = (n: number) => { const b = new Uint8Array(n); crypto.getRandomValue
 /** Ordner der Bilder eines Profils: Kurz-Hash der ID (die ID selbst steht nicht in der Adresse) */
 const imageFolder = async (profile: string) => `k/${hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`kartenbild:${profile}`))).slice(0, 16)}`;
 
-/** Bilder eines Sets löschen, die `keep` nicht mehr braucht – nur aus dem eigenen Ordner (fremde Schlüssel bleiben unberührt) */
-export async function deleteImages(env: Env, profile: string, data: CardSetData, keep: CardSetData = {}) {
+/** Schlüssel löschen – höchstens 1000 auf einmal (Grenze von R2) */
+async function dropKeys(files: R2Bucket, keys: string[]) {
+  for (let i = 0; i < keys.length; i += 1000) await files.delete(keys.slice(i, i + 1000));
+}
+
+/** Alle Objekte im Bild-Ordner eines Profils (seitenweise) */
+async function listFolder(files: R2Bucket, profile: string): Promise<{ key: string; uploaded: number }[]> {
+  const prefix = `${await imageFolder(profile)}/`;
+  const out: { key: string; uploaded: number }[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await files.list({ prefix, cursor });
+    out.push(...page.objects.map((o) => ({ key: o.key, uploaded: o.uploaded.getTime() })));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return out;
+}
+
+/**
+ * Bilder eines Sets löschen, die nicht mehr gebraucht werden – nur aus dem eigenen Ordner (fremde Schlüssel bleiben
+ * unberührt). `keep`: alle Bilder, die noch in Sets des Profils stehen (auch in Kopien desselben Sets).
+ */
+export async function deleteImages(env: Env, profile: string, data: CardSetData, keep: Iterable<string> = []) {
   if (!env.FILES) return;
   const folder = `${await imageFolder(profile)}/`;
-  const still = new Set(setImages(keep));
+  const still = new Set(keep);
   const gone = setImages(data).filter((k) => !still.has(k) && k.startsWith(folder));
-  if (gone.length) await env.FILES.delete(gone);
+  if (gone.length) await dropKeys(env.FILES, gone);
+}
+
+/**
+ * Verwaiste Bilder eines Profils aufräumen (hochgeladen, aber nie gespeichert – Editor abgebrochen): nur im eigenen
+ * Ordner, nur älter als einen Tag, höchstens einmal pro Stunde. Fehler bleiben still – Speichern geht trotzdem.
+ */
+export async function sweepImages(env: Env, profile: string, now = Date.now()): Promise<number> {
+  if (!env.FILES || !PROFILE_ID_RE.test(profile)) return 0;
+  try {
+    const store = profileOf(env, profile);
+    if (!(await store.sweepDue(now, ORPHAN_SWEEP_MS))) return 0;
+    const gone = orphanImages(await listFolder(env.FILES, profile), await store.imageKeys(), await imageFolder(profile), now);
+    await dropKeys(env.FILES, gone);
+    return gone.length;
+  } catch { return 0; }
+}
+
+/** Profil wird gelöscht: den ganzen Bild-Ordner leeren */
+export async function purgeImages(env: Env, profile: string): Promise<void> {
+  if (!env.FILES || !PROFILE_ID_RE.test(profile)) return;
+  await dropKeys(env.FILES, (await listFolder(env.FILES, profile)).map((o) => o.key));
 }
 
 export async function handleSets(request: Request, env: Env, url: URL): Promise<Response> {
@@ -72,6 +114,7 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
     if (!bytes) return json({ error: "Das Bild ist zu groß." }, 413);
     const type = photoType(bytes);
     if (!type) return json({ error: "Nur JPEG-, PNG- oder WebP-Bilder." }, 400);
+    await store.rememberId(profile);
     const key = `${await imageFolder(profile)}/${rand(20)}`;
     await env.FILES.put(key, bytes, { httpMetadata: { contentType: type } });
     return json({ value: `${IMG_PREFIX}${key}` }, 201);
@@ -105,7 +148,9 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
       const set: CardSet = { id, kind: body.kind, name: cleanSetName(body.name), owner: profile, status: listed ? "wartet" : "privat", updatedAt: Date.now(), ...(body.showName === true ? { showName: true } : {}), ...data };
       await store.putSet(set);
       if (listed) await settings.submitSet(set, (await store.get()).name || "Gast");
-      if (old) await deleteImages(env, profile, old as CardSetData, set);
+      // Aufräumen darf das Speichern nie scheitern lassen
+      try { if (old && setImages(old as CardSetData).length) await deleteImages(env, profile, old as CardSetData, await store.imageKeys()); } catch { /* bleibt liegen, die Suche unten findet es später */ }
+      await sweepImages(env, profile);
       return json({ set });
     } catch (e) {
       if (e instanceof SetError) return json({ error: e.message }, 400);
@@ -117,7 +162,7 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
     const old = await store.deleteSet(id);
     if (old) {
       await settings.withdrawSet(id);
-      await deleteImages(env, profile, old as CardSetData);
+      try { if (setImages(old as CardSetData).length) await deleteImages(env, profile, old as CardSetData, await store.imageKeys()); } catch { /* s. o. */ }
     }
     return json({ ok: true });
   }

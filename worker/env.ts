@@ -17,6 +17,8 @@ export interface Env {
   REALTIME_APP_TOKEN?: string;
   /** Nur für lokale Tests: SFU-Antworten simulieren statt Cloudflare zu fragen */
   REALTIME_FAKE?: string;
+  /** Wartezeit bis zum Verbuchen der Ergebnisse in ms (Tests: kurz; ohne Angabe 2 Minuten) */
+  RESULT_DELAY_MS?: string;
   /** Updates: Zeitpunkt fest vorgeben (now, round, idle, time, manual) – überschreibt die Admin-Einstellung */
   UPDATE_MODE?: string;
   /** Secret: damit meldet der Build neue Versionen an (/api/release) */

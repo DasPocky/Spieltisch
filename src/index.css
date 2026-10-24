@@ -127,6 +127,10 @@
 }
 .intro-out { animation: intro-out 0.38s cubic-bezier(0.4, 0, 1, 1) forwards; }
 @keyframes intro-out { to { opacity: 0; transform: scale(1.06); } }
+/* Ladebalken der Begrüßung: jeder Streifen füllt sich auf dem Grafik-Thread (transform), unabhängig vom Laden */
+.strip-fill { transform: scaleX(0); animation-name: strip-fill; animation-timing-function: linear; animation-fill-mode: forwards; will-change: transform; }
+@keyframes strip-fill { to { transform: scaleX(1); } }
+
 .paper-piece {
   translate: -50% -50%;
   filter: drop-shadow(0 3px 0 rgb(0 0 0 / 0.1)) drop-shadow(0 8px 12px rgb(0 0 0 / 0.14));
