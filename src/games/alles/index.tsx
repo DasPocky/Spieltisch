@@ -18,7 +18,7 @@ function HeaderExtra({ game }: BoardProps<AllesState, AllesAction>) {
 }
 
 /** Verlauf, Kartenstapel und Host-Werkzeuge im Menü */
-/** Menü-Abschnitt „Partie“: Stapel neu mischen (Host mit Spielleitung) */
+/** Menü-Abschnitt „Dieses Spiel“: Stapel neu mischen (nur Host, wenn er für alle spielen darf) */
 function MenuExtras({ hostTools, act }: BoardProps<AllesState, AllesAction>) {
   if (!hostTools) return null;
   return (

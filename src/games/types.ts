@@ -50,7 +50,7 @@ export interface GameUI<S = unknown, A = { type: string }> {
   Board: ComponentType<BoardProps<S, A>>;
   /** Regelseite. `focus` markiert einen Abschnitt (Element mit data-rule="…"), zu dem gescrollt wird. */
   Rules: ComponentType<{ focus?: string }>;
-  /** Zusätzliche Knöpfe im Menü-Abschnitt „Partie“ (z. B. Team wechseln, Stapel mischen) */
+  /** Zusätzliche Knöpfe im Menü-Abschnitt „Dieses Spiel“ (z. B. Team wechseln, Aufgeben, Stapel mischen) */
   MenuExtras?: ComponentType<BoardProps<S, A>>;
   /** Ausführlicher Verlauf für „Spieler & Verlauf“, wenn `log` nicht reicht (z. B. Einträge mit Punkten) */
   History?: ComponentType<BoardProps<S, A>>;

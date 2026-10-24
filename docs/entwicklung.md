@@ -42,6 +42,20 @@ Willkommen (neues Gerät) und Begrüßung mit Laden (bekanntes Gerät) |
 - **Namen:** Code (Variablen, Funktionen, Dateien, Test-IDs) auf Englisch, alles Sichtbare auf Deutsch – Texte, Ansagen, URLs (`/spiel/…/lokal`, `/admin/statistik`), Kommentare und Testnamen.
 - **Gemeinsame Bausteine zuerst:** Zufall und Codes (`shared/platform/random.ts`), Spielernamen (`playerName` in `turns.ts`), Speicher-Schlüssel (`src/lib/storage.ts`), Zeitangaben (`src/lib/time.ts`), kleine Stores (`src/lib/store.ts`), Auswahl (`Segmented`), Listenzeilen (`NavRow`). In Tests: `startLocal`, `createRoom`, `joinRoom`, `adminLogin`, `setConfig` aus `tests/e2e/util.ts`.
 
+## Begriffe
+
+Ein Wort für eine Sache – in Texten, Ansagen und Tests:
+
+- **Raum:** der gemeinsame Ort mit Raumcode und PIN. Darin wird gespielt, geredet (**Treffpunkt**) oder ein **Partyabend** gespielt (mehrere Spiele mit Abendwertung).
+- **Lobby:** der Raum vor dem Start – Spiel wählen, Mitspieler, Einstellungen.
+- **Spiel** ist das Spiel an sich („Spiel wählen“, „Spiel starten“, „Spiel wechseln“), **Partie** ein Durchgang davon („Partie beenden“, „ab der nächsten Partie“). **Runde** nur, wenn das Spiel selbst Runden hat.
+- **Host:** wer den Raum verwaltet und startet (nicht „Gastgeber“). Alle anderen sind **Gäste** bzw. **Mitspieler**. Werkzeuge des Hosts in der Partie heißen im Menü **Spielleitung**.
+- **Spielleiter / Erzähler:** nur bei Spielen mit dieser Rolle (Werwolf, Eine Nacht) – wer vorliest, statt mitzuspielen.
+- **Moderator:** die Show-Figur am Großen Tisch (Ansagen, Charakter) – keine Rechte.
+- **Großer Tisch:** der gemeinsame Bildschirm (Fernseher oder Rechner) mit `/tisch`. „Fernseher“ nur, wo das Gerät gemeint ist („Dieses Gerät ist der Fernseher“).
+- **Am Rechner:** ein Spieler spielt selbst am Rechner am 3D-Tisch; **Begleit-Handy** ist sein gekoppeltes Handy.
+- **Mein Gerät:** Einstellungen nur für dieses Handy (Ansicht, Töne); alles Persönliche steht in **Mein Profil**.
+
 ## Ein neues Spiel hinzufügen
 
 Ein Spiel besteht aus der **Logik** in `shared/games/<id>/logic.ts` und der **Oberfläche** in `src/games/<id>/index.tsx`.
