@@ -146,6 +146,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["zeichnen", 3, { rounds: 1 }],
   ["zeichnen", 4, { rounds: 2, guess: "tippen", level: "kinder" }],
   ["quiz", 3, { count: 10 }],
+  ["kritzelpost", 3, {}],
+  ["kritzelpost", 6, { mode: "eisbrecher", clock: "0" }],
   ["quiz", 1, { count: 5, level: "kinder" }],
   ["quiz", 5, { count: 15, art_wahl: false }],
   ["eins", 2, {}],

@@ -47,6 +47,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   stirnraten: { table: "on" },
   zeichnen: { table: "beta" },
   quiz: { table: "beta" },
+  kritzelpost: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */
