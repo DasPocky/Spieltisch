@@ -42,6 +42,7 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 | Audit 22.10. P1-02: Bei laufendem Plan zählt nur das geplante Spiel für Abendwertung und Fortschritt; Rückgängig nimmt nur zurück, was die Partie gezählt hat | ✅ |
 | Audit 22.10. P1-03: Ergebnisse werden 2 Minuten nach dem Ende verbucht (sofort, wenn es weitergeht oder alle gegangen sind) – bis dahin lässt sich das Ende zurücknehmen, danach ist die Partie gewertet | ✅ |
 | Audit 22.10. P2-19/P2-21/P3-25: Lobby mit Rangfolge (Spiel → Mitspieler + Einladen → Einstellungen → Start, Reden/Partyabend/Treffpunkt klein darunter, Gäste ohne Host-Aktionen); Menü in Gruppen Spielleitung (nur Host) · Dieses Spiel · Raum · Mein Gerät · Beenden; Begriffsliste in `docs/entwicklung.md`. Test `tests/e2e/lobbymenue.spec.ts` | ✅ |
+| Audit 22.10. P2-23: Ein Rollenmodell für Geräte (`src/platform/deviceRole.ts`): Menü „Mein Gerät“ zeigt „Dieses Gerät: Spiel-Handy / Fernbedienung / Rechner mit eigener Hand / Begleit-Handy“, Blatt „Mein Gerät ist …“ mit allen passenden Wechseln (Fernseher werden, Am Rechner, Begleit-Handy, Fernbedienung); Fernseher zeigt „Großer Bildschirm“ und „Wieder Spiel-Handy“. Test `tests/e2e/geraeterolle.spec.ts` | ✅ |
 | Analyse F-14: Betriebskennzahlen je Tag (Beitritte, Wiederverbindungen, abgelehnte Züge, kaputte Nachrichten) | ✅ |
 | CI: `npm audit` als Hinweis | ✅ · Branch-Schutz auf „Handy-Tests (Playwright)“ und „Build & Unit-Tests“ in GitHub einschalten ⏳ (Einstellung in GitHub) |
 

@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-geraete",
+    date: "2026-10-24",
+    title: "Mein Gerät ist …",
+    items: [
+      "Im Menü unter „Mein Gerät“ steht, was dieses Gerät gerade ist: Spiel-Handy, Fernbedienung, Rechner mit eigener Hand oder Begleit-Handy.",
+      "Dort wechselst du an einer Stelle: Fernseher werden, am Rechner spielen, Begleit-Handy koppeln – und als Host den Fernseher steuern.",
+      "Am Fernseher zeigt das Menü die Rolle „Großer Bildschirm“; war das Gerät vorher dein Handy, geht es mit „Wieder Spiel-Handy“ zurück.",
+    ],
+  },
+  {
     id: "2026-10-reste",
     date: "2026-10-24",
     title: "Lobby, Abstimmen und Werwolf-Pakete",

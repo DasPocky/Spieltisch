@@ -21,7 +21,7 @@ import { accessFor, orderGames } from "@shared/platform/access";
 import { GAME_CATEGORIES } from "@shared/platform/types";
 import { IconTile } from "./Logo";
 import { filterGames, GameSearch, NoGames, NO_FILTER } from "./GameSearch";
-import { Leave, MenuSheet, type MenuProps } from "./MenuSheet";
+import { Leave, MenuSheet, Remote, type MenuProps } from "./MenuSheet";
 import { PlayerManager, type GroupPick } from "./PlayerManager";
 import { Avatar, AvatarContext, roomAvatars } from "./Avatar";
 import { loadGroup, activeGroupCode, useActiveGroup } from "@/lib/group";
@@ -42,6 +42,9 @@ import { UpdateBar, UpdatedNote, useRoomUpdateGate } from "./UpdateBar";
 import { setDeskPrivate, setDeskView, useDesk, useDeskPrivate } from "./desk/desk";
 import { PairButton } from "./desk/PairSheet";
 import { isCompanion } from "@/hooks/useRoom";
+import { navigate } from "@/hooks/useRoute";
+import { deviceRole, roleSwitches, type DeviceFacts } from "./deviceRole";
+import type { DeviceControls } from "./DeviceSheet";
 
 /** Tisch am Rechner (3D) – erst laden, wenn er gebraucht wird */
 const DeskStage = lazy(() => import("./desk/DeskStage"));
@@ -96,6 +99,25 @@ export function RoomScreen(props: Props) {
   // Private Hand: nur solange das Begleit-Handy verbunden ist – sonst liegen die Karten wieder hier (nichts bleibt hängen)
   const wantPrivate = useDeskPrivate();
   const handOnPhone = atTable && !!props.paired && wantPrivate;
+  // Rolle dieses Geräts (Spiel-Handy, Fernbedienung, am Rechner, Begleit-Handy) – Wechsel an einer Stelle im Menü
+  const companion = !!code && isCompanion(code);
+  const facts: DeviceFacts = { online: !!code, companion, desk: atTable, deskPossible: desk.possible && !benched && !!room.game && tableModel(room) !== null,
+    tv: !!props.tv, isHost, paired: !!props.paired, player: !!me };
+  const role = deviceRole(facts);
+  const [pairOpen, setPairOpen] = useState(false);
+  const canPair = !!code && !!props.onPair && !!me && !companion;
+  const device: DeviceControls = {
+    role, switches: roleSwitches(facts).filter((s) => s !== "pair" || canPair), handOnPhone,
+    deskHint: !!code && !companion && !desk.wide,
+    remote: props.tv && isHost && props.onRemote ? <Remote onRemote={props.onRemote} /> : undefined,
+    onSwitch: (s) => {
+      if (s === "screen") navigate(`/tisch/${code}`);
+      else if (s === "desk") setDeskView("table");
+      else if (s === "classic") setDeskView("classic");
+      else if (s === "pair") setPairOpen(true);
+      else if (s === "private") setDeskPrivate(!wantPrivate);
+    },
+  };
   const board: BoardProps | null = playing && !benched
     ? { room, game: room.game, me, online, isHost, hostTools, canAct: canPlayTurn(room, me), mode, act: feedback((action) => dispatch({ type: "game", action: action as never })), dispatch, desk: atTable }
     : null;
@@ -137,7 +159,7 @@ export function RoomScreen(props: Props) {
           </div>
         )}
         <div className="room-tools flex shrink-0 items-center gap-1.5">
-          {code && props.onPair && me && !isCompanion(code) && <PairButton code={code} onPair={props.onPair} pairing={props.pairing ?? null} />}
+          {canPair && <PairButton code={code!} onPair={props.onPair!} pairing={props.pairing ?? null} open={pairOpen} onOpenChange={setPairOpen} />}
           {desk.possible && (
             <Button variant="secondary" size="sm" className="hidden lg:inline-flex" data-testid="desk-toggle" onClick={() => setDeskView(desk.on ? "classic" : "table")}>
               {desk.on ? "Klassische Ansicht" : "Am Tisch spielen"}
@@ -151,7 +173,7 @@ export function RoomScreen(props: Props) {
           {board && HeaderExtra && <HeaderExtra {...board} />}
           {props.chat && code && <ChatButton code={code} chat={props.chat} players={room.players} me={me} />}
           {props.call && <CallButton call={props.call} />}
-          <MenuSheet {...props} isHost={isHost} board={board} manage={manage} />
+          <MenuSheet {...props} isHost={isHost} board={board} manage={manage} device={device} />
         </div>
       </header>
 
@@ -159,7 +181,7 @@ export function RoomScreen(props: Props) {
       {code && <ConnectionBar reconnecting={!!reconnecting} pending={props.pending ?? 0} />}
       <StuckBar {...props} isHost={isHost} />
       <UpdateBar playing={playing} />
-      {code && isCompanion(code) && (
+      {role === "companion" && (
         <div className="mb-2 flex shrink-0 items-center gap-2 rounded-xl bg-ice/12 px-3 py-2 text-sm" role="status" data-testid="companion-note">
           <Smartphone className="size-4 shrink-0" /><span>Gekoppelt mit deinem Rechner – hier: Kamera, Mikro, Chat und deine Karten.</span>
         </div>

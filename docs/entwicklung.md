@@ -55,6 +55,7 @@ Ein Wort für eine Sache – in Texten, Ansagen und Tests:
 - **Großer Tisch:** der gemeinsame Bildschirm (Fernseher oder Rechner) mit `/tisch`. „Fernseher“ nur, wo das Gerät gemeint ist („Dieses Gerät ist der Fernseher“).
 - **Am Rechner:** ein Spieler spielt selbst am Rechner am 3D-Tisch; **Begleit-Handy** ist sein gekoppeltes Handy.
 - **Mein Gerät:** Einstellungen nur für dieses Handy (Ansicht, Töne); alles Persönliche steht in **Mein Profil**.
+- **Geräterolle** („Dieses Gerät: …“, `src/platform/deviceRole.ts`): **Spiel-Handy**, **Fernbedienung** (Host-Handy mit verbundenem Fernseher), **Rechner mit eigener Hand** (Am Rechner), **Begleit-Handy**, **Großer Bildschirm**. Gerät ≠ Spieler; gewechselt wird nur im Blatt „Mein Gerät ist …“.
 
 ## Ein neues Spiel hinzufügen
 
