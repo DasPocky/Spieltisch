@@ -1,7 +1,7 @@
 import { withBase } from "@shared/platform/base";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Piece } from "@/games/schamlos/Board";
-import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Sparkles, Tv, Video, VideoOff } from "lucide-react";
+import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Smartphone, Sparkles, Tv, Video, VideoOff } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { prefs, setPref, usePrefs } from "@/lib/prefs";
@@ -18,7 +18,8 @@ import { navigate } from "@/hooks/useRoute";
 import { useWatch } from "@/hooks/useWatch";
 import { postRoom } from "@/lib/createRoom";
 import { defaultGame } from "@/lib/playLocal";
-import { readStr, remove, tableKey, writeStr } from "@/lib/storage";
+import { credsKey, readJSON, readStr, remove, tableKey, writeStr, type RoomCreds } from "@/lib/storage";
+import { deviceRole, ROLES } from "@/platform/deviceRole";
 import { cn } from "@/lib/utils";
 import { Avatar, roomAvatars } from "@/platform/Avatar";
 import { QrCode } from "@/platform/QrCode";
@@ -135,7 +136,9 @@ export function TableRoom({ code }: { code: string }) {
           <Input id="tp" name="pin" inputMode="numeric" autoComplete="off" className="bg-white tracking-[0.3em]" />
           {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}
           <Button type="submit" size="lg" className="rounded-2xl">Verbinden</Button>
-          <Button type="button" variant="ghost" onClick={() => navigate("/tisch")}>Zurück</Button>
+          {hasSeat(code)
+            ? <Button type="button" variant="ghost" onClick={() => navigate(`/r/${code}`)} data-testid="tv-back">Wieder Spiel-Handy</Button>
+            : <Button type="button" variant="ghost" onClick={() => navigate("/tisch")}>Zurück</Button>}
         </form>
       </div>
     );
@@ -231,6 +234,24 @@ function TvMenu({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Hat dieses Gerät selbst einen Platz im Raum (Handy, das zum Fernseher wurde)? */
+const hasSeat = (code: string) => !!readJSON<RoomCreds>(credsKey(code));
+
+/** Rolle des Geräts am Fernseher – mit Weg zurück, wenn das Gerät vorher Spiel-Handy war */
+function ScreenRole({ code }: { code: string }) {
+  const r = ROLES[deviceRole({ online: true, screen: true })];
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl bg-white/6 px-3 py-2 text-[#f7ecd6]" data-testid="tv-role">
+      <Tv className="mt-0.5 size-4 shrink-0 opacity-80" />
+      <div className="min-w-0 flex-1 text-sm leading-tight">
+        <b>Dieses Gerät: {r.label}</b>
+        <p className="mt-0.5 text-xs opacity-75">{r.text} Bedienen: Handy des Hosts (Menü · Mein Gerät).</p>
+        {hasSeat(code) && <Button variant="ghost" size="sm" className="mt-2 bg-white/12 text-[#f7ecd6] hover:bg-white/20" onClick={() => navigate(`/r/${code}`)} data-testid="tv-back"><Smartphone className="size-4" />Wieder Spiel-Handy</Button>}
+      </div>
+    </div>
+  );
+}
+
 function toggleFullscreen() {
   if (document.fullscreenElement) void document.exitFullscreen();
   else void document.documentElement.requestFullscreen?.().catch(() => undefined);
@@ -313,6 +334,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
           oder hier über das Menü, das bei Maus, Taste oder Berührung kurz erscheint. */}
       {playing && <div className="absolute top-5 right-5"><JoinNote code={code} pin={pin} /></div>}
       <TvMenu>
+        <ScreenRole code={code} />
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
         <CouchAdd onAdd={couch.add} full={couch.list.length >= 6} />
         {stagePossible && <ViewPanel view={stage ? "stage" : "table"} onView={pickView} />}

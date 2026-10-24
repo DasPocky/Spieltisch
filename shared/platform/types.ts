@@ -25,6 +25,8 @@ interface SettingBase {
   group?: string;
   /** Nur anzeigen, wenn das zutrifft (z. B. Hausregeln nur beim Spielen in der App) */
   showIf?: (options: Options) => boolean;
+  /** Schalter als kleiner Chip statt als Zeile – für viele gleichartige Schalter (z. B. Quiz-Kategorien) */
+  chip?: boolean;
 }
 
 /** Einstellungen werden deklarativ beschrieben – die Plattform zeigt sie an und prüft die Werte. */
