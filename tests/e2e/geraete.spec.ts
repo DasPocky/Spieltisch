@@ -112,7 +112,14 @@ test("Am Rechner am Tisch mitspielen (Mau-Mau): Tisch aus eigener Sicht, Hand da
 
     // Anna fängt an: mit Z ziehen, dann P passen (sofern die Karte nicht passt) – Ben ist danach dran
     const status = page.getByTestId("desk-hand").getByTestId("status");
-    await expect(status).not.toContainText("ist am Zug");
+    // Liegt zu Beginn eine Karte, bei der der Nächste aussetzt, ist Ben zuerst dran: er zieht und passt einmal
+    await expect(status).not.toHaveText("");
+    if ((await status.textContent())?.includes("ist am Zug")) {
+      await phone.getByRole("button", { name: /ziehen/i }).first().click();
+      const pass = phone.getByRole("button", { name: /passen/i });
+      if (await pass.isVisible().catch(() => false)) await pass.click();
+    }
+    await expect(status).not.toContainText("ist am Zug", { timeout: 10_000 });
     await page.keyboard.press("z");
     // eine Karte – oder zwei, wenn eine Sieben oben liegt
     await expect.poll(() => page.getByTestId("desk-hand").getByTestId("hand").locator("button").count()).toBeGreaterThan(5);
