@@ -18,3 +18,4 @@ Spieltisch ist eine mobile Web-Spielesammlung (React + Cloudflare Workers). Übe
 - `tests/unit/simulate.test.ts` und `fairness.test.ts` brauchen mehrere Minuten.
 - 3D-Würfel ohne Grafikchip werden vereinfacht gezeichnet; für Screenshots in voller Qualität `localStorage.setItem("spieltisch:diceHQ", "1")` setzen.
 - Vor dem Commit: `npx tsc -b --noEmit` und die betroffenen Tests.
+- **Nach jedem erfolgreichen Merge die Cloudflare-Vorschau des Zweigs löschen** (`node scripts/vorschau-aufraeumen.mjs`, ohne Argument alle gemergten Zweige). Jede Vorschau belegt 4 von 100 Durable-Object-Namespaces; ist das Limit voll, schlagen alle Vorschau-Builds fehl. Der Workflow `vorschau.yml` erledigt das automatisch, sobald das Secret `CLOUDFLARE_API_TOKEN` gesetzt ist.

@@ -23,6 +23,8 @@ GitHub Actions (`.github/workflows/ci.yml`) prüft parallel Build, Unit-Tests, H
 - **Laufende Partien** spielen mit ihrer Spielversion zu Ende (gesicherte alte Logik und Oberfläche in `shared/legacy` bzw. `src/legacy`), sonst wird umgerechnet oder die Partie endet sanft (Gruppe und Spielabend bleiben) – siehe `docs/entwicklung.md`.
 - **Hinweise:** Wartet ein Update, steht es dezent im Raum. Danach zeigt „Was ist neu?“ einmal pro Gerät die Neuigkeiten aus `shared/news.ts` (in der Verwaltung änderbar).
 
+**Vorschauen aufräumen:** Jede Vorschau legt eigene Durable-Object-Namespaces an (4 je Zweig, Limit 100 im Konto, Fehler 10067). Nach jedem Merge die Vorschau löschen: `CLOUDFLARE_API_TOKEN=… node scripts/vorschau-aufraeumen.mjs` (ohne Argument alle gemergten oder gelöschten Zweige, sonst die genannten). Automatisch macht das `.github/workflows/vorschau.yml` beim Schließen eines PRs – dafür einmalig das Repository-Secret `CLOUDFLARE_API_TOKEN` (Recht „Workers Scripts: Edit“) setzen.
+
 Vorschau-Builds anderer Zweige brauchen keine dieser Secrets: Das Skript lädt dort nur hoch und fragt nie den Live-Worker. Den Deploy-Befehl für andere Zweige (`npx wrangler versions upload`) nicht ändern.
 
 Einrichtung für „warten können“ (einmalig): `RELEASE_SECRET` als Worker-Secret **und** als Build-Variable (gleicher Wert), `DEPLOY_TOKEN` als Worker-Secret (API-Token mit Recht „Workers Scripts: Edit“), Deploy-Befehl in Workers Builds auf `node scripts/release.mjs`. Ohne diese Schritte geht jede Version sofort live – wie bisher.
