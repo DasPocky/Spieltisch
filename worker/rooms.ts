@@ -7,7 +7,7 @@ import { PROFILE_ID_RE } from "../shared/platform/profile";
 import { GROUP_CODE_RE, randomCode, sanitizeAvatar } from "../shared/platform/group";
 import { accessFor, withDefaults, type GameDefaults, type SiteConfig } from "../shared/platform/access";
 import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type StatKind } from "../shared/platform/admin";
-import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
+import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, skipBlockedPlan, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import { BOT_PREFIX } from "../shared/platform/bots";
 import { botDelay, isBotLevel, playBot } from "../shared/platform/botSkill";
@@ -29,7 +29,10 @@ import type { RoomData, Knock, Attachment, ResultJob } from "./room/types";
 export { JOIN_RETRY_MS } from "./room/join";
 import { joinedAs, rememberJoin, retryJoin } from "./room/join";
 import { appendChat, chatMessage, getsChat } from "./room/chat";
-import { resultJobs } from "./room/results";
+import { resultEvent, resultJobs } from "./room/results";
+
+/** So lange nach dem Partie-Ende lässt sich das Ende noch zurücknehmen – erst dann zählt das Ergebnis in Profilen und Gruppen */
+const RESULT_DELAY_MS = 2 * 60 * 1000;
 /** Innerer Pfad, über den der Worker eine geprüfte Zuschauer-Verbindung der Verwaltung weiterreicht */
 export const WATCH_PATH = "/__admin-watch";
 /** Räume ohne Aktivität werden nach 48 Stunden gelöscht. */
@@ -502,6 +505,23 @@ export class GameRoom extends DurableObject<Env> {
           return;
         }
       }
+      // Partyabend: der Plan darf nur freigegebene Spiele enthalten; starten nur, was gerade frei ist
+      const allowedNow = async () => { config ??= await settingsOf(this.env).config(); const c = config; return (g: string) => { const a = accessFor(c, g); return a !== "off" && (a !== "code" || !!this.room!.unlocked); }; };
+      if (msg.action.type === "setPlan" && Array.isArray(msg.action.games) && msg.action.games.length) {
+        const ok = await allowedNow();
+        const blocked = msg.action.games.filter((g) => typeof g === "string" && !ok(g));
+        if (blocked.length) { this.send(ws, { type: "error", message: "Im Plan ist ein Spiel, das gerade nicht freigegeben ist.", id: id ?? undefined }); return; }
+      }
+      if ((msg.action.type === "start" || msg.action.type === "restart") && !(await allowedNow())(this.room.state.gameId)) {
+        this.send(ws, { type: "error", message: "Dieses Spiel ist gerade abgeschaltet – wählt ein anderes.", id: id ?? undefined });
+        return;
+      }
+      // Ende einer schon verbuchten Partie zurücknehmen geht nicht (das Ergebnis steht in Profilen und Gruppen)
+      if (msg.action.type === "undo" && before.phase === "playing" && before.game && roomGame(before).isOver(before.game)
+          && this.room.booked?.includes(resultEvent(this.room, before.round))) {
+        this.send(ws, { type: "error", message: "Die Partie ist schon gewertet – zurücknehmen geht nur kurz nach dem Ende.", id: id ?? undefined });
+        return;
+      }
       // Start mit eigenen Kartensets: Inhalte frisch laden (eigene des Gastgebers bzw. freigegebene) – nur für den Start
       const starting = msg.action.type === "start" || msg.action.type === "restart";
       const setsOn = starting && this.room.state.sets?.length ? (config ??= await settingsOf(this.env).config()).features.sets : false;
@@ -536,6 +556,16 @@ export class GameRoom extends DurableObject<Env> {
       if (id) seen[playerId] = [...(seen[playerId] ?? []), id].slice(-30);
       if (msg.action.type === "removePlayer") this.kick(msg.action.id);
       const kind = msg.action.type;
+      // Ende zurückgenommen: die noch nicht verbuchten Ergebnisse dieser Partie fallen weg
+      const now = this.room.state;
+      if (kind === "undo" && before.game && roomGame(before).isOver(before.game) && now.game && !roomGame(now).isOver(now.game) && this.room.results?.length) {
+        const event = resultEvent(this.room, before.round);
+        this.room.results = this.room.results.filter((j) => j.event !== event);
+        if (!this.room.results.length) delete this.room.results;
+      }
+      // Partyabend: gesperrte Spiele im Plan überspringen statt hängen zu bleiben
+      let skipped: string[] = [];
+      if (kind === "toLobby" || kind === "setPlan" || kind === "selectGame") skipped = skipBlockedPlan(this.room.state, await allowedNow());
       // Partie zu Ende: Ergebnis-Aufträge gleich mit dem Spielstand speichern (ein Schreibvorgang)
       const finished = this.queueResults(before);
       await this.persist(["start", "restart", "toLobby", "selectGame", "removePlayer"].includes(kind));
@@ -543,8 +573,10 @@ export class GameRoom extends DurableObject<Env> {
       this.broadcast();
       if (kind === "start" || kind === "restart") await this.count("started");
       if (finished) await this.count("finished");
-      // Neue und früher nicht angekommene Ergebnisse schicken
-      if (this.room.results?.length) await this.flushResults();
+      if (skipped.length) this.send(ws, { type: "error", message: `Übersprungen, weil gerade nicht freigegeben: ${skipped.map((g) => (isGameId(g) ? roomGame({ ...this.room!.state, gameId: g }).info.name : g)).join(", ")}.` });
+      // Fällige und früher nicht angekommene Ergebnisse schicken – geht es weiter (Lobby, Nochmal, Spielwechsel), gleich alle
+      if (this.room.results?.length) await this.flushResults(["toLobby", "restart", "start", "selectGame"].includes(kind));
+      if (finished) await this.scheduleEnd();
     }
   }
 
@@ -563,27 +595,42 @@ export class GameRoom extends DurableObject<Env> {
     // Testräume schreiben nichts in Profile und Gruppen
     if (room.test || !logic.results || !room.profiles) return true;
     const ctx = { players: now.players, hostId: now.hostId, actorId: null, options: now.options, now: Date.now() };
-    const jobs = resultJobs(room, now.gameId, now.round, logic.results(now.game, ctx), Date.now());
+    // Erst nach kurzer Zeit verbuchen: so lange lässt sich das Ende noch zurücknehmen, ohne dass Profile und Gruppen falsch zählen
+    const set = Number(this.env.RESULT_DELAY_MS);
+    const due = Date.now() + (this.env.RESULT_DELAY_MS && Number.isFinite(set) && set >= 0 ? set : RESULT_DELAY_MS);
+    const jobs = resultJobs(room, now.gameId, now.round, logic.results(now.game, ctx), Date.now()).map((j) => ({ ...j, due }));
     room.results = [...(room.results ?? []), ...jobs].slice(-60);
     return true;
   }
 
-  /** Offene Ergebnisse an Profile und Gruppen schicken; was nicht ankommt, bleibt für den nächsten Versuch */
-  private async flushResults(): Promise<void> {
+  /**
+   * Fällige Ergebnisse an Profile und Gruppen schicken (`all`: auch die noch nicht fälligen – es geht schon weiter);
+   * was nicht ankommt, bleibt für den nächsten Versuch. Verbuchte Partien merkt sich der Raum.
+   */
+  private async flushResults(all = false): Promise<void> {
     const room = this.room;
     if (!room?.results?.length) return;
     const left: ResultJob[] = [];
+    const now = Date.now();
     for (const j of room.results) {
+      if (!all && j.due && j.due > now) { left.push(j); continue; }
       try {
         if (j.kind === "profile") await this.env.PROFILES.get(this.env.PROFILES.idFromName(j.target)).record(j.entry, j.target, j.event);
         else await groupOf(this.env, j.target).recordOnline(j.gameId, j.entries, j.event);
+        if (!room.booked?.includes(j.event)) room.booked = [...(room.booked ?? []), j.event].slice(-20);
       } catch {
         // höchstens einen Tag lang wiederholen – Statistik ist nur ein Extra
-        if (Date.now() - j.since < 86_400_000) left.push(j);
+        if (now - j.since < 86_400_000) left.push(j);
       }
     }
     room.results = left.length ? left : undefined;
     await this.ctx.storage.put("room", room);
+  }
+
+  /** Nächster Zeitpunkt, zu dem ein Ergebnis fällig wird */
+  private nextDue(): number | null {
+    const dues = (this.room?.results ?? []).map((j) => j.due ?? 0).filter((d) => d > Date.now());
+    return dues.length ? Math.min(...dues) : null;
   }
 
   /** Avatar und Gruppe beim (Wieder-)Beitritt übernehmen. true, wenn sich etwas geändert hat. */
@@ -633,8 +680,10 @@ export class GameRoom extends DurableObject<Env> {
       await this.persist();
     }
     this.broadcast(ws);
-    // Raum ist leer geworden: ab jetzt läuft die Lebensdauer; Verzeichnis gleich Bescheid geben
+    // Raum ist leer geworden: ab jetzt läuft die Lebensdauer; Verzeichnis gleich Bescheid geben.
+    // Zurücknehmen kann jetzt keiner mehr – vorgemerkte Ergebnisse gleich verbuchen
     if (this.room && this.onlineIds().size === 0) {
+      if (this.room.results?.length) await this.flushResults(true);
       await this.scheduleEnd();
       await this.report(true);
     }
@@ -689,8 +738,14 @@ export class GameRoom extends DurableObject<Env> {
     if (!this.room) return;
     if (this.room.results?.length) await this.flushResults();
     const ms = await this.lifeMs();
-    if (ms === null) return;
-    if (this.onlineIds().size > 0) { await this.ctx.storage.setAlarm(Date.now() + ms); return; }
+    const due = this.nextDue();
+    if (ms === null) { if (due) await this.ctx.storage.setAlarm(due); return; }
+    // Nur für fällige Ergebnisse geweckt (der Raum lebt noch): weiter bis zum eigentlichen Ende
+    const endAt = (this.room.updatedAt ?? 0) + ms;
+    if (Date.now() < endAt - 1000) { await this.ctx.storage.setAlarm(Math.min(endAt, due ?? Infinity)); return; }
+    if (this.onlineIds().size > 0) { await this.ctx.storage.setAlarm(Math.min(Date.now() + ms, due ?? Infinity)); return; }
+    // Raum endet: noch nicht fällige Ergebnisse gleich verbuchen
+    if (this.room.results?.length) await this.flushResults(true);
     const life = this.room.state.access?.life;
     const label = life && life !== "forever" && ms === LIFE_MS[life] ? LIFE_LABEL[life] : `${Math.round(ms / 3_600_000)} Stunden`;
     await this.destroy(`Der Raum war ${label} leer und ist abgelaufen.`);
@@ -1185,8 +1240,9 @@ export class GameRoom extends DurableObject<Env> {
   /** Wecker für das Ende des Raums: Lebensdauer ab jetzt (Dauerräume ohne Wecker) */
   private async scheduleEnd(): Promise<void> {
     const ms = await this.lifeMs();
-    if (ms === null) await this.ctx.storage.deleteAlarm();
-    else await this.ctx.storage.setAlarm(Date.now() + ms);
+    const due = this.nextDue();
+    if (ms === null) { if (due) await this.ctx.storage.setAlarm(due); else await this.ctx.storage.deleteAlarm(); }
+    else await this.ctx.storage.setAlarm(Math.min(Date.now() + ms, due ?? Infinity));
   }
 
   /** Kurzinfo an Übersicht und Raumverzeichnis – sonst höchstens alle 30 Sekunden, außer der Raum wird leer bzw. wieder belebt */
