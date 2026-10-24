@@ -96,3 +96,19 @@ test("Kleines Handy mit eigenen und offenen Räumen: nichts scrollt", async ({ b
   await shot(ben, "08d-start-klein-mit-raeumen");
   expect(over, "Start-Tab scrollt").toBeLessThanOrEqual(1);
 });
+
+test("Start ohne offene Räume: kein Platzhalter, nichts scrollt – auch auf kleinem Handy", async ({ browser }) => {
+  const ben = await phoneAs(browser, "Ben");
+  // Andere Tests öffnen nebenher Räume – hier ist garantiert nichts offen
+  await ben.route("**/api/rooms/open*", (r) => r.fulfill({ json: { rooms: [] } }));
+  await ben.goto("/");
+  await expect(ben.getByTestId("host-open")).toBeVisible();
+  await ben.waitForTimeout(500);
+  await expect(ben.getByTestId("open-rooms")).toHaveCount(0);
+  await expect(ben.getByTestId("no-rooms")).toHaveCount(0);
+  await expectNoScroll(ben);
+  await shot(ben, "ux-start-leer");
+  await ben.setViewportSize({ width: 320, height: 568 });
+  await expectNoScroll(ben);
+  await shot(ben, "ux-start-leer-klein");
+});

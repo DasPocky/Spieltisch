@@ -49,6 +49,7 @@ test("Gruppe: erstellen, per Link beitreten, Avatare, lokale und Online-Partie z
   await anna.goto("/profil");
   await anna.getByLabel("Dein Name").fill("Anna");
   await anna.getByRole("button", { name: "Speichern" }).click();
+  await snap(anna, "ux-profil-avatar-aendern");
   await anna.getByRole("button", { name: "Avatar ändern" }).first().click();
   await anna.getByRole("radio", { name: "Emoji 🦊" }).click();
   await anna.getByRole("radio", { name: "Farbe 2" }).click();

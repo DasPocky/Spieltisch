@@ -17,7 +17,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-11 px-4 text-base",
-        sm: "h-9 px-3 text-sm",
+        // Sichtbar 36 px, die Tippfläche reicht unsichtbar auf 44 px
+        sm: "relative h-9 px-3 text-sm after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
         lg: "h-12 px-5 text-base rounded-xl",
         icon: "size-11 rounded-xl",
       },

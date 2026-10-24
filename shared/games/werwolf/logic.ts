@@ -1023,6 +1023,11 @@ export const werwolf: GameLogic<WerwolfState, WerwolfAction> = {
   version: 4,
   turnBased: false,
   joinMidGame: false,
+  // Rollen-Pakete: höchstens vier Dorf-Sonderrollen, damit schon 5 Mitspieler starten können
+  presets: [
+    { id: "einsteiger", label: "Einsteiger", hint: "ohne Hauptmann", options: { captain: false } },
+    { id: "komplex", label: "Komplex", hint: "+ Jäger, Amor", options: { jaeger: true, amor: true } },
+  ],
   settings: [
     {
       key: "narrator", label: "Erzähler", type: "choice", default: "app", group: "Ablauf",

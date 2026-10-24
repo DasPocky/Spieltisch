@@ -42,6 +42,7 @@ test("Stirnraten lokal: Kategorie wählen, Handy an die Stirn, kippen und tippen
   await page.getByRole("button", { name: "Richtig", exact: true }).click();
   await expect(page.getByLabel("2 erraten")).toBeVisible();
   await page.waitForTimeout(700);
+  await shot(page, "ux-stirnraten-zug-beenden");
   await page.getByRole("button", { name: "Zug beenden" }).click();
   await expect(page.getByTestId("review-title")).toHaveText("2 erraten");
   await expect(page.getByTestId("review").getByRole("button")).toHaveCount(3);

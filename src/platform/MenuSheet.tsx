@@ -1,6 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cloneElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { Armchair, BookOpen, Crown, EyeOff, Flag, History, Home, LogOut, Menu, Mic, Repeat, RotateCcw, Smile, Sparkles, Undo2, UserRound, Video, Volume1, Volume2, VolumeX, Wrench } from "lucide-react";
+import { Armchair, BookOpen, CircleHelp, Crown, DoorClosed, EyeOff, Flag, History, Home, LogOut, Menu, Mic, Repeat, RotateCcw, Smile, Sparkles, Undo2, UserRound, Video, Volume1, Volume2, VolumeX, Wrench } from "lucide-react";
 import type { RemoteCmd } from "@shared/platform/protocol";
 import { toast } from "sonner";
 import { getGame } from "@shared/games";
@@ -167,7 +167,7 @@ export function MenuSheet({ room, online, isHost, dispatch, board, code, onLeave
               </Leave>
               {code && isHost && onCloseRoom && (
                 <Confirm title="Raum für alle schließen?" description="Die Partie endet für alle. Spielstand, Namen und Verlauf werden sofort vom Server gelöscht." confirmLabel="Schließen" onConfirm={onCloseRoom}>
-                  <button type="button" className="justify-self-start px-1 py-1 text-sm font-semibold text-destructive underline-offset-4 hover:underline">Raum für alle schließen</button>
+                  <Button variant="destructive" className="justify-start"><DoorClosed />Raum für alle schließen</Button>
                 </Confirm>
               )}
             </Section>
@@ -210,9 +210,9 @@ function HostActions({ room, board, online, dispatch }: { room: RoomState; board
           <Button variant="secondary" className="justify-start">⏭ {skip}</Button>
         </Confirm>
       ) : (
-        <button type="button" onClick={() => setShowSkip(true)} className="justify-self-start px-1 text-sm font-semibold text-muted-foreground underline-offset-4 hover:underline">
-          Hängt etwas?
-        </button>
+        <Button variant="outline" className="justify-start text-muted-foreground" onClick={() => setShowSkip(true)}>
+          <CircleHelp />Hängt etwas?
+        </Button>
       ))}
     </>
   );
