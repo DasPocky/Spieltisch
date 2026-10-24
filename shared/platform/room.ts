@@ -7,7 +7,7 @@ import { MAX_SET_NAME, MAX_SETS_IN_GAME, SET_ID_RE, SET_KINDS, type GameContent,
 import { DEFAULT_GAME, getGame, isGameId } from "../games";
 import { renameGameFields, renamedGameId } from "../games/renamed";
 import { legacyGame } from "../legacy";
-import { presetsOf, presetValues } from "./presets";
+import { presetsOf, presetValues, rescalePreset } from "./presets";
 import { sanitizeAvatar, type Avatar } from "./avatar";
 import { sanitizeAccess, type RoomAccess } from "./directory";
 import { GameError, type EntryMode, type GameContext, type GameLogic, type OptionValue, type Options, type Player, type SettingDef } from "./types";
@@ -127,7 +127,7 @@ export function shortRules(s: RoomState) {
   if (!s.evening?.plan?.short || s.phase !== "lobby") return;
   const logic = getGame(s.gameId);
   const p = presetsOf(logic).find((x) => x.id === "kurz");
-  if (p) for (const [k, v] of Object.entries(presetValues(logic, p))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
+  if (p) for (const [k, v] of Object.entries(presetValues(logic, p, s.players.length))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
 }
 
 /** Abstimmung entschieden: zurück in die Lobby, Gewinner wählen (im Partyabend als nächstes Spiel) */
@@ -384,7 +384,22 @@ function context(room: RoomState, actorId: string | null): GameContext {
   return { players: room.players, hostId: room.hostId, actorId, options: room.options, now: Date.now(), round: room.round, content: room.content };
 }
 
+/** Neue Spielerzahl in der Lobby: ein gewähltes Regelpaket nach Spielerzahl bleibt gewählt, seine Werte passen sich an */
+function keepPreset(prev: RoomState, next: RoomState): RoomState {
+  if (next.phase !== "lobby" || next.gameId !== prev.gameId || next.players.length === prev.players.length) return next;
+  const logic = getGame(next.gameId);
+  if (!logic.presets?.some((p) => p.byPlayers)) return next;
+  const options = rescalePreset(logic, next.options, prev.players.length, next.players.length);
+  if (!options) return next;
+  for (const [k, v] of Object.entries(options)) { const d = logic.settings.find((x) => x.key === k); if (d) options[k] = sanitizeOption(d, v); }
+  return { ...next, options };
+}
+
 export function addPlayer(prev: RoomState, p: { id: string; name: string }): RoomState {
+  return keepPreset(prev, joinPlayer(prev, p));
+}
+
+function joinPlayer(prev: RoomState, p: { id: string; name: string }): RoomState {
   const name = cleanName(p.name);
   const logic = roomGame(prev);
   if (!name) throw new GameError("Bitte gib einen Namen ein.");
@@ -427,6 +442,11 @@ function assertPlayerCount(room: RoomState, logic: GameLogic<unknown, { type: st
 }
 
 export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string | null): RoomState {
+  const next = reduceRoom(prev, a, actorId);
+  return next === prev ? next : keepPreset(prev, next);
+}
+
+function reduceRoom(prev: RoomState, a: RoomAction, actorId: string | null): RoomState {
   const isHost = actorId === null || actorId === prev.hostId;
   const logic = roomGame(prev);
   const hostOnly = () => { if (!isHost) throw new GameError("Das darf nur der Host."); };
@@ -550,7 +570,7 @@ export function applyRoomAction(prev: RoomState, a: RoomAction, actorId: string 
       const p = presetsOf(logic).find((x) => x.id === a.id);
       if (!p) throw new GameError("Diese Regeln gibt es nicht.");
       const s = structuredClone(prev);
-      for (const [k, v] of Object.entries(presetValues(logic, p))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
+      for (const [k, v] of Object.entries(presetValues(logic, p, prev.players.length))) s.options[k] = sanitizeOption(logic.settings.find((d) => d.key === k)!, v);
       return s;
     }
     case "setEntry": {

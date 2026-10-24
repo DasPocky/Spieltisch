@@ -300,7 +300,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
   return (
     <section className="flex flex-1 flex-col pt-1">
       <button type="button" disabled={!canPick} onClick={() => setPick(true)} data-testid="game-card"
-        className="glass flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
+        className="glass flex w-full items-center gap-3 rounded-2xl p-3 text-left outline-none [@media(max-height:640px)]:py-2 transition active:scale-[0.99] focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default">
         <IconTile className="size-11"><Icon className="size-7" /></IconTile>
         <span className="min-w-0 flex-1">
           <span className="block text-xs text-muted-foreground [@media(max-height:640px)]:sr-only">Gespielt wird</span>
@@ -321,7 +321,7 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
       {code && <GroupShare room={room} code={code} gameName={info.name} />}
 
       {/* Einstellungen als eine Zeile – alles Weitere im Sheet */}
-      <NavRow icon={SlidersHorizontal} onClick={() => setSettings(true)} data-testid="settings-summary" className="mt-3"
+      <NavRow icon={SlidersHorizontal} onClick={() => setSettings(true)} data-testid="settings-summary" className="mt-3 [@media(max-height:640px)]:mt-2"
         title="Einstellungen" sub={isHost ? settingsSummary(room, !!code) : `Legt der Host fest · ${settingsSummary(room, !!code)}`} />
 
       {/* Zweitrangig: reden, Partyabend, Treffpunkt – klein und zusammen */}

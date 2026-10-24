@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-reste",
+    date: "2026-10-24",
+    title: "Lobby, Abstimmen und Werwolf-Pakete",
+    items: [
+      "Kleine Handys: Die Mitspielerliste in der Lobby wird schon ab drei Spielern zweispaltig – bis zu sechs passen ohne Scrollen. Reihenfolge ändern: Avatar antippen.",
+      "Abstimmen: Nach 30 Sekunden wertet der Raum selbst aus – auch wenn gerade kein Handy verbunden ist.",
+      "Werwolf: Die Regelpakete „Einsteiger“ und „Komplex“ wählen die Rollen passend zur Spielerzahl und passen sich an, wenn jemand dazukommt oder geht.",
+    ],
+  },
+  {
     id: "2026-10-abstimmen",
     date: "2026-10-24",
     title: "Partyabend: Abstimmen über das nächste Spiel",

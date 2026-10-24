@@ -42,3 +42,36 @@ test("Lobby und Menü: Host und Gast sehen klare Gruppen, Gäste keine Host-Akti
   for (const t of ["Dieses Spiel", "Raum", "Mein Gerät"]) await expect(ben.getByRole("heading", { name: t, exact: true })).toBeVisible();
   await shot(ben, "ux2-menue-gast");
 });
+
+/** Kleines Handy: Lobby mit 3 und 6 Spielern ohne Scrollen; Host-Aktionen bleiben per Antippen erreichbar. Großes Handy: 8 Spieler. */
+test("Lobby: viele Mitspieler passen ohne Scrollen, auch auf kleinen Handys", async ({ browser }) => {
+  const anna = await newPhone(browser);
+  await anna.setViewportSize({ width: 320, height: 568 });
+  const code = await createRoom(anna, "alles", "Anna", "4711");
+  const names = ["Ben", "Cem", "Dana", "Eli", "Fia", "Gus", "Hanna"];
+  const noScroll = async () => {
+    await expectNoScroll(anna);
+    const inner = await anna.evaluate(() => [...document.querySelectorAll("main, section, [data-testid=players]")].every((e) => e.scrollHeight <= e.clientHeight + 1));
+    expect(inner, "ein Bereich scrollt").toBe(true);
+  };
+  for (const [i, name] of names.entries()) {
+    const p = await newPhone(browser);
+    await joinRoom(p, code, name, "4711");
+    await expect(anna.getByText(name, { exact: true })).toBeVisible();
+    const n = i + 2;
+    if (n === 3 || n === 6) {
+      await noScroll();
+      if (n === 6) {
+        await shot(anna, "reste-lobby-320-6");
+        // Host-Aktionen: Entfernen direkt, Reihenfolge über Antippen des Avatars
+        await expect(anna.getByRole("button", { name: "Fia entfernen" })).toBeVisible();
+        await anna.getByRole("button", { name: "Avatar von Fia ändern" }).click();
+        await expect(anna.getByRole("button", { name: "Weiter vor" })).toBeVisible();
+        await anna.getByRole("button", { name: "Fertig" }).click();
+        await anna.setViewportSize({ width: 390, height: 844 });
+      }
+    }
+  }
+  await noScroll();
+  await shot(anna, "reste-lobby-390-8");
+});
