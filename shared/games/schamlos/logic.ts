@@ -201,6 +201,8 @@ export const schamlos: GameLogic<SchamlosState, SchamlosAction> = {
     return s.phase === "judge" || s.phase === "result" ? s.czar : null;
   },
   isOver: (s) => s.phase === "over",
+  // Bots lassen Zeit zum Mitlesen: beim Wählen je Antwort ein paar Sekunden, danach den Rundensieger sehen
+  botPause: (s) => (s.phase === "judge" ? 2500 + 1500 * s.subs.length : s.phase === "result" ? 4000 : 0),
 
   results(s, ctx): PlayerResult[] {
     return ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId, score: s.scores[p.id] ?? 0 }));

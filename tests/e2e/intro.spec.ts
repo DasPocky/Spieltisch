@@ -79,7 +79,17 @@ test("Wiederkommen: Begrüßung mit Ladebalken, endet von selbst oder per Tipp",
   const welcome = page.getByTestId("welcome");
   await expect(welcome).toContainText("Willkommen zurück,");
   await expect(welcome).toContainText("Björn!");
-  await page.waitForTimeout(1900);
+  // Der Balken füllt sich gleichmäßig mit der Zeit (CSS-Animation, kein Springen): nach 0,9 s etwa ein Drittel, nach 1,9 s etwa zwei Drittel
+  const fill = () => page.getByTestId("welcome-progress").evaluate((el) =>
+    [...el.querySelectorAll<HTMLElement>(".strip-fill")].reduce((n, s) => n + new DOMMatrix(getComputedStyle(s).transform).a, 0) / 5);
+  await page.waitForTimeout(900);
+  const early = await fill();
+  await page.waitForTimeout(1000);
+  const later = await fill();
+  expect(early).toBeGreaterThan(0.15);
+  expect(early).toBeLessThan(0.55);
+  expect(later).toBeGreaterThan(early + 0.2);
+  expect(later).toBeLessThan(0.95);
   await page.screenshot({ path: "screenshots/06c-begruessung.png" });
   // Spätestens nach gut drei Sekunden ist sie weg
   await expect(welcome).toHaveCount(0, { timeout: 3000 });

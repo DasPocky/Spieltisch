@@ -124,3 +124,15 @@ describe("Schamlos", () => {
     expect(t.phase).toBe("pick");
   });
 });
+
+describe("Bots lassen Zeit zum Mitlesen", () => {
+  it("beim Wählen je Antwort länger, nach der Runde eine Pause, beim Legen nur kurz", async () => {
+    const { botDelay } = await import("@shared/platform/botSkill");
+    const { schamlos } = await import("@shared/games/schamlos/logic");
+    const room = (phase: string, subs = 0) => ({ gameId: "schamlos", game: { phase, subs: Array.from({ length: subs }, () => ({})) } }) as never;
+    expect(botDelay(room("pick"), 0)).toBe(900);
+    expect(botDelay(room("judge", 3), 0)).toBe(900 + 2500 + 3 * 1500);
+    expect(botDelay(room("result"), 0)).toBe(900 + 4000);
+    expect(schamlos.botPause!({ phase: "over" } as never)).toBe(0);
+  });
+});

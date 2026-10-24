@@ -4,6 +4,8 @@
  * (welcher Schlag, darfst du wählen), Mehrfachschlagen muss zu Ende geführt werden.
  * Wer die gegnerische Grundreihe erreicht (und dort den Zug beendet), bekommt eine Dame – sie zieht beliebig weit.
  * Hausregeln: Pusten statt Schlagzwang, kurze Damen (englisch), Steine schlagen nur vorwärts.
+ * 10×10 (international, Regeln des Weltverbands): wie oben, dazu Mehrheitsschlag – bei Schlagzwang muss die
+ * Schlagfolge mit den meisten Steinen genommen werden (gleich viele: freie Wahl; Damen zählen dabei wie Steine).
  */
 import { GameError, type GameContext, type Options } from "../../platform/types";
 import { drawn, duelBase, duelGame, nameOf, other, pushLog, win, type DuelBase, type Side } from "../_board/duel";
@@ -107,11 +109,15 @@ export function allCaptures(s: DameState, o: Options, side: Side = s.turn): Move
   return s.board.flatMap((v, i) => (ownedBy(v, side) ? capturesFrom(s.board, s.size, i, r) : []));
 }
 
-/** Alle erlaubten Züge (bei Schlagzwang nur Schläge, wenn es welche gibt) */
+/** Mehrheitsschlag (international, 10×10): von mehreren Schlagfolgen nur die mit den meisten Steinen */
+export const majority = (size: number, r: DameRules) => size === 10 && r.capture === "must";
+const most = (caps: Move[]) => { const n = Math.max(...caps.map((m) => m.caps.length)); return caps.filter((m) => m.caps.length === n); };
+
+/** Alle erlaubten Züge (bei Schlagzwang nur Schläge, wenn es welche gibt; international nur die längsten) */
 export function legalMoves(s: DameState, o: Options, side: Side = s.turn): Move[] {
   const r = rulesOf(o);
   const caps = allCaptures(s, o, side);
-  if (caps.length && r.capture === "must") return caps;
+  if (caps.length && r.capture === "must") return majority(s.size, r) ? most(caps) : caps;
   return [...caps, ...s.board.flatMap((v, i) => (ownedBy(v, side) ? stepsFrom(s.board, s.size, i, r) : []))];
 }
 
@@ -162,7 +168,7 @@ export const dame = duelGame<DameState, DameAction>({
       key: "size", label: "Brett", type: "choice", default: "8",
       choices: [
         { value: "8", label: "8 × 8", hint: "deutsch, 12 Steine" },
-        { value: "10", label: "10 × 10", hint: "international, 20 Steine" },
+        { value: "10", label: "10 × 10", hint: "international, 20 Steine, Mehrheitsschlag" },
       ],
     },
     {
@@ -215,7 +221,8 @@ export const dame = duelGame<DameState, DameAction>({
       if (!Number.isInteger(a.from) || v === undefined || !ownedBy(v, side)) throw new GameError("Das ist nicht dein Stein.");
       if (r.capture === "must" && all.some((x) => x.caps.length)) {
         const partial = all.some((x) => x.from === a.from && Array.isArray(a.path) && a.path.length < x.path.length && a.path.every((p, i) => p === x.path[i]));
-        throw new GameError(partial ? "Weiterschlagen – der Zug ist noch nicht fertig." : "Schlagzwang: Du musst schlagen.");
+        const fewer = !partial && Array.isArray(a.path) && allCaptures(s, ctx.options).some((x) => x.from === a.from && same(x.path, a.path));
+        throw new GameError(partial ? "Weiterschlagen – der Zug ist noch nicht fertig." : fewer ? "Mehrheitsschlag: Du musst so viele Steine schlagen wie möglich." : "Schlagzwang: Du musst schlagen.");
       }
       throw new GameError("So darf dieser Stein nicht ziehen.");
     }

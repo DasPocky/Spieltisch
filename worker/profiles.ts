@@ -4,9 +4,10 @@ import { DurableObject } from "cloudflare:workers";
 import { addResult, emptyStats, MAX_PROFILE_GROUPS, PROFILE_ID_RE, PROFILE_KEY_RE, TRANSFER_MS, type ProfileStats, type RecentGame } from "../shared/platform/profile";
 import { GROUP_CODE_RE, sanitizeAvatar } from "../shared/platform/group";
 import { cleanName } from "../shared/platform/room";
-import { MAX_SETS_PER_PROFILE, SetError, toInfo, type CardSet, type CardSetInfo, type SetStatus } from "../shared/platform/cardsets";
+import { MAX_SETS_PER_PROFILE, SetError, setImages, toInfo, type CardSet, type CardSetInfo, type SetStatus } from "../shared/platform/cardsets";
 import { Env, settingsOf } from "./env";
 import { hashPin } from "./http";
+import { purgeImages } from "./routes/sets";
 
 /** Ein Durable Object pro Profil: Name und Statistik. Ohne Aktivität nach einem Jahr gelöscht. */
 export const PROFILE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
@@ -91,6 +92,43 @@ export class ProfileStore extends DurableObject<Env> {
     await this.ctx.storage.put(`set:${id}`, { ...old, status, note: note || undefined });
   }
 
+  /** Alle Bildschlüssel aus allen Sets des Profils (zum Aufräumen) */
+  async imageKeys(): Promise<string[]> {
+    const all = await this.ctx.storage.list<CardSet>({ prefix: "set:" });
+    return [...new Set([...all.values()].flatMap((s) => setImages(s)))];
+  }
+
+  /** Ist die Suche nach verwaisten Bildern wieder dran? Merkt sich gleich den Zeitpunkt (höchstens einmal je `every`). */
+  async sweepDue(now: number, every: number): Promise<boolean> {
+    const last = (await this.ctx.storage.get<number>("imgSweep")) ?? 0;
+    if (now - last < every) return false;
+    await this.ctx.storage.put("imgSweep", now);
+    return true;
+  }
+
+  /** Eigene ID merken (damit beim Ablauf auch die Bilder eines Profils ohne gespeichertes Set gefunden werden) */
+  async rememberId(id: string): Promise<void> {
+    if (!PROFILE_ID_RE.test(id) || this.pid === id) return;
+    this.pid = id;
+    if ((await this.ctx.storage.get<string>("pid")) !== id) await this.ctx.storage.put("pid", id);
+  }
+
+  /**
+   * Profil verschwindet: Sets aus der Liste für alle nehmen und den Bild-Ordner leeren. Die ID kommt vom Aufrufer
+   * oder aus dem Speicher (gemerkt bzw. Besitzer eines Sets). Fehler hier dürfen das Löschen nicht aufhalten.
+   */
+  private async dropSetsAndImages(id?: string): Promise<void> {
+    try {
+      const sets = [...(await this.ctx.storage.list<CardSet>({ prefix: "set:" })).values()];
+      const pid = id ?? this.pid ?? (await this.ctx.storage.get<string>("pid")) ?? sets[0]?.owner;
+      if (sets.length) {
+        const settings = settingsOf(this.env);
+        await Promise.all(sets.map((s) => settings.withdrawSet(s.id).catch(() => undefined)));
+      }
+      if (pid && PROFILE_ID_RE.test(pid)) await purgeImages(this.env, pid);
+    } catch { /* bleibt liegen */ }
+  }
+
   // ----- Geräteschlüssel: wer das Profil nutzen darf (die ID allein reicht nicht) -----
 
   /**
@@ -141,7 +179,11 @@ export class ProfileStore extends DurableObject<Env> {
     await this.ctx.storage.deleteAll();
   }
 
-  async alarm(): Promise<void> { await this.remove(); }
+  /** Ein Jahr ohne Aktivität: Profil samt Sets und Bildern weg */
+  async alarm(): Promise<void> {
+    await this.dropSetsAndImages();
+    await this.remove();
+  }
 
   private async save() {
     await this.ctx.storage.put("stats", this.stats);
@@ -157,8 +199,9 @@ export class ProfileStore extends DurableObject<Env> {
 
   private pid: string | undefined;
 
-  /** Admin: Profil komplett löschen */
-  async wipe(): Promise<void> {
+  /** Admin: Profil komplett löschen – samt Sets (auch in der Liste für alle) und Bildern */
+  async wipe(id?: string): Promise<void> {
+    await this.dropSetsAndImages(id);
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.stats = null;
