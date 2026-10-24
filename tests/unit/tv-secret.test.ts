@@ -20,7 +20,7 @@ function texts(x: unknown, out = new Set<string>()): Set<string> {
 const OUTSIDER = "niemand-am-tisch";
 const GAMES: [string, number][] = [
   ["stapelbau", 3], ["himmelskarten", 3], ["zehnphasen", 3], ["glueckssieben", 3], ["decknamen", 4], ["alles", 3], ["maexchen", 4],
-  ["dame", 2], ["muehle", 2], ["ludo", 4], ["fischen", 4], ["hellseher", 4], ["werwolf", 7], ["einenacht", 5], ["spion", 5], ["stirnraten", 4], ["zeichnen", 4], ["quiz", 3], ["kritzelpost", 4],
+  ["dame", 2], ["muehle", 2], ["ludo", 4], ["fischen", 4], ["hellseher", 4], ["werwolf", 7], ["einenacht", 5], ["spion", 5], ["stirnraten", 4], ["zeichnen", 4], ["quiz", 3], ["kritzelpost", 4], ["schamlos", 4], ["maumau", 3], ["eins", 3],
 ];
 
 function check(r: RoomState) {
