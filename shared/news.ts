@@ -25,6 +25,25 @@ export const NEWS: NewsEntry[] = [
     ],
   },
   {
+    id: "2026-10-herzen",
+    date: "2026-10-24",
+    title: "Neues Kartenspiel: Herzen",
+    items: [
+      "Stiche vermeiden für 3 bis 6: jedes Herz kostet einen Punkt, die Pik-Dame dreizehn – wer bei 100 Punkten am wenigsten hat, gewinnt.",
+      "Vor jeder Runde gebt ihr drei Karten weiter (links, rechts, gegenüber, keine), die Kreuz-Zwei spielt aus, Herz erst nach „Herz gebrochen“.",
+      "Wer alle Strafkarten holt, schießt den Mond: 0 für ihn, 26 für alle anderen. Mit Bots, an einem Handy für alle und mit Vorlesen.",
+    ],
+  },
+  {
+    id: "2026-10-quiz-wissen",
+    date: "2026-10-24",
+    title: "Quiz: Wissenschaft, Sprache und die Bühne",
+    items: [
+      "Zwei neue Quiz-Kategorien: „Wissenschaft & Technik“ (Physik, Chemie, Biologie, Sterne, Mathe, Erfindungen) und „Sprache & Wörter“ (Wortherkunft, Redewendungen, Grammatik, Fremdwörter, Rechtschreibung, Sprachen der Welt) – zusammen fast 300 Fragen, jede mit Quelle.",
+      "Das Quiz läuft jetzt auch auf der Bühne am Fernseher: Frage und Antworten groß auf der Leinwand, an jedem Pult steht, wer schon geantwortet hat – nach dem Auflösen richtig oder falsch und die Punkte.",
+    ],
+  },
+  {
     id: "2026-10-reste",
     date: "2026-10-24",
     title: "Lobby, Abstimmen und Werwolf-Pakete",

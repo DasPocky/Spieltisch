@@ -25,7 +25,7 @@ import { Avatar, roomAvatars } from "@/platform/Avatar";
 import { QrCode } from "@/platform/QrCode";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
-import { tableModel, type TableModel } from "@/platform/table/model";
+import { tableModel, type QuizMark, type TableModel } from "@/platform/table/model";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
@@ -413,26 +413,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       )}
       {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
       {/* Quizfrage groß über dem Tisch */}
-      {model?.quiz && (
-        <div className="pointer-events-none absolute inset-x-[12%] top-[12%] bottom-[18%] flex flex-col gap-4" data-testid="table-quiz">
-          <div className="flex items-center justify-between gap-4">
-            <span className="table-banner text-xl">{model.quiz.head}</span>
-            {model.quiz.endsAt ? <SignClock endsAt={model.quiz.endsAt} /> : null}
-          </div>
-          <p className="paper-note px-8 py-6 text-center text-4xl leading-tight font-bold" data-testid="table-question">{model.quiz.question}</p>
-          {model.quiz.options.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              {model.quiz.options.map((o) => (
-                <div key={o.text} className={cn("flex items-center gap-4 rounded-2xl px-5 py-4 text-3xl font-bold text-white shadow-xl transition", o.right === false && "opacity-30", o.right && "ring-8 ring-white")} style={{ background: o.tone }}>
-                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/25">{o.letter}</span>{o.text}
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="table-banner self-center text-2xl" data-testid="table-quiz-status">{model.quiz.status}</p>
-          {model.quiz.points.length > 0 && <p className="table-banner self-center text-xl">{model.quiz.points.map((x) => `${x.name} +${x.p}`).join(" · ")}</p>}
-        </div>
-      )}
+      {model?.quiz && <QuizBoard quiz={model.quiz} />}
       {/* Zeichenblatt groß über dem Tisch – live, wie eine Staffelei */}
       {model?.drawing && (
         <div className="pointer-events-none absolute inset-x-[14%] top-[13%] bottom-[16%] flex flex-col items-center gap-3" data-testid="table-drawing">
@@ -508,8 +489,10 @@ function TableCanvas({ model, seats, names = [], onSeats, forceFlat, onReal, fol
   return <div ref={holder} className="absolute inset-0" />;
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
+  /** Schild am Pult (Quiz auf der Bühne): geantwortet bzw. richtig/falsch */
+  badge?: QuizMark;
   video?: MediaStream; videoHidden?: boolean; onToggleVideo?: () => void;
   /** offene Auslage des Spielers (z. B. Raster) unter dem Platz */
   board?: NonNullable<TableModel["boards"]>[string];
@@ -535,6 +518,7 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, video, videoH
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
       {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
+      {badge && <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold shadow", BADGE[badge.tone])} data-testid="seat-quiz" data-tone={badge.tone}>{badge.text}</span>}
       {board && <div className={cn(boardAbove && "order-first", boardHidden && "sr-only")}><SeatBoard board={board} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
     </div>
@@ -614,6 +598,7 @@ function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, 
       {screen && (
         <div className="absolute overflow-hidden rounded-md bg-[#0e2a2c]" style={{ left: screen.x, top: screen.y, width: screen.w, height: screen.h, containerType: "size" }} data-testid="studio-screen">
           {children ? <div className="absolute inset-0 flex items-center justify-center p-[3cqh]">{children}</div>
+            : model?.quiz ? <QuizBoard quiz={model.quiz} screen />
             : model?.words ? <WordsScreen words={model.words} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />
             : <TableStage room={room} online={online} model={model} sham={sham} showSeats={false} flat />}
         </div>
@@ -621,13 +606,43 @@ function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, 
       {room.players.map((p, i) => points[i] && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={turn === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
-          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : ""}` : model?.notes?.[p.id]}
+          note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : ""}` : model?.quiz ? `${model.scores?.[p.id] ?? 0} Pkt.` : model?.notes?.[p.id]}
+          badge={model?.quiz?.marks?.[p.id]}
           video={videos[p.id]} videoHidden={hiddenVideos.has(p.id)} onToggleVideo={() => onToggleVideo(p.id)} />
       ))}
       {reacts.map((r) => {
         const at = points[room.players.findIndex((p) => p.id === r.from)];
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y - 60 }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
+    </div>
+  );
+}
+
+const BADGE = { idle: "bg-black/45 text-white/75", done: "bg-[#f7ecd6] text-[#3b2a1a]", right: "bg-[#16a34a] text-white", wrong: "bg-[#c2492e] text-white" } as const;
+
+/**
+ * Quizfrage groß: über dem Tisch (Maße in px) oder auf der Leinwand der Bühne (`screen`, Maße relativ zur Leinwand).
+ * Vor dem Auflösen nur die Frage, die Antworten und wie viele schon geantwortet haben – nie, wer was gewählt hat.
+ */
+function QuizBoard({ quiz, screen }: { quiz: NonNullable<TableModel["quiz"]>; screen?: boolean }) {
+  return (
+    <div className={cn("pointer-events-none absolute flex flex-col", screen ? "inset-0 gap-[2.5cqh] p-[4cqh] text-white" : "inset-x-[12%] top-[12%] bottom-[18%] gap-4")} data-testid="table-quiz">
+      <div className="flex items-center justify-between gap-4">
+        <span className={cn("table-banner", screen ? "text-[3.6cqh]" : "text-xl")}>{quiz.head}</span>
+        {quiz.endsAt ? <SignClock endsAt={quiz.endsAt} /> : null}
+      </div>
+      <p className={cn("paper-note text-center leading-tight font-bold", screen ? "px-[4cqh] py-[3cqh] text-[6.5cqh]" : "px-8 py-6 text-4xl")} data-testid="table-question">{quiz.question}</p>
+      {quiz.options.length > 0 && (
+        <div className={cn("grid grid-cols-2", screen ? "gap-[2cqh]" : "gap-3")}>
+          {quiz.options.map((o) => (
+            <div key={o.text} className={cn("flex items-center rounded-2xl font-bold text-white shadow-xl transition", screen ? "gap-[2cqh] px-[2.5cqh] py-[2cqh] text-[4.8cqh]" : "gap-4 px-5 py-4 text-3xl", o.right === false && "opacity-30", o.right && "ring-8 ring-white")} style={{ background: o.tone }} data-testid="quiz-option" data-right={o.right ?? ""}>
+              <span className={cn("grid shrink-0 place-items-center rounded-full bg-white/25", screen ? "size-[7cqh]" : "size-12")}>{o.letter}</span>{o.text}
+            </div>
+          ))}
+        </div>
+      )}
+      <p className={cn("table-banner self-center", screen ? "mt-auto text-[4.2cqh]" : "text-2xl")} data-testid="table-quiz-status">{quiz.status}</p>
+      {quiz.points.length > 0 && <p className={cn("table-banner self-center", screen ? "text-[3.6cqh]" : "text-xl")} data-testid="table-quiz-points">{quiz.points.map((x) => `${x.name} +${x.p}`).join(" · ")}</p>}
     </div>
   );
 }

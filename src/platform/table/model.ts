@@ -39,6 +39,7 @@ import { spionTable } from "../../games/spion/table";
 import { stirnratenTable } from "../../games/stirnraten/table";
 import { zeichnenTable } from "../../games/zeichnen/table";
 import { kritzelpostTable } from "../../games/kritzelpost/table";
+import { herzenTable } from "../../games/herzen/table";
 import { quizTable } from "../../games/quiz/table";
 
 /** Kartenart: französisch/deutsch („cards“), Eins!, Textkarten (Schamlos) oder Zahlenkarten (Rückseite blau, 5:7) */
@@ -84,6 +85,8 @@ export interface TableModel {
   quiz?: {
     head: string; question: string; options: { text: string; letter: string; tone: string; right?: boolean }[];
     endsAt: number | null; status: string; points: { name: string; p: number }[];
+    /** Bühne: Schild je Pult – beim Fragen nur „hat geantwortet“ (nie die Antwort), nach dem Auflösen richtig/falsch und Punkte */
+    marks?: Record<string, QuizMark>;
   };
   /** Wortraster in der Mitte (z. B. Decknamen): Karten mit Text, aufgedeckte farbig; `title` steht darüber */
   words5?: { cells: { text: string; tone?: string }[]; cols: number; title?: string };
@@ -117,11 +120,14 @@ export interface TableModel {
   };
 }
 
+/** Schild am Pult beim Quiz auf der Bühne */
+export interface QuizMark { text: string; tone: "idle" | "done" | "right" | "wrong" }
+
 export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, quiz: quizTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, herzen: herzenTable, quiz: quizTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

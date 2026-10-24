@@ -147,7 +147,7 @@ describe("Kartensets im Raum", () => {
   });
 
   it("Quiz: nie ein leerer Stapel – alle Kategorien aus heißt: alle", () => {
-    const off = { kat_allgemein: false, kat_geografie: false, kat_geschichte: false, kat_natur: false, kat_kultur: false, kat_sport: false, kat_essen: false };
+    const off = { kat_allgemein: false, kat_geografie: false, kat_geschichte: false, kat_natur: false, kat_kultur: false, kat_sport: false, kat_essen: false, kat_wissenschaft: false, kat_sprache: false };
     expect(buildDeck(off, 10)).toHaveLength(10);
     expect(deckNote(off)).toMatch(/Keine Kategorie/);
     expect(deckNote({})).toBeNull();

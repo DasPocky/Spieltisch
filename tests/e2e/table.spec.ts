@@ -569,6 +569,51 @@ test("Bühne bei Schamlos: schwarze Karte groß auf der Leinwand, Antworten eing
   }
 });
 
+test("Bühne beim Quiz: Frage groß auf der Leinwand, an den Pulten nur „hat geantwortet“, nach dem Auflösen richtig/falsch", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { quiz: { table: "on", stage: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-quiz").click();
+    // nur Auswahlfragen: dann gibt es sicher richtig und falsch
+    await anna.getByTestId("settings-summary").click();
+    for (const k of ["Schätzen", "Ordnen"]) await anna.getByRole("checkbox", { name: new RegExp(`^${k}`) }).click();
+    await anna.getByRole("button", { name: "Fertig", exact: true }).click();
+    await screen.getByTestId("view-stage").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    const stage = screen.getByTestId("studio-screen");
+    await expect(stage.getByTestId("table-question")).toHaveText((await anna.getByTestId("question").textContent())!);
+    await expect(stage.getByTestId("quiz-option")).toHaveCount(4);
+    await expect(screen.getByTestId("seat-quiz")).toHaveCount(2);
+    await expect(screen.locator('[data-testid="seat-quiz"][data-tone="done"]')).toHaveCount(0);
+    // Anna antwortet: Pult zeigt nur „hat geantwortet“, keine Lösung auf der Leinwand
+    await anna.getByRole("group", { name: "Antworten" }).getByRole("button").first().click();
+    await expect(screen.getByTestId("table-seat").filter({ hasText: "Anna" }).getByTestId("seat-quiz")).toHaveText("hat geantwortet");
+    await expect(stage.locator('[data-testid="quiz-option"][data-right="true"]')).toHaveCount(0);
+    await expect(stage.getByTestId("table-quiz-status")).toContainText("1 von 2");
+    await screen.waitForTimeout(1200);
+    await shot(screen, "quiz-buehne-frage");
+    await ben.getByRole("group", { name: "Antworten" }).getByRole("button").nth(1).click();
+    await expect(stage.getByTestId("table-quiz-status")).toContainText("Lösung");
+    await expect(stage.locator('[data-testid="quiz-option"][data-right="true"]')).toHaveCount(1);
+    // zwei verschiedene Antworten: höchstens eine stimmt, jedes Pult zeigt richtig oder falsch
+    await expect(screen.locator('[data-testid="seat-quiz"][data-tone="right"], [data-testid="seat-quiz"][data-tone="wrong"]')).toHaveCount(2);
+    await expect(screen.locator('[data-testid="seat-quiz"][data-tone="wrong"]').first()).toHaveText("falsch");
+    await screen.waitForTimeout(800);
+    await shot(screen, "quiz-buehne-aufloesung");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
 test("Stapelbau und Himmelskarten am Tisch: Stapel in der Mitte, offene Auslage an jedem Platz", async ({ browser, request }) => {
   test.setTimeout(120_000);
   await setConfig(request, { ...ALL_ON, modes: { stapelbau: { table: "on" }, himmelskarten: { table: "on" } } });
