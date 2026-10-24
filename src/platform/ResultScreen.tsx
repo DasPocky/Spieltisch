@@ -30,7 +30,7 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
   const face = (id: string, name: string, big: boolean) => {
     const av = avatars?.[id];
     return (
-      <span className={cn("grid shrink-0 place-items-center rounded-full leading-none shadow-sm", big ? "size-16 text-[2.1rem]" : "size-12 text-[1.6rem]")}
+      <span className={cn("grid shrink-0 place-items-center rounded-full leading-none shadow-sm", big ? "size-16 text-[2.1rem] [@media(max-height:640px)]:size-12 [@media(max-height:640px)]:text-[1.6rem]" : "size-12 text-[1.6rem] [@media(max-height:640px)]:size-10 [@media(max-height:640px)]:text-[1.3rem]")}
         style={av ? { backgroundColor: AVATAR_COLORS[av.color] } : undefined} aria-hidden="true">
         {av ? AVATAR_EMOJIS[av.emoji] : name.trim()[0]?.toUpperCase()}
       </span>
@@ -41,20 +41,20 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
       <Confetti />
       <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pt-[3vh] pb-3 text-center">
         <div className="text-sm text-muted-foreground">Gewonnen hat</div>
-        <div className="text-in font-display my-0.5 text-4xl leading-tight tracking-tight break-words" data-testid="winner">{winner}</div>
+        <div className="text-in font-display my-0.5 text-4xl leading-tight [@media(max-height:640px)]:text-3xl tracking-tight break-words" data-testid="winner">{winner}</div>
         <div className="text-muted-foreground">{subtitle}</div>
-        <div className="mt-5" data-testid="ranking">
+        <div className="mt-5 [@media(max-height:640px)]:mt-2" data-testid="ranking">
           <ol className="flex items-end justify-center gap-2" aria-label="Siegertreppchen">
             {podium.map((i) => {
               const p = ranking[i];
               const place = places[i];
               return (
                 <li key={p.id} className="text-in flex min-w-0 flex-1 basis-0 flex-col items-center gap-1" style={{ animationDelay: `${150 + (place - 1) * 140}ms`, maxWidth: "8.5rem" }}>
-                  {place === 1 && <span className="pop text-2xl leading-none" aria-hidden="true">👑</span>}
+                  {place === 1 && <span className="pop text-2xl leading-none [@media(max-height:640px)]:text-lg" aria-hidden="true">👑</span>}
                   {face(p.id, p.name, place === 1)}
                   <span className="w-full truncate text-sm font-semibold" title={p.name}>{p.name}</span>
                   <span className={cn("grid w-full place-items-center rounded-t-xl pt-1 font-bold tabular-nums",
-                    place === 1 ? "h-24 bg-primary text-2xl text-primary-foreground" : place === 2 ? "glass h-[4.5rem] text-xl" : "glass h-14 text-lg")}>
+                    place === 1 ? "h-24 bg-primary text-2xl text-primary-foreground [@media(max-height:640px)]:h-16 [@media(max-height:640px)]:text-xl" : place === 2 ? "glass h-[4.5rem] text-xl [@media(max-height:640px)]:h-12 [@media(max-height:640px)]:text-lg" : "glass h-14 text-lg [@media(max-height:640px)]:h-10 [@media(max-height:640px)]:text-base")}>
                     <span>{place}.</span>
                     <span className="text-xs font-semibold opacity-80">{fmt(p.score)}{scoreLabel && ` ${scoreLabel}`}</span>
                   </span>
