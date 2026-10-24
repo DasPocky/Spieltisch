@@ -171,4 +171,10 @@ describe("Gespeicherte Räume (Fixtures) laden", () => {
     expect(r).toMatchObject({ v: 2, players: [], phase: "lobby", game: null, round: 0 });
     expect(ROOM_SCHEMA).toBe(2);
   });
+  it("Stand einer neueren App behält seine Version (kein zweites Übernehmen nach dem Zurückrollen)", () => {
+    const r = migrateRoomState({ ...createRoom("eins"), v: ROOM_SCHEMA + 1, neu: "bleibt" });
+    expect(r.v).toBe(ROOM_SCHEMA + 1);
+    expect((r as unknown as { neu: string }).neu).toBe("bleibt");
+    expect(migrateRoomState(r).v).toBe(ROOM_SCHEMA + 1);
+  });
 });

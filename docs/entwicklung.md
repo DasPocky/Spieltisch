@@ -161,6 +161,12 @@ Es gibt vier getrennte Versionen:
 
 Jede gespeicherte Änderung erhöht die **Revision** des Raums (`rev` in `state`/`ack`); Geräte verwerfen ältere Stände.
 
+## Ergebnisse und Partyabend
+
+- Partie zu Ende → Ergebnis-Aufträge für Profile und Gruppen (`queueResults`, gleicher Schreibvorgang wie das Ende), fällig nach `RESULT_DELAY_MS` (2 Min., Tests 1,5 s per `.dev.vars`). Sofort verbucht wird, sobald es weitergeht (Lobby, Nochmal, Start, Spielwechsel) oder der Raum leer ist; sonst weckt der Raum-Wecker (`alarm`) pünktlich, ohne das Raum-Ende vorzuziehen.
+- Rückgängig des Endes vor dem Verbuchen: Aufträge dieser Partie fallen weg. Danach (`booked`) lehnt der Server ab – die Empfänger zählen je Partie-Kennung nur einmal, ein zweites, anderes Ergebnis käme dort nie an.
+- Partyabend: nur freigegebene Spiele im Plan; beim Weiterschalten überspringt `skipBlockedPlan` gesperrte. Läuft ein Plan, zählt nur das geplante Spiel (Log-Eintrag mit `round` und `plan`).
+
 ## Zugriffsmodell
 
 Profil ≠ Gerät ≠ Spieler ≠ Rolle ≠ Verbindung:
@@ -172,7 +178,7 @@ Profil ≠ Gerät ≠ Spieler ≠ Rolle ≠ Verbindung:
 
 **Eigene Kartensets** (`shared/platform/cardsets.ts`, `worker/routes/sets.ts`): private Sets liegen im Profil (`set:<id>`), Lesen/Ändern nur mit Geräteschlüssel; „Vorschlagen“ legt eine Kopie in die Warteschlange der Verwaltung (`SiteSettings`, `cset:<id>`), erst die Verwaltung gibt frei. Ändert der Besitzer ein freigegebenes Set, ist es wieder „wartet“ und so lange nicht öffentlich; die Verwaltung bestätigt immer genau die angesehene Fassung (`at` = `updatedAt`, sonst 409). Öffentliche Listen enthalten nie die Profil-ID, den Namen nur mit Häkchen „Meinen Namen zeigen“ (`showName`). Schalter `features.sets` (Verwaltung → Einstellungen) schaltet Editor, Auswahl und Laden beim Start ab, gespeicherte Sets bleiben. Der Raum kennt nur Kennung, Name und Art der gewählten Sets; die Inhalte lädt der Server erst beim Start (eigene des Hosts aus seinem Profil, sonst nur freigegebene) und gibt sie nie an Mitspieler. Spiele übernehmen sie in ihren Stand und blenden die Listen in `view` aus. Lokal merkt sich das Gerät die Inhalte beim Wählen (`src/lib/cardsets.ts`), gestartet wird ohne Server. Anfragen werden stückweise mit Obergrenze gelesen (`readBytes`/`readBody` in `worker/http.ts`) – zu große Inhalte landen nie ganz im Speicher.
 
-Negativtests dazu: `tests/e2e/kartensets.spec.ts` (fremdes Set, falscher Schlüssel, fremder Bildschlüssel, zu großes Bild), `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
+Negativtests dazu: `tests/e2e/kartensets.spec.ts` (fremdes Set, falscher Schlüssel, fremder Bildschlüssel, zu großes Bild), `tests/e2e/security.spec.ts` (fremdes Profil, fremde Gruppe, fremde Nonce, Tisch ohne Chat, Zuschauer ohne Züge, kaputte Nachrichten, Kopplungs-Code ohne Tab-Kennung, Fernseher-Schlüssel nach dem Trennen), `tests/unit/protocol.test.ts`, `tests/unit/room-services.test.ts`.
 
 Raum-Bausteine ohne Durable-Object-Abhängigkeit liegen in `worker/room/` (Beitritt, Chat, Ergebnisse, Typen) – `worker/rooms.ts` bleibt die Fassade.
 

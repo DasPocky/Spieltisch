@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { playBot } from "@shared/platform/botSkill";
+import { botDelay, playBot } from "@shared/platform/botSkill";
 import { addPlayer, applyRoomAction, createRoom, currentPlayerId, defaultOptions, roomGame, migrateRoomState, upgradeRoom, type RoomAction, type RoomState } from "@shared/platform/room";
 import { withDefaults, type GameDefaults } from "@shared/platform/access";
 import { GAME_IDS, isGameId, type GameId } from "@shared/games";
@@ -119,7 +119,7 @@ export function LocalGame() {
   const botTurn = room.bots?.length && room.phase === "playing" ? currentPlayerId(room) : null;
   useEffect(() => {
     if (!botTurn || !room.bots?.includes(botTurn)) return;
-    const t = setTimeout(() => run((s) => playBot(s, botTurn, false)?.next ?? s), 900 + Math.random() * 600);
+    const t = setTimeout(() => run((s) => playBot(s, botTurn, false)?.next ?? s), botDelay(room));
     return () => clearTimeout(t);
   }, [room, botTurn, run]);
 

@@ -51,12 +51,14 @@ export interface RoomData {
   pairs?: Record<string, { id: string; until: number; /** Beitritts-Wert des Tabs, der den Code eingelöst hat */ usedBy?: string | null }>;
   /** Noch nicht angekommene Ergebnisse für Profile und Gruppen (werden wiederholt) */
   results?: ResultJob[];
+  /** Partien, deren Ergebnis schon verbucht ist (Kennungen, die letzten 20) – deren Ende lässt sich nicht mehr zurücknehmen */
+  booked?: string[];
 }
 
 /** Ein Ergebnis, das an ein Profil oder eine Gruppe muss */
 export type ResultJob =
-  | { kind: "profile"; target: string; event: string; entry: RecentGame; since: number }
-  | { kind: "group"; target: string; event: string; gameId: string; entries: { profile: string; won: boolean }[]; since: number };
+  | { kind: "profile"; target: string; event: string; entry: RecentGame; since: number; due?: number }
+  | { kind: "group"; target: string; event: string; gameId: string; entries: { profile: string; won: boolean }[]; since: number; due?: number };
 /** Ein Gast mit richtiger PIN, der auf Einlass wartet – mit allem, was der Beitritt danach braucht */
 export interface Knock {
   id: string;

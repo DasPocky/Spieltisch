@@ -32,6 +32,13 @@ Stand je Punkt: ✅ erledigt · 🔨 in Arbeit · ⏳ offen.
 | Analyse F-09: Großer Tisch ohne Chat; Protokoll der Verwaltung | ✅ |
 | Analyse F-10: Desktop-/Fernseher-Reihe in der CI, Namen-Prüfung für Knöpfe, ohne WebGL, reduzierte Bewegung | ✅ |
 | Analyse F-11: Ergebnisse mit Partie-Kennung, nur einmal gezählt, bei Fehlern wiederholt | ✅ |
+| Audit 22.10. P1-06: Kopplungs-Code fürs Begleit-Handy nur mit Kennung des Tabs (ohne ließ er sich beliebig oft einlösen) | ✅ |
+| Audit 22.10. P1-07: Raum aus einer neueren App-Version behält seine Version (kein zweites Übernehmen nach dem Zurückrollen) | ✅ |
+| Audit 22.10. P1-08: Ergebnis-Aufträge im selben Schreibvorgang wie das Partie-Ende | ✅ |
+| Audit 22.10. P2-13: Videochat-Schlüssel des Fernsehers verfallen, wenn kein Fernseher mehr verbunden ist | ✅ |
+| Audit 22.10. P1-01: Partyabend nur mit freigegebenen Spielen – Plan, Weiterschalten und Start prüft der Server; abgeschaltete Spiele im Plan werden übersprungen (mit Hinweis) | ✅ |
+| Audit 22.10. P1-02: Bei laufendem Plan zählt nur das geplante Spiel für Abendwertung und Fortschritt; Rückgängig nimmt nur zurück, was die Partie gezählt hat | ✅ |
+| Audit 22.10. P1-03: Ergebnisse werden 2 Minuten nach dem Ende verbucht (sofort, wenn es weitergeht oder alle gegangen sind) – bis dahin lässt sich das Ende zurücknehmen, danach ist die Partie gewertet | ✅ |
 | Analyse F-14: Betriebskennzahlen je Tag (Beitritte, Wiederverbindungen, abgelehnte Züge, kaputte Nachrichten) | ✅ |
 | CI: `npm audit` als Hinweis | ✅ · Branch-Schutz auf „Handy-Tests (Playwright)“ und „Build & Unit-Tests“ in GitHub einschalten ⏳ (Einstellung in GitHub) |
 
@@ -81,6 +88,8 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 | Würfel | Fünf Würfel, Alles oder nichts, Mäxchen | Würfel fliegen über den Tisch, Handy schütteln, Mäxchen mit Becher |
 | Party | Werwolf, Eine Nacht, Spion, Decknamen, Schamlos | Moderator als Spielleiter, Nacht-Stimmung, Abstimmung live, Geheimes nur am Handy |
 | Brett | Dame, Mühle, Vier in einer Reihe, Ludo | Holzbrett auf dem Tisch, Züge animiert |
+
+**Regeln nachgeprüft (Audit 22.10.):** Dame 10×10 international mit Mehrheitsschlag (meiste Steine schlagen, bei Gleichstand frei; 8×8 deutsch bleibt frei) ✅ · Bot-Tests ganz wiederholbar – auch Austeilen und Würfeln laufen über den Startwert; Hellseher „schwer“ gewinnt gemessen 143 von 150 Partien, der rote Nachtlauf war Zufall bei nur 9 Partien, nicht ein schwacher Bot ✅
 
 **Stirnraten** 🔨 (neues Partyspiel, alle Varianten kombiniert): Handy an die Stirn, nicken = erraten, nach hinten = weiter (Sensor, sonst Tippen) · Varianten Klassisch, Teams (2–8, „Offene Runde“), Bombe (geheime Lunte, weitergeben), Hochstapler (einer kennt den Begriff nicht) · Darstellung Erklären, Pantomime, Geräusche, Summen, Akzent · 3.556 Begriffe in 59 Kategorien, Stufen Kinder/Familie/Freunde/Ab 18, eigene Begriffe · ein Handy, online und am Fernseher (Uhr, Punkte, nie der Begriff) · Video der Runde mit der Frontkamera, bleibt auf dem Gerät (Verwaltung: abschaltbar) · Vorlesen wie ein Spielleiter.
 

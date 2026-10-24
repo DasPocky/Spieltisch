@@ -138,6 +138,11 @@ export interface GameLogic<S = unknown, A extends { type: string } = { type: str
   onPlayerRemoved?(state: S, playerId: string, ctx: GameContext): S;
   /** Der Host hat eine Einstellung während der Partie geändert. */
   onOptionsChanged?(state: S, prev: Options, ctx: GameContext): S;
+  /**
+   * Testspieler (Bots): zusätzliche Wartezeit in ms vor ihrem nächsten Zug, damit Menschen mitlesen können
+   * (z. B. Antworten vorlesen, Rundensieger sehen). Fehlt: nur die übliche kurze Pause.
+   */
+  botPause?(state: S): number;
   /** Sicht eines Spielers: versteckt, was er nicht sehen darf (z. B. Kartenstapel, fremde Hände). */
   view?(state: S, viewerId: string | null): S;
 }
