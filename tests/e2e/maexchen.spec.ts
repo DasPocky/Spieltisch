@@ -120,6 +120,9 @@ test("Mäxchen mit echten Würfeln auf kleinem Handy bis zum Sieg", async ({ pag
   await page.getByRole("button", { name: "Stimmt" }).click();
   await expect(page.getByTestId("winner")).toHaveText("Ben");
   await expectNoScroll(page);
+  // Siegertreppchen passt ganz aufs kleine Handy – nichts unten abgeschnitten
+  await page.waitForTimeout(800);
+  await expectInView(page, page.getByTestId("ranking"));
   await shot(page, "maexchen-11-result");
 });
 
