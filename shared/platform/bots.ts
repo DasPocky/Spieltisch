@@ -22,6 +22,7 @@ import type { VierState } from "../games/vier/logic";
 import type { SchamlosState } from "../games/schamlos/logic";
 import { botAnswers, type SlfState } from "../games/stadtlandfluss/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
+import { lastBid as blLast, minCount as blMin, totalDice as blTotal, type BluffState } from "../games/bluff/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -188,6 +189,22 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       ["tBidsDone", "tFinish"].forEach((type) => add({ type }));
       if (Math.random() < 0.02) add({ type: "tBack" });
+      break;
+    }
+    case "bluff": {
+      const s = r.game as BluffState;
+      add({ type: "next" });
+      // Wie echte Spieler: meist knapp erhöhen, ab und zu zweifeln – die Ansagen steigen, also endet jede Runde
+      for (let face = 1; face <= 6; face++) {
+        const c = blMin(s, face, r.options);
+        if (c !== null) { add({ type: "bid", face, count: c }); if (Math.random() < 0.3) add({ type: "bid", face, count: c + 1 }); }
+      }
+      const last = blLast(s);
+      if (last && (Math.random() < 0.35 || last.count > blTotal(s) / 3)) {
+        const actual = s.table ? Math.floor(Math.random() * (blTotal(s) + 1)) : undefined;
+        add({ type: "doubt", actual });
+        if (Math.random() < 0.2) add({ type: "exact", actual: s.table ? last.count : undefined });
+      }
       break;
     }
     case "schocken": {
