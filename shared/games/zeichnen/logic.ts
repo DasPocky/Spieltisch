@@ -23,7 +23,8 @@ export type Phase = "pick" | "draw" | "reveal" | "over";
 /** Ein Strich: Farbe (Index), Breite (1–4), Punkte als Text (je Punkt 4 Zeichen: x und y in 0–4095) */
 export interface Stroke { c: number; w: number; p: string }
 /** `near`: knapp daneben („fast“) oder ein Teil stimmt („teil“) – sieht nur, wer getippt hat (und wer den Begriff kennt) */
-export interface Guess { by: string; text: string; ok: boolean; near?: Near }
+/** `pts`: Punkte für den richtigen Tipp (Schild am Pult auf der Bühne) */
+export interface Guess { by: string; text: string; ok: boolean; near?: Near; pts?: number }
 export type Near = "fast" | "teil";
 export interface Turn { drawer: string; word: string; solved: string[] }
 
@@ -256,13 +257,13 @@ function apply(prev: ZState, a: ZAction, ctx: GameContext): ZState {
       if (!text) throw new GameError("Was ist es?");
       const ok = !!s.word && matches(text, wordText(s.word));
       const near = !ok && s.word ? closeness(text, wordText(s.word)) : null;
-      s.guesses.push(near ? { by: me, text, ok, near } : { by: me, text, ok });
+      // Wer früh rät, bekommt mehr
+      const end = deadlineOf(s) ?? ctx.now;
+      const left = Math.max(0, Math.min(1, (end - ctx.now) / (s.seconds * 1000)));
+      const pts = Math.round((POINTS.guessMin + (POINTS.guessMax - POINTS.guessMin) * left) / 10) * 10;
+      s.guesses.push(near ? { by: me, text, ok, near } : ok ? { by: me, text, ok, pts } : { by: me, text, ok });
       if (s.guesses.length > MAX_GUESSES) s.guesses.splice(0, s.guesses.length - MAX_GUESSES);
       if (ok) {
-        // Wer früh rät, bekommt mehr
-        const end = deadlineOf(s) ?? ctx.now;
-        const left = Math.max(0, Math.min(1, (end - ctx.now) / (s.seconds * 1000)));
-        const pts = Math.round((POINTS.guessMin + (POINTS.guessMax - POINTS.guessMin) * left) / 10) * 10;
         s.scores[me] = (s.scores[me] ?? 0) + pts;
         if (s.drawer) s.scores[s.drawer] = (s.scores[s.drawer] ?? 0) + POINTS.drawer;
         s.solved.push(me);

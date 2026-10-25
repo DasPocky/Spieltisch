@@ -4,6 +4,7 @@ import { wordText } from "@shared/games/stirnraten/cards";
 import { viewRoom, type RoomState } from "@shared/platform/room";
 import { WATCH_ID } from "@shared/platform/protocol";
 import { act, game, roomWith } from "./helpers";
+import { zeichnenTable } from "@/games/zeichnen/table";
 
 const g = (r: RoomState) => r.game as ZState;
 function start(n = 3, options: Record<string, string | number | boolean> = {}) {
@@ -94,6 +95,30 @@ describe("Zeichnen & Raten", () => {
     r = game(r, { type: "guess", text: word }, b);
     expect(g(r).phase).toBe("reveal");
     expect(g(r).last?.solved).toEqual([a, b]);
+  });
+
+  it("Bühne: Pult-Schilder zeigen „zeichnet“, „rät …“, „erraten! +X“ – nie Tipps oder den Begriff; danach der Begriff groß", () => {
+    let r = start(3, { guess: "tippen" });
+    const d = drawer(r);
+    r = game(r, { type: "pick", i: 0 }, d);
+    const word = wordText(g(r).word);
+    const [a, b] = guessers(r);
+    const tv = (x: RoomState) => zeichnenTable(viewRoom(x, WATCH_ID))!.drawing!;
+    expect(tv(r).marks).toEqual({ [d]: { text: "zeichnet", tone: "done" }, [a]: { text: "rät …", tone: "idle" }, [b]: { text: "rät …", tone: "idle" } });
+    r = game(r, { type: "guess", text: "zzzz" }, b);
+    r = game(r, { type: "guess", text: word }, a);
+    const m = tv(r).marks!;
+    expect(m[a]).toEqual({ text: `erraten! +${g(r).scores[a]}`, tone: "right" });
+    expect(m[b].text).toBe("rät …");
+    // am Fernseher weder der Begriff noch Tipps – auch nicht in den Schildern oder Kopfzeilen
+    expect(JSON.stringify(tv(r))).not.toContain(word);
+    expect(JSON.stringify(tv(r))).not.toContain("zzzz");
+    expect(tv(r).word).toBeUndefined();
+    r = game(r, { type: "done" }, d);
+    expect(g(r).phase).toBe("reveal");
+    expect(tv(r).word).toBe(word);
+    expect(tv(r).marks![d].text).toMatch(/^zeichnete \+\d+$/);
+    expect(tv(r).marks![b]).toEqual({ text: "nicht erraten", tone: "idle" });
   });
 
   it("Zeit um: erst nach Ablauf; nichts bleibt hängen (Host überspringt jede Phase)", () => {

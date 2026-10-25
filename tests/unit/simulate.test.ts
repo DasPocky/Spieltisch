@@ -157,6 +157,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["quiz", 3, { count: 10 }],
   ["kritzelpost", 3, {}],
   ["stadtlandfluss", 3, { rounds: 2 }],
+  ["werbinich", 3, { laps: 4 }],
+  ["werbinich", 5, { source: "gegenseitig", follow: false, laps: 3 }],
   ["stadtlandfluss", 6, { rounds: 1, clock: "0", rare: true, own: "Promi, Gericht" }],
   ["kritzelpost", 6, { mode: "eisbrecher", clock: "0" }],
   ["quiz", 1, { count: 5, level: "kinder" }],
