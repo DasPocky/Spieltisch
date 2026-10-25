@@ -26,6 +26,7 @@ import { Icon as StapelbauIcon } from "./stapelbau/Icon";
 import { Icon as HimmelskartenIcon } from "./himmelskarten/Icon";
 import { Icon as SpionIcon } from "./spion/Icon";
 import { Icon as StirnratenIcon } from "./stirnraten/Icon";
+import { Icon as WerbinichIcon } from "./werbinich/Icon";
 import { Icon as ZeichnenIcon } from "./zeichnen/Icon";
 import { Icon as KritzelpostIcon } from "./kritzelpost/Icon";
 import { Icon as StadtlandflussIcon } from "./stadtlandfluss/Icon";
@@ -58,6 +59,7 @@ const ICONS: Record<GameId, Icon> = {
   himmelskarten: HimmelskartenIcon,
   spion: SpionIcon,
   stirnraten: StirnratenIcon,
+  werbinich: WerbinichIcon,
   zeichnen: ZeichnenIcon,
   kritzelpost: KritzelpostIcon,
   stadtlandfluss: StadtlandflussIcon,
@@ -89,6 +91,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   himmelskarten: () => import("./himmelskarten").then((m) => m.himmelskartenUI as unknown as GameUI),
   spion: () => import("./spion").then((m) => m.spionUI as unknown as GameUI),
   stirnraten: () => import("./stirnraten").then((m) => m.stirnratenUI as unknown as GameUI),
+  werbinich: () => import("./werbinich").then((m) => m.werbinichUI as unknown as GameUI),
   zeichnen: () => import("./zeichnen").then((m) => m.zeichnenUI as unknown as GameUI),
   kritzelpost: () => import("./kritzelpost").then((m) => m.kritzelpostUI as unknown as GameUI),
   stadtlandfluss: () => import("./stadtlandfluss").then((m) => m.stadtlandflussUI as unknown as GameUI),
