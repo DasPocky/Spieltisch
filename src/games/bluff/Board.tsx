@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, Minus, Plus, Undo2 } from "lucide-react";
 import {
-  bidChance, bidLabel, diceOf, exactOf, faceName, isAlive, jokersOf, lastBid, matches, minCount, suggest, totalDice, turnOptions,
+  bidChance, bidLabel, standings, diceOf, exactOf, faceName, isAlive, jokersOf, lastBid, matches, minCount, suggest, totalDice, turnOptions,
   type BluffAction, type BluffReveal, type BluffState,
 } from "@shared/games/bluff/logic";
 import type { Options, Player } from "@shared/platform/types";
@@ -60,12 +60,13 @@ function useNarration({ game: s, me, isHost, room }: Props) {
 
 function Result({ room, game: s, isHost, dispatch }: Props) {
   const players = room.players;
-  const outRank = (id: string) => s.out.indexOf(id);
-  const ranking = [...players]
-    .sort((a, b) => (s.count[b.id] ?? 0) - (s.count[a.id] ?? 0) || outRank(b.id) - outRank(a.id))
-    .map((p) => ({ id: p.id, name: p.name, score: Math.max(0, s.count[p.id] ?? 0) }));
+  const n = players.length;
+  const ranking = standings(s, players).map((x) => ({
+    id: x.id, name: nameIn(players, x.id), score: n + 1 - x.place, place: x.place,
+    text: x.outRound === null ? `${x.dice} Würfel` : x.outRound ? `raus in Runde ${x.outRound}` : "raus",
+  }));
   const left = s.winnerId ? s.count[s.winnerId] ?? 0 : 0;
-  return <ResultScreen winner={nameIn(players, s.winnerId)} subtitle={`noch ${left} ${left === 1 ? "Würfel" : "Würfel"} unter dem Becher`} ranking={ranking} isHost={isHost} dispatch={dispatch} scoreLabel="Würfel" />;
+  return <ResultScreen winner={nameIn(players, s.winnerId)} subtitle={`noch ${left} Würfel unter dem Becher`} ranking={ranking} isHost={isHost} dispatch={dispatch} />;
 }
 
 /** Der eigene Becher: antippen hebt ihn an, darunter die eigenen Würfel */

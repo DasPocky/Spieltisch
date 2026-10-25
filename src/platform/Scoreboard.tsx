@@ -7,6 +7,10 @@ export interface ScoreEntry {
   score: number;
   /** Fortschritt 0..1 (z. B. Richtung Spielziel), optional */
   progress?: number;
+  /** fester Platz (statt aus gleichen Punkten zu teilen) – für Spiele mit klarer Reihenfolge, z. B. Ausscheiden */
+  place?: number;
+  /** Text statt der Punkte (z. B. „raus in Runde 7“) */
+  text?: string;
 }
 
 /**

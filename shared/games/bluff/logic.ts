@@ -45,6 +45,8 @@ export interface BluffState {
   cups: Record<string, number[]>;
   /** ausgeschiedene Spieler in Reihenfolge */
   out: string[];
+  /** in welcher Runde jemand ausgeschieden ist */
+  outRound?: Record<string, number>;
   curId: string | null;
   /** Ansagen der laufenden Runde, älteste zuerst */
   bids: Bid[];
@@ -239,7 +241,7 @@ function resolve(s: BluffState, kind: "bluff" | "exact", actualIn: number | unde
   if (loser) s.count[loser] = Math.max(0, (s.count[loser] ?? 0) - 1);
   if (gainer) s.count[gainer] = (s.count[gainer] ?? 0) + 1;
   const out = !!loser && s.count[loser] === 0;
-  if (out && !s.out.includes(loser!)) s.out.push(loser!);
+  if (out && !s.out.includes(loser!)) { s.out.push(loser!); (s.outRound ??= {})[loser!] = s.round; }
   const final = alive(s, ctx.players).length <= 1;
   s.reveal = { kind, by: cur, bid: last, actual, cups: s.table ? {} : structuredClone(s.cups), holds, loser, gainer, out, final };
   s.starter = kind === "exact" && !loser ? cur : out ? nextAlive(s, ctx.players, loser) : loser;
@@ -292,6 +294,17 @@ function apply(prev: BluffState, a: BluffAction, ctx: GameContext): BluffState {
   }
 }
 
+/**
+ * Rangliste: der Sieger (bzw. wer noch Würfel hat, nach Würfeln) vorn, danach in umgekehrter Ausscheide-Reihenfolge –
+ * wer später rausfliegt, steht weiter vorn. Klare Plätze 1, 2, 3 …
+ */
+export function standings(s: BluffState, players: Player[]): { id: string; place: number; dice: number; outRound: number | null }[] {
+  const outIdx = (id: string) => s.out.indexOf(id);
+  return [...players]
+    .sort((a, b) => Number(b.id === s.winnerId) - Number(a.id === s.winnerId) || (s.count[b.id] ?? 0) - (s.count[a.id] ?? 0) || outIdx(b.id) - outIdx(a.id))
+    .map((p, i) => ({ id: p.id, place: i + 1, dice: Math.max(0, s.count[p.id] ?? 0), outRound: isAlive(s, p.id) ? null : s.outRound?.[p.id] ?? null }));
+}
+
 export const bluff: GameLogic<BluffState, BluffAction> = {
   info: {
     id: "bluff",
@@ -328,7 +341,11 @@ export const bluff: GameLogic<BluffState, BluffAction> = {
   actionKind: (a) => (a.type === "next" ? "player" : a.type === "bid" || a.type === "doubt" || a.type === "exact" ? "turn" : null),
   currentPlayerId: (s) => (s.phase === "bid" ? s.curId : null),
   isOver: (s) => s.phase === "over",
-  results: (s, ctx) => ctx.players.map((p) => ({ id: p.id, won: p.id === s.winnerId, score: Math.max(0, s.count[p.id] ?? 0) })),
+  results: (s, ctx) => {
+    const n = ctx.players.length;
+    // Punkte nach Platz (Sieger n, Letzter 1) – so zählt auch, wer später ausgeschieden ist
+    return standings(s, ctx.players).map((x) => ({ id: x.id, won: x.id === s.winnerId, score: n + 1 - x.place }));
+  },
   skipLabel: (s, ctx) => (s.phase === "bid" && s.curId ? `${nameOf(ctx.players, s.curId)} überspringen (neu würfeln)` : null),
   skipTurn(prev, ctx) {
     if (prev.phase !== "bid" || !prev.curId) return prev;
@@ -344,6 +361,7 @@ export const bluff: GameLogic<BluffState, BluffAction> = {
     const s = structuredClone(prev);
     const rest = ctx.players.filter((p) => p.id !== id);
     const after = nextAlive(s, ctx.players, id);
+    if (isAlive(s, id)) { s.out.push(id); (s.outRound ??= {})[id] = s.round; }
     s.count[id] = 0;
     delete s.cups[id];
     if (alive(s, rest).length <= 1) { finish(s, rest); s.n++; return s; }

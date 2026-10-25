@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { atLeast, bidChance, bluff, isHigher, minCount, suggest, totalDice, type BluffState } from "@shared/games/bluff/logic";
+import { atLeast, bidChance, standings, bluff, isHigher, minCount, suggest, totalDice, type BluffState } from "@shared/games/bluff/logic";
 import { applyRoomAction, roomGame, skipLabel, viewRoom, type RoomState } from "@shared/platform/room";
 import { WATCH_ID } from "@shared/platform/protocol";
 import { act, game, roomWith } from "./helpers";
@@ -125,6 +125,30 @@ describe("Bluff: Auflösung", () => {
     expect(() => game(r, { type: "doubt" })).toThrow(/Wie viele/);
     r = game(r, { type: "doubt", actual: 2 });
     expect(g(r).reveal).toMatchObject({ actual: 2, loser: "p1" });
+  });
+});
+
+describe("Bluff: Ergebnis", () => {
+  it("Rangliste nach Ausscheide-Reihenfolge: klare Plätze, wer später rausfliegt, steht vorn", () => {
+    let r = cups(start(4, { startDice: 1 }), [2], [3], [4], [5]);
+    r = game(r, { type: "bid", count: 3, face: 6 }); // Anna blufft, Ben zweifelt → Anna raus (Runde 1)
+    r = game(r, { type: "doubt" });
+    r = game(r, { type: "next" });
+    expect(cur(r)).toBe("p2");
+    r = cups(r, [], [3], [4], [5]);
+    r = game(r, { type: "bid", count: 1, face: 3 }); // stimmt, Cem zweifelt → Cem raus (Runde 2)
+    r = game(r, { type: "doubt" });
+    r = game(r, { type: "next" });
+    r = cups(r, [], [3], [], [5]);
+    expect(cur(r)).toBe("p4");
+    r = game(r, { type: "bid", count: 2, face: 5 }); // Dora blufft, Ben zweifelt → Dora raus (Runde 3)
+    r = game(r, { type: "doubt" });
+    r = game(r, { type: "next" });
+    expect(roomGame(r).isOver(r.game)).toBe(true);
+    const st = standings(g(r), r.players);
+    expect(st.map((x) => [x.id, x.place, x.outRound])).toEqual([["p2", 1, null], ["p4", 2, 3], ["p3", 3, 2], ["p1", 4, 1]]);
+    const res = bluff.results!(g(r), { players: r.players, hostId: "p1", actorId: null, options: r.options, now: 0 });
+    expect(Object.fromEntries(res.map((x) => [x.id, x.score]))).toEqual({ p1: 1, p2: 4, p3: 2, p4: 3 });
   });
 });
 
