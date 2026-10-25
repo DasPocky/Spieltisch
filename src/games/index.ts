@@ -18,6 +18,7 @@ import { Icon as LudoIcon } from "./ludo/Icon";
 import { Icon as MaexchenIcon } from "./maexchen/Icon";
 import { Icon as SchockenIcon } from "./schocken/Icon";
 import { Icon as BluffIcon } from "./bluff/Icon";
+import { Icon as ErklaerspielIcon } from "./erklaerspiel/Icon";
 import { Icon as MaumauIcon } from "./maumau/Icon";
 import { Icon as MuehleIcon } from "./muehle/Icon";
 import { Icon as ZehnPhasenIcon } from "./zehnphasen/Icon";
@@ -50,6 +51,7 @@ const ICONS: Record<GameId, Icon> = {
   maexchen: MaexchenIcon,
   schocken: SchockenIcon,
   bluff: BluffIcon,
+  erklaerspiel: ErklaerspielIcon,
   maumau: MaumauIcon,
   muehle: MuehleIcon,
   zehnphasen: ZehnPhasenIcon,
@@ -81,6 +83,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   maexchen: () => import("./maexchen").then((m) => m.maexchenUI as unknown as GameUI),
   schocken: () => import("./schocken").then((m) => m.schockenUI as unknown as GameUI),
   bluff: () => import("./bluff").then((m) => m.bluffUI as unknown as GameUI),
+  erklaerspiel: () => import("./erklaerspiel").then((m) => m.erklaerspielUI as unknown as GameUI),
   maumau: () => import("./maumau").then((m) => m.maumauUI as unknown as GameUI),
   muehle: () => import("./muehle").then((m) => m.muehleUI as unknown as GameUI),
   zehnphasen: () => import("./zehnphasen").then((m) => m.zehnphasenUI as unknown as GameUI),
