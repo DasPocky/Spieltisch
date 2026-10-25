@@ -149,13 +149,13 @@ function SheetView({ s, id, options, sel, tip, misses, onPick }: {
 }) {
   const sh = s.sheets[id];
   return (
-    <div className="flex min-h-0 flex-1 flex-col justify-center gap-1 rounded-2xl bg-paper p-1.5 text-paper-ink shadow-md" data-testid="sheet">
+    <div className="flex min-h-0 flex-1 flex-col justify-center gap-[clamp(0.25rem,1dvh,0.6rem)] rounded-2xl bg-paper p-1.5 text-paper-ink shadow-md" data-testid="sheet">
       {ROWS.map((row, r) => {
         const last = sh.rows[r].at(-1) ?? -1;
         const shut = s.closed[r];
         return (
-          <div key={row.key} className={cn("grid gap-[2px] rounded-lg p-[3px]", shut && !sh.locks[r] && "opacity-60")}
-            style={{ background: row.color, gridTemplateColumns: `repeat(${CELLS + 1}, minmax(0, 1fr))` }} role="group" aria-label={`${row.name}, ${crosses(sh, r)} Kreuze${shut ? ", abgeschlossen" : ""}`} data-testid={`row-${r}`}>
+          <div key={row.key} className={cn("grid max-h-[5.5rem] min-h-[calc(1.3rem+6px)] flex-1 gap-[2px] rounded-lg p-[3px]", shut && !sh.locks[r] && "opacity-60")}
+            style={{ background: row.color, gridTemplateColumns: `repeat(${CELLS + 1}, minmax(0, 1fr))`, gridTemplateRows: "minmax(0, 1fr)" }} role="group" aria-label={`${row.name}, ${crosses(sh, r)} Kreuze${shut ? ", abgeschlossen" : ""}`} data-testid={`row-${r}`}>
             {Array.from({ length: CELLS }, (_, i) => {
               const v = valueAt(r, i);
               const crossed = sh.rows[r].includes(i);
@@ -167,18 +167,18 @@ function SheetView({ s, id, options, sel, tip, misses, onPick }: {
               return (
                 <button key={i} type="button" disabled={!opt} onClick={opt ? () => onPick(opt) : undefined} data-testid={`cell-${r}-${i}`} data-state={state}
                   aria-label={`${row.name} ${v}${crossed ? ", angekreuzt" : picked ? ", gewählt" : opt ? ", ankreuzen" : ""}`} aria-pressed={opt ? picked : undefined}
-                  className={cn("relative grid h-[clamp(1.55rem,5.4dvh,3rem)] min-w-0 place-items-center rounded-[5px] text-[clamp(0.72rem,3.6vw,1rem)] font-bold tabular-nums outline-none transition",
+                  className={cn("relative grid h-full min-h-0 min-w-0 place-items-center rounded-[6px] text-[clamp(0.72rem,min(4.4vw,3dvh),1.3rem)] font-bold tabular-nums outline-none transition",
                     "focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default",
                     crossed ? "bg-white/80" : picked ? "bg-paper-ink text-white" : opt ? "bg-white ring-2 ring-paper-ink ring-inset" : gone ? "bg-white/35" : "bg-white/85",
                     hinted && !picked && "ak-hint")}
                   style={{ color: picked ? undefined : row.color }}>
                   <span className={cn((crossed || gone) && "opacity-35")}>{v}</span>
                   {(crossed || picked) && <X className={cn("absolute size-[85%]", picked ? "text-white" : "text-paper-ink")} strokeWidth={3} aria-hidden="true" />}
-                  {i === CELLS - 1 && !crossed && !picked && sh.rows[r].length < MIN_LOCK && !shut && <span className="absolute right-0.5 bottom-0 text-[0.5rem] leading-none text-paper-ink/45" aria-hidden="true">{MIN_LOCK}</span>}
+                  {i === CELLS - 1 && !crossed && !picked && sh.rows[r].length < MIN_LOCK && !shut && <span className="absolute right-0.5 bottom-0.5 text-[clamp(0.5rem,1.4dvh,0.7rem)] leading-none text-paper-ink/45" aria-hidden="true">{MIN_LOCK}</span>}
                 </button>
               );
             })}
-            <span className={cn("relative grid h-[clamp(1.55rem,5.4dvh,3rem)] min-w-0 place-items-center rounded-full", sh.locks[r] ? "bg-white/90" : "bg-white/40")}
+            <span className={cn("relative grid aspect-square max-h-full w-full min-w-0 place-items-center self-center rounded-full", sh.locks[r] ? "bg-white/90" : "bg-white/40")}
               data-testid={`lock-${r}`} data-state={sh.locks[r] ? "crossed" : shut ? "shut" : "open"}>
               <Lock className="size-[55%]" style={{ color: row.color }} aria-hidden="true" />
               {sh.locks[r] && <X className="absolute size-[85%] text-paper-ink" strokeWidth={3} aria-hidden="true" />}
@@ -186,7 +186,7 @@ function SheetView({ s, id, options, sel, tip, misses, onPick }: {
           </div>
         );
       })}
-      <div className="flex items-center justify-between gap-2 px-1 pt-0.5 text-xs">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-1 pt-0.5 text-xs min-[380px]:[@media(min-height:740px)]:text-sm">
         <span className="flex items-center gap-1" aria-label={`${sh.misses} von ${misses} Fehlwürfen`} data-testid="misses">
           <span className="text-paper-ink/60">Fehlwürfe</span>
           {Array.from({ length: misses }, (_, k) => (
