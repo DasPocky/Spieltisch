@@ -73,7 +73,12 @@ test("Stadt-Land-Fluss online mit drei Handys: schreiben, Stopp, ablehnen, Ergeb
   // Land: Anna und Ben verschieden → je 10
   await expect(annaRow(anna).getByTestId("slf-pts")).toHaveText("+10");
   await expect(anna.getByTestId("slf-row").nth(1).getByTestId("slf-pts")).toHaveText("+10");
-  for (let i = 1; i < 6; i++) await anna.getByTestId("slf-next").click();
+  // je Klick abwarten, bis die nächste Kategorie da ist – schnelle Klicks gehen sonst verloren
+  for (let i = 1; i < 6; i++) {
+    const before = await anna.getByTestId("slf-title").textContent();
+    await anna.getByTestId("slf-next").click();
+    if (i < 5) await expect(anna.getByTestId("slf-title")).not.toHaveText(before ?? "");
+  }
   await expect(anna.getByTestId("slf-score")).toBeVisible();
   await expect(cem.getByTestId("slf-score")).toContainText("10");
   await expectNoScroll(anna);

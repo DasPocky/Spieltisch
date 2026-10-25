@@ -17,6 +17,7 @@ import { Icon as FuenfWuerfelIcon } from "./fuenfwuerfel/Icon";
 import { Icon as LudoIcon } from "./ludo/Icon";
 import { Icon as MaexchenIcon } from "./maexchen/Icon";
 import { Icon as SchockenIcon } from "./schocken/Icon";
+import { Icon as BluffIcon } from "./bluff/Icon";
 import { Icon as ErklaerspielIcon } from "./erklaerspiel/Icon";
 import { Icon as AnkreuzspielIcon } from "./ankreuzspiel/Icon";
 import { Icon as MaumauIcon } from "./maumau/Icon";
@@ -27,6 +28,7 @@ import { Icon as StapelbauIcon } from "./stapelbau/Icon";
 import { Icon as HimmelskartenIcon } from "./himmelskarten/Icon";
 import { Icon as SpionIcon } from "./spion/Icon";
 import { Icon as StirnratenIcon } from "./stirnraten/Icon";
+import { Icon as WerbinichIcon } from "./werbinich/Icon";
 import { Icon as ZeichnenIcon } from "./zeichnen/Icon";
 import { Icon as KritzelpostIcon } from "./kritzelpost/Icon";
 import { Icon as StadtlandflussIcon } from "./stadtlandfluss/Icon";
@@ -50,6 +52,7 @@ const ICONS: Record<GameId, Icon> = {
   ludo: LudoIcon,
   maexchen: MaexchenIcon,
   schocken: SchockenIcon,
+  bluff: BluffIcon,
   erklaerspiel: ErklaerspielIcon,
   ankreuzspiel: AnkreuzspielIcon,
   maumau: MaumauIcon,
@@ -60,6 +63,7 @@ const ICONS: Record<GameId, Icon> = {
   himmelskarten: HimmelskartenIcon,
   spion: SpionIcon,
   stirnraten: StirnratenIcon,
+  werbinich: WerbinichIcon,
   zeichnen: ZeichnenIcon,
   kritzelpost: KritzelpostIcon,
   stadtlandfluss: StadtlandflussIcon,
@@ -82,6 +86,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   ludo: () => import("./ludo").then((m) => m.ludoUI as unknown as GameUI),
   maexchen: () => import("./maexchen").then((m) => m.maexchenUI as unknown as GameUI),
   schocken: () => import("./schocken").then((m) => m.schockenUI as unknown as GameUI),
+  bluff: () => import("./bluff").then((m) => m.bluffUI as unknown as GameUI),
   erklaerspiel: () => import("./erklaerspiel").then((m) => m.erklaerspielUI as unknown as GameUI),
   ankreuzspiel: () => import("./ankreuzspiel").then((m) => m.ankreuzspielUI as unknown as GameUI),
   maumau: () => import("./maumau").then((m) => m.maumauUI as unknown as GameUI),
@@ -92,6 +97,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   himmelskarten: () => import("./himmelskarten").then((m) => m.himmelskartenUI as unknown as GameUI),
   spion: () => import("./spion").then((m) => m.spionUI as unknown as GameUI),
   stirnraten: () => import("./stirnraten").then((m) => m.stirnratenUI as unknown as GameUI),
+  werbinich: () => import("./werbinich").then((m) => m.werbinichUI as unknown as GameUI),
   zeichnen: () => import("./zeichnen").then((m) => m.zeichnenUI as unknown as GameUI),
   kritzelpost: () => import("./kritzelpost").then((m) => m.kritzelpostUI as unknown as GameUI),
   stadtlandfluss: () => import("./stadtlandfluss").then((m) => m.stadtlandflussUI as unknown as GameUI),

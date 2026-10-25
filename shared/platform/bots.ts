@@ -21,8 +21,11 @@ import type { MuehleState } from "../games/muehle/logic";
 import type { VierState } from "../games/vier/logic";
 import type { SchamlosState } from "../games/schamlos/logic";
 import { botAnswers, type SlfState } from "../games/stadtlandfluss/logic";
+import { FRAGEN, KATEGORIEN as WB_KATEGORIEN } from "../games/werbinich/figuren";
+import type { WbState } from "../games/werbinich/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
 import { pendingWhite as akPending, type AkState } from "../games/ankreuzspiel/logic";
+import { lastBid as blLast, minCount as blMin, totalDice as blTotal, type BluffState } from "../games/bluff/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -191,6 +194,22 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       if (Math.random() < 0.02) add({ type: "tBack" });
       break;
     }
+    case "bluff": {
+      const s = r.game as BluffState;
+      add({ type: "next" });
+      // Wie echte Spieler: meist knapp erhöhen, ab und zu zweifeln – die Ansagen steigen, also endet jede Runde
+      for (let face = 1; face <= 6; face++) {
+        const c = blMin(s, face, r.options);
+        if (c !== null) { add({ type: "bid", face, count: c }); if (Math.random() < 0.3) add({ type: "bid", face, count: c + 1 }); }
+      }
+      const last = blLast(s);
+      if (last && (Math.random() < 0.35 || last.count > blTotal(s) / 3)) {
+        const actual = s.table ? Math.floor(Math.random() * (blTotal(s) + 1)) : undefined;
+        add({ type: "doubt", actual });
+        if (Math.random() < 0.2) add({ type: "exact", actual: s.table ? last.count : undefined });
+      }
+      break;
+    }
     case "schocken": {
       const s = r.game as ShState;
       add({ type: "next" });
@@ -322,6 +341,24 @@ export function candidates(r: RoomState, online: boolean): Move[] {
         if (Math.random() < 0.3) moves.push(...mine(anyone(g({ type: "fill", answers, player }))));
         if (Math.random() < 0.2) add({ type: "vote", target: id });
         if (Math.random() < 0.1) add({ type: "decide", target: id, reject: Math.random() < 0.5 });
+      }
+      break;
+    }
+    case "werbinich": {
+      const s = r.game as WbState;
+      add({ type: "timeUp" });
+      if (Math.random() < 0.2) add({ type: "pass" });
+      add({ type: "ask", text: pick(FRAGEN) });
+      // raten: manchmal richtig (der Testspieler schummelt), sonst irgendwas oder laut
+      add({ type: "guess", text: Math.random() < 0.3 && s.asker ? s.figures[s.asker] ?? "" : pick(WB_KATEGORIEN).figuren[0] });
+      if (Math.random() < 0.2) add({ type: "guess" });
+      for (const a of ["ja", "nein", "egal"]) add({ type: "vote", a });
+      if (Math.random() < 0.05) add({ type: "decide", a: pick(["ja", "nein"]) });
+      for (const id of ids) {
+        const player = online ? undefined : id;
+        const mine = (m: Move[]) => m.filter((x) => !online || x.actor === id);
+        moves.push(...mine(anyone(g({ type: "write", text: pick(pick(WB_KATEGORIEN).figuren), player }))));
+        if (Math.random() < 0.1) moves.push(...mine(anyone(g({ type: "note", text: "Kein Tier?", a: "nein", player }))));
       }
       break;
     }
