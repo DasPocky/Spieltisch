@@ -415,15 +415,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {/* Quizfrage groß über dem Tisch */}
       {model?.quiz && <QuizBoard quiz={model.quiz} />}
       {/* Zeichenblatt groß über dem Tisch – live, wie eine Staffelei */}
-      {model?.drawing && (
-        <div className="pointer-events-none absolute inset-x-[14%] top-[13%] bottom-[16%] flex flex-col items-center gap-3" data-testid="table-drawing">
-          <div className="flex items-center gap-4">
-            <span className="table-banner text-3xl">{model.drawing.title}{model.drawing.sub && <span className="ml-3 font-mono tracking-[0.2em] opacity-85">{model.drawing.sub}</span>}</span>
-            {model.drawing.endsAt ? <SignClock endsAt={model.drawing.endsAt} /> : null}
-          </div>
-          <Paper strokes={model.drawing.strokes} className="min-h-0 w-full flex-1" label={model.drawing.title} />
-        </div>
-      )}
+      {model?.drawing && <DrawingBoard drawing={model.drawing} />}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
       {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
@@ -599,6 +591,7 @@ function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, 
         <div className="absolute overflow-hidden rounded-md bg-[#0e2a2c]" style={{ left: screen.x, top: screen.y, width: screen.w, height: screen.h, containerType: "size" }} data-testid="studio-screen">
           {children ? <div className="absolute inset-0 flex items-center justify-center p-[3cqh]">{children}</div>
             : model?.quiz ? <QuizBoard quiz={model.quiz} screen />
+            : model?.drawing ? <DrawingBoard drawing={model.drawing} screen />
             : model?.words ? <WordsScreen words={model.words} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />
             : <TableStage room={room} online={online} model={model} sham={sham} showSeats={false} flat />}
         </div>
@@ -607,13 +600,47 @@ function StudioStage({ room, online, model, sham, reacts, videos, hiddenVideos, 
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
           turn={turn === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : ""}` : model?.quiz ? `${model.scores?.[p.id] ?? 0} Pkt.` : model?.notes?.[p.id]}
-          badge={model?.quiz?.marks?.[p.id]}
+          badge={model?.quiz?.marks?.[p.id] ?? model?.drawing?.marks?.[p.id]}
           video={videos[p.id]} videoHidden={hiddenVideos.has(p.id)} onToggleVideo={() => onToggleVideo(p.id)} />
       ))}
       {reacts.map((r) => {
         const at = points[room.players.findIndex((p) => p.id === r.from)];
         return at ? <span key={r.id} className="react-float pointer-events-none absolute text-6xl" style={{ left: at.x, top: at.y - 60 }} data-testid="table-react" aria-hidden>{r.emoji}</span> : null;
       })}
+    </div>
+  );
+}
+
+/**
+ * Zeichenblatt groß und live: über dem Tisch (Maße in px) oder auf der Leinwand der Bühne (`screen`).
+ * Oben, wer zeichnet, die Lücken und die Uhr; nach dem Bild steht auf der Leinwand der Begriff groß darüber.
+ */
+function DrawingBoard({ drawing, screen }: { drawing: NonNullable<TableModel["drawing"]>; screen?: boolean }) {
+  if (!screen) {
+    return (
+      <div className="pointer-events-none absolute inset-x-[14%] top-[13%] bottom-[16%] flex flex-col items-center gap-3" data-testid="table-drawing">
+        <div className="flex items-center gap-4">
+          <span className="table-banner text-3xl">{drawing.title}{drawing.sub && <span className="ml-3 font-mono tracking-[0.2em] opacity-85">{drawing.sub}</span>}</span>
+          {drawing.endsAt ? <SignClock endsAt={drawing.endsAt} /> : null}
+        </div>
+        <Paper strokes={drawing.strokes} className="min-h-0 w-full flex-1" label={drawing.title} />
+      </div>
+    );
+  }
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center gap-[2cqh] p-[3cqh] text-white" data-testid="table-drawing">
+      {drawing.word ? (
+        <>
+          <p className="paper-note px-[5cqh] py-[1.5cqh] text-center text-[10cqh] leading-none font-black" data-testid="table-drawing-word">{drawing.word}</p>
+          {drawing.sub && <span className="table-banner text-[3.6cqh]">{drawing.sub}</span>}
+        </>
+      ) : (
+        <div className="flex items-center gap-[3cqh]">
+          <span className="table-banner text-[4.2cqh]" data-testid="table-drawing-head">{drawing.title}{drawing.sub && <span className="ml-[2cqh] font-mono tracking-[0.2em] opacity-85">{drawing.sub}</span>}</span>
+          {drawing.endsAt ? <SignClock endsAt={drawing.endsAt} /> : null}
+        </div>
+      )}
+      <Paper strokes={drawing.strokes} className="min-h-0 w-full flex-1" label={drawing.word ?? drawing.title} />
     </div>
   );
 }

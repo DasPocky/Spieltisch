@@ -83,7 +83,13 @@ export interface TableModel {
   /** offene Auslage je Platz (unter dem Platz): Karten im Raster, `null` = leer/abgeräumt, "?" = verdeckt */
   boards?: Record<string, { cells: ({ text: string; tone?: string } | "?" | null)[]; cols: number }>;
   /** Zeichenblatt groß über dem Tisch (Zeichnen & Raten): Striche live, darüber Titel, Lücken bzw. Begriff und Uhr */
-  drawing?: { strokes: { c: number; w: number; p: string }[]; title: string; sub?: string; endsAt?: number | null };
+  drawing?: {
+    strokes: { c: number; w: number; p: string }[]; title: string; sub?: string; endsAt?: number | null;
+    /** nach dem Bild: der Begriff – auf der Leinwand der Bühne groß */
+    word?: string;
+    /** Bühne: Schild je Pult – „zeichnet“, „rät …“, „erraten! +X“ (nie Tipps oder den Begriff) */
+    marks?: Record<string, QuizMark>;
+  };
   /** Quizfrage groß über dem Tisch: Frage, Antworten (farbig), Uhr, Stand – nach dem Auflösen die Lösung und Punkte */
   quiz?: {
     head: string; question: string; options: { text: string; letter: string; tone: string; right?: boolean }[];
