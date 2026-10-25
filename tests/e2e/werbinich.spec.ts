@@ -20,9 +20,6 @@ test("Wer bin ich online mit drei Handys: fragen, abstimmen, raten, Auflösung",
   test.setTimeout(150_000);
   const anna = await newPhone(browser);
   await captureSpeech(anna);
-  const annaErrors: string[] = [];
-  anna.on("pageerror", (e) => annaErrors.push(e.message));
-  anna.on("console", (m) => { if (m.type() === "error") annaErrors.push(m.text()); });
   const ben = await newPhone(browser);
   const cem = await newPhone(browser);
   const code = await createRoom(anna, "werbinich", "Anna", "4352");
@@ -62,13 +59,8 @@ test("Wer bin ich online mit drei Handys: fragen, abstimmen, raten, Auflösung",
   await anna.getByTestId("wbi-guess-send").click();
   await expect(ben.getByTestId("wbi-title")).toHaveText("Du bist dran");
   // Anna hatte den Notizblock offen – zur Figurenliste wechseln (springt je nach Zeitpunkt nicht von selbst um)
-  const figTab = anna.getByTestId("wbi-tab-figuren");
-  if (await figTab.isVisible()) await figTab.click();
-  await expect(anna.locator("[data-self]")).toContainText(fig.Anna).catch(async (e) => {
-    // Diagnose für die CI: was zeigt Annas Handy?
-    console.log("WBI-DIAGNOSE", anna.url(), annaErrors, JSON.stringify(await anna.locator("body").innerText()));
-    throw e;
-  });
+  await anna.getByTestId("wbi-tab-figuren").click();
+  await expect(anna.locator("[data-self]")).toContainText(fig.Anna);
 
   // Ben fragt, Nein → Cem
   await ben.getByTestId("wbi-ask-send").click();

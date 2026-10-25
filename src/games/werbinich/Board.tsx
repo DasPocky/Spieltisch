@@ -186,7 +186,8 @@ function Notes({ game: s, act, owner, me }: P & { owner: string }) {
   const [text, setText] = useState("");
   const local = me === null;
   const end = useRef<HTMLLIElement>(null);
-  useEffect(() => end.current?.scrollIntoView({ block: "nearest" }), [notes.length]);
+  // geschweifte Klammern: neuere Browser geben bei scrollIntoView ein Promise zurück, React hielte es für die Aufräumfunktion
+  useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [notes.length]);
   const add = () => { if (!text.trim()) return; act({ type: "note", text, ...(local ? { player: owner } : {}) }); setText(""); };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1.5">
