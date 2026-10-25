@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-bluff",
+    date: "2026-10-25",
+    title: "Neues Würfelspiel: Bluff",
+    items: [
+      "Jeder hat fünf Würfel verdeckt unter seinem Becher – nur du siehst deine. Reihum sagt ihr an: „Mindestens vier Fünfen liegen auf dem Tisch“ – über alle Becher.",
+      "Jede Ansage muss höher sein. Glaubst du nicht dran, rufst du „Bluff!“: Alle decken auf, wer falschlag, verliert einen Würfel. Mit „Genau!“ holst du dir einen zurück.",
+      "Einsen sind Joker, Pakete „Kurz“ (drei Würfel) und „Ohne Joker“, für 2 bis 8 – mit Bots, an einem Handy für alle, mit Vorlesen oder mit echten Würfeln.",
+    ],
+  },
+  {
     id: "2026-10-werbinich",
     date: "2026-10-25",
     title: "Neues Partyspiel: Wer bin ich",

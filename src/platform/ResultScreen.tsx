@@ -23,6 +23,7 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
   // Gleichstand teilt sich den Platz
   const places = ranking.map((p, i) => (i > 0 && ranking[i - 1].score === p.score ? -1 : i + 1));
   for (let i = 1; i < places.length; i++) if (places[i] === -1) places[i] = places[i - 1];
+  ranking.forEach((p, i) => { if (p.place) places[i] = p.place; });
   const avatars = useContext(AvatarContext);
   // Podium: Platz 2 links, 1 in der Mitte, 3 rechts – bei weniger Spielern nur, wer da ist
   const podium = [1, 0, 2].filter((i) => i < Math.min(3, ranking.length));
@@ -56,7 +57,7 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
                   <span className={cn("grid w-full place-items-center rounded-t-xl pt-1 font-bold tabular-nums",
                     place === 1 ? "h-24 bg-primary text-2xl text-primary-foreground [@media(max-height:640px)]:h-16 [@media(max-height:640px)]:text-xl" : place === 2 ? "glass h-[4.5rem] text-xl [@media(max-height:640px)]:h-12 [@media(max-height:640px)]:text-lg" : "glass h-14 text-lg [@media(max-height:640px)]:h-10 [@media(max-height:640px)]:text-base")}>
                     <span>{place}.</span>
-                    <span className="text-xs font-semibold opacity-80">{fmt(p.score)}{scoreLabel && ` ${scoreLabel}`}</span>
+                    <span className="max-w-full truncate px-1 text-xs font-semibold opacity-80">{p.text ?? <>{fmt(p.score)}{scoreLabel && ` ${scoreLabel}`}</>}</span>
                   </span>
                 </li>
               );
@@ -70,7 +71,7 @@ export function ResultScreen({ winner, subtitle, ranking, isHost, dispatch, chil
                   <li key={p.id} style={{ animationDelay: `${500 + j * 60}ms` }} className="text-in glass flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1.5">
                     <span className="w-5 shrink-0 text-sm font-bold text-muted-foreground tabular-nums">{places[i]}.</span>
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={p.name}>{p.name}</span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums">{fmt(p.score)}{scoreLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{scoreLabel}</span>}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">{p.text ?? <>{fmt(p.score)}{scoreLabel && <span className="ml-1 text-xs font-normal text-muted-foreground">{scoreLabel}</span>}</>}</span>
                   </li>
                 );
               })}

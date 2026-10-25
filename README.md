@@ -25,7 +25,7 @@ Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zus
 
 | Kategorie | Spiele |
 | --- | --- |
-| Würfel | Alles oder nichts, Fünf Würfel, Mäxchen, Schocken |
+| Würfel | Alles oder nichts, Fünf Würfel, Mäxchen, Schocken, Bluff |
 | Karten | Eins!, Mau-Mau, Stapelbau, Zehn Phasen, Himmelskarten, Glückssieben, Fischen, Hellseher, Herzen |
 | Party & Rollen | Werwolf (die App erzählt und liest vor), Eine Nacht, Decknamen, Spion, Schamlos, Stirnraten (Handy an die Stirn: klassisch, Teams, Bombe, Hochstapler), Zeichnen & Raten (malen am Handy, raten per Rufen oder Tippen), Quiz & Schätzen (alle antworten gleichzeitig, Fragen mit Quellen), Kritzelpost (Stille Post mit Bildern, am Ende das Album), Stadt-Land-Fluss (jeder schreibt am eigenen Handy, Stopp und gemeinsame Auswertung), Erklärspiel (Teams erklären gegen die Uhr: Erklären, Ein Wort, Pantomime, drei Runden), Wer bin ich (alle sehen deine Figur, nur du nicht – Ja/Nein-Fragen reihum, die anderen stimmen am Handy ab) |
 | Brett | Ludo, Vier in einer Reihe, Mühle, Dame |
