@@ -7,7 +7,7 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, BoxGeometry, ConeGeometry, CylinderGeometry, DoubleSide, Group, HemisphereLight, Mesh, MeshBasicMaterial,
   MeshStandardMaterial, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight, Scene, SpotLight, SRGBColorSpace, TorusGeometry,
-  Vector3, WebGLRenderer,
+  Vector3, WebGLRenderer, type Light, type Material,
 } from "three";
 import { frameMeter, reducedMotion, renderSettings, type Quality } from "@/lib/quality";
 import type { FeltRect } from "./scene";
@@ -39,6 +39,24 @@ function podiumAnchors(n: number): [number, number][] {
   });
 }
 
+/** Geometrien und Materialien unter `root` freigeben (Lichter: ihre Schattenkarten) */
+function free(root: Object3D) {
+  root.traverse((o) => {
+    const m = o as Mesh;
+    if (m.isMesh) {
+      m.geometry.dispose();
+      for (const mat of (Array.isArray(m.material) ? m.material : [m.material]) as Material[]) mat.dispose();
+    }
+    if ((o as Light).isLight) (o as Light).dispose();
+  });
+}
+
+/** Nur in der Entwicklung: Grafikspeicher aller Bühnen zusammen (auch schon geschlossener) – für den Speicher-Test */
+const studioInfos: { geometries: number; textures: number }[] = [];
+if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __studioMemory?: () => { geometries: number; textures: number; studios: number } }).__studioMemory = () => ({
+  geometries: studioInfos.reduce((n, m) => n + m.geometries, 0), textures: studioInfos.reduce((n, m) => n + m.textures, 0), studios: studioInfos.length,
+});
+
 export function createStudioScene(canvas: HTMLCanvasElement, quality: Quality = "hoch", onMove?: () => void): StudioScene {
   const q = renderSettings(quality);
   const renderer = new WebGLRenderer({ canvas, antialias: q.antialias, alpha: false });
@@ -46,6 +64,7 @@ export function createStudioScene(canvas: HTMLCanvasElement, quality: Quality = 
   renderer.shadowMap.enabled = q.shadows; renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.toneMapping = ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1; renderer.outputColorSpace = SRGBColorSpace;
   renderer.setClearColor("#0b0716");
+  if (import.meta.env.DEV) studioInfos.push(renderer.info.memory);
   const meter = frameMeter();
   const still = reducedMotion() || quality === "einfach";
   const scene = new Scene();
@@ -101,7 +120,8 @@ export function createStudioScene(canvas: HTMLCanvasElement, quality: Quality = 
   let anchors: [number, number][] = [];
   const podMats: MeshStandardMaterial[] = [];
   function buildPods() {
-    pods.clear(); podMats.length = 0;
+    // alte Pulte samt Geometrien und Materialien freigeben (Spielerwechsel)
+    free(pods); pods.clear(); podMats.length = 0;
     anchors = podiumAnchors(seats.length);
     anchors.forEach(([x, z], i) => {
       const g = new Object3D();
@@ -207,6 +227,11 @@ export function createStudioScene(canvas: HTMLCanvasElement, quality: Quality = 
 
   return {
     update, resize, podiumPoints, screenRect,
-    dispose() { alive = false; cancelAnimationFrame(raf); renderer.dispose(); },
+    dispose() {
+      alive = false; cancelAnimationFrame(raf);
+      // erst alles in der Szene freigeben (Pulte, Bühne, Lichter mit Schattenkarten), dann den Zeichner samt Kontext
+      free(scene); scene.clear();
+      renderer.dispose(); renderer.forceContextLoss();
+    },
   };
 }

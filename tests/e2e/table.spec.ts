@@ -614,6 +614,68 @@ test("Bühne beim Quiz: Frage groß auf der Leinwand, an den Pulten nur „hat g
   }
 });
 
+test("Bühne beim Zeichnen: Blatt live auf der Leinwand, Pult-Schilder ohne Begriff, danach der Begriff groß – Bühne gibt beim Umschalten den Grafikspeicher frei", async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  await setConfig(request, { ...ALL_ON, modes: { zeichnen: { table: "on", stage: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await joinByLink(browser, code, pin, "Anna");
+    const ben = await joinByLink(browser, code, pin, "Ben");
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-zeichnen").click();
+    await screen.getByTestId("view-stage").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    const pick = (p: typeof anna) => p.getByRole("group", { name: "Begriff wählen" });
+    await expect.poll(async () => (await pick(anna).isVisible()) || (await pick(ben).isVisible())).toBe(true);
+    const drawer = (await pick(anna).isVisible()) ? anna : ben;
+    const [dName, gName] = drawer === anna ? ["Anna", "Ben"] : ["Ben", "Anna"];
+    const word = (await pick(drawer).getByRole("button").first().textContent())!;
+    await pick(drawer).getByRole("button").first().click();
+    const box = (await drawer.getByTestId("paper").boundingBox())!;
+    await drawer.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5);
+    await drawer.mouse.down();
+    for (let i = 1; i <= 6; i++) await drawer.mouse.move(box.x + box.width * (0.2 + i * 0.1), box.y + box.height * (i % 2 ? 0.3 : 0.7), { steps: 3 });
+    await drawer.mouse.up();
+    const stage = screen.getByTestId("studio-screen");
+    await expect.poll(async () => Number(await stage.getByTestId("paper").getAttribute("data-strokes"))).toBeGreaterThan(0);
+    await expect(stage.getByTestId("table-drawing-head")).toContainText(`${dName} zeichnet`);
+    const seat = (n: string) => screen.getByTestId("table-seat").filter({ hasText: n }).getByTestId("seat-quiz");
+    await expect(seat(dName)).toHaveText("zeichnet");
+    await expect(seat(gName)).toHaveText("rät …");
+    await expect(screen.locator("body")).not.toContainText(word);
+    await screen.waitForTimeout(1200);
+    await shot(screen, "bz-buehne-zeichnen");
+    // Wer zeichnet, sagt, wer es hatte – dann steht der Begriff groß auf der Leinwand
+    await drawer.getByTestId("who").click();
+    await drawer.getByRole("group", { name: "Wer hat es erraten?" }).getByRole("button", { name: gName, exact: true }).click();
+    await expect(stage.getByTestId("table-drawing-word")).toHaveText(word);
+    await expect(seat(gName)).toHaveText(/^erraten! \+\d+$/);
+    await expect(seat(dName)).toHaveText(/^zeichnete \+\d+$/);
+    await screen.waitForTimeout(800);
+    await shot(screen, "bz-buehne-aufloesung");
+    // Tisch ↔ Bühne umschalten: jede Bühne gibt beim Schließen alles frei, der Speicher wächst nicht
+    const mem = () => screen.evaluate(() => (window as unknown as { __studioMemory?: () => { geometries: number; studios: number } }).__studioMemory?.() ?? { geometries: 0, studios: 0 });
+    const before = await mem();
+    expect(before.geometries).toBeGreaterThan(0);
+    for (let k = 0; k < 3; k++) {
+      await screen.getByTestId("view-table").click();
+      await expect(screen.getByTestId("studio")).toHaveCount(0);
+      await screen.getByTestId("view-stage").click();
+      await expect(screen.getByTestId("studio-screen")).toBeVisible();
+    }
+    const after = await mem();
+    expect(after.studios).toBeGreaterThan(before.studios);
+    expect(after.geometries).toBeLessThanOrEqual(before.geometries);
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
 test("Stapelbau und Himmelskarten am Tisch: Stapel in der Mitte, offene Auslage an jedem Platz", async ({ browser, request }) => {
   test.setTimeout(120_000);
   await setConfig(request, { ...ALL_ON, modes: { stapelbau: { table: "on" }, himmelskarten: { table: "on" } } });

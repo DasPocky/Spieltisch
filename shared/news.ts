@@ -25,6 +25,16 @@ export const NEWS: NewsEntry[] = [
     ],
   },
   {
+    id: "2026-10-buehne-zeichnen",
+    date: "2026-10-24",
+    title: "Zeichnen & Raten auf der Bühne",
+    items: [
+      "Am Fernseher als Bühne: das Blatt groß und live auf der Leinwand, darüber wer zeichnet und die Restzeit.",
+      "An den Pulten steht „zeichnet“, „rät …“ oder „erraten!“ mit Punkten – nach dem Bild der Begriff groß auf der Leinwand.",
+      "Schocken am Fernseher zeigt die Rundenwertung nur noch einmal, die Bühne läuft beim Umschalten sparsamer.",
+    ],
+  },
+  {
     id: "2026-10-erklaerspiel",
     date: "2026-10-24",
     title: "Neues Partyspiel: Erklärspiel",

@@ -45,7 +45,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   einenacht: { table: "on" },
   spion: { table: "on" },
   stirnraten: { table: "on" },
-  zeichnen: { table: "beta" },
+  zeichnen: { table: "beta", stage: "beta" },
   quiz: { table: "beta", stage: "beta" },
   kritzelpost: { table: "beta" },
   herzen: { table: "beta" },

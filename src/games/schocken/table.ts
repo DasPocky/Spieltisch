@@ -16,7 +16,8 @@ export function schockenTable(room: RoomState): TableModel | null {
   const shown = s.phase === "roundEnd" && r ? hands[r.winner]?.dice ?? [] : s.dice;
   return {
     deck: "cards", pile: 0, discard: [], counts: {}, turn: s.phase === "roll" ? s.curId : null, n: s.n,
-    log: s.log.slice(-6), scores: s.lids,
+    // Rundenende: die Wertung steht schon in der Mitte bei den Würfeln – oben nicht noch einmal
+    log: s.phase === "roundEnd" ? [] : s.log.slice(-6), scores: s.lids,
     notes: Object.fromEntries(room.players.map((p) => {
       const h = hands[p.id];
       const lids = s.lids[p.id];
