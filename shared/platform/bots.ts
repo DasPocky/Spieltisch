@@ -22,6 +22,7 @@ import type { VierState } from "../games/vier/logic";
 import type { SchamlosState } from "../games/schamlos/logic";
 import { botAnswers, type SlfState } from "../games/stadtlandfluss/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
+import { pendingWhite as akPending, type AkState } from "../games/ankreuzspiel/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -204,6 +205,20 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "stop" });
       add({ type: "turn" });
       for (let i = 0; i < 3; i++) add({ type: "hold", i });
+      break;
+    }
+    case "ankreuzspiel": {
+      const s = r.game as AkState;
+      add({ type: "roll" });
+      // Bedenkzeit nur melden, wenn sie wirklich um ist (sonst ändert sich nichts)
+      if (s.deadline !== null && Date.now() >= s.deadline) add({ type: "timeUp" });
+      // Weiß: online jeder für sich, lokal das Gerät für jeden, der noch überlegt
+      for (const id of akPending(s)) for (const row of [null, null, 0, 1, 2, 3]) {
+        if (online) moves.push({ action: g({ type: "white", row }), actor: id });
+        else add({ type: "white", row, player: id });
+      }
+      if (s.dice.length) for (let row = 0; row < 4; row++) for (const w of [0, 1]) add({ type: "color", row, n: s.dice[w] + s.dice[2 + row] });
+      add({ type: "color", row: null });
       break;
     }
     case "herzen": {

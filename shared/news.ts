@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-ankreuzspiel",
+    date: "2026-10-25",
+    title: "Neues Würfelspiel: Ankreuzspiel",
+    items: [
+      "Zwei weiße und vier farbige Würfel, vier Farbreihen auf deinem Blatt: Rot und Gelb von 2 bis 12, Grün und Blau von 12 bis 2 – angekreuzt wird nur von links nach rechts.",
+      "Die weiße Summe dürfen alle gleichzeitig nutzen, wer dran ist, nimmt noch Weiß plus Farbe. Wer gar nichts ankreuzt, kassiert einen Fehlwurf. Ab fünf Kreuzen lässt sich eine Reihe abschließen.",
+      "Für 2 bis 6, mit Bots, Spielhilfe, Vorlesen, an einem Handy für alle und am Großen Tisch (Beta). Pakete „Kurz“ und „Lang“, online mit Bedenkzeit, damit niemand warten muss.",
+    ],
+  },
+  {
     id: "2026-10-buehne-zeichnen",
     date: "2026-10-24",
     title: "Zeichnen & Raten auf der Bühne",

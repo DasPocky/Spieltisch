@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn, vibrate } from "@/lib/utils";
 import { Die } from "../Die";
 import type { Pose } from "./physics";
-import type { DiceView, DieDraw, Quat } from "./gl";
+import type { DiceView, DieDraw, DieTint, Quat } from "./gl";
 import { beginRoll, isRolling, setFlying, setThrow, takeThrow } from "./throw";
 import "./dice3d.css";
 
@@ -67,7 +67,9 @@ function layout(n: number, w: number, h: number): { px: number; slots: [number, 
  * Rand ab, rollen aus und gleiten dann in die Ablage – dort liegen sie flach und gut lesbar, gehaltene leuchten.
  * `rollKey` ändert sich bei jedem neuen Wurf – nur dann wird geworfen; neu geladen liegt alles still wie zuletzt.
  */
-export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onThrow, still, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
+export function DiceTray({ values, held, hint, tints, rollKey, onToggle, canToggle, onThrow, still, className, label = "Würfel", empty = "Tippe auf „Würfeln“" }: {
+  /** eigene Farbe je Würfel (fehlt: Farbe des Looks) */
+  tints?: (DieTint | undefined)[];
   /** Nur anzeigen, nie werfen – z. B. wenn am Tisch mit echten Würfeln gewürfelt und die Zahl eingetippt wurde */
   still?: boolean;
   /** Würfeln per Wischen nach oben über die Ablage (nur wer gerade würfeln darf) */
@@ -175,7 +177,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
     pd.dice.forEach((d, i) => {
       const at = restAt(i);
       if (inAir.has(i) || !at) return;
-      list.push({ pos: at, quat: d.rq, mark: held?.[i] ? "held" : hint?.[i] ? "hint" : null });
+      list.push({ pos: at, quat: d.rq, mark: held?.[i] ? "held" : hint?.[i] ? "hint" : null, tint: tints?.[i] });
     });
     const pts = gl.paintTray(c, size.w, size.h, px, list, values.map((_, i) => restAt(i) ?? [0, 0.5, 0]));
     if (pts.some((p, i) => !spots[i] || Math.abs(p[0] - spots[i][0]) > 0.5 || Math.abs(p[1] - spots[i][1]) > 0.5) || pts.length !== spots.length) setSpots(pts);
@@ -193,7 +195,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
     root.classList.add("on");
     let k = 0, raf = 0, start = 0;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const poseOf = (p: Pose, j: number): DieDraw => ({ pos: [p[0], p[1], p[2]], quat: gl.compose([p[3], p[4], p[5], p[6]], flight.rs[j]) });
+    const poseOf = (p: Pose, j: number): DieDraw => ({ pos: [p[0], p[1], p[2]], quat: gl.compose([p[3], p[4], p[5], p[6]], flight.rs[j]), tint: tints?.[flight.idx[j]] });
     const last = flight.frames.at(-1)!;
     let targets: { pos: [number, number, number]; s: number }[] = [];
     // Ziel je Würfel: sein Platz in der Ablage, auf den Bildschirm umgerechnet
@@ -266,7 +268,7 @@ export function DiceTray({ values, held, hint, rollKey, onToggle, canToggle, onT
             <button key={i} type="button" disabled={!canToggle} aria-pressed={!!held?.[i]} aria-label={`Würfel ${v}${held?.[i] ? ", gehalten" : ""}`}
               onClick={() => onToggle?.(i)} className="size-11 rounded-[22%] outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
               <span role="img" aria-label={`Würfel ${v}`} className="sr-only" />
-              <Die value={v} className="size-full" mark={held?.[i] ? "selected" : hint?.[i] ? "hint" : undefined} />
+              <Die value={v} className="size-full" tint={tints?.[i]} mark={held?.[i] ? "selected" : hint?.[i] ? "hint" : undefined} />
             </button>
           ))}
         </div>
