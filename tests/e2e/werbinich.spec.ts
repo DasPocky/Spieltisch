@@ -58,6 +58,8 @@ test("Wer bin ich online mit drei Handys: fragen, abstimmen, raten, Auflösung",
   await bothSizes(anna, "wbi-3-raten");
   await anna.getByTestId("wbi-guess-send").click();
   await expect(ben.getByTestId("wbi-title")).toHaveText("Du bist dran");
+  // Anna hatte den Notizblock offen – zur Figurenliste wechseln (springt je nach Zeitpunkt nicht von selbst um)
+  await anna.getByTestId("wbi-tab-figuren").click();
   await expect(anna.locator("[data-self]")).toContainText(fig.Anna);
 
   // Ben fragt, Nein → Cem
