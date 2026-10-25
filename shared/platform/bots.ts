@@ -265,6 +265,15 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       if (Math.random() < 0.05) add({ type: "custom", words: ["Opas Schnurrbart", "Unser Hund"] });
       break;
     }
+    case "erklaerspiel": {
+      // Testspieler erklären nicht wirklich: sie tippen zufällig „Richtig“ oder „Weiter“ und beenden den Zug irgendwann
+      const st = r.game as { cards: unknown[] };
+      ["start", "timeUp", "confirm"].forEach((type) => add({ type }));
+      if (Math.random() < 0.15) add({ type: "stop" });
+      for (let k = 0; k < 4; k++) add({ type: "mark", i: st.cards.length - 1, r: Math.random() < 0.75 ? "hit" : "pass" });
+      if (st.cards.length && Math.random() < 0.3) add({ type: "fix", i: Math.floor(Math.random() * st.cards.length) });
+      break;
+    }
     case "quiz": {
       ["reveal", "timeUp", "next"].forEach((type) => add({ type }));
       const v = randomAnswer(r.game as QState);

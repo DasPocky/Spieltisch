@@ -13,7 +13,7 @@ export type SetKind = "schamlos" | "decknamen" | "zeichnen" | "quiz";
 export const SET_KINDS: { id: SetKind; name: string; item: string; hint: string }[] = [
   { id: "schamlos", name: "Schamlos", item: "Karten", hint: "schwarze Karten mit Lücke ___, weiße Karten zum Einsetzen (auch als Bild)" },
   { id: "decknamen", name: "Decknamen", item: "Wörter", hint: "mindestens 25 Wörter oder Bilder" },
-  { id: "zeichnen", name: "Zeichnen & Raten", item: "Begriffe", hint: "Begriffe, die man malen kann" },
+  { id: "zeichnen", name: "Zeichnen & Raten", item: "Begriffe", hint: "Begriffe zum Malen – auch fürs Erklärspiel" },
   { id: "quiz", name: "Quiz & Schätzen", item: "Fragen", hint: "Auswahl, Schätzen oder Ordnen" },
 ];
 
@@ -181,8 +181,11 @@ export function newSetId(): string {
  */
 export interface GameContent { sets: { id: string; name: string; data: CardSetData }[] }
 
+/** Spiele, die Sets einer anderen Art mitnutzen (das Erklärspiel nimmt die Begriffe von Zeichnen & Raten) */
+const SHARED_KINDS: Record<string, SetKind> = { erklaerspiel: "zeichnen" };
+
 /** Welche Art Sets ein Spiel nimmt (null: keine eigenen Sets) */
-export const kindOfGame = (gameId: string): SetKind | null => (SET_KINDS.some((k) => k.id === gameId) ? (gameId as SetKind) : null);
+export const kindOfGame = (gameId: string): SetKind | null => (SET_KINDS.some((k) => k.id === gameId) ? (gameId as SetKind) : SHARED_KINDS[gameId] ?? null);
 
 /** Inhalte aller gewählten Sets zusammengelegt */
 export function mergedContent(c: GameContent | null | undefined): Required<CardSetData> {
