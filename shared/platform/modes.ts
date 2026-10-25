@@ -49,6 +49,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   quiz: { table: "beta", stage: "beta" },
   kritzelpost: { table: "beta" },
   herzen: { table: "beta" },
+  stadtlandfluss: { table: "beta" },
   schocken: { table: "beta" },
   erklaerspiel: { table: "beta" },
 };

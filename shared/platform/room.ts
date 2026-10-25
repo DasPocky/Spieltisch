@@ -283,6 +283,8 @@ export function sanitizeOption(def: SettingDef, value: unknown): OptionValue {
     }
     case "toggle":
       return value === true;
+    case "text":
+      return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, def.maxLength) : def.default;
   }
 }
 
