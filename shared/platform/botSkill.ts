@@ -408,6 +408,7 @@ const scoreAnkreuzspiel: Scorer = (view, a, _after, me) => {
     return (best ? a.row === best.row && a.n === best.n : a.row === null) ? 100 : 0;
   }
   return -50;
+};
 
 // ---------------------------------------------------------------- Bluff (Wahrscheinlichkeit aus den eigenen Würfeln schätzen)
 
