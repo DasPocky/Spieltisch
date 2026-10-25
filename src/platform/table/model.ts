@@ -39,6 +39,7 @@ import { spionTable } from "../../games/spion/table";
 import { stirnratenTable } from "../../games/stirnraten/table";
 import { zeichnenTable } from "../../games/zeichnen/table";
 import { kritzelpostTable } from "../../games/kritzelpost/table";
+import { stadtlandflussTable } from "../../games/stadtlandfluss/table";
 import { herzenTable } from "../../games/herzen/table";
 import { schockenTable } from "../../games/schocken/table";
 import { quizTable } from "../../games/quiz/table";
@@ -111,7 +112,7 @@ export interface TableModel {
     note?: string;
   };
   /** Aufsteller in der Mitte (Partyspiele): Phase groß, Hinweis darunter; `endsAt` zeigt eine Uhr (Zeitpunkt in ms) */
-  sign?: { title: string; sub?: string; endsAt?: number | null };
+  sign?: { title: string; sub?: string; endsAt?: number | null; /** Titel riesig (z. B. ein einzelner Buchstabe) */ big?: boolean };
   /** Nacht: Licht gedimmt, kühler */
   night?: boolean;
   /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */
@@ -134,7 +135,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, herzen: herzenTable, schocken: schockenTable, quiz: quizTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, stadtlandfluss: stadtlandflussTable, herzen: herzenTable, schocken: schockenTable, quiz: quizTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {
