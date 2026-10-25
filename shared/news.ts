@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-werbinich",
+    date: "2026-10-25",
+    title: "Neues Partyspiel: Wer bin ich",
+    items: [
+      "Jeder bekommt eine geheime Figur – Persönlichkeit, Märchengestalt, Tier oder Beruf. Alle sehen sie am Handy, nur du nicht.",
+      "Reihum fragst du laut mit Ja oder Nein nach dir, die anderen stimmen am Handy ab. Bei Ja darfst du weiterfragen, dein Notizblock merkt sich alles.",
+      "Raten geht jederzeit, kleine Tippfehler zählen. Wer zuerst errät, holt die meisten Punkte. Mit „Gegenseitig“ schreibt ihr euch die Figuren selbst, Pakete „Kinder“ und „Schnell“ sind dabei.",
+    ],
+  },
+  {
     id: "2026-10-stadtlandfluss",
     date: "2026-10-24",
     title: "Neues Partyspiel: Stadt-Land-Fluss",
