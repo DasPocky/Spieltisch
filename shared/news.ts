@@ -25,6 +25,16 @@ export const NEWS: NewsEntry[] = [
     ],
   },
   {
+    id: "2026-10-erklaerspiel",
+    date: "2026-10-24",
+    title: "Neues Partyspiel: Erklärspiel",
+    items: [
+      "Zwei bis vier Teams, 4 bis 16 Spieler: Reihum erklärt einer seinem Team Begriffe gegen die Uhr – ohne das Wort oder Teile davon zu sagen. Nur sein Handy zeigt den Begriff, er tippt „Richtig“ oder „Weiter“.",
+      "Nach dem Zug prüfen die Gegner die Liste und nehmen Treffer zurück, wenn das Wort gefallen ist. Zur Kontrolle sehen sie den Begriff auf Wunsch mit, der Fernseher nie.",
+      "Spielarten Erklären, Ein Wort und Pantomime – oder drei Runden mit denselben Begriffen. Themen als Chips, eigene Kartensets, Vorlesen, an einem Handy für alle und am Großen Tisch (Beta).",
+    ],
+  },
+  {
     id: "2026-10-stadtlandfluss",
     date: "2026-10-24",
     title: "Neues Partyspiel: Stadt-Land-Fluss",
