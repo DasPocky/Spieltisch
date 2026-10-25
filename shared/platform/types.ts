@@ -33,7 +33,9 @@ interface SettingBase {
 export type SettingDef =
   | (SettingBase & { type: "choice"; default: string; choices: { value: string; label: string; hint?: string }[]; /** besondere Darstellung, z. B. Kartenblätter mit Bild */ visual?: "deck" })
   | (SettingBase & { type: "number"; default: number; min: number; max: number; step: number })
-  | (SettingBase & { type: "toggle"; default: boolean; hint?: string });
+  | (SettingBase & { type: "toggle"; default: boolean; hint?: string })
+  /** kurzer freier Text (z. B. eigene Kategorien, durch Komma getrennt) */
+  | (SettingBase & { type: "text"; default: string; maxLength: number; placeholder?: string; hint?: string });
 
 /** Ergebnis eines Spielers in einer beendeten Partie (für Profile und Statistik) */
 export interface PlayerResult {

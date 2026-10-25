@@ -20,6 +20,7 @@ import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
 import type { MuehleState } from "../games/muehle/logic";
 import type { VierState } from "../games/vier/logic";
 import type { SchamlosState } from "../games/schamlos/logic";
+import { botAnswers, type SlfState } from "../games/stadtlandfluss/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
@@ -282,6 +283,22 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       add({ type: "guess", text: pick(["Haus", "Hund", "Sonne", "Auto", "Baum", "Katze"]) });
       if (Math.random() < 0.3) add({ type: "award", to: pick([...ids, null]) });
+      break;
+    }
+    case "stadtlandfluss": {
+      const s = r.game as SlfState;
+      ["timeUp", "next"].forEach((type) => add({ type }));
+      if (Math.random() < 0.05) add({ type: "forceStop" });
+      // Bots antworten aus kleinen Wortlisten (lokal für jeden Spieler einzeln)
+      for (const id of ids) {
+        const answers = botAnswers(s);
+        const player = online ? undefined : id;
+        const mine = (m: Move[]) => m.filter((x) => !online || x.actor === id);
+        moves.push(...mine(anyone(g({ type: "done", answers, stop: answers.every(Boolean), player }))));
+        if (Math.random() < 0.3) moves.push(...mine(anyone(g({ type: "fill", answers, player }))));
+        if (Math.random() < 0.2) add({ type: "vote", target: id });
+        if (Math.random() < 0.1) add({ type: "decide", target: id, reject: Math.random() < 0.5 });
+      }
       break;
     }
     case "kritzelpost": {

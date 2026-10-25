@@ -27,6 +27,7 @@ import { Icon as SpionIcon } from "./spion/Icon";
 import { Icon as StirnratenIcon } from "./stirnraten/Icon";
 import { Icon as ZeichnenIcon } from "./zeichnen/Icon";
 import { Icon as KritzelpostIcon } from "./kritzelpost/Icon";
+import { Icon as StadtlandflussIcon } from "./stadtlandfluss/Icon";
 import { Icon as HerzenIcon } from "./herzen/Icon";
 import { Icon as QuizIcon } from "./quiz/Icon";
 import { Icon as AllesIcon } from "./alles/Icon";
@@ -57,6 +58,7 @@ const ICONS: Record<GameId, Icon> = {
   stirnraten: StirnratenIcon,
   zeichnen: ZeichnenIcon,
   kritzelpost: KritzelpostIcon,
+  stadtlandfluss: StadtlandflussIcon,
   herzen: HerzenIcon,
   quiz: QuizIcon,
   alles: AllesIcon,
@@ -86,6 +88,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   stirnraten: () => import("./stirnraten").then((m) => m.stirnratenUI as unknown as GameUI),
   zeichnen: () => import("./zeichnen").then((m) => m.zeichnenUI as unknown as GameUI),
   kritzelpost: () => import("./kritzelpost").then((m) => m.kritzelpostUI as unknown as GameUI),
+  stadtlandfluss: () => import("./stadtlandfluss").then((m) => m.stadtlandflussUI as unknown as GameUI),
   herzen: () => import("./herzen").then((m) => m.herzenUI as unknown as GameUI),
   quiz: () => import("./quiz").then((m) => m.quizUI as unknown as GameUI),
   alles: () => import("./alles").then((m) => m.allesUI as unknown as GameUI),
