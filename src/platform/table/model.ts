@@ -72,6 +72,8 @@ export interface TableModel {
   /** Würfel in der Mitte */
   dice?: {
     values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string;
+    /** leere Felder vor dem ersten Wurf (Standard 5) */
+    slots?: number;
     /** Würfel liegen unter dem Becher (Mäxchen) */
     cup?: boolean;
     /** Würfel liegen ruhig da (aufgedeckt statt geworfen) */

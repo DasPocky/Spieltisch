@@ -25,6 +25,6 @@ export function ankreuzspielTable(room: RoomState): TableModel | null {
       if (!sh) return [p.id, "zuschauen"];
       return [p.id, `${totalOf(sh)} Punkte · ${allCrosses(sh)} Kreuze · ${sh.misses} ${sh.misses === 1 ? "Fehlwurf" : "Fehlwürfe"}`];
     })),
-    dice: { values: shown.values, held: shown.values.map(() => false), tints: shown.tints, n: s.n, note, still: s.phase !== "white" },
+    dice: { slots: 2 + ROWS.filter((_, r) => !s.closed[r]).length, values: shown.values, held: shown.values.map(() => false), tints: shown.tints, n: s.n, note, still: s.phase !== "white" },
   };
 }
