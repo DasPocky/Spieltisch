@@ -30,6 +30,7 @@ import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 import { Paper } from "@/games/zeichnen/Canvas";
+import { FeltBell, SeatFruit } from "@/games/klingel/TableBell";
 import { RESET_VIEW } from "@/platform/table/camera";
 import { createFlatScene } from "@/platform/table/flat";
 import { createStudioScene, type StudioScene } from "@/platform/table/studio";
@@ -397,6 +398,11 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
           video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
           board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} />
+      ))}
+      {/* Klingel: in 3D wie flach als Bild über dem Tisch – die Klingel in der Mitte, vor jedem Platz seine offene Karte */}
+      {model?.bell && <OnFelt rect={felt}><FeltBell bell={model.bell} /></OnFelt>}
+      {model?.bell && felt && players.map((p, i) => points[i] && p.id in model.bell!.tops && (
+        <SeatFruit key={p.id} felt={felt} seat={points[i]} card={model.bell!.tops[p.id]} stock={model.bell!.stocks[p.id] ?? 0} name={p.name} />
       ))}
       {reacts.map((r) => {
         const i = players.findIndex((p) => p.id === r.from);

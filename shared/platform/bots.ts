@@ -24,6 +24,7 @@ import { botAnswers, type SlfState } from "../games/stadtlandfluss/logic";
 import { FRAGEN, KATEGORIEN as WB_KATEGORIEN } from "../games/werbinich/figuren";
 import type { WbState } from "../games/werbinich/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
+import { readyFruit as klReady, type KlState } from "../games/klingel/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -309,6 +310,19 @@ export function candidates(r: RoomState, online: boolean): Move[] {
         if (Math.random() < 0.3) moves.push(...mine(anyone(g({ type: "fill", answers, player }))));
         if (Math.random() < 0.2) add({ type: "vote", target: id });
         if (Math.random() < 0.1) add({ type: "decide", target: id, reject: Math.random() < 0.5 });
+      }
+      break;
+    }
+    case "klingel": {
+      const s = r.game as KlState;
+      add({ type: "flip" });
+      add({ type: "tick" });
+      // Liegt eine Fünf, klingeln meist alle – sonst nur selten (falsch)
+      const ready = klReady(s) !== null;
+      for (const id of ids) {
+        if (!ready && Math.random() > 0.04) continue;
+        const ring = g({ type: "ring", seq: s.seq, rt: 150 + Math.floor(Math.random() * 900), player: online ? undefined : id });
+        moves.push(...anyone(ring).filter((m) => !online || m.actor === id));
       }
       break;
     }

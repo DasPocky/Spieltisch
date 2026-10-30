@@ -103,7 +103,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 
 ## Phase 4 – Später ⏳
 
-- **Neue Spiele:** Welle 2 (Herzen ✅ – Abnahme `docs/abnahme/herzen.md`, Schocken ✅ – Abnahme `docs/abnahme/schocken.md`, Bluff, Stadt-Land-Fluss ✅ – Abnahme `docs/abnahme/stadtlandfluss.md`, Wer bin ich ✅ – Abnahme `docs/abnahme/werbinich.md`, Erklärspiel ✅ – Abnahme `docs/abnahme/erklaerspiel.md`), Welle 3 (Ankreuzspiel, Klingel, Shithead, Zahlen-Rommé, Doppelkopf, Skat) – jedes von Anfang an komplett.
+- **Neue Spiele:** Welle 2 (Herzen ✅ – Abnahme `docs/abnahme/herzen.md`, Schocken ✅ – Abnahme `docs/abnahme/schocken.md`, Bluff, Stadt-Land-Fluss ✅ – Abnahme `docs/abnahme/stadtlandfluss.md`, Wer bin ich ✅ – Abnahme `docs/abnahme/werbinich.md`, Erklärspiel ✅ – Abnahme `docs/abnahme/erklaerspiel.md`), Welle 3 (Ankreuzspiel, Klingel ✅ – Abnahme `docs/abnahme/klingel.md`, Shithead, Zahlen-Rommé, Doppelkopf, Skat) – jedes von Anfang an komplett.
 - **Konto** (E-Mail-Link oder Passkey): Gastprofile nachweisbar zuordnen (Schlüssel-Basis ist da, die ID allein reicht nicht).
 - **Native Apps** erst, wenn Web-App, Push und Deep Links an Grenzen stoßen.
 - Profil gliedern, Hinweis zum Sprachchat-Knopf.

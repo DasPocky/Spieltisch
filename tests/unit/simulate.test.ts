@@ -12,6 +12,7 @@ import type { P10State } from "@shared/games/zehnphasen/logic";
 import type { SbState } from "@shared/games/stapelbau/logic";
 import type { EinsState } from "@shared/games/eins/logic";
 import type { HsState } from "@shared/games/hellseher/logic";
+import { DECK_SIZE, type KlState } from "@shared/games/klingel/logic";
 import { candidates, shuffleInPlace } from "@shared/platform/bots";
 import { applyRoomAction, roomGame, skipLabel, viewRoom, type RoomState } from "@shared/platform/room";
 import { WATCH_ID } from "@shared/platform/protocol";
@@ -68,6 +69,11 @@ function checkCards(r: RoomState) {
     // gespielte Stiche liegen beiseite
     const played = Object.values(s.tricks).reduce((t, n) => t + n, 0) * Object.keys(s.hands).length;
     if (s.phase === "play") expect(all.length + played).toBe(52 - s.removed.length);
+  }
+  if (r.gameId === "klingel") {
+    const s = r.game as KlState;
+    const all = [...Object.values(s.stock), ...Object.values(s.open)].flat();
+    expect(all.length).toBe(DECK_SIZE);
   }
   if (r.gameId === "fischen" && !(r.game as FischenState).table) {
     const s = r.game as FischenState;
@@ -198,6 +204,9 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["schocken", 10, { length: "half" }],
   ["schocken", 4, { mode: "table" }],
   ["herzen", 4, {}],
+  ["klingel", 2, {}],
+  ["klingel", 4, { auto: true, pace: "schnell" }],
+  ["klingel", 6, { limit: "0" }],
   ["herzen", 3, { target: "50", moon: false }],
   ["herzen", 5, { pass: "left", firstPoints: true }],
   ["herzen", 6, { pass: "none", target: "50" }],

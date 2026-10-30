@@ -53,6 +53,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   schocken: { table: "beta" },
   erklaerspiel: { table: "beta" },
   werbinich: { table: "beta" },
+  klingel: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

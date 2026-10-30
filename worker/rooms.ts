@@ -10,7 +10,7 @@ import { emptyHealth, type AdminRoom, type FeatureKind, type HealthDelta, type S
 import { addPlayer, applyRoomAction, cleanName, createRoom, inRoom, roomGame, migrateRoomState, shortRules, skipBlockedPlan, startVoted, upgradeRoom, viewRoom, type RoomState } from "../shared/platform/room";
 import { GameError } from "../shared/platform/types";
 import { BOT_PREFIX } from "../shared/platform/bots";
-import { botDelay, isBotLevel, playBot } from "../shared/platform/botSkill";
+import { botDelay, botPolls, isBotLevel, playBot } from "../shared/platform/botSkill";
 import { shuffle } from "../shared/platform/random";
 import { fromBase64, PHOTO_MAX_B64, PHOTO_MAX_BYTES, photoType } from "../shared/platform/photo";
 import {
@@ -1235,13 +1235,17 @@ export class GameRoom extends DurableObject<Env> {
   private botTimer: ReturnType<typeof setTimeout> | null = null;
   private scheduleBots(): void {
     const s = this.room?.state;
-    if (this.botTimer || !s?.bots?.length || s.phase !== "playing") return;
+    if (!s?.bots?.length || s.phase !== "playing") return;
+    // Reaktionsspiele (Klingel): nach jeder Änderung neu planen und auch ohne Zug wieder nachschauen
+    const poll = botPolls(s);
+    if (this.botTimer) { if (!poll) return; clearTimeout(this.botTimer); this.botTimer = null; }
     // Ohne echte Verbindung ruhen die Bots – so bleibt ein leerer Testraum nicht ewig wach
     if (this.onlineIds().size === 0) return;
     this.botTimer = setTimeout(() => {
       this.botTimer = null;
       void (async () => {
         for (const id of shuffle(this.room?.state.bots ?? [])) if (await this.botStep(id)) return;
+        if (poll) this.scheduleBots();
       })();
     }, botDelay(s));
   }
