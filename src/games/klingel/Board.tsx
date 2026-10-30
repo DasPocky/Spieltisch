@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Layers } from "lucide-react";
 import {
-  active, cardsOf, FRUIT_NAME, topOf,
+  active, cardsOf, FRUIT_NAME, standings, topOf,
   type KlAction, type KlState, type RingEvent,
 } from "@shared/games/klingel/logic";
 import { levelOf, ringPlan } from "@shared/games/klingel/bot";
@@ -39,9 +39,7 @@ function useNarration({ game: s, me, isHost, room }: Props) {
 }
 
 function Result({ room, game: s, isHost, dispatch }: Props) {
-  const ids = s.order.filter((id) => !s.left.includes(id));
-  const ranking = [...ids].sort((a, b) => cardsOf(s, b) - cardsOf(s, a) || s.out.indexOf(b) - s.out.indexOf(a))
-    .map((id) => ({ id, name: nameIn(room.players, s, id), score: cardsOf(s, id) }));
+  const ranking = standings(s).map((r) => ({ id: r.id, name: nameIn(room.players, s, r.id), score: r.cards, place: r.place, ...(r.out ? { text: "raus" } : {}) }));
   const win = s.winners.map((id) => nameIn(room.players, s, id)).join(" & ");
   const subtitle = s.timeUp ? "Zeit um – die meisten Karten gewinnen" : s.winners.length === 1 ? `hat alle ${cardsOf(s, s.winners[0])} Karten` : "Partie beendet";
   return <ResultScreen winner={win || "Niemand"} subtitle={subtitle} ranking={ranking} isHost={isHost} dispatch={dispatch} scoreLabel="Karten" />;
@@ -292,16 +290,21 @@ function Zone({ s, id, name, flipped, rang, hit, onRing, onFlip, refFn }: {
         <b className="min-w-0 truncate text-sm">{name}</b>
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{out ? "raus" : karten(cardsOf(s, id))}</span>
       </div>
-      <div className="relative flex min-h-0 w-full flex-1 items-center justify-center pr-[18%]">
-        {top ? <FruitCard key={`${top}-${s.open[id]?.length}`} card={top} className="card-flip h-full max-h-full w-auto min-w-0 max-w-full" />
-          : <EmptySlot className="h-full max-h-full w-auto max-w-full text-muted-foreground" />}
-        {stock > 0 && (
-          <button type="button" data-flip onClick={onFlip} disabled={!cur} aria-label={cur ? `${name}: aufdecken` : `${name}: Stapel`} data-testid={`kl-flip-${name}`}
-            className={cn("absolute right-0 bottom-0 flex aspect-[50/86] h-[48%] max-h-28 min-h-14 flex-col items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring", cur ? "ring-2 ring-primary" : "opacity-75")}>
-            <CardBack className="min-h-0 w-full flex-1" />
-            <span className={cn("mt-0.5 rounded px-1 text-[0.65rem] leading-tight font-bold", cur ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{cur ? "Aufdecken" : stock}</span>
-          </button>
-        )}
+      {/* offene Karte links, daneben (nie darüber) der verdeckte Stapel – oben gedreht, also gespiegelt */}
+      <div className="flex min-h-0 w-full flex-1 items-end gap-1.5">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 items-center justify-center" data-testid="kl-zone-card">
+          {top ? <FruitCard key={`${top}-${s.open[id]?.length}`} card={top} className="card-flip h-full max-h-full w-auto min-w-0 max-w-full" />
+            : <EmptySlot className="h-full max-h-full w-auto max-w-full text-muted-foreground" />}
+        </div>
+        <div className="flex w-[26%] max-w-16 shrink-0 flex-col items-center">
+          {stock > 0 && (
+            <button type="button" data-flip onClick={onFlip} disabled={!cur} aria-label={cur ? `${name}: aufdecken` : `${name}: Stapel`} data-testid={`kl-flip-${name}`}
+              className={cn("flex w-full flex-col items-center gap-0.5 rounded-md p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", cur ? "ring-2 ring-primary" : "opacity-75")}>
+              <CardBack className="h-auto w-full" />
+              <span className={cn("rounded px-1 text-[0.6rem] leading-tight font-bold", cur ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{cur ? "Aufdecken" : stock}</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -395,6 +395,21 @@ function apply(prev: KlState, a: KlAction, ctx: GameContext): KlState {
   }
 }
 
+/**
+ * Rangliste am Ende: wer noch dabei ist, nach Karten (gleich viele teilen sich den Platz), dahinter die Ausgeschiedenen –
+ * wer später rausgeflogen ist, steht weiter vorn.
+ */
+export function standings(s: KlState): { id: string; place: number; cards: number; out: boolean }[] {
+  const alive = active(s).sort((a, b) => cardsOf(s, b) - cardsOf(s, a));
+  const rows: { id: string; place: number; cards: number; out: boolean }[] = [];
+  alive.forEach((id, i) => {
+    const prev = rows[i - 1];
+    rows.push({ id, place: prev && prev.cards === cardsOf(s, id) ? prev.place : i + 1, cards: cardsOf(s, id), out: false });
+  });
+  for (const id of [...s.out].reverse()) if (!s.left.includes(id)) rows.push({ id, place: rows.length + 1, cards: 0, out: true });
+  return rows;
+}
+
 /** Ergebnis: Sieger, Punkte = Karten am Ende */
 function results(s: KlState): PlayerResult[] {
   return s.order.filter((id) => !s.left.includes(id)).map((id) => ({ id, won: s.winners.includes(id), score: cardsOf(s, id) }));

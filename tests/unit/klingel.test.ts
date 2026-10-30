@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  bestClaim, cardsOf, DECK_SIZE, judgedTime, klingel, MAX_LAG, MIN_RT, newDeck, readyFruit, TURN_MS, WINDOW_MS,
+  bestClaim, cardsOf, standings, DECK_SIZE, judgedTime, klingel, MAX_LAG, MIN_RT, newDeck, readyFruit, TURN_MS, WINDOW_MS,
   type KlAction, type KlState,
 } from "@shared/games/klingel/logic";
 import { botActions, botWait, REACT, ringPlan } from "@shared/games/klingel/bot";
@@ -203,6 +203,19 @@ describe("Klingel: Ende, Überspringen, Aussteigen", () => {
     const r1 = apply(r, { type: "ring", seq: r.seq, rt: 500 }, 1600, "b");
     expect(klingel.skipLabel!(r1, ctx(0))).toBe("Klingel auswerten");
     expect(klingel.skipTurn!(r1, ctx(1610)).last?.by).toBe("b");
+  });
+  it("Rangliste: Ausgeschiedene nach Ausscheide-Reihenfolge – wer später rausfliegt, steht besser", () => {
+    const players = [...PLAYERS, { id: "d", name: "Dora" }];
+    const s = structuredClone(klingel.setup(ctx(1000, "a", {}, players)));
+    const all = [...Object.values(s.stock), ...Object.values(s.open)].flat();
+    s.stock = { a: all, b: [], c: [], d: [] };
+    s.open = { a: [], b: [], c: [], d: [] };
+    s.out = ["c", "d", "b"];
+    expect(standings(s).map((r) => [r.id, r.place, r.out])).toEqual([["a", 1, false], ["b", 2, true], ["d", 3, true], ["c", 4, true]]);
+    // nach Zeit: gleich viele Karten teilen sich den Platz, Ausgeschiedene dahinter
+    s.out = ["d"];
+    s.stock = { a: all.slice(0, 20), b: all.slice(20, 40), c: all.slice(40), d: [] };
+    expect(standings(s).map((r) => [r.id, r.place])).toEqual([["a", 1], ["b", 1], ["c", 3], ["d", 4]]);
   });
   it("wer aussteigt, wird übersprungen; bleibt einer übrig, gewinnt er", () => {
     const s = start();

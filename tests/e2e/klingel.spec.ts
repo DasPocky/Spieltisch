@@ -23,14 +23,33 @@ async function flipSomeone(phones: Page[]): Promise<boolean> {
   return false;
 }
 
-async function sizes(p: Page, name: string) {
+/** Ein Handy für alle: der verdeckte Stapel liegt neben der offenen Karte, nie darüber */
+async function stackBeside(p: Page) {
+  const bad = await p.evaluate(() => {
+    const out: string[] = [];
+    for (const z of document.querySelectorAll('[data-testid^="kl-zone-"]')) {
+      const card = z.querySelector('[data-testid="kl-zone-card"] svg')?.getBoundingClientRect();
+      const stack = z.querySelector('[data-flip]')?.getBoundingClientRect();
+      if (!card || !stack) continue;
+      const overlap = Math.min(card.right, stack.right) - Math.max(card.left, stack.left) > 0.5 && Math.min(card.bottom, stack.bottom) - Math.max(card.top, stack.top) > 0.5;
+      if (overlap) out.push(z.getAttribute("data-testid") ?? "?");
+    }
+    return out;
+  });
+  expect(bad, "Stapel verdeckt die offene Karte").toEqual([]);
+}
+
+async function sizes(p: Page, name: string, check?: (p: Page) => Promise<void>) {
   await expectNoScroll(p);
+  await check?.(p);
   await shot(p, name);
   await p.setViewportSize({ width: 360, height: 640 });
   await expectNoScroll(p);
+  await check?.(p);
   await shot(p, `${name}-360`);
   await p.setViewportSize({ width: 320, height: 568 });
   await expectNoScroll(p);
+  await check?.(p);
   await shot(p, `${name}-320`);
   await p.setViewportSize({ width: 390, height: 844 });
 }
@@ -102,7 +121,7 @@ test("Klingel an einem Handy für alle: Zonen am Rand, Klingel in der Mitte, meh
     await page.getByTestId(`kl-flip-${n}`).click();
     await expect(page.getByTestId(`kl-zone-${n}`).getByTestId("fruit-card")).toBeVisible();
   }
-  await sizes(page, "klingel-lokal");
+  await sizes(page, "klingel-lokal", stackBeside);
   // Klingeln: Ben tippt in seine Zone, gleichzeitig tippt Dora auf die Klingel – der Erste zählt
   const ok = await ready(page, "[data-testid=kl-local]");
   await page.getByTestId("kl-zone-Ben").dispatchEvent("pointerdown", { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true });
@@ -132,6 +151,9 @@ test("Klingel an einem Handy für alle: Zonen am Rand, Klingel in der Mitte, meh
   await page.getByTestId("kl-zone-Ben").dispatchEvent("pointerdown", { clientX: 10, clientY: 10 });
   await expect(page.getByTestId("winner")).toContainText("Anna");
   await expect(page.getByText("hat alle 56 Karten")).toBeVisible();
+  // Ausgeschiedene nach Reihenfolge: Ben flog zuletzt raus → Platz 2 (vor Cem und Dora)
+  await expect(page.getByTestId("ranking")).toContainText("2.");
+  await expect(page.getByTestId("ranking")).toContainText("3.");
   await sizes(page, "klingel-ende");
   const said = await spoken(page);
   expect(said).toContain("Falsch geklingelt, Ben!");
@@ -194,7 +216,11 @@ test("Klingel am Großen Tisch: offene Karten an den Plätzen, Klingel in der Mi
     await phones[0].getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-bell")).toBeVisible();
     await expect(screen.getByTestId("seat-fruit")).toHaveCount(3);
-    for (let k = 0; k < 3; k++) await flipSomeone(phones);
+    // reihum aufdecken, bis an allen drei Plätzen eine Karte liegt (das nächste Handy braucht kurz für den neuen Stand)
+    for (let k = 0; k < 40 && (await screen.getByTestId("seat-fruit").getByTestId("fruit-card").count()) < 3; k++) {
+      await flipSomeone(phones);
+      await screen.waitForTimeout(250);
+    }
     await expect(screen.getByTestId("seat-fruit").getByTestId("fruit-card")).toHaveCount(3);
     await shot(screen, "klingel-fernseher");
     await phones[1].getByTestId("kl-bell").click();
