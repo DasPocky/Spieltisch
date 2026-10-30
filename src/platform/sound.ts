@@ -7,7 +7,7 @@ import { onPrefs, prefs } from "@/lib/prefs";
  *  - Publikum: Applaus, Jubel, „Oooh“, Lachen am großen Tisch
  * Alles bleibt dezent; ohne Erlaubnis (Einstellung „Töne“) oder ohne WebAudio passiert einfach nichts.
  */
-export type Sound = "place" | "draw" | "dice" | "turn" | "win" | "error";
+export type Sound = "place" | "draw" | "dice" | "turn" | "win" | "error" | "bell";
 export type Crowd = "applause" | "cheer" | "aww" | "laugh";
 export type MusicMood = "lobby" | "play";
 
@@ -130,6 +130,8 @@ const SOUNDS: Record<Sound, (c: AudioContext, t: number) => void> = {
   win: (c, t) => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(c, f, t + i * 0.1, i === 3 ? 0.8 : 0.28, 0.2, "triangle", undefined, 0.01)),
   // Fehler: tiefes, weiches „Blip“
   error: (c, t) => tone(c, 240, t, 0.16, 0.25, "sine", 170, 0.01),
+  // Tischklingel: heller Schlag mit unharmonischen Obertönen, lang ausklingend
+  bell: (c, t) => { tone(c, 1760, t, 1.3, 0.3, "sine", undefined, 0.002); tone(c, 1760 * 2.76, t, 0.6, 0.09, "sine", undefined, 0.002); tone(c, 1760 * 5.4, t, 0.25, 0.04, "sine", undefined, 0.002); hiss(c, t, 0.03, 0.3, 5000, undefined, 0.001, 2); },
 };
 
 /** Spielt einen Ton – nie mit Fehler. `force` für die Probe in den Einstellungen. */

@@ -33,6 +33,7 @@ import { Icon as ZeichnenIcon } from "./zeichnen/Icon";
 import { Icon as KritzelpostIcon } from "./kritzelpost/Icon";
 import { Icon as StadtlandflussIcon } from "./stadtlandfluss/Icon";
 import { Icon as HerzenIcon } from "./herzen/Icon";
+import { Icon as KlingelIcon } from "./klingel/Icon";
 import { Icon as QuizIcon } from "./quiz/Icon";
 import { Icon as AllesIcon } from "./alles/Icon";
 import { Icon as EinsIcon } from "./eins/Icon";
@@ -68,6 +69,7 @@ const ICONS: Record<GameId, Icon> = {
   kritzelpost: KritzelpostIcon,
   stadtlandfluss: StadtlandflussIcon,
   herzen: HerzenIcon,
+  klingel: KlingelIcon,
   quiz: QuizIcon,
   alles: AllesIcon,
   eins: EinsIcon,
@@ -102,6 +104,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   kritzelpost: () => import("./kritzelpost").then((m) => m.kritzelpostUI as unknown as GameUI),
   stadtlandfluss: () => import("./stadtlandfluss").then((m) => m.stadtlandflussUI as unknown as GameUI),
   herzen: () => import("./herzen").then((m) => m.herzenUI as unknown as GameUI),
+  klingel: () => import("./klingel").then((m) => m.klingelUI as unknown as GameUI),
   quiz: () => import("./quiz").then((m) => m.quizUI as unknown as GameUI),
   alles: () => import("./alles").then((m) => m.allesUI as unknown as GameUI),
   eins: () => import("./eins").then((m) => m.einsUI as unknown as GameUI),

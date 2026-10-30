@@ -207,6 +207,19 @@
   50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ice) 90%, transparent), 0 0 14px 2px color-mix(in srgb, var(--ice) 28%, transparent); }
 }
 .target-glow { animation: target-glow 1.6s ease-in-out infinite; }
+/* Klingel: Karte klappt auf, Klingel wackelt beim Drücken */
+@keyframes card-flip {
+  0% { opacity: 0.3; transform: perspective(400px) rotateY(80deg) scale(0.92); }
+  100% { opacity: 1; transform: none; }
+}
+.card-flip { animation: card-flip 0.22s ease-out backwards; }
+@keyframes bell-hit {
+  0%, 100% { transform: none; }
+  25% { transform: rotate(-6deg) scale(0.97); }
+  60% { transform: rotate(5deg); }
+}
+.bell-hit svg, .bell-ring { animation: bell-hit 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) { .card-flip, .bell-hit svg, .bell-ring { animation: none; } }
 @media (prefers-reduced-motion: reduce) {
   .text-in, .card-in, .card-land, .pop, .target-glow { animation: none; }
   .fan > * { transition: none; }

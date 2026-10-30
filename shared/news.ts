@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-klingel",
+    date: "2026-10-30",
+    title: "Neues Kartenspiel: Klingel",
+    items: [
+      "Reihum deckt jeder eine Obstkarte auf. Liegen von einer Sorte genau fünf Früchte offen, hau auf die Klingel – wer zuerst richtig klingelt, bekommt alle offenen Karten.",
+      "Falsch geklingelt? Dann gibst du jedem eine Karte ab. Online misst jedes Handy die eigene Reaktionszeit, so zählt das Netz nicht.",
+      "Für 2 bis 6, mit Takt zum automatischen Aufdecken, Zeitlimit, Bots, Vorlesen, an einem Handy für alle mit eigener Klingelzone für jeden und am Großen Tisch (Beta).",
+    ],
+  },
+  {
     id: "2026-10-ankreuzspiel",
     date: "2026-10-25",
     title: "Neues Würfelspiel: Ankreuzspiel",

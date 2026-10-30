@@ -18,6 +18,8 @@ import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf 
 import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
 import { bidChance as blChance, lastBid as blLast, minCount as blMin, type BluffState } from "../games/bluff/logic";
 import { handOf as shHand, suggest as shSuggest, type ShState } from "../games/schocken/logic";
+import { botActions as klActions, botWait as klWait, levelOf as klLevel } from "../games/klingel/bot";
+import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
@@ -575,7 +577,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -653,6 +655,8 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     }
     return out;
   },
+  // Klingel: nach Uhr und Stufe – klingeln, wenn die eigene Reaktionszeit um ist, aufdecken nach kurzer Pause
+  klingel: (view, me) => klActions(view.game as KlState, me, klLevel(view.botLevels?.[me]), Date.now()),
   schocken: (view) => ((view.game as ShState).table ? null : [{ type: "next" }, { type: "roll" }, { type: "stop" }, { type: "turn" }, ...[0, 1, 2].map((i) => ({ type: "hold", i }))]),
   ankreuzspiel: (view, me) => {
     const s = view.game as AkState;
@@ -732,7 +736,8 @@ export function chooseBotMove(room: RoomState, botId: string, level: BotLevel, o
 
 /** Zug eines Bots mit der Stärke, die der Raum für ihn kennt (ohne Angabe: zufällig wie die Testspieler) */
 export function playBot(room: RoomState, botId: string, online: boolean, seed = ""): { action: RoomAction; next: RoomState } | null {
-  const level = room.botLevels?.[botId];
+  // Klingel ist ein Reaktionsspiel: auch Testspieler ohne Stufe reagieren wie „mittel“ (zufällig klingeln ginge sofort)
+  const level = room.gameId === "klingel" ? klLevel(room.botLevels?.[botId]) : room.botLevels?.[botId];
   // Spiele ohne Bewertung: echter Zufall (ein fester Startwert ließe den Bot in derselben Lage immer gleich ziehen –
   // z. B. einen Würfel endlos an- und abwählen)
   // Spielweisen ohne Bewertung (z. B. echte Würfel): ebenso
@@ -742,8 +747,15 @@ export function playBot(room: RoomState, botId: string, online: boolean, seed = 
   return chooseBotMove(room, botId, level, online, seed);
 }
 
+/** Muss der Server auch ohne Änderung wieder nach den Bots schauen (Reaktionsspiele)? */
+export function botPolls(room: RoomState): boolean {
+  return room.gameId === "klingel" && room.phase === "playing" && !!room.game && !roomGame(room).isOver(room.game);
+}
+
 /** Wartezeit vor dem nächsten Bot-Zug: kurz und etwas zufällig, dazu die Lesepause des Spiels */
 export function botDelay(room: RoomState, rnd = Math.random()): number {
+  // Klingel: genau dann, wenn ein Bot reagieren oder aufdecken will
+  if (room.gameId === "klingel" && room.game) return klWait(room.game as KlState, room.bots ?? [], room.botLevels, Date.now());
   let extra = 0;
   try { if (room.game) extra = Math.max(0, Math.min(15_000, roomGame(room).botPause?.(room.game) ?? 0)); } catch { /* ohne Pause */ }
   return 900 + Math.floor(rnd * 900) + extra;
