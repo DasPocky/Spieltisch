@@ -50,6 +50,9 @@ test("Kleines Handy: Start und Spiele passen ohne Scrollen", async ({ page }) =>
   await expect(page.getByTestId("game-grid").locator("li")).toHaveCount(33);
   await expect(page.getByTestId("game-palast")).toBeVisible();
   await expectTabFits(page);
+  // auch das kleinste Handy (320×568)
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expectTabFits(page);
 });
 
 test("Blätter schließen mit der Zurück-Geste, Beitreten nimmt auch einen Link", async ({ page }) => {
