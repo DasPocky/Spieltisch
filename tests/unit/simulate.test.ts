@@ -8,6 +8,7 @@ import { DECKS } from "@shared/cards/deck";
 import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import type { HzState } from "@shared/games/herzen/logic";
+import type { PalastState } from "@shared/games/palast/logic";
 import type { P10State } from "@shared/games/zehnphasen/logic";
 import type { SbState } from "@shared/games/stapelbau/logic";
 import type { EinsState } from "@shared/games/eins/logic";
@@ -69,6 +70,13 @@ function checkCards(r: RoomState) {
     // gespielte Stiche liegen beiseite
     const played = Object.values(s.tricks).reduce((t, n) => t + n, 0) * Object.keys(s.hands).length;
     if (s.phase === "play") expect(all.length + played).toBe(52 - s.removed.length);
+  }
+  if (r.gameId === "palast") {
+    // 52 Karten je Blatt: Stapel, Ablage, verbrannt, Hände, offene und verdeckte Tischkarten
+    const s = r.game as PalastState;
+    const n = s.pile.length + s.discard.length + s.burned.length + Object.values(s.hands).flat().length
+      + Object.values(s.up).flat().length + Object.values(s.down).flat().filter(Boolean).length;
+    expect(n).toBe(52 * s.decks);
   }
   if (r.gameId === "klingel") {
     const s = r.game as KlState;
@@ -217,6 +225,11 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["herzen", 3, { target: "50", moon: false }],
   ["herzen", 5, { pass: "left", firstPoints: true }],
   ["herzen", 6, { pass: "none", target: "50" }],
+  ["palast", 2, {}],
+  ["palast", 4, {}],
+  ["palast", 3, { seven: false, four: false }],
+  ["palast", 5, { swap: false }],
+  ["palast", 8, {}],
   ["fischen", 2, {}],
   ["fischen", 5, { luckyAgain: false, deck: "de32" }],
   ["fischen", 8, { deck: "fr52" }],

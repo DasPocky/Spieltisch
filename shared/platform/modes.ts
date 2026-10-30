@@ -55,6 +55,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   bluff: { table: "beta" },
   werbinich: { table: "beta" },
   ankreuzspiel: { table: "beta" },
+  palast: { table: "beta" },
   klingel: { table: "beta" },
 };
 

@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-palast",
+    date: "2026-10-30",
+    title: "Neues Kartenspiel: Palast",
+    items: [
+      "Ablegen für 2 bis 8: gleich hoch oder höher legen, mehrere gleiche auf einmal – wer nicht kann, nimmt den ganzen Stapel auf.",
+      "Die 2 ist Neustart, die 10 verbrennt die Ablage, vier gleiche ebenso, auf eine 7 darf nur 7 oder niedriger. Zum Schluss die offenen und blind die verdeckten Tischkarten.",
+      "Wer zuletzt noch Karten hat, hält die Palastwache. Mit Bots, Spielhilfe, Vorlesen, an einem Handy für alle und am Großen Tisch (Beta). Pakete „Ohne Sieben“ und „Schnell“.",
+      ],
+    },
+  {
     id: "2026-10-klingel",
     date: "2026-10-30",
     title: "Neues Kartenspiel: Klingel",
