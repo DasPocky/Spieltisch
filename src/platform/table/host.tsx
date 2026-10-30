@@ -177,7 +177,8 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
         <p className={cn("text-in rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
           data-testid="table-host-line" aria-live="polite">{say.text}</p>
       )}
-      <OrbHost mouth={mouth} blink={blink} mood={mood} className="size-36 shrink-0" />
+      {/* Plätze rücken der Kugel aus dem Weg (die Sprechblase kommt und geht – sie zählt nicht) */}
+      <div className="shrink-0" data-seat-avoid="x"><OrbHost mouth={mouth} blink={blink} mood={mood} className="size-36 shrink-0" /></div>
     </div>
   );
 }

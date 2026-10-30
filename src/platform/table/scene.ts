@@ -657,17 +657,18 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
   // ---------- Würfel und Spielbrett ----------
   const DIE = 0.065;
   const dieGeo = new RoundedBoxGeometry(DIE, DIE, DIE, 4, DIE * 0.16);
-  const pipMats = new Map<number, MeshStandardMaterial>();
-  const pip = (v: number) => {
-    let m = pipMats.get(v);
-    if (!m) { const t = plainTex(`pips:${v}`, () => drawPips(v)); pipMats.set(v, (m = new MeshStandardMaterial({ map: t, bumpMap: t, bumpScale: 4, roughness: 0.28 }))); }
+  const pipMats = new Map<string, MeshStandardMaterial>();
+  const pip = (v: number, tint?: { face: string; pip: string }) => {
+    const key = tint ? `${v}:${tint.face}:${tint.pip}` : String(v);
+    let m = pipMats.get(key);
+    if (!m) { const t = plainTex(`pips:${key}`, () => drawPips(v, tint)); pipMats.set(key, (m = new MeshStandardMaterial({ map: t, bumpMap: t, bumpScale: 4, roughness: 0.28 }))); }
     return m;
   };
   // Seiten eines Würfels: oben die Augenzahl, gegenüber 7 minus diese – wie bei echten Würfeln
   const SIDES: Record<number, [number, number, number, number]> = { 1: [2, 5, 3, 4], 2: [1, 6, 3, 4], 3: [1, 6, 2, 5], 4: [1, 6, 2, 5], 5: [1, 6, 3, 4], 6: [2, 5, 3, 4] };
-  function dieMesh(v: number) {
+  function dieMesh(v: number, tint?: { face: string; pip: string }) {
     const [a, b, c, d] = SIDES[v] ?? SIDES[1];
-    const m = new Mesh(dieGeo, [pip(a), pip(b), pip(v), pip(7 - v), pip(c), pip(d)]);
+    const m = new Mesh(dieGeo, [pip(a, tint), pip(b, tint), pip(v, tint), pip(7 - v, tint), pip(c, tint), pip(d, tint)]);
     m.castShadow = m.receiveShadow = true;
     return m;
   }
@@ -695,13 +696,13 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
       const x = (i - (n - 1) / 2) * step, held = !!dice.held[i];
       const h = hash(`${dice.n}:${i}`);
       const z = held ? front : back + ((h % 7) - 3) * 0.006;
-      const m = dieMesh(v);
+      const m = dieMesh(v, dice.tints?.[i]);
       m.position.set(x, SURFACE + DIE / 2, z); m.rotation.y = ((h >> 3) % 21 - 10) / 60;
       put(m); contact(x, z, DIE * 1.1, DIE * 1.1, m.rotation.y);
       if (held) {
         const ring = new Mesh(glow.geometry, glow.material); ring.rotation.x = -Math.PI / 2; ring.scale.setScalar(0.22); ring.position.set(x, SURFACE + 0.002, z); put(ring);
       }
-      const key = `die:${i}`, sig = `${dice.n}:${v}:${held}`;
+      const key = `die:${i}`, sig = `${dice.n}:${v}:${held}:${dice.tints?.[i]?.face ?? ""}`;
       seen.set(key, sig);
       if (!fresh() || prev.get(key) === sig || held || dice.still) return;
       // Neu gewürfelt: kullert herein

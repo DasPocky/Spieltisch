@@ -54,6 +54,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   erklaerspiel: { table: "beta" },
   bluff: { table: "beta" },
   werbinich: { table: "beta" },
+  ankreuzspiel: { table: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */

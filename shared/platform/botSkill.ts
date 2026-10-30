@@ -18,6 +18,7 @@ import { chanceAtLeast, lastOf, ORDER, rankOf as maexRank, turnOptions, valueOf 
 import { estimateBid, isFool, isWizard, rankOf as hsRank, SUITS as HS_SUITS, suitOf as hsSuit, trickWinner, type HsCard, type HsState } from "../games/hellseher/logic";
 import { bidChance as blChance, lastBid as blLast, minCount as blMin, type BluffState } from "../games/bluff/logic";
 import { handOf as shHand, suggest as shSuggest, type ShState } from "../games/schocken/logic";
+import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -395,6 +396,20 @@ const scoreSchocken: Scorer = (view, a, _after, me) => {
   return -50;
 };
 
+// ---------------------------------------------------------------- Ankreuzspiel (kaum Felder überspringen, Fehlwürfe meiden)
+
+const scoreAnkreuzspiel: Scorer = (view, a, _after, me) => {
+  const s = view.game as AkState;
+  if (a.type === "roll") return 10;
+  if (a.type === "timeUp") return 0;
+  if (a.type === "white") return a.row === akSuggestWhite(s, me) ? 100 : 0;
+  if (a.type === "color") {
+    const best = akSuggestColor(s, me);
+    return (best ? a.row === best.row && a.n === best.n : a.row === null) ? 100 : 0;
+  }
+  return -50;
+};
+
 // ---------------------------------------------------------------- Bluff (Wahrscheinlichkeit aus den eigenen Würfeln schätzen)
 
 const scoreBluff: Scorer = (view, a, _after, me) => {
@@ -560,7 +575,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, schocken: scoreSchocken, bluff: scoreBluff, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -639,6 +654,11 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     return out;
   },
   schocken: (view) => ((view.game as ShState).table ? null : [{ type: "next" }, { type: "roll" }, { type: "stop" }, { type: "turn" }, ...[0, 1, 2].map((i) => ({ type: "hold", i }))]),
+  ankreuzspiel: (view, me) => {
+    const s = view.game as AkState;
+    return [{ type: "roll" }, ...(s.deadline !== null && Date.now() >= s.deadline ? [{ type: "timeUp" }] : []), { type: "white", row: null, player: me }, ...[0, 1, 2, 3].map((row) => ({ type: "white", row, player: me })),
+      { type: "color", row: null }, ...akColor(s, me).map((m) => ({ type: "color", row: m.row, n: m.n }))];
+  },
   herzen: (view, me) => {
     const s = view.game as HzState;
     const hand = s.hands[me] ?? [];

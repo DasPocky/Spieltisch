@@ -46,7 +46,7 @@ describe("Fairer Zufall", () => {
 
   it("Startspieler/Geber wandert reihum – jede Partie fängt jemand anderes an", () => {
     const players = ["a", "b", "c", "d"].map((id) => ({ id, name: id.toUpperCase() }));
-    const games = ["eins", "maumau", "stapelbau", "fischen", "fuenfwuerfel", "alles", "maexchen", "ludo", "zehnphasen", "glueckssieben", "hellseher", "herzen", "schocken", "bluff"];
+    const games = ["eins", "maumau", "stapelbau", "fischen", "fuenfwuerfel", "alles", "maexchen", "ludo", "zehnphasen", "glueckssieben", "hellseher", "herzen", "schocken", "bluff", "ankreuzspiel"];
     for (const id of games) {
       const g = getGame(id);
       const starts = new Set<string>();

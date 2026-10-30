@@ -44,6 +44,7 @@ import { herzenTable } from "../../games/herzen/table";
 import { schockenTable } from "../../games/schocken/table";
 import { bluffTable } from "../../games/bluff/table";
 import { erklaerspielTable } from "../../games/erklaerspiel/table";
+import { ankreuzspielTable } from "../../games/ankreuzspiel/table";
 import { werbinichTable } from "../../games/werbinich/table";
 import { quizTable } from "../../games/quiz/table";
 
@@ -73,10 +74,14 @@ export interface TableModel {
   /** Würfel in der Mitte */
   dice?: {
     values: number[]; held: boolean[]; /** zählt Würfe – neue Augen rollen kurz */ n: number; note?: string;
+    /** leere Felder vor dem ersten Wurf (Standard 5) */
+    slots?: number;
     /** Würfel liegen unter dem Becher (Mäxchen) */
     cup?: boolean;
     /** Würfel liegen ruhig da (aufgedeckt statt geworfen) */
     still?: boolean;
+    /** eigene Farbe je Würfel (Ankreuzspiel: zwei weiße, vier farbige) */
+    tints?: ({ face: string; pip: string } | undefined)[];
   };
   /** Spielfeld: Zeilen von oben nach unten, je Feld Farbe 0/1 oder leer */
   grid?: { cells: (0 | 1 | null)[][]; colors: [string, string]; last?: [number, number] | null; line?: [number, number][] };
@@ -138,7 +143,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, stadtlandfluss: stadtlandflussTable, herzen: herzenTable, schocken: schockenTable, bluff: bluffTable, erklaerspiel: erklaerspielTable, werbinich: werbinichTable, quiz: quizTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, stadtlandfluss: stadtlandflussTable, herzen: herzenTable, schocken: schockenTable, bluff: bluffTable, ankreuzspiel: ankreuzspielTable, erklaerspiel: erklaerspielTable, werbinich: werbinichTable, quiz: quizTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {
