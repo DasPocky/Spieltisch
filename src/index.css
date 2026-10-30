@@ -394,3 +394,8 @@
 }
 .react-float { animation: react-float 2.4s ease-out forwards; filter: drop-shadow(0 4px 8px rgb(0 0 0 / 0.4)); }
 @media (prefers-reduced-motion: reduce) { .react-float { animation: none; transform: translate(-50%, -120%); } }
+
+/* Ankreuzspiel: Spielhilfe – vorgeschlagenes Feld pulsiert leicht */
+.ak-hint { animation: ak-hint 1.6s ease-in-out infinite; }
+@keyframes ak-hint { 50% { box-shadow: inset 0 0 0 3px var(--primary); } }
+@media (prefers-reduced-motion: reduce) { .ak-hint { animation: none; box-shadow: inset 0 0 0 3px var(--primary); } }

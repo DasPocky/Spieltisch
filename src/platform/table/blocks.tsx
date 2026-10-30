@@ -25,10 +25,10 @@ export function FeltDice({ dice }: { dice: NonNullable<TableModel["dice"]> }) {
           ? dice.values.map((v, i) => (
             <div key={`${dice.n}-${i}`} className={cn("flex flex-col items-center gap-[1.2cqh] transition-transform", dice.held[i] ? "translate-y-[4cqh]" : "dice-in")}
               style={dice.held[i] ? undefined : { animationDelay: `${i * 60}ms` }} data-held={!!dice.held[i]}>
-              <Die value={v} mark={dice.held[i] ? "selected" : undefined} className="size-[min(17cqh,11cqw)] drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)]" />
+              <Die value={v} tint={dice.tints?.[i]} mark={dice.held[i] ? "selected" : undefined} className="size-[min(17cqh,11cqw)] drop-shadow-[0_6px_10px_rgb(0_0_0/0.35)]" />
             </div>
           ))
-          : Array.from({ length: 5 }, (_, i) => <div key={i} className="size-[min(17cqh,11cqw)] rounded-[22%] border-2 border-dashed border-white/25" />)}
+          : Array.from({ length: dice.slots ?? 5 }, (_, i) => <div key={i} className="size-[min(17cqh,11cqw)] rounded-[22%] border-2 border-dashed border-white/25" />)}
       </div>
       {dice.note && <span className="table-banner !static !translate-x-0 text-[4.2cqh]">{dice.note}</span>}
     </div>

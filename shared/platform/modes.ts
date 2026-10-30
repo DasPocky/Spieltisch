@@ -52,7 +52,9 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   stadtlandfluss: { table: "beta" },
   schocken: { table: "beta" },
   erklaerspiel: { table: "beta" },
+  bluff: { table: "beta" },
   werbinich: { table: "beta" },
+  ankreuzspiel: { table: "beta" },
   klingel: { table: "beta" },
 };
 

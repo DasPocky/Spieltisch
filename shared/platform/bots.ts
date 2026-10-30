@@ -25,6 +25,8 @@ import { FRAGEN, KATEGORIEN as WB_KATEGORIEN } from "../games/werbinich/figuren"
 import type { WbState } from "../games/werbinich/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
 import { readyFruit as klReady, type KlState } from "../games/klingel/logic";
+import { pendingWhite as akPending, type AkState } from "../games/ankreuzspiel/logic";
+import { lastBid as blLast, minCount as blMin, totalDice as blTotal, type BluffState } from "../games/bluff/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
 
@@ -193,6 +195,22 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       if (Math.random() < 0.02) add({ type: "tBack" });
       break;
     }
+    case "bluff": {
+      const s = r.game as BluffState;
+      add({ type: "next" });
+      // Wie echte Spieler: meist knapp erhöhen, ab und zu zweifeln – die Ansagen steigen, also endet jede Runde
+      for (let face = 1; face <= 6; face++) {
+        const c = blMin(s, face, r.options);
+        if (c !== null) { add({ type: "bid", face, count: c }); if (Math.random() < 0.3) add({ type: "bid", face, count: c + 1 }); }
+      }
+      const last = blLast(s);
+      if (last && (Math.random() < 0.35 || last.count > blTotal(s) / 3)) {
+        const actual = s.table ? Math.floor(Math.random() * (blTotal(s) + 1)) : undefined;
+        add({ type: "doubt", actual });
+        if (Math.random() < 0.2) add({ type: "exact", actual: s.table ? last.count : undefined });
+      }
+      break;
+    }
     case "schocken": {
       const s = r.game as ShState;
       add({ type: "next" });
@@ -207,6 +225,20 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       add({ type: "stop" });
       add({ type: "turn" });
       for (let i = 0; i < 3; i++) add({ type: "hold", i });
+      break;
+    }
+    case "ankreuzspiel": {
+      const s = r.game as AkState;
+      add({ type: "roll" });
+      // Bedenkzeit nur melden, wenn sie wirklich um ist (sonst ändert sich nichts)
+      if (s.deadline !== null && Date.now() >= s.deadline) add({ type: "timeUp" });
+      // Weiß: online jeder für sich, lokal das Gerät für jeden, der noch überlegt
+      for (const id of akPending(s)) for (const row of [null, null, 0, 1, 2, 3]) {
+        if (online) moves.push({ action: g({ type: "white", row }), actor: id });
+        else add({ type: "white", row, player: id });
+      }
+      if (s.dice.length) for (let row = 0; row < 4; row++) for (const w of [0, 1]) add({ type: "color", row, n: s.dice[w] + s.dice[2 + row] });
+      add({ type: "color", row: null });
       break;
     }
     case "herzen": {

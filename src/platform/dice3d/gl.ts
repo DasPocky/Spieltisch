@@ -14,7 +14,8 @@ import { DICE_HQ_KEY } from "@/lib/storage";
 
 export type Quat = [number, number, number, number];
 export type Vec = [number, number, number];
-export interface DieDraw { pos: Vec; quat: Quat; scale?: number; mark?: "held" | "hint" | null }
+export interface DieDraw { pos: Vec; quat: Quat; scale?: number; mark?: "held" | "hint" | null; /** eigene Farbe (z. B. farbige Würfel im Ankreuzspiel) */ tint?: DieTint }
+export interface DieTint { face: string; pip: string }
 
 /** Farben je Look: Würfelkörper, Augen, die Eins; `sharp` = kantigere Würfel */
 interface DieLook { face: string; pip: string; one: string; sharp?: boolean }
@@ -140,7 +141,7 @@ export class DiceView {
   readonly renderer: WebGLRenderer;
   private scene = new Scene();
   private camera = new PerspectiveCamera(28, 1, 0.1, 400);
-  private dice: { mesh: Mesh; glow: Mesh }[] = [];
+  private dice: { mesh: Mesh; glow: Mesh; tint: string }[] = [];
   private look = currentLook();
   private geo: RoundedBoxGeometry;
   private size = { w: 1, h: 1 };
@@ -218,11 +219,17 @@ export class DiceView {
       const glow = new Mesh(new PlaneGeometry(1.9, 1.9), new MeshBasicMaterial({ map: glowTexture(), transparent: true, depthWrite: false, opacity: 0 }));
       glow.rotation.x = -Math.PI / 2;
       this.scene.add(glow, mesh);
-      this.dice.push({ mesh, glow });
+      this.dice.push({ mesh, glow, tint: "" });
     }
     const col = primary();
     list.forEach((d, i) => {
       const { mesh, glow } = this.dice[i];
+      const tint = d.tint ? `${d.tint.face}${d.tint.pip}` : "";
+      if (this.dice[i].tint !== tint) {
+        const look: DieLook = d.tint ? { face: d.tint.face, pip: d.tint.pip, one: d.tint.pip } : this.look;
+        (mesh.material as MeshStandardMaterial[]).forEach((m, k) => { m.map = faceTexture(look, BOX_VALUES[k], aniso); m.needsUpdate = true; });
+        this.dice[i].tint = tint;
+      }
       const s = d.scale ?? 1;
       mesh.position.set(...d.pos);
       mesh.quaternion.set(...d.quat);

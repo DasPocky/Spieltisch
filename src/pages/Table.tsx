@@ -1,5 +1,5 @@
 import { withBase } from "@shared/platform/base";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Piece } from "@/games/schamlos/Board";
 import { Armchair, Camera, Expand, Loader2, LogOut, RotateCcw, Smartphone, Sparkles, Tv, Video, VideoOff } from "lucide-react";
 import { PIN_RE, ROOM_CODE_RE, WATCH_ID, type CallPeer, type ClientMessage, type RemoteCmd } from "@shared/platform/protocol";
@@ -315,7 +315,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
             videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo} />
         )}
 
-        <header className="absolute top-6 left-7 flex items-center gap-3">
+        <header className="absolute top-6 left-7 flex items-center gap-3" data-seat-avoid>
           <span className="grid size-11 place-items-center rounded-full bg-gradient-to-br from-[#3e9a92] to-[#1f5f5b] shadow-lg">{game ? <game.Icon className="size-6 text-white" /> : <Tv className="size-5 text-white" />}</span>
           <div className="drop-shadow">
             <b className="text-2xl">{playing && game ? game.info.name : "Großer Tisch"}</b>
@@ -333,7 +333,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
 
       {/* Am Fernseher keine Knöpfe: nur der QR-Code zum Mitspielen. Bedienen geht vom Handy des Hosts (Fernbedienung)
           oder hier über das Menü, das bei Maus, Taste oder Berührung kurz erscheint. */}
-      {playing && <div className="absolute top-5 right-5"><JoinNote code={code} pin={pin} /></div>}
+      {playing && <div className="absolute top-5 right-5" data-seat-avoid><JoinNote code={code} pin={pin} compact /></div>}
       <TvMenu>
         <ScreenRole code={code} />
         <CouchPlayers code={code} pin={pin} room={room} couch={couch} onOpen={setHandOpen} cover={cover} />
@@ -487,6 +487,56 @@ function TableCanvas({ model, seats, names = [], onSeats, forceFlat, onReal, fol
   return <div ref={holder} className="absolute inset-0" />;
 }
 
+/** Abstand der Plätze zum Bildrand und zu Kopfzeile und QR-Kasten */
+const SEAT_GAP = 10;
+
+/**
+ * Wo ein Platz wirklich steht: ganz im Bild und nie unter Kopfzeile (Spielname, Raum) oder QR-Kasten –
+ * alles mit `data-seat-avoid` im Tischraum. Ein Platz, der dort hineinragt, rückt auf dem kürzesten Weg heraus
+ * (nach unten bzw. oben oder zur Seite). Gilt für alle Spiele, Tisch wie Bühne.
+ */
+function useSeatPlace(x: number, y: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const el = ref.current, parent = el?.offsetParent;
+    if (!el || !parent) return;
+    const ro = new ResizeObserver(() => setTick((t) => t + 1));
+    ro.observe(el); ro.observe(parent);
+    for (const a of el.closest(".table-room")?.querySelectorAll("[data-seat-avoid]") ?? []) ro.observe(a);
+    return () => { ro.disconnect(); };
+  }, []);
+  useLayoutEffect(() => {
+    const el = ref.current, parent = el?.offsetParent as HTMLElement | null;
+    if (!el || !parent) return;
+    const box = parent.getBoundingClientRect();
+    const w = el.offsetWidth, h = el.offsetHeight, W = parent.clientWidth, H = parent.clientHeight;
+    const fit = (v: number, half: number, max: number) => Math.min(Math.max(v, half + SEAT_GAP), Math.max(half + SEAT_GAP, max - half - SEAT_GAP));
+    let cx = fit(x, w / 2, W), cy = fit(y, h / 2, H);
+    const avoid = [...(el.closest(".table-room")?.querySelectorAll("[data-seat-avoid]") ?? [])].map((a) => {
+      const r = a.getBoundingClientRect();
+      // data-seat-avoid="x": nur seitlich ausweichen (darüber kommt z. B. die Sprechblase des Moderators)
+      const side = (a as HTMLElement).dataset.seatAvoid === "x";
+      return { side, x0: r.left - box.left - SEAT_GAP, y0: r.top - box.top - SEAT_GAP, x1: r.right - box.left + SEAT_GAP, y1: r.bottom - box.top + SEAT_GAP };
+    }).filter((r) => r.x1 > r.x0 + SEAT_GAP * 2 && r.y1 > r.y0 + SEAT_GAP * 2);
+    for (let pass = 0; pass < 2; pass++) {
+      for (const r of avoid) {
+        if (cx + w / 2 <= r.x0 || cx - w / 2 >= r.x1 || cy + h / 2 <= r.y0 || cy - h / 2 >= r.y1) continue;
+        // Kandidaten: unter, über, links oder rechts neben dem Hindernis – der kürzeste, der im Bild bleibt
+        const moves = [
+          ...(r.side ? [] : [{ x: cx, y: r.y1 + h / 2 }, { x: cx, y: r.y0 - h / 2 }]),
+          { x: r.x0 - w / 2, y: cy }, { x: r.x1 + w / 2, y: cy },
+        ].filter((m) => m.x - w / 2 >= 0 && m.x + w / 2 <= W && m.y - h / 2 >= 0 && m.y + h / 2 <= H);
+        const best = moves.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0];
+        if (best) { cx = best.x; cy = best.y; }
+      }
+    }
+    setPos((p) => (p && Math.abs(p.x - cx) < 0.5 && Math.abs(p.y - cy) < 0.5 ? p : { x: cx, y: cy }));
+  });
+  return { ref, pos };
+}
+
 function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
   /** Schild am Pult (Quiz auf der Bühne): geantwortet bzw. richtig/falsch */
@@ -501,9 +551,10 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
 }) {
   const showVideo = !!video && !videoHidden;
   const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
+  const { ref, pos } = useSeatPlace(x, y);
   return (
-    <div className={cn("seat-plate absolute flex w-36 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 transition-[left,top]", away && "opacity-55")}
-      style={{ left: `clamp(80px, ${x}px, calc(100% - 80px))`, top: `clamp(70px, ${y}px, calc(100% - 60px))` }} data-testid="table-seat" data-turn={turn}>
+    <div ref={ref} className={cn("seat-plate absolute flex w-36 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5 transition-[left,top]", away && "opacity-55")}
+      style={pos ? { left: pos.x, top: pos.y } : { left: `clamp(80px, ${x}px, calc(100% - 80px))`, top: `clamp(70px, ${y}px, calc(100% - 60px))` }} data-testid="table-seat" data-turn={turn}>
       {/* Video (Kamera an) oder Bild – am Fernseher per Klick einzeln aus- und wieder einblendbar */}
       {video && onToggleVideo ? (
         <button type="button" onClick={onToggleVideo} aria-label={showVideo ? `Video von ${name} ausblenden` : `Video von ${name} zeigen`} data-testid="seat-video-toggle"
@@ -875,13 +926,13 @@ function Fallback({ room, code, online }: { room: RoomState; code: string; onlin
   );
 }
 
-function JoinNote({ code, pin }: { code: string; pin: string }) {
+function JoinNote({ code, pin, compact }: { code: string; pin: string; compact?: boolean }) {
   return (
-    <div className="paper-note flex items-center gap-4 p-4">
-      <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-black/5"><QrCode value={joinLink(code, pin)} className="size-24" label="QR-Code zum Mitspielen" /></div>
+    <div className={cn("paper-note flex items-center", compact ? "gap-3 p-2.5" : "gap-4 p-4")} data-testid="join-note">
+      <div className="shrink-0 rounded-xl bg-white p-1.5 ring-1 ring-black/5"><QrCode value={joinLink(code, pin)} className={compact ? "size-[4.5rem]" : "size-24"} label="QR-Code zum Mitspielen" /></div>
       <div className="min-w-0">
         <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#8a6f4e]">Mitspielen</div>
-        <div className="mt-0.5 text-3xl font-bold leading-none tracking-[0.1em]">{code}</div>
+        <div className={cn("mt-0.5 font-bold leading-none tracking-[0.1em]", compact ? "text-2xl" : "text-3xl")}>{code}</div>
         <div className="mt-1.5 inline-block rounded-md bg-[#efe3cc] px-2 py-0.5 text-sm font-bold tracking-wider">PIN {pin}</div>
       </div>
     </div>

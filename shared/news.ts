@@ -16,12 +16,32 @@ export interface NewsEntry {
 export const NEWS: NewsEntry[] = [
   {
     id: "2026-10-klingel",
-    date: "2026-10-25",
+    date: "2026-10-30",
     title: "Neues Kartenspiel: Klingel",
     items: [
       "Reihum deckt jeder eine Obstkarte auf. Liegen von einer Sorte genau fünf Früchte offen, hau auf die Klingel – wer zuerst richtig klingelt, bekommt alle offenen Karten.",
       "Falsch geklingelt? Dann gibst du jedem eine Karte ab. Online misst jedes Handy die eigene Reaktionszeit, so zählt das Netz nicht.",
       "Für 2 bis 6, mit Takt zum automatischen Aufdecken, Zeitlimit, Bots, Vorlesen, an einem Handy für alle mit eigener Klingelzone für jeden und am Großen Tisch (Beta).",
+    ],
+  },
+  {
+    id: "2026-10-ankreuzspiel",
+    date: "2026-10-25",
+    title: "Neues Würfelspiel: Ankreuzspiel",
+    items: [
+      "Zwei weiße und vier farbige Würfel, vier Farbreihen auf deinem Blatt: Rot und Gelb von 2 bis 12, Grün und Blau von 12 bis 2 – angekreuzt wird nur von links nach rechts.",
+      "Die weiße Summe dürfen alle gleichzeitig nutzen, wer dran ist, nimmt noch Weiß plus Farbe. Wer gar nichts ankreuzt, kassiert einen Fehlwurf. Ab fünf Kreuzen lässt sich eine Reihe abschließen.",
+      "Für 2 bis 6, mit Bots, Spielhilfe, Vorlesen, an einem Handy für alle und am Großen Tisch (Beta). Pakete „Kurz“ und „Lang“, online mit Bedenkzeit, damit niemand warten muss.",
+    ],
+  },
+  {
+    id: "2026-10-bluff",
+    date: "2026-10-25",
+    title: "Neues Würfelspiel: Bluff",
+    items: [
+      "Jeder hat fünf Würfel verdeckt unter seinem Becher – nur du siehst deine. Reihum sagt ihr an: „Mindestens vier Fünfen liegen auf dem Tisch“ – über alle Becher.",
+      "Jede Ansage muss höher sein. Glaubst du nicht dran, rufst du „Bluff!“: Alle decken auf, wer falschlag, verliert einen Würfel. Mit „Genau!“ holst du dir einen zurück.",
+      "Einsen sind Joker, Pakete „Kurz“ (drei Würfel) und „Ohne Joker“, für 2 bis 8 – mit Bots, an einem Handy für alle, mit Vorlesen oder mit echten Würfeln.",
     ],
   },
   {
