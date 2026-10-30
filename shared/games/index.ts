@@ -35,9 +35,10 @@ import { erklaerspiel } from "./erklaerspiel/logic";
 import { ankreuzspiel } from "./ankreuzspiel/logic";
 import { bluff } from "./bluff/logic";
 import { werbinich } from "./werbinich/logic";
+import { palast } from "./palast/logic";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const GAMES = { alles, fuenfwuerfel, glueckssieben, himmelskarten, werwolf, einenacht, decknamen, maumau, eins, stapelbau, zehnphasen, fischen, hellseher, herzen, klingel, spion, schamlos, stirnraten, werbinich, zeichnen, kritzelpost, stadtlandfluss, erklaerspiel, quiz, maexchen, schocken, bluff, ankreuzspiel, ludo, vier, muehle, dame } satisfies Record<string, GameLogic<any, any>>;
+export const GAMES = { alles, fuenfwuerfel, glueckssieben, himmelskarten, werwolf, einenacht, decknamen, maumau, eins, stapelbau, zehnphasen, fischen, hellseher, herzen, klingel, palast, spion, schamlos, stirnraten, werbinich, zeichnen, kritzelpost, stadtlandfluss, erklaerspiel, quiz, maexchen, schocken, bluff, ankreuzspiel, ludo, vier, muehle, dame } satisfies Record<string, GameLogic<any, any>>;
 
 export type GameId = keyof typeof GAMES;
 export const GAME_IDS = Object.keys(GAMES) as GameId[];

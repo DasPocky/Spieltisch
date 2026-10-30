@@ -14,6 +14,7 @@ import { canPlay as einsCanPlay, COLORS, type EinsState } from "../games/eins/lo
 import type { WerwolfState } from "../games/werwolf/logic";
 import { SUITS as HS_SUITS, type HsState } from "../games/hellseher/logic";
 import { canPlay as hzCanPlay, type HzState } from "../games/herzen/logic";
+import { legalMoves as palastMoves, type PalastState } from "../games/palast/logic";
 import { POINT_STEPS } from "../games/alles/logic";
 import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../games/maexchen/logic";
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
@@ -253,6 +254,24 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       const hand = s.hands[s.curId ?? ""] ?? [];
       for (const card of hand) if (hzCanPlay(s, hand, card, r.options) || Math.random() < 0.05) add({ type: "play", card });
       add({ type: "nextRound" });
+      break;
+    }
+    case "palast": {
+      const s = r.game as PalastState;
+      // Tauschen: online jeder für sich, lokal das Gerät für jeden – zufällige offene Karten, dann fertig
+      if (s.phase === "swap") for (const id of ids) {
+        if (s.ready[id]) continue;
+        const pool = shuffleInPlace([...(s.hands[id] ?? []), ...(s.up[id] ?? [])]);
+        for (const a of [{ type: "arrange", up: pool.slice(0, (s.up[id] ?? []).length) }, { type: "ready" }]) {
+          if (online) moves.push({ action: g(a), actor: id });
+          else add({ ...a, player: id });
+        }
+      }
+      if (s.phase === "play" && s.curId) {
+        for (const m of palastMoves(s, s.curId, r.options)) add(m);
+        // ab und zu ein ungültiger Zug: muss abgelehnt werden
+        if (Math.random() < 0.05) add({ type: "take" });
+      }
       break;
     }
     case "schamlos": {

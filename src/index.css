@@ -119,6 +119,8 @@
 @media (max-height: 600px) { .games-grid .game-tile-icon { width: 2rem; height: 2rem; } }
 /* ab sechs Reihen: kleinere Symbole, damit der Spiele-Tab auf kleinen Handys nicht scrollt */
 @media (max-height: 720px) { .games-grid.games-tight .game-tile-icon { width: 1.75rem; height: 1.75rem; } .games-grid.games-tight > li > button { padding-top: 0.3rem; } }
+/* sehr kleine Handys (z. B. 320×568) mit vielen Spielen: noch etwas flacher */
+@media (max-height: 600px) { .games-grid.games-tight .game-tile-icon { width: 1.5rem; height: 1.5rem; } .games-grid.games-tight > li > button { padding-top: 0.2rem; padding-bottom: 0.2rem; gap: 0; } }
 
 /* Begrüßung und Willkommen: Papierschnitt, der sich zusammensetzt */
 .intro-bg {

@@ -21,6 +21,7 @@ import { handOf as shHand, suggest as shSuggest, type ShState } from "../games/s
 import { botActions as klActions, botWait as klWait, levelOf as klLevel } from "../games/klingel/bot";
 import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
+import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -427,6 +428,21 @@ const scoreBluff: Scorer = (view, a, _after, me) => {
   return -100;
 };
 
+// ---------------------------------------------------------------- Palast (starke Karten offen, niedrig legen, Sonderkarten aufheben)
+
+const scorePalast: Scorer = (view, a, _after, me) => {
+  const s = view.game as PalastState;
+  const sum = (cs: string[]) => cs.reduce((t, c) => t + palastStrength(c as never), 0);
+  if (a.type === "ready") return 0.5;
+  if (a.type === "arrange") return sum(a.up as string[]) - sum(s.up[me] ?? []);
+  if (a.type === "take" || a.type === "blind") return 0;
+  if (a.type !== "play") return -50;
+  const best = palastSuggest(s, me, view.options);
+  const cards = a.cards as string[];
+  if (best?.type === "play" && JSON.stringify(best.cards) === JSON.stringify(cards)) return 100;
+  return -sum(cards);
+};
+
 // ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
 
 const scoreStapelbau: Scorer = (view, a, after, me) => {
@@ -577,7 +593,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -672,6 +688,17 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
       for (const cards of [hzPass(hand), hand.slice(0, 3), hand.slice(-3)]) out.push({ type: "pass", cards });
     }
     return out;
+  },
+  palast: (view, me) => {
+    const s = view.game as PalastState;
+    if (s.phase === "swap") {
+      const hand = s.hands[me] ?? [], up = s.up[me] ?? [];
+      // der Vorschlag und jeder einzelne Tausch
+      const out: A[] = [{ type: "ready", player: me }, { type: "arrange", up: palastUp(hand, up), player: me }];
+      for (const h of hand) for (let i = 0; i < up.length; i++) out.push({ type: "arrange", up: palastSort([...up.slice(0, i), h, ...up.slice(i + 1)]), player: me });
+      return out;
+    }
+    return s.curId === me ? palastMoves(s, me, view.options) : [];
   },
   maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
   alles: (view) => (view.options.diceMode !== "app" || view.options.cards === "real" ? null

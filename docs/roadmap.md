@@ -103,7 +103,7 @@ Erledigt: Spielweisen je Spiel (an/Beta/aus in der Verwaltung) ✅ · Grafik-Stu
 
 ## Phase 4 – Später ⏳
 
-- **Neue Spiele:** Welle 2 (Herzen ✅ – Abnahme `docs/abnahme/herzen.md`, Schocken ✅ – Abnahme `docs/abnahme/schocken.md`, Bluff ✅ – Abnahme `docs/abnahme/bluff.md`, Stadt-Land-Fluss ✅ – Abnahme `docs/abnahme/stadtlandfluss.md`, Wer bin ich ✅ – Abnahme `docs/abnahme/werbinich.md`, Erklärspiel ✅ – Abnahme `docs/abnahme/erklaerspiel.md`), Welle 3 (Ankreuzspiel ✅ – Abnahme `docs/abnahme/ankreuzspiel.md`, Klingel ✅ – Abnahme `docs/abnahme/klingel.md`, Shithead, Zahlen-Rommé, Doppelkopf, Skat) – jedes von Anfang an komplett.
+- **Neue Spiele:** Welle 2 (Herzen ✅ – Abnahme `docs/abnahme/herzen.md`, Schocken ✅ – Abnahme `docs/abnahme/schocken.md`, Bluff ✅ – Abnahme `docs/abnahme/bluff.md`, Stadt-Land-Fluss ✅ – Abnahme `docs/abnahme/stadtlandfluss.md`, Wer bin ich ✅ – Abnahme `docs/abnahme/werbinich.md`, Erklärspiel ✅ – Abnahme `docs/abnahme/erklaerspiel.md`), Welle 3 (Ankreuzspiel ✅ – Abnahme `docs/abnahme/ankreuzspiel.md`, Klingel ✅ – Abnahme `docs/abnahme/klingel.md`, Palast ✅ – Abnahme `docs/abnahme/palast.md`, Zahlen-Rommé, Doppelkopf, Skat) – jedes von Anfang an komplett.
 - **Vorgemerkt (nicht gebaut):** Herden-Quiz (Arbeitsname; „Herdentier“ ist der deutsche Produktname, nicht verwenden): alle beantworten dieselbe Frage, wer mit der Mehrheit antwortet, punktet; die einzige Außenseiter-Antwort bekommt die rosa Kuh (blockiert den Sieg); Sieg bei 8 Punkten.
 - **Konto** (E-Mail-Link oder Passkey): Gastprofile nachweisbar zuordnen (Schlüssel-Basis ist da, die ID allein reicht nicht).
 - **Native Apps** erst, wenn Web-App, Push und Deep Links an Grenzen stoßen.

@@ -46,6 +46,12 @@ test("Kleines Handy: Start und Spiele passen ohne Scrollen", async ({ page }) =>
   await expectTabFits(page);
   await page.getByTestId("tabbar-spiele").click();
   await expect(page.getByTestId("game-grid")).toBeVisible();
+  // alle 33 Spiele (zuletzt dazu: Klingel und Palast) – das Raster passt trotzdem ohne Scrollen
+  await expect(page.getByTestId("game-grid").locator("li")).toHaveCount(33);
+  await expect(page.getByTestId("game-palast")).toBeVisible();
+  await expectTabFits(page);
+  // auch das kleinste Handy (320×568)
+  await page.setViewportSize({ width: 320, height: 568 });
   await expectTabFits(page);
 });
 
