@@ -583,6 +583,81 @@ function borrow(table: Tile[][], hand: Tile[]): { table: Tile[][]; hand: Tile[] 
   return null;
 }
 
+/** Suchgrenze für den Umbau (`rebuild`) */
+const REBUILD_NODES = 2500;
+
+/**
+ * Umbau: ein Teil des Tischs (Kombinationen mit derselben Farbe bzw. Zahl wie ein eigener Stein) wird zusammen mit
+ * passenden eigenen Steinen ganz neu aufgeteilt – alle Tischsteine müssen wieder liegen, möglichst viele eigene dazu.
+ */
+function rebuild(table: Tile[][], hand: Tile[]): { table: Tile[][]; hand: Tile[] } | null {
+  for (const h of hand) {
+    if (isJoker(h)) continue;
+    const c = colorOf(h), n = numOf(h);
+    const near = (t: Tile) => !isJoker(t) && (colorOf(t) === c || numOf(t) === n);
+    const idx = table.map((g, i) => ({ g, i })).filter(({ g }) => g.some(near)).sort((a, b) => a.g.length - b.g.length).slice(0, 4).map((x) => x.i);
+    if (!idx.length) continue;
+    const fixed = idx.flatMap((i) => table[i]);
+    const extra = hand.filter((t) => near(t) || t === h);
+    const avail = new Map<Slot, number>(), must = new Map<Slot, number>();
+    for (const t of fixed) { avail.set(slotOf(t), (avail.get(slotOf(t)) ?? 0) + 1); must.set(slotOf(t), (must.get(slotOf(t)) ?? 0) + 1); }
+    for (const t of extra) avail.set(slotOf(t), (avail.get(slotOf(t)) ?? 0) + 1);
+    const cands = candidates(avail);
+    let best: Slot[][] | null = null, bestUsed = fixed.length;
+    let nodes = 0;
+    const pick: Slot[][] = [];
+    const rec = (used: number) => {
+      if (++nodes > REBUILD_NODES) return;
+      const open = [...must].find(([, k]) => k > 0)?.[0];
+      if (!open) {
+        if (used > bestUsed) { bestUsed = used; best = pick.map((x) => x.slice()); }
+        // weitere Kombinationen nur aus den übrigen Steinen
+        for (const cand of cands) {
+          if (cand.some((x, i) => (avail.get(x) ?? 0) < cand.filter((y, j) => y === x && j <= i).length)) continue;
+          for (const x of cand) avail.set(x, avail.get(x)! - 1);
+          pick.push(cand);
+          const ok = used + cand.length > bestUsed;
+          if (ok) { bestUsed = used + cand.length; best = pick.map((x) => x.slice()); }
+          pick.pop();
+          for (const x of cand) avail.set(x, avail.get(x)! + 1);
+        }
+        return;
+      }
+      for (const cand of cands) {
+        if (!cand.includes(open)) continue;
+        if (cand.some((x, i) => (avail.get(x) ?? 0) < cand.filter((y, j) => y === x && j <= i).length)) continue;
+        const took = new Map<Slot, number>();
+        for (const x of cand) {
+          avail.set(x, avail.get(x)! - 1);
+          if ((must.get(x) ?? 0) > 0) { must.set(x, must.get(x)! - 1); took.set(x, (took.get(x) ?? 0) + 1); }
+        }
+        pick.push(cand);
+        rec(used + cand.length);
+        pick.pop();
+        for (const x of cand) avail.set(x, avail.get(x)! + 1);
+        for (const [x, k] of took) must.set(x, must.get(x)! + k);
+        if (nodes > REBUILD_NODES) return;
+      }
+    };
+    rec(0);
+    const plan = best as Slot[][] | null;
+    if (!plan || bestUsed <= fixed.length) continue;
+    // Bausteine in echte Steine: zuerst die vom Tisch, dann eigene
+    const pool = [...fixed, ...extra];
+    let lost = false;
+    const groups = plan.map((cand) => cand.map((x) => {
+      const k = pool.findIndex((t) => slotOf(t) === x);
+      if (k < 0) { lost = true; return ""; }
+      return pool.splice(k, 1)[0];
+    })).map(normalize);
+    if (lost || !groups.every(isValidMeld) || fixed.some((t) => !groups.some((g) => g.includes(t)))) continue;
+    const usedSet = new Set(groups.flat());
+    const keep = new Set(idx);
+    return { table: [...table.filter((_, i) => !keep.has(i)), ...groups], hand: hand.filter((t) => !usedSet.has(t)) };
+  }
+  return null;
+}
+
 /**
  * Vorschlag für den Zug von `me`: neue Kombinationen aus der Bank, danach (wenn schon ausgelegt) einzelne Steine anlegen
  * und Steine vom Tisch borgen (Enden langer Reihen, der vierte einer Gruppe). null: nichts möglich – Stein ziehen.
@@ -604,7 +679,7 @@ export function suggestPlay(s: ZrState, me: string, simple = false): { table: Ti
     for (let k = 0; k < 12 && rest.length; k++) {
       const lo = layOff(table, rest);
       table = lo.table; rest = lo.hand;
-      const b = rest.length ? borrow(table, rest) : null;
+      const b = rest.length ? borrow(table, rest) ?? rebuild(table, rest) : null;
       if (!b) break;
       table = b.table; rest = b.hand;
     }

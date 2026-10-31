@@ -22,7 +22,7 @@ import { botActions as klActions, botWait as klWait, levelOf as klLevel } from "
 import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
-import { bestMelds as zrBest, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
+import { bestMelds as zrBest, handPoints as zrPoints, isValidMeld as zrValid, normalize as zrNormalize, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -449,9 +449,11 @@ const scorePalast: Scorer = (view, a, _after, me) => {
 const scoreZahlenromme: Scorer = (view, a, after, me) => {
   if (a.type === "next" || a.type === "draw") return 0;
   if (a.type !== "commit") return -50;
-  const before = (view.game as ZrState).hands[me]?.length ?? 0;
-  const left = (after.game as ZrState).hands[me]?.length ?? 0;
-  return 100 + (before - left) * 10;
+  // möglichst viele Steine los, bei Gleichstand die mit mehr Punkten (sie kosten am Ende am meisten)
+  const before = (view.game as ZrState).hands[me] ?? [];
+  const left = (after.game as ZrState).hands[me] ?? [];
+  if (!left.length) return 10_000;
+  return 100 + (before.length - left.length) * 10 + (zrPoints(before) - zrPoints(left)) * 0.1;
 };
 
 // ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
@@ -720,8 +722,14 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     const full = zrSuggest(s, me), simple = zrSuggest(s, me, true);
     if (full) out.push({ type: "commit", table: full.table });
     if (simple && JSON.stringify(simple.table) !== JSON.stringify(full?.table)) out.push({ type: "commit", table: simple.table });
-    // kleinere Züge: nur eine der neuen Kombinationen (schwächere Stufen nehmen sie öfter)
-    if (s.melded[me]) for (const g of zrBest(s.hands[me] ?? [], false).groups) out.push({ type: "commit", table: [...s.table, g] });
+    // kleinere Züge: nur eine der neuen Kombinationen oder nur ein angelegter Stein (schwächere Stufen nehmen sie oft)
+    if (s.melded[me]) {
+      for (const g of zrBest(s.hands[me] ?? [], false).groups) out.push({ type: "commit", table: [...s.table, g] });
+      for (const t of s.hands[me] ?? []) {
+        const i = s.table.findIndex((g) => zrValid([...g, t]));
+        if (i >= 0) out.push({ type: "commit", table: s.table.map((g, k) => (k === i ? zrNormalize([...g, t]) : g)) });
+      }
+    }
     return out;
   },
   maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
