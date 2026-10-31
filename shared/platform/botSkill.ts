@@ -706,10 +706,10 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     const s = view.game as PalastState;
     if (s.phase === "swap") {
       const hand = s.hands[me] ?? [], up = s.up[me] ?? [];
-      // der Vorschlag und jeder einzelne Tausch
-      const out: A[] = [{ type: "ready", player: me }, { type: "arrange", up: palastUp(hand, up), player: me }];
-      for (const h of hand) for (let i = 0; i < up.length; i++) out.push({ type: "arrange", up: palastSort([...up.slice(0, i), h, ...up.slice(i + 1)]), player: me });
-      return out;
+      // fertig oder einmal zum Vorschlag tauschen – liegt der schon aus, nur noch fertig (sonst tauscht ein Bot endlos weiter)
+      const best = palastUp(hand, up);
+      const done = JSON.stringify(palastSort([...up])) === JSON.stringify(palastSort([...best]));
+      return done ? [{ type: "ready", player: me }] : [{ type: "ready", player: me }, { type: "arrange", up: best, player: me }];
     }
     return s.curId === me ? palastMoves(s, me, view.options) : [];
   },
