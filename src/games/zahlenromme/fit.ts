@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /** Maße einer Kombination relativ zur Steinbreite w: Abstand zwischen Steinen, Innenrand, Abstand zwischen Kombinationen */
 export const GAP = 0.06, PAD = 0.14, GAP_X = 0.32, GAP_Y = 0.26, RATIO = 4 / 3;
@@ -21,12 +21,11 @@ export function fitWidth(lens: number[], W: number, H: number, max: number, min 
   return min;
 }
 
-/** Größe eines Elements (ResizeObserver) */
+/** Größe eines Elements (ResizeObserver) – als Callback-Ref, damit auch später eingeblendete Elemente gemessen werden */
 export function useSize<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
+  const [el, setEl] = useState<T | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
@@ -36,6 +35,17 @@ export function useSize<T extends HTMLElement>() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => { ro.disconnect(); };
-  }, []);
-  return [ref, size] as const;
+  }, [el]);
+  return [setEl, size] as const;
+}
+
+/** Steine im Raster (Bank): größte Breite, bei der `n` Steine mit Abstand in W×H passen */
+export function fitGrid(n: number, W: number, H: number, max: number, min = 10, gap = 4): number {
+  if (W <= 0 || H <= 0 || n <= 0) return max;
+  for (let w = max; w > min; w -= 0.5) {
+    const per = Math.max(1, Math.floor((W + gap) / (w + gap)));
+    const rows = Math.ceil(n / per);
+    if (rows * w * RATIO + (rows - 1) * gap <= H) return w;
+  }
+  return min;
 }

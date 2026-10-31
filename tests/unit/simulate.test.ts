@@ -9,6 +9,7 @@ import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import type { HzState } from "@shared/games/herzen/logic";
 import type { PalastState } from "@shared/games/palast/logic";
+import { fullSet, isValidMeld, type ZrState } from "@shared/games/zahlenromme/logic";
 import type { P10State } from "@shared/games/zehnphasen/logic";
 import type { SbState } from "@shared/games/stapelbau/logic";
 import type { EinsState } from "@shared/games/eins/logic";
@@ -77,6 +78,16 @@ function checkCards(r: RoomState) {
     const n = s.pile.length + s.discard.length + s.burned.length + Object.values(s.hands).flat().length
       + Object.values(s.up).flat().length + Object.values(s.down).flat().filter(Boolean).length;
     expect(n).toBe(52 * s.decks);
+  }
+  if (r.gameId === "zahlenromme") {
+    // 106 Steine (ohne Joker 104): Pool, Bänke und Tisch – jeder genau einmal, der Tisch am Zugende immer gültig
+    const s = r.game as ZrState;
+    const all = [...s.pool, ...Object.values(s.hands).flat(), ...s.table.flat()];
+    if (s.phase !== "over") {
+      expect(all.length).toBe(fullSet(s.joker).length);
+      expect(new Set(all).size).toBe(all.length);
+      expect(s.table.every(isValidMeld)).toBe(true);
+    }
   }
   if (r.gameId === "klingel") {
     const s = r.game as KlState;
@@ -230,6 +241,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["palast", 3, { seven: false, four: false }],
   ["palast", 5, { swap: false }],
   ["palast", 8, {}],
+  ["zahlenromme", 2, {}],
+  ["zahlenromme", 4, {}],
+  ["zahlenromme", 3, { joker: false, end: "1" }],
+  ["zahlenromme", 2, { end: "p200", think: "off" }],
   ["fischen", 2, {}],
   ["fischen", 5, { luckyAgain: false, deck: "de32" }],
   ["fischen", 8, { deck: "fr52" }],

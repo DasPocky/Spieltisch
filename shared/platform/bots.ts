@@ -15,6 +15,7 @@ import type { WerwolfState } from "../games/werwolf/logic";
 import { SUITS as HS_SUITS, type HsState } from "../games/hellseher/logic";
 import { canPlay as hzCanPlay, type HzState } from "../games/herzen/logic";
 import { legalMoves as palastMoves, type PalastState } from "../games/palast/logic";
+import { suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
 import { POINT_STEPS } from "../games/alles/logic";
 import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../games/maexchen/logic";
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
@@ -272,6 +273,19 @@ export function candidates(r: RoomState, online: boolean): Move[] {
         // ab und zu ein ungültiger Zug: muss abgelehnt werden
         if (Math.random() < 0.05) add({ type: "take" });
       }
+      break;
+    }
+    case "zahlenromme": {
+      const s = r.game as ZrState;
+      if (s.phase === "round") { add({ type: "next" }); break; }
+      if (s.phase !== "play" || !s.curId) break;
+      // meist legen, was geht (mal mit, mal ohne Anlegen), sonst ziehen
+      const sug = zrSuggest(s, s.curId, Math.random() < 0.4);
+      if (sug) { add({ type: "commit", table: sug.table }); add({ type: "commit", table: sug.table }); }
+      add({ type: "draw" });
+      // ab und zu ein ungültiger Umbau: muss abgelehnt werden
+      if (Math.random() < 0.05 && s.table.length) add({ type: "commit", table: s.table.slice(1) });
+      if (s.deadline !== null && Date.now() >= s.deadline) add({ type: "timeUp" });
       break;
     }
     case "schamlos": {

@@ -22,6 +22,7 @@ import { botActions as klActions, botWait as klWait, levelOf as klLevel } from "
 import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
+import { bestMelds as zrBest, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -443,6 +444,16 @@ const scorePalast: Scorer = (view, a, _after, me) => {
   return -sum(cards);
 };
 
+// ---------------------------------------------------------------- Zahlen-Rommé (so viele eigene Steine wie möglich legen)
+
+const scoreZahlenromme: Scorer = (view, a, after, me) => {
+  if (a.type === "next" || a.type === "draw") return 0;
+  if (a.type !== "commit") return -50;
+  const before = (view.game as ZrState).hands[me]?.length ?? 0;
+  const left = (after.game as ZrState).hands[me]?.length ?? 0;
+  return 100 + (before - left) * 10;
+};
+
 // ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
 
 const scoreStapelbau: Scorer = (view, a, after, me) => {
@@ -593,7 +604,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, zahlenromme: scoreZahlenromme, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -699,6 +710,19 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
       return out;
     }
     return s.curId === me ? palastMoves(s, me, view.options) : [];
+  },
+  zahlenromme: (view, me) => {
+    const s = view.game as ZrState;
+    if (s.phase === "round") return [{ type: "next" }];
+    if (s.phase !== "play" || s.curId !== me) return [];
+    // ziehen, nur auslegen oder auslegen und anlegen
+    const out: A[] = [{ type: "draw" }];
+    const full = zrSuggest(s, me), simple = zrSuggest(s, me, true);
+    if (full) out.push({ type: "commit", table: full.table });
+    if (simple && JSON.stringify(simple.table) !== JSON.stringify(full?.table)) out.push({ type: "commit", table: simple.table });
+    // kleinere Züge: nur eine der neuen Kombinationen (schwächere Stufen nehmen sie öfter)
+    if (s.melded[me]) for (const g of zrBest(s.hands[me] ?? [], false).groups) out.push({ type: "commit", table: [...s.table, g] });
+    return out;
   },
   maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
   alles: (view) => (view.options.diceMode !== "app" || view.options.cards === "real" ? null

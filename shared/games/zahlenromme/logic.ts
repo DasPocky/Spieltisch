@@ -549,9 +549,44 @@ export function layOff(table: Tile[][], hand: Tile[]): { table: Tile[][]; hand: 
   return { table: t, hand: rest };
 }
 
+/** Steine, die man vom Tisch nehmen kann, ohne dass ihre Kombination ungültig wird (Enden langer Reihen, der vierte einer Gruppe) */
+function spare(table: Tile[][]): { gi: number; tile: Tile }[] {
+  const out: { gi: number; tile: Tile }[] = [];
+  table.forEach((g, gi) => {
+    const m = analyze(g);
+    if (!m || g.length < 4) return;
+    const ends = m.kind === "run" ? [m.tiles[0], m.tiles[m.tiles.length - 1]] : m.tiles;
+    for (const t of ends) if (!isJoker(t) && isValidMeld(g.filter((x) => x !== t))) out.push({ gi, tile: t });
+  });
+  return out;
+}
+
+/** Eine neue Kombination mit geborgten Tischsteinen: zwei eigene + einer vom Tisch oder einer eigener + zwei vom Tisch */
+function borrow(table: Tile[][], hand: Tile[]): { table: Tile[][]; hand: Tile[] } | null {
+  const sp = spare(table);
+  if (!sp.length) return null;
+  const own = hand.filter((t) => !isJoker(t));
+  const take = (from: { gi: number; tile: Tile }[], mine: Tile[]) => {
+    const used = new Set(from.map((x) => x.tile));
+    const t = table.map((g) => g.filter((x) => !used.has(x))).map(normalize);
+    t.push(normalize([...mine, ...used]));
+    const mineSet = new Set(mine);
+    return { table: t, hand: hand.filter((x) => !mineSet.has(x)) };
+  };
+  for (const e of sp) for (let i = 0; i < own.length; i++) for (let j = i + 1; j < own.length; j++) {
+    if (isValidMeld([own[i], own[j], e.tile])) return take([e], [own[i], own[j]]);
+  }
+  for (let a = 0; a < sp.length; a++) for (let b = a + 1; b < sp.length; b++) {
+    if (sp[a].gi === sp[b].gi) continue;
+    for (const h of own) if (isValidMeld([h, sp[a].tile, sp[b].tile])) return take([sp[a], sp[b]], [h]);
+  }
+  return null;
+}
+
 /**
- * Vorschlag für den Zug von `me`: neue Kombinationen aus der Bank, danach (wenn schon ausgelegt) einzelne Steine anlegen.
- * null: nichts möglich – Stein ziehen. `simple`: nur auslegen, nicht anlegen.
+ * Vorschlag für den Zug von `me`: neue Kombinationen aus der Bank, danach (wenn schon ausgelegt) einzelne Steine anlegen
+ * und Steine vom Tisch borgen (Enden langer Reihen, der vierte einer Gruppe). null: nichts möglich – Stein ziehen.
+ * `simple`: nur auslegen, nicht anlegen oder umbauen.
  */
 export function suggestPlay(s: ZrState, me: string, simple = false): { table: Tile[][]; laid: number } | null {
   const hand = s.hands[me] ?? [];
@@ -562,14 +597,19 @@ export function suggestPlay(s: ZrState, me: string, simple = false): { table: Ti
     if (best.points < FIRST) return null;
     return { table: [...s.table.map((g) => g.slice()), ...best.groups], laid: best.tiles };
   }
+  const used = new Set(best.groups.flat());
   let table = [...s.table.map((g) => g.slice()), ...best.groups];
-  let laid = best.tiles;
+  let rest = hand.filter((t) => !used.has(t));
   if (!simple) {
-    const used = new Set(best.groups.flat());
-    const r = layOff(table, hand.filter((t) => !used.has(t)));
-    laid += hand.length - used.size - r.hand.length;
-    table = r.table;
+    for (let k = 0; k < 12 && rest.length; k++) {
+      const lo = layOff(table, rest);
+      table = lo.table; rest = lo.hand;
+      const b = rest.length ? borrow(table, rest) : null;
+      if (!b) break;
+      table = b.table; rest = b.hand;
+    }
   }
+  const laid = hand.length - rest.length;
   if (!laid) return null;
   return { table, laid };
 }
@@ -659,7 +699,7 @@ export const zahlenromme: GameLogic<ZrState, ZrAction> = {
     sync(s);
     return s;
   },
-  botPause: (s) => (s.last?.kind === "commit" ? 1200 : 0),
+  botPause: (s) => (s.phase === "round" ? 6000 : s.last?.kind === "commit" ? 1200 : 0),
   view: (s, viewer) => {
     if (viewer === null) return s;
     const own = viewer in s.hands ? { [viewer]: s.hands[viewer] } : {};
