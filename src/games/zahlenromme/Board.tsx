@@ -201,7 +201,6 @@ function Play({ room, game: s, me, online, canAct, act }: Props) {
         ) : (
           <span className="inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ring-border" data-testid="round-info">Runde {s.round}</span>
         )}
-        <span className="tabular-nums" data-testid="pool-info">Pool {s.poolCount}</span>
         {left !== null && (
           <span className={cn("ml-auto rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ring-inset", left <= 15 ? "bg-destructive/15 text-destructive ring-destructive/40" : "bg-secondary ring-border")} data-testid="turn-timer"
             aria-label={`Zugzeit: noch ${left} Sekunden`}>
@@ -299,7 +298,7 @@ function TileButton({ tile, w, selected, fresh, enabled, onClick }: { tile: Tile
         selected && "-translate-y-[18%] ring-[3px] ring-primary")}
       style={{ width: w }}>
       <TileFace tile={tile} />
-      {fresh && <span className="absolute top-[6%] right-[8%] size-[16%] rounded-full bg-primary" aria-hidden="true" />}
+      {fresh && <span className="absolute top-[5%] right-[6%] size-[11%] rounded-full bg-primary ring-1 ring-white/70" aria-hidden="true" />}
     </button>
   );
 }
@@ -309,6 +308,9 @@ function Bank({ hand, sel, myTurn, returnTarget, onTile, onBank, sortBy, onSort 
   hand: Tile[]; sel: Tile[]; myTurn: boolean; returnTarget: boolean; onTile: (t: Tile) => void; onBank: () => void; sortBy: "color" | "num"; onSort: () => void;
 }) {
   const [ref, size] = useSize<HTMLDivElement>();
+  // so hoch wie nötig (wenige Steine: flach, dann hat der Tisch mehr Platz), höchstens etwa ein Sechstel des Bildschirms
+  const per = Math.max(1, Math.floor((size.w - 8 + 4) / 44));
+  const need = Math.ceil(Math.max(1, hand.length) / per) * (40 * 4 / 3 + 4) + 8;
   const w = fitGrid(Math.max(1, hand.length), size.w - 8, size.h - 8, 40, 14, 4);
   return (
     <div className="relative">
@@ -320,15 +322,17 @@ function Bank({ hand, sel, myTurn, returnTarget, onTile, onBank, sortBy, onSort 
         </button>
       </div>
       <div ref={ref} onClick={onBank} data-testid="bank" aria-label="Deine Bank"
-        className={cn("flex h-[clamp(4.2rem,17dvh,8.5rem)] flex-wrap content-start justify-center gap-1 overflow-hidden rounded-xl bg-[#7a5a3a]/15 p-1 ring-1 ring-inset ring-[#7a5a3a]/25",
+        style={{ height: need }}
+        className={cn("flex max-h-[clamp(4.2rem,17dvh,8.5rem)] min-h-[3.9rem] flex-wrap content-start justify-center gap-1 overflow-hidden rounded-xl bg-[#7a5a3a]/15 p-1 ring-1 ring-inset ring-[#7a5a3a]/25",
           returnTarget && "cursor-pointer ring-2 ring-primary")}>
         {hand.map((t) => <TileButton key={t} tile={t} w={w} selected={sel.includes(t)} enabled={myTurn} onClick={(e) => { e.stopPropagation(); onTile(t); }} />)}
         {!hand.length && <span className="self-center text-sm">leer</span>}
       </div>
       {returnTarget && (
-        <span className="pointer-events-none absolute right-2 bottom-1 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.7rem] font-semibold text-primary-foreground">
-          <Undo2 className="size-3" />zurück auf die Bank
-        </span>
+        <button type="button" onClick={onBank} data-testid="to-bank"
+          className="absolute right-2 bottom-1 inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Undo2 className="size-3.5" />zurück auf die Bank
+        </button>
       )}
     </div>
   );
