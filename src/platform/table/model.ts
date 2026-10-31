@@ -48,6 +48,7 @@ import { ankreuzspielTable } from "../../games/ankreuzspiel/table";
 import { werbinichTable } from "../../games/werbinich/table";
 import { palastTable } from "../../games/palast/table";
 import { klingelTable } from "../../games/klingel/table";
+import { zahlenrommeTable } from "../../games/zahlenromme/table";
 import { quizTable } from "../../games/quiz/table";
 
 /** Kartenart: französisch/deutsch („cards“), Eins!, Textkarten (Schamlos) oder Zahlenkarten (Rückseite blau, 5:7) */
@@ -134,6 +135,8 @@ export interface TableModel {
     ring: { n: number; by: string; ok: boolean; title: string; sub: string } | null;
     pending: boolean; note: string; endsAt?: number | null;
   };
+  /** Zahlen-Rommé: alle Reihen und Gruppen groß in der Mitte (wird kleiner, je voller der Tisch), darunter ein Hinweis */
+  tiles?: { groups: string[][]; pool: number; note: string };
   /** Nacht: Licht gedimmt, kühler */
   night?: boolean;
   /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */
@@ -156,7 +159,7 @@ export { TABLE_GAMES } from "@shared/platform/modes";
 
 /** Tischmodelle der Spiele */
 const MODELS: Record<string, (room: RoomState) => TableModel | null> = {
-  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, stadtlandfluss: stadtlandflussTable, herzen: herzenTable, schocken: schockenTable, bluff: bluffTable, ankreuzspiel: ankreuzspielTable, erklaerspiel: erklaerspielTable, werbinich: werbinichTable, klingel: klingelTable, palast: palastTable, quiz: quizTable,
+  maumau: maumauTable, eins: einsTable, schamlos: schamlosTable, fuenfwuerfel: fuenfwuerfelTable, vier: vierTable, stapelbau: stapelbauTable, himmelskarten: himmelskartenTable, zehnphasen: zehnphasenTable, glueckssieben: glueckssiebenTable, decknamen: decknamenTable, alles: allesTable, maexchen: maexchenTable, dame: dameTable, muehle: muehleTable, ludo: ludoTable, fischen: fischenTable, hellseher: hellseherTable, werwolf: werwolfTable, einenacht: einenachtTable, spion: spionTable, stirnraten: stirnratenTable, zeichnen: zeichnenTable, kritzelpost: kritzelpostTable, stadtlandfluss: stadtlandflussTable, herzen: herzenTable, schocken: schockenTable, bluff: bluffTable, ankreuzspiel: ankreuzspielTable, erklaerspiel: erklaerspielTable, werbinich: werbinichTable, klingel: klingelTable, palast: palastTable, zahlenromme: zahlenrommeTable, quiz: quizTable,
 };
 
 export function tableModel(room: RoomState): TableModel | null {

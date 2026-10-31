@@ -31,6 +31,7 @@ import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
 import { Paper } from "@/games/zeichnen/Canvas";
 import { FeltBell, SeatFruit } from "@/games/klingel/TableBell";
+import { FeltTiles } from "@/games/zahlenromme/TableTiles";
 import { RESET_VIEW } from "@/platform/table/camera";
 import { createFlatScene } from "@/platform/table/flat";
 import { createStudioScene, type StudioScene } from "@/platform/table/studio";
@@ -404,6 +405,8 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {model?.bell && felt && players.map((p, i) => points[i] && p.id in model.bell!.tops && (
         <SeatFruit key={p.id} felt={felt} seat={points[i]} card={model.bell!.tops[p.id]} stock={model.bell!.stocks[p.id] ?? 0} name={p.name} />
       ))}
+      {/* Zahlen-Rommé: der ganze Tisch mit Reihen und Gruppen groß auf dem Filz – in 3D wie flach */}
+      {model?.tiles && <OnFelt rect={felt}><FeltTiles tiles={model.tiles} /></OnFelt>}
       {reacts.map((r) => {
         const i = players.findIndex((p) => p.id === r.from);
         const at = points[i];
