@@ -15,7 +15,7 @@ import { siteConfigNow } from "@/hooks/useSiteConfig";
 import { changedRules, currentPreset, presetKeys, presetsOf } from "@shared/platform/presets";
 
 /** Spiele mit Spielhilfen (siehe useHints) */
-export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles", "herzen", "schocken", "bluff", "ankreuzspiel", "palast"]);
+export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles", "herzen", "schocken", "bluff", "ankreuzspiel", "palast", "zahlenromme"]);
 
 const ENTRY_OPTIONS = [
   { value: "turn", label: "Wer dran ist", hint: "am eigenen Handy" },

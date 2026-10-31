@@ -401,3 +401,6 @@
 .ak-hint { animation: ak-hint 1.6s ease-in-out infinite; }
 @keyframes ak-hint { 50% { box-shadow: inset 0 0 0 3px var(--primary); } }
 @media (prefers-reduced-motion: reduce) { .ak-hint { animation: none; box-shadow: inset 0 0 0 3px var(--primary); } }
+
+/* Zahlen-Rommé: Zahlenstein aus Elfenbein mit Kante (hell und dunkel gleich, wie ein echter Stein) */
+.zr-tile { background: linear-gradient(#fffaf0, #f3ead6); box-shadow: inset 0 -0.12em 0 rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.25); outline: 1px solid rgb(0 0 0 / 0.12); outline-offset: -1px; }

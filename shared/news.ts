@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-10-zahlenromme",
+    date: "2026-10-31",
+    title: "Neues Spiel: Zahlen-Rommé",
+    items: [
+      "106 Zahlensteine, 2 bis 4 Spieler: Reihen und Gruppen legen – das erste Mal mit mindestens 30 Punkten aus eigenen Steinen.",
+      "Danach den ganzen Tisch umbauen: anlegen, teilen, verschieben, Joker austauschen. Ungültiges ist rot markiert, „Zurück“ setzt den Zug zurück.",
+      "Bank nach Farbe oder Zahl sortieren, Steine mit Zeichen je Farbe. Mit Bots, Spielhilfe, Vorlesen, Zugzeit, an einem Handy für alle und am Großen Tisch (Beta). Pakete „Ohne Joker“ und „Kurz“.",
+    ],
+  },
+  {
     id: "2026-10-palast",
     date: "2026-10-30",
     title: "Neues Kartenspiel: Palast",

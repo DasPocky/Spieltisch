@@ -26,7 +26,9 @@ function duel(gameId: string, levels: Record<string, BotLevel>, seed: string): s
     for (let i = 0; i < v.length; i++) v[i] = Math.floor(rand() * max);
     return arr;
   });
-  try { return play(gameId, levels, seed); } finally { spy.mockRestore(); }
+  // feste Uhr: Fristen (Zugzeit) stehen im Zustand und fließen in den Bot-Zufall ein
+  const clock = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+  try { return play(gameId, levels, seed); } finally { spy.mockRestore(); clock.mockRestore(); }
 }
 function play(gameId: string, levels: Record<string, BotLevel>, seed: string): string[] {
   let r = start(gameId, Object.keys(levels).map((_, i) => "ABCD"[i]));
@@ -125,7 +127,7 @@ describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
   }
   // Feste Partien (Startwert je Partie): das Ergebnis ist bei jedem Lauf gleich. Gemessen mit 150 zufälligen Partien
   // gewinnt Hellseher „schwer“ 143 (95 %) – mit zufälligem Austeilen fiel er bei 9 Partien rund jeden 14. Lauf unter 80 %.
-  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8], ["palast", 30, 0.7]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
+  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8], ["palast", 30, 0.7], ["zahlenromme", 40, 0.65]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
     const { strong, games } = share(gameId, n);
     expect(games).toBeGreaterThanOrEqual(n * 0.6);
     expect(strong / games).toBeGreaterThanOrEqual(min);
@@ -162,7 +164,7 @@ describe("Bots ohne Bewertung", () => {
 });
 
 describe("Abnahme: Bots", () => {
-  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]], ["alles", [2, 3]], ["maexchen", [2, 4]], ["fischen", [2, 4]], ["hellseher", [3]], ["herzen", [3, 4]], ["palast", [2, 4]], ["schocken", [2, 4]], ["bluff", [2, 4]], ["ankreuzspiel", [2, 4]], ["stapelbau", [2, 3]], ["himmelskarten", [2, 4]], ["glueckssieben", [3, 4]], ["zehnphasen", [2, 4]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
+  it.each([["maumau", [2, 3, 4]], ["eins", [2, 3, 4]], ["vier", [2]], ["fuenfwuerfel", [2, 3]], ["dame", [2]], ["muehle", [2]], ["ludo", [2, 4]], ["alles", [2, 3]], ["maexchen", [2, 4]], ["fischen", [2, 4]], ["hellseher", [3]], ["herzen", [3, 4]], ["palast", [2, 4]], ["zahlenromme", [2, 4]], ["schocken", [2, 4]], ["bluff", [2, 4]], ["ankreuzspiel", [2, 4]], ["stapelbau", [2, 3]], ["himmelskarten", [2, 4]], ["glueckssieben", [3, 4]], ["zehnphasen", [2, 4]]] as const)("%s: jede Stufe, nur erlaubte Züge, jede Partie endet", (gameId, counts) => {
     for (const level of ["zufall", "leicht", "mittel", "schwer"] as BotLevel[]) {
       for (const n of counts) {
         let r = start(gameId, ["A", "B", "C", "D"].slice(0, n));

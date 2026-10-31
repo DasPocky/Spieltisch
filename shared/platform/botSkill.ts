@@ -22,6 +22,7 @@ import { botActions as klActions, botWait as klWait, levelOf as klLevel } from "
 import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
+import { bestMelds as zrBest, handPoints as zrPoints, isValidMeld as zrValid, normalize as zrNormalize, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -443,6 +444,18 @@ const scorePalast: Scorer = (view, a, _after, me) => {
   return -sum(cards);
 };
 
+// ---------------------------------------------------------------- Zahlen-Rommé (so viele eigene Steine wie möglich legen)
+
+const scoreZahlenromme: Scorer = (view, a, after, me) => {
+  if (a.type === "next" || a.type === "draw") return 0;
+  if (a.type !== "commit") return -50;
+  // möglichst viele Steine los, bei Gleichstand die mit mehr Punkten (sie kosten am Ende am meisten)
+  const before = (view.game as ZrState).hands[me] ?? [];
+  const left = (after.game as ZrState).hands[me] ?? [];
+  if (!left.length) return 10_000;
+  return 100 + (before.length - left.length) * 10 + (zrPoints(before) - zrPoints(left)) * 0.1;
+};
+
 // ---------------------------------------------------------------- Stapelbau (Vorrat loswerden, Gegnern nichts vorlegen)
 
 const scoreStapelbau: Scorer = (view, a, after, me) => {
@@ -593,7 +606,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, zahlenromme: scoreZahlenromme, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -693,12 +706,31 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     const s = view.game as PalastState;
     if (s.phase === "swap") {
       const hand = s.hands[me] ?? [], up = s.up[me] ?? [];
-      // der Vorschlag und jeder einzelne Tausch
-      const out: A[] = [{ type: "ready", player: me }, { type: "arrange", up: palastUp(hand, up), player: me }];
-      for (const h of hand) for (let i = 0; i < up.length; i++) out.push({ type: "arrange", up: palastSort([...up.slice(0, i), h, ...up.slice(i + 1)]), player: me });
-      return out;
+      // fertig oder einmal zum Vorschlag tauschen – liegt der schon aus, nur noch fertig (sonst tauscht ein Bot endlos weiter)
+      const best = palastUp(hand, up);
+      const done = JSON.stringify(palastSort([...up])) === JSON.stringify(palastSort([...best]));
+      return done ? [{ type: "ready", player: me }] : [{ type: "ready", player: me }, { type: "arrange", up: best, player: me }];
     }
     return s.curId === me ? palastMoves(s, me, view.options) : [];
+  },
+  zahlenromme: (view, me) => {
+    const s = view.game as ZrState;
+    if (s.phase === "round") return [{ type: "next" }];
+    if (s.phase !== "play" || s.curId !== me) return [];
+    // ziehen, nur auslegen oder auslegen und anlegen
+    const out: A[] = [{ type: "draw" }];
+    const full = zrSuggest(s, me), simple = zrSuggest(s, me, true);
+    if (full) out.push({ type: "commit", table: full.table });
+    if (simple && JSON.stringify(simple.table) !== JSON.stringify(full?.table)) out.push({ type: "commit", table: simple.table });
+    // kleinere Züge: nur eine der neuen Kombinationen oder nur ein angelegter Stein (schwächere Stufen nehmen sie oft)
+    if (s.melded[me]) {
+      for (const g of zrBest(s.hands[me] ?? [], false).groups) out.push({ type: "commit", table: [...s.table, g] });
+      for (const t of s.hands[me] ?? []) {
+        const i = s.table.findIndex((g) => zrValid([...g, t]));
+        if (i >= 0) out.push({ type: "commit", table: s.table.map((g, k) => (k === i ? zrNormalize([...g, t]) : g)) });
+      }
+    }
+    return out;
   },
   maexchen: (view) => ((view.game as MaexState).table ? null : [{ type: "roll" }, { type: "reveal" }, ...ORDER.map((value) => ({ type: "announce", value }))]),
   alles: (view) => (view.options.diceMode !== "app" || view.options.cards === "real" ? null
