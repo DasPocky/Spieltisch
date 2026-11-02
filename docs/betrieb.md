@@ -23,11 +23,11 @@ GitHub Actions (`.github/workflows/ci.yml`) prüft parallel Build, Unit-Tests, H
 - **Laufende Partien** spielen mit ihrer Spielversion zu Ende (gesicherte alte Logik und Oberfläche in `shared/legacy` bzw. `src/legacy`), sonst wird umgerechnet oder die Partie endet sanft (Gruppe und Spielabend bleiben) – siehe `docs/entwicklung.md`.
 - **Hinweise:** Wartet ein Update, steht es dezent im Raum. Danach zeigt „Was ist neu?“ einmal pro Gerät die Neuigkeiten aus `shared/news.ts` (in der Verwaltung änderbar).
 
-**Vorschauen aufräumen:** Jede Vorschau legt eigene Durable-Object-Namespaces an (4 je Zweig, Limit 100 im Konto, Fehler 10067). Nach jedem Merge die Vorschau löschen: `CLOUDFLARE_API_TOKEN=… node scripts/vorschau-aufraeumen.mjs` (ohne Argument alle gemergten oder gelöschten Zweige, sonst die genannten). Automatisch macht das `.github/workflows/vorschau.yml` beim Schließen eines PRs – dafür einmalig das Repository-Secret `CLOUDFLARE_API_TOKEN` (Recht „Workers Scripts: Edit“) setzen.
+**Vorschauen aufräumen:** Jede Vorschau legt eigene Durable-Object-Namespaces an (4 je Zweig, Limit 100 im Konto, Fehler 10067). Nach jedem Merge die Vorschau löschen: `CLOUDFLARE_API_TOKEN=… node scripts/vorschau-aufraeumen.mjs` (ohne Argument alle gemergten oder gelöschten Zweige, sonst die genannten). Automatisch macht das `.github/workflows/vorschau.yml` beim Schließen eines PRs – dafür einmalig das Repository-Secret `CLOUDFLARE_API_TOKEN` setzen (Token „spieltisch-vorschau-cleanup“, siehe [Cloudflare-API-Tokens](#cloudflare-api-tokens)).
 
 Vorschau-Builds anderer Zweige brauchen keine dieser Secrets: Das Skript lädt dort nur hoch und fragt nie den Live-Worker. Den Deploy-Befehl für andere Zweige (`npx wrangler versions upload`) nicht ändern.
 
-Einrichtung für „warten können“ (einmalig): `RELEASE_SECRET` als Worker-Secret **und** als Build-Variable (gleicher Wert), `DEPLOY_TOKEN` als Worker-Secret (API-Token mit Recht „Workers Scripts: Edit“), Deploy-Befehl in Workers Builds auf `node scripts/release.mjs`. Ohne diese Schritte geht jede Version sofort live – wie bisher.
+Einrichtung für „warten können“ (einmalig): `RELEASE_SECRET` als Worker-Secret **und** als Build-Variable (gleicher Wert), `DEPLOY_TOKEN` als Worker-Secret (Token „spieltisch-deploy-updates“, siehe [Cloudflare-API-Tokens](#cloudflare-api-tokens)), Deploy-Befehl in Workers Builds auf `node scripts/release.mjs`. Ohne diese Schritte geht jede Version sofort live – wie bisher.
 
 **Rückgängig machen:** In Cloudflare unter Workers → spieltisch → Deployments eine frühere Version wieder auf 100 % setzen (oder `npx wrangler rollback`). Spielstände bleiben, Geräte laden die ältere Version beim nächsten Gruß nicht neu (sie ist nicht neuer) – erst die nächste Version.
 
@@ -42,11 +42,23 @@ Im Cloudflare-Dashboard unter **Workers & Pages → spieltisch → Settings → 
 | `ADMIN_PASSWORD` | Zugang zu `/admin` | Admin-Bereich gesperrt |
 | `REALTIME_APP_TOKEN` | Sprach- und Videochat (Cloudflare **Realtime → Serverless SFU**, App Secret). Die App ID steht fest in `wrangler.jsonc` (`vars`) – im Dashboard gesetzte Variablen löscht jeder Deploy | kein Anruf-Knopf |
 | `RELEASE_SECRET` | Der Build meldet neue Versionen an (`/api/release`); gleicher Wert auch als Build-Variable | jede Version sofort live |
-| `DEPLOY_TOKEN` | Wartende Versionen freischalten (Cloudflare-API-Token, „Workers Scripts: Edit“) | jede Version sofort live |
+| `DEPLOY_TOKEN` | Wartende Versionen freischalten (Account-API-Token „spieltisch-deploy-updates“, siehe unten) | jede Version sofort live |
 
 Feste Werte in `wrangler.jsonc` → `vars`: `CF_ACCOUNT_ID`, `WORKER_NAME`, optional `UPDATE_MODE`. Die globale Ratenbremse `SENSITIVE` (Cloudflare Rate Limiting, 60 je Minute und Adresse) steht unter `ratelimits`.
 
 Lokal stehen die Werte in `.dev.vars` (nicht eingecheckt). `scripts/test-env.mjs` legt die Datei für die Tests an, mit Admin-Passwort `test-admin` und simuliertem SFU (`REALTIME_FAKE=1`).
+
+## Cloudflare-API-Tokens
+
+Je Zweck ein eigener Token mit nur den Rechten, die er braucht. Sie stehen nie im Repo, in Logs oder im Chat: Björn trägt sie selbst ein. Ablauf jeweils **1 Jahr** (im Kalender vormerken und vorher neu anlegen). Keine IP-Filter, weil GitHub Actions und Workers Builds von wechselnden Adressen kommen.
+
+| Token | Art | Rechte (und warum) | Wo hinterlegt | Prüfen |
+| --- | --- | --- | --- | --- |
+| `spieltisch-deploy-updates` | Account-API-Token (`cfat_…`) | Account → **Workers Scripts → Edit**: eine hochgeladene Version per `POST …/deployments` auf 100 % schalten | Worker-Secret `DEPLOY_TOKEN` | Verwaltung → Updates: kein Hinweis „DEPLOY_TOKEN ist ungültig“, „Jetzt live“ schaltet frei |
+| `spieltisch-vorschau-cleanup` | Account-API-Token (`cfat_…`) | Account → **Workers Scripts → Edit**: Vorschauen auflisten und löschen, Durable-Object-Namespaces zählen | GitHub → Settings → Secrets and variables → Actions → `CLOUDFLARE_API_TOKEN` | einen PR schließen → Workflow „Vorschau aufräumen“ löscht dessen Vorschau |
+| `spieltisch-build` | User-API-Token (Workers Builds kann noch keine Account-Tokens) | Account → **Account Settings → Read** (wrangler liest das Konto) · Account → **Workers Scripts → Edit** (Versionen hochladen, deployen, Durable-Object-Migrations, Cron, Vorschauen) · Zone endlab.de → **Workers Routes → Edit** (Route `endlab.de/spieltisch*`, Custom Domain `spieltisch.endlab.de`) – weitere Rechte nur, wenn ein Build sie mit Fehlermeldung verlangt | Workers & Pages → spieltisch → Settings → Build → API token | Push auf `main` → Build und Deploy grün |
+
+Zwei getrennte Account-Tokens mit gleichem Recht, damit ein geleakter GitHub-Secret nicht den Live-Worker umschalten kann und jeder einzeln widerrufbar ist. Der Worker erkennt Account- und User-Tokens (`worker/cfToken.ts`: erst `/accounts/{id}/tokens/verify`, dann `/user/tokens/verify`). Sobald Workers Builds Account-Tokens unterstützt, `spieltisch-build` ebenfalls als Account-Token neu anlegen.
 
 ## Sicherheit
 
