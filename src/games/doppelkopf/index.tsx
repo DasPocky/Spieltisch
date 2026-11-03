@@ -1,9 +1,10 @@
 import type { RoomState } from "@shared/platform/room";
-import { contractName, doppelkopf, type DkAction, type DkState } from "@shared/games/doppelkopf/logic";
+import { doppelkopf, type DkAction, type DkState } from "@shared/games/doppelkopf/logic";
 import type { BoardProps, GameUI } from "@/games/types";
 import { cn } from "@/lib/utils";
 import { PlayingCard } from "@/platform/cards/PlayingCard";
 import { Board } from "./Board";
+import { recordName } from "./narration";
 import { Icon } from "./Icon";
 
 const B = ({ children }: { children: React.ReactNode }) => <b className="text-foreground">{children}</b>;
@@ -98,7 +99,7 @@ function History({ game: s }: BoardProps<DkState, DkAction>) {
         <tbody>
           {s.history.slice().reverse().map((h) => (
             <tr key={h.round} className="border-t border-border">
-              <td className="py-1.5 pr-2 text-muted-foreground">{h.round} <span className="text-xs">{contractName(h.contract)}{h.winner ? ` · ${h.winner === "re" ? "Re" : "Kontra"} ${h.augen[h.winner]}` : ""}</span></td>
+              <td className="py-1.5 pr-2 text-muted-foreground">{h.round} <span className="text-xs">{recordName(h)}{h.winner ? ` · ${h.winner === "re" ? "Re" : "Kontra"} ${h.augen[h.winner]}` : ""}</span></td>
               {s.seats.map((id) => (
                 <td key={id} className={cn("px-1 py-1.5 text-right font-bold", (h.points[id] ?? 0) > 0 ? "text-ok" : (h.points[id] ?? 0) < 0 ? "text-destructive" : "")}>{(h.points[id] ?? 0) > 0 ? "+" : ""}{h.points[id] ?? 0}</td>
               ))}

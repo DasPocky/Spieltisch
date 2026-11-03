@@ -1,6 +1,8 @@
-import { callName, contractName, partyOf, type DkState } from "@shared/games/doppelkopf/logic";
+import { callName, contractName, partyOf, type DkState, type RoundRecord } from "@shared/games/doppelkopf/logic";
 import type { Options } from "@shared/platform/types";
 
+/** Name des gespielten Spiels in der Abrechnung (stilles Solo, Hochzeit allein) */
+export const recordName = (rec: RoundRecord, o?: Options) => (rec.contract === "normal" && rec.alone ? "Stilles Solo" : rec.contract === "hochzeit" && rec.alone ? "Hochzeit (allein)" : contractName(rec.contract, o));
 const augen = (n: number) => `${n} ${n === 1 ? "Auge" : "Augen"}`;
 const pts = (n: number) => `${Math.abs(n)} ${Math.abs(n) === 1 ? "Punkt" : "Punkte"}`;
 
@@ -57,7 +59,7 @@ export function narration(before: DkState | null, s: DkState, name: (id: string 
       if (s.phase === "over") {
         const best = Math.max(...s.seats.map((id) => s.scores[id] ?? 0));
         const win = s.seats.filter((id) => (s.scores[id] ?? 0) === best).map(name);
-        parts.push(`Die Partie ist vorbei. ${win.join(" und ")} ${win.length > 1 ? "gewinnen" : "gewinnt"} mit ${pts(best)}.`);
+        parts.push(`Die Partie ist vorbei. ${win.join(" und ")} ${win.length > 1 ? "gewinnen" : "gewinnt"} mit ${best} ${Math.abs(best) === 1 ? "Punkt" : "Punkten"}.`);
       }
     }
   }

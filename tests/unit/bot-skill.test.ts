@@ -141,9 +141,10 @@ describe("Bots mit Spielstärke: Brett- und Würfelspiele", () => {
   }
   // Feste Partien (Startwert je Partie): das Ergebnis ist bei jedem Lauf gleich. Gemessen mit 150 zufälligen Partien
   // gewinnt Hellseher „schwer“ 143 (95 %) – mit zufälligem Austeilen fiel er bei 9 Partien rund jeden 14. Lauf unter 80 %.
-  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8], ["palast", 30, 0.7], ["zahlenromme", 40, 0.65], ["doppelkopf", 24, 0.6]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
+  it.each([["dame", 10, 0.8], ["muehle", 10, 0.8], ["ludo", 80, 0.55], ["fuenfwuerfel", 10, 0.9], ["alles", 40, 0.6], ["maexchen", 30, 0.6], ["fischen", 400, 0.52], ["hellseher", 9, 0.8], ["stapelbau", 10, 0.8], ["himmelskarten", 10, 0.8], ["glueckssieben", 30, 0.5], ["zehnphasen", 10, 0.8], ["palast", 30, 0.7], ["zahlenromme", 40, 0.65], ["doppelkopf", 60, 0.6]] as const)("%s: schwer schlägt Zufall deutlich", (gameId, n, min) => {
     const { strong, games } = share(gameId, n);
     expect(games).toBeGreaterThanOrEqual(n * 0.6);
+    if (gameId === "doppelkopf") console.log("DKRATIO", strong, games);
     expect(strong / games).toBeGreaterThanOrEqual(min);
   }, 300_000);
 

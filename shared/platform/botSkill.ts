@@ -23,7 +23,7 @@ import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
 import { bestMelds as zrBest, handPoints as zrPoints, isValidMeld as zrValid, normalize as zrNormalize, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
-import { augenOf as dkAugen, nextCall as dkNextCall, suggestCall as dkCall, suggestCard as dkCard, suggestReserve as dkReserve, SOLOS as DK_SOLOS, type DkState } from "../games/doppelkopf/logic";
+import { augenOf as dkAugen, nextCall as dkNextCall, suggestCall as dkCall, suggestCard as dkCard, suggestReserve as dkReserve, type DkState } from "../games/doppelkopf/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -719,7 +719,8 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     // Rundenende: weiter erst, wenn nur Bots am Tisch sitzen – Menschen lesen die Abrechnung und geben selbst
     if (s.phase === "roundEnd") return view.bots?.length && view.players.some((p) => !view.bots!.includes(p.id)) ? [] : [{ type: "nextRound" }];
     if (s.curId !== me) return [];
-    if (s.phase === "reserve") return ["gesund", "hochzeit", ...DK_SOLOS].map((what) => ({ type: "reserve", what }));
+    // Vorbehalt: gesund, Hochzeit oder das Solo, das zur Hand passt – kein Solo aufs Geratewohl (auch nicht bei „leicht“)
+    if (s.phase === "reserve") return [...new Set(["gesund", "hochzeit", dkReserve(s, me, view.options)])].map((what) => ({ type: "reserve", what }));
     const out: A[] = (s.hands[me] ?? []).map((card) => ({ type: "play", card }));
     // Ansagen nur am eigenen Zug (höchstens fünf Stufen – jede Partie endet)
     const lv = dkNextCall(s, me, view.options);

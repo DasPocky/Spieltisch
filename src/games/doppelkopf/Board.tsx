@@ -16,7 +16,7 @@ import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { SmoothText } from "@/platform/SmoothText";
 import { speak } from "@/platform/speech";
-import { narration } from "./narration";
+import { narration, recordName } from "./narration";
 import { useHints } from "@/lib/prefs";
 import { cn, vibrate } from "@/lib/utils";
 
@@ -121,12 +121,12 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
   const doCall = () => { if (call && viewer) { vibrate(14); act({ type: "call", level: call, player: local ? viewer : undefined }); } };
 
   const seatSub = (id: string) => {
-    if (s.phase === "reserve") return s.said[id] === "gesund" ? "gesund" : s.said[id] === "vorbehalt" ? "Vorbehalt" : "…";
+    if (s.phase === "reserve") return s.said[id] === "gesund" ? "gesund" : s.said[id] === "vorbehalt" ? "Vorbehalt" : "";
     const p = known[id];
     const lv = s.callBy[id];
     if (lv && p) return callName(p, lv);
     if (s.soloist === id && (isSolo(s.contract) || s.contract === "hochzeit")) return s.contract === "hochzeit" ? "Hochzeit" : "Solo";
-    return p ? partyName(p) : "?";
+    return p ? partyName(p) : "";
   };
   const shownOnline = online ? new Set([...online, ...s.ghosts]) : null;
 
@@ -137,7 +137,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
         cur: turnPhase && s.curId === id,
         label: `${s.names[id]}: ${s.tricks.filter((t) => t.winner === id).length} Stiche, ${s.scores[id] ?? 0} Punkte`,
         value: <span title="Stiche" data-testid={`tricks-${id}`}>{s.tricks.filter((t) => t.winner === id).length}</span>,
-        sub: <span data-testid={`seat-note-${id}`} className={cn(known[id] === "re" && "font-semibold text-foreground")}>{seatSub(id)} · {s.scores[id] ?? 0}</span>,
+        sub: <span data-testid={`seat-note-${id}`} className={cn(known[id] === "re" && "font-semibold text-foreground")}>{s.phase !== "roundEnd" && seatSub(id) ? seatSub(id) : `${s.scores[id] ?? 0} P.`}</span>,
       }))} />
 
       <div className="flex shrink-0 items-center gap-1.5 px-1 pt-0.5 text-sm whitespace-nowrap text-muted-foreground">
@@ -148,14 +148,14 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
         {mine && s.phase === "play" && (
           <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-foreground ring-1 ring-inset ring-border" data-testid="my-party"
             title={`${partyName(mine)} braucht ${needText(needOf(s.calls, mine))}`}>
-            {partyName(mine)} · {needText(needOf(s.calls, mine)).replace(" Augen", "")}
+            {partyName(mine)} · {needText(needOf(s.calls, mine)).replace(" Augen", "").replace("alle Stiche", "alle").replace("einen Stich", "1 Stich")}
           </span>
         )}
         {left !== null && (
           <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ring-inset", left <= 10 ? "bg-destructive/15 text-destructive ring-destructive/40" : "bg-secondary ring-border")} data-testid="turn-timer"
             aria-label={`Zugzeit: noch ${left} Sekunden`}>{left}s</span>
         )}
-        <span className="ml-auto tabular-nums" data-testid="round">R {s.round}/{s.total}{s.phase === "play" ? ` · Stich ${Math.min(s.tricks.length + 1, s.handSize)}` : ""}</span>
+        <span className="ml-auto tabular-nums" data-testid="round">{s.phase === "play" ? `Stich ${Math.min(s.tricks.length + 1, s.handSize)}/${s.handSize}` : `Runde ${s.round}/${s.total}`}</span>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 py-1">
@@ -248,12 +248,12 @@ function RoundSummary({ s, me }: { s: DkState; me: string | null }) {
   return (
     <div className="grid w-full content-center gap-1 overflow-hidden" data-testid="round-summary">
       <p className="text-center font-semibold" data-testid="round-winner">
-        {rec.winner ? `${partyName(rec.winner)} gewinnt` : "Keiner gewinnt"} <span className="font-normal text-muted-foreground">– {contractName(rec.contract)}{rec.alone ? " (allein)" : ""}</span>
+        {rec.winner ? `${partyName(rec.winner)} gewinnt` : "Keiner gewinnt"} <span className="font-normal text-muted-foreground">– {recordName(rec)}</span>
       </p>
       <div className="grid grid-cols-2 gap-1.5 text-center text-xs">
         {(["re", "kontra"] as Party[]).map((p) => (
           <div key={p} className={cn("glass rounded-xl px-2 py-1", rec.winner === p && "ring-2 ring-ok/60")}>
-            <b className="block text-sm">{partyName(p)}{rec.calls[p] ? ` · ${callName(p, rec.calls[p])}` : ""}</b>
+            <b className="block text-sm">{partyName(p)}{rec.calls[p] ? ` · ${rec.calls[p] === 1 ? "angesagt" : callName(p, rec.calls[p])}` : ""}</b>
             <span className="block truncate text-muted-foreground">{team(p)}</span>
             <b className="block text-base tabular-nums" data-testid={`augen-${p}`}>{rec.augen[p]} Augen</b>
           </div>
@@ -261,7 +261,7 @@ function RoundSummary({ s, me }: { s: DkState; me: string | null }) {
       </div>
       <ul className="grid grid-cols-2 gap-x-3 px-1 text-xs text-muted-foreground" data-testid="lines">
         {rec.lines.map((l, i) => (
-          <li key={i} className="flex justify-between gap-1"><span className="truncate">{l.label}{l.party !== rec.winner ? ` (${partyName(l.party)})` : ""}</span><b className="tabular-nums text-foreground">{l.party === "re" ? "+" : "−"}{l.pts}</b></li>
+          <li key={i} className="flex justify-between gap-1"><span className="truncate">{l.label}{l.party !== rec.winner ? ` (${partyName(l.party)})` : ""}</span><b className="tabular-nums text-foreground">+{l.pts}</b></li>
         ))}
       </ul>
       <p className="text-center text-xs text-muted-foreground">Spielwert {Math.abs(rec.value)} für {rec.value >= 0 ? "Re" : "Kontra"}{rec.alone ? " – Solist dreifach" : ""}</p>

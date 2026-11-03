@@ -74,7 +74,7 @@ describe("Doppelkopf: Vorbehalte und Parteien", () => {
   it("Hochzeit: der erste fremde Stich macht den Partner, dann sind alle Parteien klar", () => {
     let s = fixed(hands);
     s = doppelkopf.apply(s, { type: "reserve", what: "hochzeit" }, ctx());
-    for (const id of ["b", "c", "d"]) s = doppelkopf.apply(s, { type: "reserve", what: "gesund" }, ctx());
+    for (let i = 0; i < 3; i++) s = doppelkopf.apply(s, { type: "reserve", what: "gesund" }, ctx());
     expect(s.contract).toBe("hochzeit");
     expect(s.soloist).toBe("a");
     expect(s.revealed.a).toBe("re");
@@ -252,3 +252,19 @@ function doppelkopfCanPlay(s: DkState, c: Card) {
   const k = keyOf(lead, s.contract);
   return keyOf(c, s.contract) === k || !s.hands[s.curId!].some((x) => keyOf(x, s.contract) === k);
 }
+
+describe("Doppelkopf: Ansagen aus der eigenen Sicht", () => {
+  it("die nächste Ansage stimmt auch mit gefilterter Sicht (Re-Liste leer)", async () => {
+    const { nextCall } = await import("@shared/games/doppelkopf/logic");
+    let r = act(roomWith(["Anna", "Ben", "Cem", "Dora"], "doppelkopf"), { type: "start" }, "p1");
+    for (let i = 0; i < 4; i++) r = game(r, { type: "reserve", what: "gesund" }, (r.game as DkState).curId!);
+    const s = r.game as DkState;
+    if (s.contract !== "normal" || s.silent) return;
+    const re = s.re[0];
+    expect(nextCall(viewRoom(r, re).game as DkState, re, r.options)).toBe(1);
+    r = game(r, { type: "call", level: 1 }, re);
+    expect(nextCall(viewRoom(r, re).game as DkState, re, r.options)).toBe(2);
+    const ko = s.seats.find((id) => !s.re.includes(id))!;
+    expect(nextCall(viewRoom(r, ko).game as DkState, ko, r.options)).toBe(1);
+  });
+});

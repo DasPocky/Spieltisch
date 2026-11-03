@@ -422,6 +422,9 @@ export function knownParties(s: DkState, viewer: string | null): Record<string, 
   return k;
 }
 
+/** Die eigene Partei – auch aus der eigenen Sicht (dort ist `re` leer, die Hand verrät sie) */
+export const ownParty = (s: DkState, id: string): Party => knownParties(s, id)[id] ?? partyOf(s, id);
+
 /** Bis zu welcher Kartenzahl darf diese Stufe noch angesagt werden? */
 export const callDeadline = (s: Pick<DkState, "handSize" | "clearAt">, level: number) => s.handSize - level - s.clearAt;
 
@@ -432,7 +435,7 @@ export function callWhyNot(s: DkState, id: string, level: unknown, o: Options): 
   if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > MAX_CALL) return "Diese Ansage gibt es nicht.";
   if (level > 1 && !rulesOf(o).absagen) return "Absagen sind ausgeschaltet.";
   if (!partiesSet(s)) return "Erst wenn die Hochzeit geklärt ist.";
-  const party = partyOf(s, id);
+  const party = ownParty(s, id);
   if (level <= s.calls[party]) return "Das ist schon angesagt.";
   if ((s.hands[id] ?? []).length < callDeadline(s, level)) return "Dafür ist es zu spät.";
   return null;
@@ -440,7 +443,7 @@ export function callWhyNot(s: DkState, id: string, level: unknown, o: Options): 
 /** nächste mögliche Ansage für `id` (oder null) */
 export function nextCall(s: DkState, id: string, o: Options): number | null {
   if (s.phase !== "play" || !s.seats.includes(id)) return null;
-  const lv = s.calls[partyOf(s, id)] + 1;
+  const lv = s.calls[ownParty(s, id)] + 1;
   return callWhyNot(s, id, lv, o) === null ? lv : null;
 }
 
