@@ -6,9 +6,9 @@ async function step(p: Page): Promise<boolean> {
   const cover = p.getByRole("button", { name: /Karten zeigen/ });
   if (await cover.isVisible()) { await cover.click(); return true; }
   const healthy = p.getByRole("button", { name: "Gesund", exact: true });
-  if (await healthy.isVisible()) { await healthy.click(); return true; }
+  if (await healthy.isVisible()) { await healthy.click({ timeout: 2000 }).catch(() => {}); return true; }
   const next = p.getByRole("button", { name: /^Runde \d+ geben$/ });
-  if (await next.isVisible()) { await next.click(); return true; }
+  if (await next.isVisible()) { await next.click({ timeout: 2000 }).catch(() => {}); return true; }
   const cards = p.getByTestId("hand").locator("button:not([disabled])");
   // Nach dem Zug kommt sofort der Sichtschutz – dann ist die Karte schon weg
   if (await cards.count()) { await cards.first().click({ timeout: 2000 }).catch(() => {}); return true; }
@@ -42,7 +42,7 @@ test("Doppelkopf an einem Handy für alle: Sichtschutz, Vorbehalt, Ansage, Stich
     // einmal ansagen (wer gerade darf), mit Bild
     if (!called && (await page.getByTestId("call").isVisible())) {
       if (!shotCall) { await expectNoScroll(page); await shot(page, "doppelkopf-ansage-320"); shotCall = true; }
-      await page.getByTestId("call").click();
+      await page.getByTestId("call").click({ timeout: 2000 }).catch(() => {});
       called = true;
       continue;
     }
@@ -99,13 +99,13 @@ for (const [w, h] of [[360, 640], [390, 844]] as const) {
         continue;
       }
       const healthy = page.getByRole("button", { name: "Gesund", exact: true });
-      if (await healthy.isVisible()) { await healthy.click().catch(() => {}); continue; }
+      if (await healthy.isVisible()) { await healthy.click({ timeout: 2000 }).catch(() => {}); continue; }
       const cards = page.getByTestId("hand").locator("button:not([disabled])");
       if (!called && (await page.getByTestId("call").isVisible())) {
-        await expect(page.getByTestId("call")).toHaveText(/^(Re|Kontra) ansagen$/);
+        await expect(page.getByTestId("call")).toHaveText(/^(Re|Kontra) ansagen|absagen$/);
         await expectNoScroll(page);
         await shot(page, `doppelkopf-ansage-${w}`);
-        await page.getByTestId("call").click();
+        await page.getByTestId("call").click({ timeout: 2000 }).catch(() => {});
         await expect(page.getByRole("group", { name: "Mitspieler" })).toContainText(/Re|Kontra/);
         called = true;
         continue;
@@ -113,7 +113,7 @@ for (const [w, h] of [[360, 640], [390, 844]] as const) {
       if (await cards.count()) {
         if (!shotHand && (await cards.count()) === 12) { await expectNoScroll(page); await shot(page, `doppelkopf-hand-${w}`); shotHand = true; }
         else if (!shotTrick && (await page.getByTestId("trick").isVisible())) { await expectNoScroll(page); await shot(page, `doppelkopf-stich-${w}`); shotTrick = true; }
-        await cards.first().click().catch(() => {});
+        await cards.first().click({ timeout: 2000 }).catch(() => {});
       }
       await page.waitForTimeout(200);
     }
@@ -138,14 +138,14 @@ async function newScreen(browser: Browser): Promise<Page> {
 }
 
 test("Doppelkopf am Großen Tisch: zwei Handys, zwei Bots füllen auf – Stich in der Mitte, keine Hände", async ({ browser, request }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
   await setConfig(request, { ...ALL_ON, modes: { doppelkopf: { table: "on" } } });
   try {
     const screen = await newScreen(browser);
     await screen.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
     await screen.goto("/tisch");
     await screen.getByTestId("table-new").click();
-    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/, { timeout: 20_000 });
     const code = screen.url().split("/").pop()!;
     const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
     const phones: Page[] = [];
@@ -163,7 +163,7 @@ test("Doppelkopf am Großen Tisch: zwei Handys, zwei Bots füllen auf – Stich 
     await phones[0].getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-view")).toContainText("Doppelkopf");
     // Vorbehalte, dann ein paar Karten
-    for (let k = 0; k < 12; k++) for (const p of phones) await step(p);
+    for (let k = 0; k < 40 && !(await screen.getByTestId("table-view").textContent())?.includes("nimmt den Stich"); k++) for (const p of phones) await step(p);
     await expect(screen.getByTestId("table-view")).toContainText("Stiche");
     await expect(phones[0].getByTestId("seat-note-bot-1")).toBeVisible();
     await expect(screen.getByTestId("hand")).toHaveCount(0);

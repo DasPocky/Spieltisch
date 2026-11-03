@@ -18,7 +18,7 @@ export function doppelkopfTable(room: RoomState): TableModel | null {
     const party = known[id];
     const call = s.callBy[id] && party ? callName(party, s.callBy[id]) : null;
     const who = s.soloist === id && s.contract !== "normal" ? (s.contract === "hochzeit" ? "Hochzeit" : "Solist") : party === "re" ? "Re" : party === "kontra" ? "Kontra" : "";
-    return [who, call && call !== who ? `„${call}“` : null, `${tricksOf(id)} Stiche`].filter(Boolean).join(" · ");
+    return [who, call && call !== who ? `„${call}“` : null, `${tricksOf(id)} ${tricksOf(id) === 1 ? "Stich" : "Stiche"}`].filter(Boolean).join(" · ");
   };
   return {
     deck: "cards", pile: 0, discard: trick.map((p) => shownCard(p.card, room.options)), counts: {}, turn: s.curId && room.players.some((p) => p.id === s.curId) ? s.curId : null, n: s.n,
