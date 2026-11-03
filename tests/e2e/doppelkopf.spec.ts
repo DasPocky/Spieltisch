@@ -167,6 +167,15 @@ test("Doppelkopf am Großen Tisch: zwei Handys, zwei Bots füllen auf – Stich 
     await expect(screen.getByTestId("table-view")).toContainText("Stiche");
     await expect(phones[0].getByTestId("seat-note-bot-1")).toBeVisible();
     await expect(screen.getByTestId("hand")).toHaveCount(0);
+    // alle vier Plätze – auch die Bots ohne Gerät – und kein Platz unter der Meldung
+    await expect(screen.getByTestId("table-seat")).toHaveCount(4);
+    await expect(screen.getByTestId("table-view")).toContainText("(Bot)");
+    await expect(screen.getByTestId("table-trick")).toBeVisible();
+    const news = await screen.getByTestId("table-news").boundingBox();
+    for (const seat of await screen.getByTestId("table-seat").all()) {
+      const b = (await seat.boundingBox())!;
+      expect(b.y >= news!.y + news!.height || b.y + b.height <= news!.y || b.x >= news!.x + news!.width || b.x + b.width <= news!.x, "Platz unter der Meldung").toBe(true);
+    }
     await shot(screen, "doppelkopf-fernseher");
   } finally {
     await setConfig(request, ALL_ON);

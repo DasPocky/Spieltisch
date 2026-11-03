@@ -70,7 +70,7 @@ function Trick({ plays, s, me, winner, faded, pictures }: { plays: Play[]; s: Dk
   return (
     <div className={cn("flex max-w-full items-end justify-center gap-1.5", faded && "opacity-60")} data-testid="trick">
       {plays.map((p, i) => (
-        <div key={`${p.id}-${i}`} className="flex w-[min(15vw,4.4rem)] min-w-0 flex-col items-center gap-1">
+        <div key={`${p.id}-${i}`} className="flex w-[min(21vw,12dvh,6.5rem)] min-w-0 flex-col items-center gap-1">
           <PlayingCard card={shownCard(p.card, pictures as never)} className={cn("w-full", !faded && i === plays.length - 1 && "card-land", winner === p.id && "rounded-[10%] ring-[3px] ring-ice")} />
           <span className={cn("w-full truncate text-center text-[0.68rem] leading-tight", winner === p.id ? "font-bold text-foreground" : "text-muted-foreground")}>{p.id === me ? "Du" : s.names[p.id] ?? "?"}</span>
         </div>

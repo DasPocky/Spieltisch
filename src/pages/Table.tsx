@@ -26,6 +26,8 @@ import { QrCode } from "@/platform/QrCode";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type QuizMark, type TableModel } from "@/platform/table/model";
+import { PlayingCard } from "@/platform/cards/PlayingCard";
+import type { Card } from "@shared/cards/deck";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
@@ -379,10 +381,15 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
     onFelt?.(f);
   }, [onFelt]);
   // Eigene Sicht: der eigene Platz vorn in der Mitte, die anderen der Reihe nach
+  // Spiele mit eigener Sitzordnung (Bots ohne Gerät) zeigen alle ihre Plätze
+  const order = model?.seatOrder;
+  const orderKey = order?.map((p) => `${p.id}:${p.name}:${p.bot ? 1 : 0}`).join("|");
   const players = useMemo(() => {
-    const i = me ? room.players.findIndex((p) => p.id === me) : -1;
-    return i > 0 ? [...room.players.slice(i), ...room.players.slice(0, i)] : room.players;
-  }, [room.players, me]);
+    const list = order ? order.map((p) => ({ id: p.id, name: p.name, bot: !!p.bot })) : room.players.map((p) => ({ ...p, bot: false }));
+    const i = me ? list.findIndex((p) => p.id === me) : -1;
+    return i > 0 ? [...list.slice(i), ...list.slice(0, i)] : list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.players, me, orderKey]);
   const seats = players.map((p) => p.id);
   const shown = useMemo(() => (model && me ? { ...model, counts: { ...model.counts, [me]: 0 } } : model), [model, me]);
   // In 3D liegen Stapel, Auslagen und Wortkarten echt auf dem Tisch – die HTML-Fassung bleibt nur für Vorleseprogramme
@@ -395,11 +402,13 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {real && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_70%_at_50%_52%,transparent_55%,rgb(0_0_0/0.5))]" />}
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
-          turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
+          turn={model?.turn === p.id || sham?.czar === p.id} away={!p.bot && !online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
           video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
           board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} />
       ))}
+      {/* Stich: jede Karte vor dem Platz, der sie gespielt hat – in 3D wie flach */}
+      {model?.trick && felt && <FeltTrick trick={model.trick} felt={felt} seats={players.map((p, i) => ({ id: p.id, at: points[i] }))} />}
       {/* Klingel: in 3D wie flach als Bild über dem Tisch – die Klingel in der Mitte, vor jedem Platz seine offene Karte */}
       {model?.bell && <OnFelt rect={felt}><FeltBell bell={model.bell} /></OnFelt>}
       {model?.bell && felt && players.map((p, i) => points[i] && p.id in model.bell!.tops && (
@@ -426,7 +435,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {/* Zeichenblatt groß über dem Tisch – live, wie eine Staffelei */}
       {model?.drawing && <DrawingBoard drawing={model.drawing} />}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
-      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
+      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news" data-seat-avoid>{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
     </>
   );
@@ -807,6 +816,30 @@ function SchamlosStatus({ s, name, count }: { s: SchamlosState; name: (id: strin
  * Inhalt, der auf dem Filz liegt: bleibt innerhalb der Tischfläche und wächst mit ihr (Maße in cqh/cqw).
  * Ohne 3D (kein WebGL) ein fester Bereich in der Mitte.
  */
+/** Stich auf dem Filz: Karten zwischen Mitte und Platz, die gewinnende hervorgehoben */
+function FeltTrick({ trick, felt, seats }: { trick: NonNullable<TableModel["trick"]>; felt: FeltRect; seats: { id: string; at?: { x: number; y: number } }[] }) {
+  const cx = felt.x + felt.w / 2, cy = felt.y + felt.h / 2;
+  const w = Math.max(56, Math.min(felt.h * 0.19, felt.w * 0.09));
+  return (
+    <div className="pointer-events-none absolute inset-0" data-testid="table-trick">
+      {trick.map((t, i) => {
+        const at = seats.find((s) => s.id === t.id)?.at;
+        if (!at) return null;
+        // Richtung zum Platz, auf den Filz begrenzt: ein Drittel des Weges, höchstens bis kurz vor den Rand
+        const dx = at.x - cx, dy = at.y - cy, len = Math.hypot(dx, dy) || 1;
+        const r = Math.min(len * 0.34, Math.abs(dx) / len * (felt.w / 2 - w) + Math.abs(dy) / len * (felt.h / 2 - w * 1.15));
+        const x = cx + (dx / len) * Math.max(w * 0.7, r), y = cy + (dy / len) * Math.max(w * 0.7, r);
+        const tilt = ((t.id.charCodeAt(t.id.length - 1) % 7) - 3) * 2;
+        return (
+          <div key={`${t.id}-${i}`} className="absolute" style={{ left: x, top: y, width: w, transform: `translate(-50%, -50%) rotate(${tilt}deg)` }}>
+            <PlayingCard card={t.card as Card} className={cn("card-land w-full", t.win && "rounded-[10%] ring-4 ring-[#f7ecd6]")} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function OnFelt({ rect, children, className }: { rect: FeltRect | null; children: React.ReactNode; className?: string }) {
   const style: React.CSSProperties = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h } : { left: "15%", top: "20%", width: "70%", height: "55%" };
   return <div className={cn("pointer-events-none absolute flex items-center justify-center", className)} style={{ ...style, containerType: "size" }}>{children}</div>;

@@ -138,6 +138,13 @@ export interface TableModel {
   };
   /** Zahlen-Rommé: alle Reihen und Gruppen groß in der Mitte (wird kleiner, je voller der Tisch), darunter ein Hinweis */
   tiles?: { groups: string[][]; pool: number; note: string };
+  /**
+   * Eigene Sitzordnung statt der Raum-Spieler – z. B. Doppelkopf: immer vier Plätze, auch die, die ein Bot ohne Gerät spielt
+   * (`bot`: nie „abwesend“). Ohne Angabe: die Mitspieler des Raums.
+   */
+  seatOrder?: { id: string; name: string; bot?: boolean }[];
+  /** Stich in der Mitte: jede Karte liegt in Richtung des Platzes, der sie gespielt hat (`win`: nimmt den Stich) */
+  trick?: { id: string; card: string; win?: boolean }[];
   /** Nacht: Licht gedimmt, kühler */
   night?: boolean;
   /** Lückensatz-Spiele: schwarze Karte, verdeckt gelegte und aufgedeckte Antworten */

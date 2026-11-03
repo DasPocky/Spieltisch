@@ -20,10 +20,14 @@ export function doppelkopfTable(room: RoomState): TableModel | null {
     const who = s.soloist === id && s.contract !== "normal" ? (s.contract === "hochzeit" ? "Hochzeit" : "Solist") : party === "re" ? "Re" : party === "kontra" ? "Kontra" : "";
     return [who, call && call !== who ? `„${call}“` : null, `${tricksOf(id)} ${tricksOf(id) === 1 ? "Stich" : "Stiche"}`].filter(Boolean).join(" · ");
   };
+  const done = !s.trick.length ? s.tricks.at(-1)?.winner : undefined;
   return {
-    deck: "cards", pile: 0, discard: trick.map((p) => shownCard(p.card, room.options)), counts: {}, turn: s.curId && room.players.some((p) => p.id === s.curId) ? s.curId : null, n: s.n,
-    log: s.log.slice(-6), scores: Object.fromEntries(room.players.map((p) => [p.id, s.scores[p.id] ?? 0])),
-    notes: Object.fromEntries(room.players.map((p) => [p.id, note(p.id)])),
+    deck: "cards", pile: 0, discard: [], counts: {}, turn: s.curId && room.players.some((p) => p.id === s.curId) ? s.curId : null, n: s.n,
+    log: s.log.slice(-6), scores: Object.fromEntries(s.seats.map((id) => [id, s.scores[id] ?? 0])),
+    // alle vier Plätze, auch die der Bots ohne Gerät
+    seatOrder: s.seats.map((id) => ({ id, name: nameOf(s, id), bot: s.ghosts.includes(id) })),
+    trick: trick.map((p) => ({ id: p.id, card: shownCard(p.card, room.options), win: p.id === done })),
+    notes: Object.fromEntries(s.seats.map((id) => [id, note(id)])),
     color: s.contract ? { label: `${contractName(s.contract, room.options)}${s.soloist && s.contract !== "normal" ? ` – ${nameOf(s, s.soloist)}` : ""}`, hex: s.contract === "normal" ? "#3f5f8a" : "#a8454f" } : undefined,
   };
 }
