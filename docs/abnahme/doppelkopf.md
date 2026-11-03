@@ -23,7 +23,7 @@ Immer vier Plätze, doppeltes Blatt (9 bis Ass, jede Karte zweimal: 48 Karten, j
 | Geheimhaltung: fremde Hände, Vorbehalte, Re-Liste und stilles Solo kennt niemand; Fernseher wie ein Außenstehender, Tisch ohne Hände | `tests/unit/doppelkopf.test.ts`, `tests/unit/tv-secret.test.ts` (2 und 4 Spieler) |
 | Nichts hängt: Host sagt/spielt für Abwesende und gibt die nächste Runde, Zugzeit, Aussteiger → Bot | `tests/unit/doppelkopf.test.ts`, `tests/unit/simulate.test.ts` |
 | Zufallspartien 1–4 Menschen, online und an einem Gerät, alle Hausregeln, Kartenzahl stimmt immer | `tests/unit/simulate.test.ts` |
-| Bots: Trumpf zählen (ungesehene Karten), Partner erkennen, schmieren, Augen sichern, Fuchs schützen, nur starke Ansagen und Soli; jede Stufe; „schwer“ schlägt Zufall (65 % gegen 25 %); feste Uhr/Startwert wiederholbar | `tests/unit/bot-skill.test.ts`, `shared/platform/botSkill.ts` |
+| Bots: Trumpf zählen (ungesehene Karten), Partner erkennen, schmieren, Augen sichern, Fuchs schützen, nur starke Ansagen und Soli; jede Stufe; „schwer“ schlägt Zufall (71 % gegen 25 %); feste Uhr/Startwert wiederholbar | `tests/unit/bot-skill.test.ts`, `shared/platform/botSkill.ts` |
 | Geber wandert je Partie und je Runde | `tests/unit/fairness.test.ts` |
 | Ein Handy für alle mit Sichtschutz bis zum Ergebnis auf 320×568, online mit Bots auf 360×640 und 390×844 (Vorbehalt, 12 Karten, Ansage, Abrechnung), kein Scrollen | `tests/e2e/doppelkopf.spec.ts` |
 | Vorlesen: Geber, Vorbehalte, Spiel, Ansagen, Stichsieger (Doppelkopf, Fuchs, Karlchen), Hochzeit geklärt, Abrechnung Zeile für Zeile, Sieger | `src/games/doppelkopf/narration.ts`, e2e |
