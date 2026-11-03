@@ -584,7 +584,7 @@ test("Bühne beim Quiz: Frage groß auf der Leinwand, an den Pulten nur „hat g
     await anna.getByTestId("meet-play").click();
     await anna.getByTestId("pick-quiz").click();
     // nur Auswahlfragen: dann gibt es sicher richtig und falsch
-    await anna.getByTestId("settings-summary").click();
+    await openSettings(anna);
     for (const k of ["Schätzen", "Ordnen"]) await anna.getByRole("checkbox", { name: new RegExp(`^${k}`) }).click();
     await anna.getByRole("button", { name: "Fertig", exact: true }).click();
     await screen.getByTestId("view-stage").click();

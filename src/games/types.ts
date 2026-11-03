@@ -61,6 +61,8 @@ export interface GameUI<S = unknown, A = { type: string }> {
   undoEntry?: (game: S) => boolean;
   /** Über den Einstellungen: z. B. Vorlagen und eine Übersicht der Rollenverteilung */
   SettingsExtra?: ComponentType<{ room: RoomState; editable: boolean; online: boolean; dispatch: (action: RoomAction) => void }>;
+  /** Name dieses Bereichs, wenn das Einstellungs-Blatt ihn einklappt (sonst „Vorschläge“) */
+  settingsExtraTitle?: string;
   /** Kleine Info rechts in der Kopfzeile (z. B. Karten im Stapel) */
   HeaderExtra?: ComponentType<BoardProps<S, A>>;
   /** Am Rechner die ganze Breite nutzen – für Spiele, die auch ohne Handy gut am Desktop laufen */

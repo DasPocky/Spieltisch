@@ -114,6 +114,33 @@ export async function createRoom(host: Page, gameId: string, name: string, pin: 
 export async function openSettings(page: Page) {
   await page.getByTestId("settings-summary").click();
   await expect(page.getByRole("heading", { name: /^Einstellungen/ })).toBeVisible();
+  await unfoldSettings(page);
+}
+
+/**
+ * Was das Einstellungs-Blatt selbst eingeklappt hat (damit es nicht scrollt), wieder aufklappen –
+ * so stehen alle Einstellungen wie gewohnt da. Von Haus aus zugeklappte Gruppen (Hausregeln) bleiben zu.
+ */
+export async function unfoldSettings(page: Page) {
+  const body = page.getByTestId("settings-body");
+  await expect(body).toBeVisible();
+  // kurz warten, bis das Blatt fertig eingeklappt hat (Bilder, Schrift)
+  await page.waitForTimeout(250);
+  for (let i = 0; i < 20; i++) {
+    const folded = body.locator("[data-auto-collapsed]").first();
+    if (!(await folded.count())) break;
+    await folded.click();
+  }
+}
+
+/** Das Einstellungs-Blatt scrollt nicht: alles passt in den Rahmen */
+export async function expectSettingsFit(page: Page) {
+  const body = page.getByTestId("settings-body");
+  await expect(body).toBeVisible();
+  await page.waitForTimeout(400);
+  const { scroll, height } = await body.evaluate((el) => ({ scroll: el.scrollHeight, height: el.clientHeight }));
+  expect(scroll, "Einstellungs-Blatt scrollt").toBeLessThanOrEqual(height + 1);
+  await expectNoScroll(page);
 }
 
 /** Einstellungen wieder zu – danach ist „Spiel starten“ erreichbar */

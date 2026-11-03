@@ -46,7 +46,7 @@ function SettingsExtra({ room }: { room: RoomState }) {
 }
 
 export const quizUI: GameUI<QState, QAction> = {
-  logic: quiz, Icon, Board, Rules, History, HeaderExtra, SettingsExtra,
+  logic: quiz, Icon, Board, Rules, History, HeaderExtra, SettingsExtra, settingsExtraTitle: "Hinweis",
   log: (s) => s.log,
   overview: (s) => ({ cols: ["Punkte"], rows: Object.fromEntries(s.order.map((id) => [id, [s.scores[id] ?? 0]])) }),
 };
