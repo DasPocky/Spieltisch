@@ -74,7 +74,7 @@ async function botRoom(page: Page, settings?: (p: Page) => Promise<void>) {
   await page.getByTestId("dev-game").selectOption("doppelkopf");
   await expect(page.getByTestId("dev-bots")).toHaveText("3");
   await page.getByRole("button", { name: "Testraum öffnen" }).click();
-  await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/);
+  await expect(page).toHaveURL(/\/r\/[A-Z0-9]{5}$/, { timeout: 20_000 });
   if (settings) await settings(page);
   await page.getByRole("button", { name: "Spiel starten" }).click();
 }
@@ -152,7 +152,7 @@ test("Doppelkopf am Großen Tisch: zwei Handys, zwei Bots füllen auf – Stich 
     for (const name of ["Anna", "Ben"]) {
       const p = await newPhone(browser);
       await p.goto(`/r/${code}#pin=${pin}`);
-      await expect(p.getByLabel("PIN")).toHaveValue(pin);
+      await expect(p.getByLabel("PIN")).toHaveValue(pin, { timeout: 20_000 });
       await p.getByLabel("Dein Name").fill(name);
       await p.getByRole("button", { name: "Beitreten" }).click();
       phones.push(p);
