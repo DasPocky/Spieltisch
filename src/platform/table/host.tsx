@@ -1,5 +1,5 @@
 import type { VoiceMood } from "@shared/platform/voice";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Mic, MicOff, Smile } from "lucide-react";
 import { eveningRanking, planStatus, roomGame, type RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
@@ -170,17 +170,64 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
     return () => { clearTimeout(a); clearTimeout(b); };
   }, []);
 
+  // Die Sprechblase steht über der Kugel – ragt sie in einen Platz, rückt sie über ihn hinaus nach oben
+  const bubble = useRef<HTMLParagraphElement>(null);
+  const [lift, setLift] = useState(0);
+  useLayoutEffect(() => {
+    if (!say) { setLift(0); return; }
+    const place = () => {
+      const el = bubble.current;
+      if (!el) return;
+      const next = bubbleLift(el, lift);
+      if (Math.abs(next - lift) > 0.5) setLift(next);
+    };
+    place();
+    // Plätze gleiten beim Ausweichen und Fenster ändern sich – solange die Blase steht, nachmessen
+    const t = window.setInterval(place, 250);
+    return () => clearInterval(t);
+  }, [say, lift]);
+
   return (
-    // Sprechblase über der Kugel (rechts außen) – so verdeckt sie nie den Platz unten in der Mitte
-    <div className="pointer-events-none absolute right-6 bottom-5 flex w-[min(24rem,32%)] flex-col items-end gap-2" data-testid="table-host">
+    // Kugel rechts außen, Sprechblase darüber – nie über einem Platz (siehe bubbleLift)
+    <div className="pointer-events-none absolute right-6 bottom-5" data-testid="table-host">
       {say && (
-        <p className={cn("text-in rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
+        <p ref={bubble} style={{ bottom: `calc(100% + 0.5rem + ${Math.round(lift)}px)` }}
+          className={cn("text-in absolute right-0 w-max max-w-[min(24rem,30vw)] rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
           data-testid="table-host-line" aria-live="polite">{say.text}</p>
       )}
-      {/* Plätze rücken der Kugel aus dem Weg (die Sprechblase kommt und geht – sie zählt nicht) */}
+      {/* Plätze rücken der Kugel aus dem Weg (die Sprechblase kommt und geht – sie weicht selbst aus) */}
       <div className="shrink-0" data-seat-avoid="x"><OrbHost mouth={mouth} blink={blink} mood={mood} className="size-36 shrink-0" /></div>
     </div>
   );
+}
+
+/** Abstand der Sprechblase zu Plätzen und Bildrand */
+const BUBBLE_GAP = 8;
+
+/**
+ * Wie weit die Sprechblase über ihre Grundstellung (direkt über der Kugel) steigen muss, damit sie keinen Platz verdeckt:
+ * Sie rückt jeweils über den Platz hinaus, in den sie ragt – höchstens bis an den oberen Rand bzw. unter Kopfzeile und QR-Kasten.
+ */
+export function bubbleLift(el: HTMLElement, current: number): number {
+  const room = el.closest(".table-room");
+  if (!room) return 0;
+  const r = el.getBoundingClientRect();
+  // Grundstellung ohne Anheben
+  const base = { left: r.left, right: r.right, top: r.top + current, bottom: r.bottom + current };
+  const seats = [...room.querySelectorAll(".seat-plate")].map((s) => s.getBoundingClientRect());
+  const tops = [...room.querySelectorAll("[data-seat-avoid]")].filter((a) => a.getAttribute("data-seat-avoid") !== "x")
+    .map((a) => a.getBoundingClientRect()).filter((a) => a.right > base.left && a.left < base.right);
+  const ceiling = Math.max(room.getBoundingClientRect().top, ...tops.map((a) => a.bottom)) + BUBBLE_GAP;
+  let lift = 0;
+  for (let pass = 0; pass < 8; pass++) {
+    const top = base.top - lift, bottom = base.bottom - lift;
+    const hit = seats.filter((s) => s.right > base.left - BUBBLE_GAP && s.left < base.right + BUBBLE_GAP && s.bottom > top - BUBBLE_GAP && s.top < bottom + BUBBLE_GAP);
+    if (!hit.length) return lift;
+    lift = base.bottom - Math.min(...hit.map((s) => s.top)) + BUBBLE_GAP;
+    // Kein Platz mehr nach oben: in der Grundstellung bleiben (lieber kurz über einem Platz als aus dem Bild)
+    if (base.top - lift < ceiling) return 0;
+  }
+  return lift;
 }
 
 /** Einstellungen am Tisch: Moderator an/aus, Charakter, Vorlesen */
