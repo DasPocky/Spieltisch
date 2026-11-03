@@ -68,6 +68,8 @@ export interface TableModel {
   n: number;
   /** Farbe, die gerade gilt (Wunsch nach Unter bzw. Eins-Farbe) – als Text und Farbton */
   color?: { label: string; hex: string };
+  /** kurzer Hinweis groß in der Mitte (z. B. „🔥 Verbrannt!“) – erscheint bei neuem `key` und blendet nach ein paar Sekunden aus */
+  flash?: { text: string; sub?: string; key: number };
   /** Punkte je Spieler, falls das Spiel mitzählt */
   scores?: Record<string, number>;
   /** letzte Ereignisse, das neueste zuletzt */

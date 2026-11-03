@@ -420,6 +420,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
+      {model?.flash && <OnFelt rect={felt ?? null}><FeltFlash flash={model.flash} /></OnFelt>}
       {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
       {/* Quizfrage groß über dem Tisch */}
       {model?.quiz && <QuizBoard quiz={model.quiz} />}
@@ -807,6 +808,23 @@ function SchamlosStatus({ s, name, count }: { s: SchamlosState; name: (id: strin
  * Inhalt, der auf dem Filz liegt: bleibt innerhalb der Tischfläche und wächst mit ihr (Maße in cqh/cqw).
  * Ohne 3D (kein WebGL) ein fester Bereich in der Mitte.
  */
+/** Kurzer Hinweis groß in der Mitte (z. B. „🔥 Verbrannt!“): bei jedem neuen Schlüssel ein paar Sekunden lang */
+function FeltFlash({ flash }: { flash: NonNullable<TableModel["flash"]> }) {
+  const [shown, setShown] = useState<number | null>(flash.key);
+  useEffect(() => {
+    setShown(flash.key);
+    const t = setTimeout(() => setShown(null), 4000);
+    return () => clearTimeout(t);
+  }, [flash.key]);
+  if (shown !== flash.key) return null;
+  return (
+    <div className="pop flex flex-col items-center gap-[1cqh] rounded-[2.4cqh] bg-[#2b2118]/90 px-[4cqw] py-[2.4cqh] text-center text-[#f7ecd6] shadow-2xl" role="status" data-testid="table-flash">
+      <span className="text-[8cqh] leading-none font-black">{flash.text}</span>
+      {flash.sub && <span className="text-[3cqh] font-semibold opacity-85">{flash.sub}</span>}
+    </div>
+  );
+}
+
 function OnFelt({ rect, children, className }: { rect: FeltRect | null; children: React.ReactNode; className?: string }) {
   const style: React.CSSProperties = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h } : { left: "15%", top: "20%", width: "70%", height: "55%" };
   return <div className={cn("pointer-events-none absolute flex items-center justify-center", className)} style={{ ...style, containerType: "size" }}>{children}</div>;

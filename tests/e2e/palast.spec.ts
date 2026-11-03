@@ -124,8 +124,8 @@ async function newScreen(browser: Browser): Promise<Page> {
   return ctx.newPage();
 }
 
-test("Palast am Großen Tisch: Stapel und Ablage in der Mitte, Tischkarten am Platz, keine Handkarten", async ({ browser, request }) => {
-  test.setTimeout(120_000);
+test("Palast am Großen Tisch: Stapel und Ablage in der Mitte, Tischkarten am Platz, keine Handkarten, „Verbrannt!“ nach einer Zehn", async ({ browser, request }) => {
+  test.setTimeout(300_000);
   await setConfig(request, { ...ALL_ON, modes: { palast: { table: "on" } } });
   try {
     const screen = await newScreen(browser);
@@ -156,6 +156,17 @@ test("Palast am Großen Tisch: Stapel und Ablage in der Mitte, Tischkarten am Pl
     await expect(screen.getByTestId("seat-board").first()).toBeVisible();
     await expect(screen.getByTestId("hand")).toHaveCount(0);
     await shot(screen, "palast-fernseher");
+    // Weiterspielen, bis jemand verbrennt (Zehn oder vier gleiche): die Mitte zeigt kurz „Verbrannt!“, dann wieder den Tisch
+    const flash = screen.getByTestId("table-flash");
+    for (let i = 0; i < 600 && !(await flash.isVisible()); i++) {
+      let moved = false;
+      for (const p of phones) if (!(await flash.isVisible())) moved = (await step(p)) || moved;
+      if (!moved) await screen.waitForTimeout(200);
+    }
+    await expect(flash).toContainText("Verbrannt!");
+    await screen.waitForTimeout(300);
+    await screen.screenshot({ path: "screenshots/palast-fernseher-verbrannt.png" });
+    await expect(flash).toBeHidden({ timeout: 6000 });
   } finally {
     await setConfig(request, ALL_ON);
   }
