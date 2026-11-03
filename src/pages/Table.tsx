@@ -43,7 +43,7 @@ import { SoundPanel, SoundUnlock, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, nextMood, readMood, useTableHost } from "@/platform/table/host";
 import { MOODS } from "@/platform/moderator/lines";
 import { FeltDice, FeltGrid, FeltSign, FeltTabletop, SignClock } from "@/platform/table/blocks";
-import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
+import { FeltPiles, FeltWords, SeatBoard, SeatSheet } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
@@ -398,7 +398,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
           turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
           video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
-          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} />
+          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} sheet={model?.sheets?.[p.id]} />
       ))}
       {/* Klingel: in 3D wie flach als Bild über dem Tisch – die Klingel in der Mitte, vor jedem Platz seine offene Karte */}
       {model?.bell && <OnFelt rect={felt}><FeltBell bell={model.bell} /></OnFelt>}
@@ -541,7 +541,7 @@ function useSeatPlace(x: number, y: number) {
   return { ref, pos };
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden, sheet }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
   /** Schild am Pult (Quiz auf der Bühne): geantwortet bzw. richtig/falsch */
   badge?: QuizMark;
@@ -552,6 +552,8 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
   boardAbove?: boolean;
   /** Auslage liegt in 3D auf dem Tisch – hier nur für Vorleseprogramme */
   boardHidden?: boolean;
+  /** Mini-Blatt (Ankreuzspiel) – in 3D wie flach am Platz */
+  sheet?: NonNullable<TableModel["sheets"]>[string];
 }) {
   const showVideo = !!video && !videoHidden;
   const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
@@ -573,6 +575,7 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
       {note && <span lang="de" className="line-clamp-3 max-w-full text-center text-sm font-semibold hyphens-auto drop-shadow [overflow-wrap:anywhere]">{note}</span>}
       {badge && <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold shadow", BADGE[badge.tone])} data-testid="seat-quiz" data-tone={badge.tone}>{badge.text}</span>}
       {board && <div className={cn(boardAbove && "order-first", boardHidden && "sr-only")}><SeatBoard board={board} /></div>}
+      {sheet && <div className={cn(boardAbove && "order-first")}><SeatSheet sheet={sheet} label={name} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
     </div>
   );

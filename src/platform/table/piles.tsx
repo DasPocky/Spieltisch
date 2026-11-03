@@ -35,6 +35,24 @@ export function FeltPiles({ piles, small }: { piles: NonNullable<TableModel["pil
   );
 }
 
+/** Mini-Blatt unter dem Platz (Ankreuzspiel): je Reihe kleine Felder in der Reihenfarbe, angekreuzte voll mit Kreuz, das Schloss rund */
+export function SeatSheet({ sheet, label }: { sheet: NonNullable<TableModel["sheets"]>[string]; label: string }) {
+  const crossed = sheet.rows.reduce((n, r) => n + r.marks.filter(Boolean).length + (r.lock ? 1 : 0), 0);
+  return (
+    <div className="grid gap-[2px] rounded-md bg-[#f7ecd6] p-[3px] shadow" role="img" aria-label={`Blatt von ${label}: ${crossed} Kreuze`} data-testid="seat-sheet">
+      {sheet.rows.map((r, i) => (
+        <div key={i} className="flex gap-[2px]">
+          {[...r.marks, !!r.lock].map((on, k) => (
+            <span key={k} data-on={on || undefined}
+              className={cn("grid size-[0.56rem] place-items-center text-[0.5rem] leading-none font-black text-white", k === r.marks.length ? "rounded-full" : "rounded-[2px]")}
+              style={on ? { background: r.color } : { background: `${r.color}33`, boxShadow: `inset 0 0 0 1px ${r.color}66` }}>{on ? "×" : ""}</span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Auslage eines Spielers unter seinem Platz: offene Karten im Raster, verdeckte als „?“, leere Lücken bleiben frei */
 export function SeatBoard({ board }: { board: NonNullable<TableModel["boards"]>[string] }) {
   return (
