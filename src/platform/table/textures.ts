@@ -242,7 +242,19 @@ async function drawWordCard(text: string, tone: string | null): Promise<HTMLCanv
   g.fillStyle = tone ? "rgba(255,255,255,.16)" : "#fffaf0"; rounded(g, 5 * u, 34 * u, w - 10 * u, 28 * u, 3 * u); g.fill();
   g.textAlign = "center"; g.textBaseline = "middle";
   g.fillStyle = tone ? "#ffffff" : "#2b2118";
-  fit(g, word, 84 * u, 15 * u); g.fillText(word, w / 2, 48.5 * u);
+  // Langer Text (z. B. Antworten bei Stadt-Land-Fluss): lieber in zwei, drei Zeilen als winzig in einer
+  const one = fit(g, word, 84 * u, 15 * u);
+  // Sehr lange Wörter in Stücke mit Trennstrich teilen, damit sie umbrechen können
+  const pieces = word.split(" ").flatMap((x) => {
+    if (x.length <= 16) return [x];
+    const n = Math.ceil(x.length / 14);
+    return Array.from({ length: n }, (_, i) => x.slice(i * 14, i * 14 + 14) + (i < n - 1 ? "-" : ""));
+  }).join(" ");
+  const wrapped = one < 9 * u && pieces.includes(" ") ? wrapText(g, pieces, 86 * u, 27 * u, 15 * u) : null;
+  if (wrapped && wrapped.lines.length > 1 && wrapped.size > one) {
+    g.font = `700 ${wrapped.size}px ${FONT}`;
+    wrapped.lines.forEach((l, i) => g.fillText(l, w / 2, 48.5 * u + (i - (wrapped.lines.length - 1) / 2) * wrapped.size * 1.12));
+  } else { g.font = `700 ${one}px ${FONT}`; g.fillText(word, w / 2, 48.5 * u); }
   g.save(); g.translate(w / 2, 18 * u); g.rotate(Math.PI); g.globalAlpha = 0.45;
   fit(g, word, 60 * u, 7 * u, 600); g.fillText(word, 0, 0); g.restore();
   return c;

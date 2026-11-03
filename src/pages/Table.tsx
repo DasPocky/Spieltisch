@@ -569,7 +569,7 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
       <span className={cn("plate max-w-full truncate", turn && "plate-turn")}>
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
-      {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
+      {note && <span lang="de" className="line-clamp-3 max-w-full text-center text-sm font-semibold hyphens-auto drop-shadow [overflow-wrap:anywhere]">{note}</span>}
       {badge && <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold shadow", BADGE[badge.tone])} data-testid="seat-quiz" data-tone={badge.tone}>{badge.text}</span>}
       {board && <div className={cn(boardAbove && "order-first", boardHidden && "sr-only")}><SeatBoard board={board} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
