@@ -172,27 +172,28 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
 
   // Die Sprechblase steht über der Kugel – ragt sie in einen Platz, rückt sie über ihn hinaus nach oben
   const bubble = useRef<HTMLParagraphElement>(null);
-  const [lift, setLift] = useState(0);
+  const [spot, setSpot] = useState<BubbleSpot>(HOME);
+  // Nur auf neue Ansagen reagieren und dann in Ruhe nachmessen (kein Messen im Render-Takt, keine Schleife über die Lage)
   useLayoutEffect(() => {
-    if (!say) { setLift(0); return; }
+    if (!say) { setSpot(HOME); return; }
     const place = () => {
       const el = bubble.current;
       if (!el) return;
-      const next = bubbleLift(el, lift);
-      if (Math.abs(next - lift) > 0.5) setLift(next);
+      const next = bubbleSpot(el);
+      setSpot((s) => (Math.abs(next.lift - s.lift) > 0.5 || Math.abs(next.shift - s.shift) > 0.5 || next.width !== s.width ? next : s));
     };
     place();
     // Plätze gleiten beim Ausweichen und Fenster ändern sich – solange die Blase steht, nachmessen
     const t = window.setInterval(place, 250);
     return () => clearInterval(t);
-  }, [say, lift]);
+  }, [say]);
 
   return (
-    // Kugel rechts außen, Sprechblase darüber – nie über einem Platz (siehe bubbleLift)
+    // Kugel rechts außen, Sprechblase darüber – nie über einem Platz (siehe bubbleSpot)
     <div className="pointer-events-none absolute right-6 bottom-5" data-testid="table-host">
       {say && (
-        <p ref={bubble} style={{ bottom: `calc(100% + 0.5rem + ${Math.round(lift)}px)` }}
-          className={cn("text-in absolute right-0 w-max max-w-[min(24rem,30vw)] rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
+        <p ref={bubble} style={{ bottom: `calc(100% + 0.5rem + ${Math.round(spot.lift)}px)`, right: Math.round(spot.shift), ...(spot.width ? { maxWidth: spot.width } : {}) }}
+          className={cn("text-in absolute w-max max-w-[min(24rem,30vw)] rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
           data-testid="table-host-line" aria-live="polite">{say.text}</p>
       )}
       {/* Plätze rücken der Kugel aus dem Weg (die Sprechblase kommt und geht – sie weicht selbst aus) */}
@@ -204,30 +205,59 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
 /** Abstand der Sprechblase zu Plätzen und Bildrand */
 const BUBBLE_GAP = 8;
 
+interface Box { left: number; top: number; right: number; bottom: number }
+const overlap = (a: Box, b: Box) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+
+/** Wo ein Platz stehen bleibt: seine Zielstelle (Inline-Stil), nicht die gerade gleitende Zwischenstellung */
+function seatBox(seat: HTMLElement): Box {
+  const r = seat.getBoundingClientRect();
+  const parent = seat.offsetParent as HTMLElement | null;
+  const x = parseFloat(seat.style.left), y = parseFloat(seat.style.top);
+  if (!parent || !Number.isFinite(x) || !Number.isFinite(y) || seat.style.left.includes("(")) return r;
+  const p = parent.getBoundingClientRect();
+  const w = seat.offsetWidth, h = seat.offsetHeight;
+  return { left: p.left + x - w / 2, top: p.top + y - h / 2, right: p.left + x + w / 2, bottom: p.top + y + h / 2 };
+}
+
+/** Lage der Sprechblase: so weit nach oben bzw. links verschoben, ggf. schmaler (0 = volle Breite) */
+interface BubbleSpot { lift: number; shift: number; width: number }
+const HOME: BubbleSpot = { lift: 0, shift: 0, width: 0 };
+
 /**
- * Wie weit die Sprechblase über ihre Grundstellung (direkt über der Kugel) steigen muss, damit sie keinen Platz verdeckt:
- * Sie rückt jeweils über den Platz hinaus, in den sie ragt – höchstens bis an den oberen Rand bzw. unter Kopfzeile und QR-Kasten.
+ * Wo die Sprechblase keinen Platz verdeckt. Gemessen wird ohne die eigene Verschiebung und Einblend-Bewegung
+ * (Grundstellung aus der Kugel, Größe aus dem Layout) und gegen die Zielstellen der Plätze – bei gleicher Lage kommt
+ * immer dasselbe heraus. Versucht der Reihe nach: volle Breite, dann schmaler; je Breite nach oben über die Plätze
+ * hinaus (bis unter Kopfzeile und QR-Kasten) und nach links neben sie. Passt nichts frei, die kleinste Überschneidung.
  */
-export function bubbleLift(el: HTMLElement, current: number): number {
-  const room = el.closest(".table-room");
-  if (!room) return 0;
-  const r = el.getBoundingClientRect();
-  // Grundstellung ohne Anheben
-  const base = { left: r.left, right: r.right, top: r.top + current, bottom: r.bottom + current };
-  const seats = [...room.querySelectorAll(".seat-plate")].map((s) => s.getBoundingClientRect());
-  const tops = [...room.querySelectorAll("[data-seat-avoid]")].filter((a) => a.getAttribute("data-seat-avoid") !== "x")
-    .map((a) => a.getBoundingClientRect()).filter((a) => a.right > base.left && a.left < base.right);
-  const ceiling = Math.max(room.getBoundingClientRect().top, ...tops.map((a) => a.bottom)) + BUBBLE_GAP;
-  let lift = 0;
-  for (let pass = 0; pass < 8; pass++) {
-    const top = base.top - lift, bottom = base.bottom - lift;
-    const hit = seats.filter((s) => s.right > base.left - BUBBLE_GAP && s.left < base.right + BUBBLE_GAP && s.bottom > top - BUBBLE_GAP && s.top < bottom + BUBBLE_GAP);
-    if (!hit.length) return lift;
-    lift = base.bottom - Math.min(...hit.map((s) => s.top)) + BUBBLE_GAP;
-    // Kein Platz mehr nach oben: in der Grundstellung bleiben (lieber kurz über einem Platz als aus dem Bild)
-    if (base.top - lift < ceiling) return 0;
+export function bubbleSpot(el: HTMLElement): BubbleSpot {
+  const room = el.closest(".table-room"), anchor = el.parentElement;
+  if (!room || !anchor) return HOME;
+  const a = anchor.getBoundingClientRect(), r = room.getBoundingClientRect();
+  const w0 = el.offsetWidth, h0 = el.offsetHeight;
+  const gap = parseFloat(getComputedStyle(document.documentElement).fontSize || "16") * 0.5;
+  const seats = [...room.querySelectorAll<HTMLElement>(".seat-plate")].map(seatBox)
+    .map((s) => ({ left: s.left - BUBBLE_GAP, top: s.top - BUBBLE_GAP, right: s.right + BUBBLE_GAP, bottom: s.bottom + BUBBLE_GAP }));
+  const blocks = [...room.querySelectorAll("[data-seat-avoid]")].filter((x) => x.getAttribute("data-seat-avoid") !== "x").map((x) => x.getBoundingClientRect());
+  let best: { spot: BubbleSpot; cost: number } | null = null;
+  // Breiten: wie sie ist, dann schmaler (Höhe wächst etwa mit – großzügig geschätzt)
+  for (const width of [0, 256, 200].filter((x) => x === 0 || x < w0)) {
+    const w = width || w0, h = width ? h0 * (w0 / w) * 1.2 + 8 : h0;
+    const box = (lift: number, shift: number): Box => ({ left: a.right - shift - w, right: a.right - shift, bottom: a.top - gap - lift, top: a.top - gap - lift - h });
+    const inside = (b: Box) => b.left >= r.left + BUBBLE_GAP && b.top >= r.top + BUBBLE_GAP && !blocks.some((x) => overlap(b, x) > 0);
+    const cost = (b: Box) => seats.reduce((n, s) => n + overlap(b, s), 0);
+    const lifts = [0, ...seats.map((s) => a.top - gap - s.top)].filter((l) => l >= 0);
+    const shifts = [0, ...seats.map((s) => a.right - s.left)].filter((x) => x >= 0);
+    const options = lifts.flatMap((lift) => shifts.map((shift) => ({ lift, shift, width })))
+      .sort((p, q) => p.lift + p.shift * 1.5 - (q.lift + q.shift * 1.5));
+    for (const o of options) {
+      const b = box(o.lift, o.shift);
+      if (!inside(b)) continue;
+      const c = cost(b);
+      if (c === 0) return o;
+      if (!best || c < best.cost) best = { spot: o, cost: c };
+    }
   }
-  return lift;
+  return best?.spot ?? HOME;
 }
 
 /** Einstellungen am Tisch: Moderator an/aus, Charakter, Vorlesen */

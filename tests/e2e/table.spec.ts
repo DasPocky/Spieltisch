@@ -743,13 +743,15 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     await anna.getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
     // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
-    for (let i = 0; i < 15 && !(await screen.getByTestId("seat-board").count()); i++) {
+    // (nur sichtbare Knöpfe prüfen: isEnabled ohne Zeitlimit wartet, bis es den Knopf gibt – wer nicht dran ist, hat keinen)
+    for (let i = 0; i < 60 && !(await screen.getByTestId("seat-board").count()); i++) {
       for (const p of phones) {
-        const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
+        const hit = p.getByRole("button", { name: /^Noch eine!/ }).first();
+        if (!(await hit.isVisible())) continue;
         // Knopf kann zwischen Prüfen und Tippen gesperrt werden (Zug vorbei) – nicht ewig warten
-        if (await hit.isEnabled().catch(() => false)) { await hit.click({ timeout: 3000 }).catch(() => {}); break; }
+        if (await hit.isEnabled({ timeout: 500 }).catch(() => false)) { await hit.click({ timeout: 3000 }).catch(() => {}); break; }
       }
-      await screen.waitForTimeout(600);
+      await screen.waitForTimeout(500);
     }
     await expect(screen.getByTestId("seat-board").first()).toBeAttached();
     await screen.waitForTimeout(500);
@@ -1235,12 +1237,23 @@ async function tableWithBots(browser: Browser, request: APIRequestContext, game:
 
 /** Rechtecke, die sich mit der Sprechblase des Moderators überschneiden (leer = nichts verdeckt) */
 async function bubbleOverSeats(screen: Page) {
-  return screen.evaluate(() => {
+  const snap = () => screen.evaluate(() => {
     const b = document.querySelector('[data-testid="table-host-line"]')?.getBoundingClientRect();
     if (!b) return null;
-    return [...document.querySelectorAll('[data-testid="table-seat"]')].map((s) => ({ name: s.textContent ?? "", r: s.getBoundingClientRect() }))
-      .filter(({ r }) => r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom).map(({ name }) => name);
+    const seats = [...document.querySelectorAll('[data-testid="table-seat"]')].map((s) => ({ name: s.textContent ?? "", r: s.getBoundingClientRect() }));
+    const key = [b, ...seats.map((s) => s.r)].map((r) => `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`).join(";") + (document.querySelector('[data-testid="table-host-line"]')?.textContent ?? "");
+    return { key, hit: seats.filter(({ r }) => r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom).map(({ name }) => name) };
   });
+  // Erst messen, wenn alles ruht (Plätze gleiten, die Blase blendet ein): zweimal hintereinander dieselbe Lage
+  let prev = await snap();
+  for (let i = 0; i < 12 && prev; i++) {
+    await screen.waitForTimeout(250);
+    const now = await snap();
+    if (!now) return null;
+    if (now.key === prev.key) return now.hit;
+    prev = now;
+  }
+  return null;
 }
 
 /** Eins: ist Anna dran, zieht sie und passt (bzw. zweifelt an) – so geht die Partie mit den Bots weiter */
@@ -1265,7 +1278,6 @@ for (const flat of [true, false]) {
         for (let i = 0; i < 40 && checked < 3; i++) {
           await screen.waitForTimeout(500);
           if (!(await screen.getByTestId("table-host-line").isVisible())) { await einsNudge(anna); continue; }
-          await screen.waitForTimeout(700);
           const hit = await bubbleOverSeats(screen);
           if (!hit) continue;
           expect(hit, `Sprechblase über Platz bei ${bots + 1} Spielern, ${vp.width}×${vp.height}`).toEqual([]);

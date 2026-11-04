@@ -3,30 +3,28 @@ import { adminLogin, ALL_ON, captureSpeech, expectNoScroll, newPhone, setConfig,
 
 /** Ein Schritt auf diesem Handy: Sichtschutz weg, fertig tauschen, niedrigste passende Karten legen, aufnehmen oder blind aufdecken. */
 async function step(p: Page): Promise<boolean> {
+  // Zwischen Prüfen und Tippen kann ein Knopf verschwinden oder gesperrt werden (Bots ziehen weiter) –
+  // darum jede Abfrage und jeder Klick mit kurzem Zeitlimit, sonst wartet Playwright bis zum Testende
+  const enabled = (l: ReturnType<Page["getByTestId"]>) => l.isEnabled({ timeout: 500 }).catch(() => false);
+  const tap = async (l: ReturnType<Page["getByTestId"]>) => { await l.click({ timeout: 3000 }).catch(() => {}); return true; };
   const cover = p.getByRole("button", { name: /Karten zeigen/ });
-  if (await cover.isVisible()) { await cover.click(); return true; }
+  if (await cover.isVisible()) return tap(cover as ReturnType<Page["getByTestId"]>);
   const ready = p.getByTestId("swap-ready");
-  if (await ready.isVisible()) {
-    if (await ready.isEnabled()) { await ready.click(); return true; }
-    return false;
-  }
+  if (await ready.isVisible()) return (await enabled(ready)) ? tap(ready) : false;
   const blind = p.getByTestId("blind-go");
-  if (await blind.isVisible()) {
-    if (await blind.isEnabled()) { await blind.click(); return true; }
-    return false;
-  }
+  if (await blind.isVisible()) return (await enabled(blind)) ? tap(blind) : false;
   const take = p.getByTestId("take");
   if (!(await take.isVisible())) return false;
-  if (await take.isEnabled()) { await take.click(); return true; }
+  if (await enabled(take)) return tap(take);
   const go = p.getByTestId("play-go");
   const card = p.locator('[data-testid="hand"] button:not([disabled]), [data-testid="my-table"] [data-testid="up-card"]:not([disabled])').first();
   if (await card.count()) {
-    if (!(await go.isEnabled())) {
+    if (!(await enabled(go))) {
       // links antippen – im Fächer liegt die nächste Karte rechts darüber
       await card.click({ timeout: 2000, position: { x: 6, y: 24 } }).catch(() => {});
       await expect(go).toBeEnabled({ timeout: 1000 }).catch(() => {});
     }
-    if (await go.isEnabled()) { await go.click({ timeout: 2000 }).catch(() => {}); return true; }
+    if (await enabled(go)) { await go.click({ timeout: 2000 }).catch(() => {}); return true; }
   }
   return false;
 }
