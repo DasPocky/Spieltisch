@@ -172,14 +172,16 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
 
   // Die Sprechblase steht über der Kugel – ragt sie in einen Platz, rückt sie über ihn hinaus nach oben
   const bubble = useRef<HTMLParagraphElement>(null);
+  /** unsichtbare Kopie zum Messen der Größe je Breite (die echte Blase trägt schon die gewählte Breite) */
+  const probe = useRef<HTMLParagraphElement>(null);
   const [spot, setSpot] = useState<BubbleSpot>(HOME);
   // Nur auf neue Ansagen reagieren und dann in Ruhe nachmessen (kein Messen im Render-Takt, keine Schleife über die Lage)
   useLayoutEffect(() => {
     if (!say) { setSpot(HOME); return; }
     const place = () => {
-      const el = bubble.current;
-      if (!el) return;
-      const next = bubbleSpot(el);
+      const el = bubble.current, pr = probe.current;
+      if (!el || !pr) return;
+      const next = bubbleSpot(el, pr);
       setSpot((s) => (Math.abs(next.lift - s.lift) > 0.5 || Math.abs(next.shift - s.shift) > 0.5 || next.width !== s.width ? next : s));
     };
     place();
@@ -193,9 +195,10 @@ export function HostCorner({ say, mood }: { say: Say | null; mood: Mood }) {
     <div className="pointer-events-none absolute right-6 bottom-5" data-testid="table-host">
       {say && (
         <p ref={bubble} style={{ bottom: `calc(100% + 0.5rem + ${Math.round(spot.lift)}px)`, right: Math.round(spot.shift), ...(spot.width ? { maxWidth: spot.width } : {}) }}
-          className={cn("text-in absolute w-max max-w-[min(24rem,30vw)] rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl", talking && "ring-2 ring-white/60")}
+          className={cn("text-in", BUBBLE_CLASS, talking && "ring-2 ring-white/60")}
           data-testid="table-host-line" aria-live="polite">{say.text}</p>
       )}
+      {say && <p ref={probe} aria-hidden className={cn(BUBBLE_CLASS, "invisible right-0 bottom-0")}>{say.text}</p>}
       {/* Plätze rücken der Kugel aus dem Weg (die Sprechblase kommt und geht – sie weicht selbst aus) */}
       <div className="shrink-0" data-seat-avoid="x"><OrbHost mouth={mouth} blink={blink} mood={mood} className="size-36 shrink-0" /></div>
     </div>
@@ -219,6 +222,8 @@ function seatBox(seat: HTMLElement): Box {
   return { left: p.left + x - w / 2, top: p.top + y - h / 2, right: p.left + x + w / 2, bottom: p.top + y + h / 2 };
 }
 
+const BUBBLE_CLASS = "absolute w-max max-w-[min(24rem,30vw)] rounded-2xl rounded-br-sm bg-[#f7ecd6] px-4 py-3 text-lg leading-snug font-semibold text-[#2b2118] shadow-xl";
+
 /** Lage der Sprechblase: so weit nach oben bzw. links verschoben, ggf. schmaler (0 = volle Breite) */
 interface BubbleSpot { lift: number; shift: number; width: number }
 const HOME: BubbleSpot = { lift: 0, shift: 0, width: 0 };
@@ -229,35 +234,45 @@ const HOME: BubbleSpot = { lift: 0, shift: 0, width: 0 };
  * immer dasselbe heraus. Versucht der Reihe nach: volle Breite, dann schmaler; je Breite nach oben über die Plätze
  * hinaus (bis unter Kopfzeile und QR-Kasten) und nach links neben sie. Passt nichts frei, die kleinste Überschneidung.
  */
-export function bubbleSpot(el: HTMLElement): BubbleSpot {
+export function bubbleSpot(el: HTMLElement, probe: HTMLElement): BubbleSpot {
   const room = el.closest(".table-room"), anchor = el.parentElement;
   if (!room || !anchor) return HOME;
   const a = anchor.getBoundingClientRect(), r = room.getBoundingClientRect();
-  const w0 = el.offsetWidth, h0 = el.offsetHeight;
+  // Größe je Breite an der unsichtbaren Kopie messen (volle Breite und schmaler)
+  const size = (width: number) => { probe.style.maxWidth = width ? `${width}px` : ""; return { w: probe.offsetWidth, h: probe.offsetHeight }; };
+  const w0 = size(0).w;
   const gap = parseFloat(getComputedStyle(document.documentElement).fontSize || "16") * 0.5;
-  const seats = [...room.querySelectorAll<HTMLElement>(".seat-plate")].map(seatBox)
+  // Plätze dort, wo sie gerade sind, und dort, wohin sie gleiten – beides frei halten
+  const seats = [...room.querySelectorAll<HTMLElement>(".seat-plate")].flatMap((x) => [x.getBoundingClientRect(), seatBox(x)])
     .map((s) => ({ left: s.left - BUBBLE_GAP, top: s.top - BUBBLE_GAP, right: s.right + BUBBLE_GAP, bottom: s.bottom + BUBBLE_GAP }));
   const blocks = [...room.querySelectorAll("[data-seat-avoid]")].filter((x) => x.getAttribute("data-seat-avoid") !== "x").map((x) => x.getBoundingClientRect());
-  let best: { spot: BubbleSpot; cost: number } | null = null;
-  // Breiten: wie sie ist, dann schmaler (Höhe wächst etwa mit – großzügig geschätzt)
-  for (const width of [0, 256, 200].filter((x) => x === 0 || x < w0)) {
-    const w = width || w0, h = width ? h0 * (w0 / w) * 1.2 + 8 : h0;
-    const box = (lift: number, shift: number): Box => ({ left: a.right - shift - w, right: a.right - shift, bottom: a.top - gap - lift, top: a.top - gap - lift - h });
-    const inside = (b: Box) => b.left >= r.left + BUBBLE_GAP && b.top >= r.top + BUBBLE_GAP && !blocks.some((x) => overlap(b, x) > 0);
-    const cost = (b: Box) => seats.reduce((n, s) => n + overlap(b, s), 0);
-    const lifts = [0, ...seats.map((s) => a.top - gap - s.top)].filter((l) => l >= 0);
-    const shifts = [0, ...seats.map((s) => a.right - s.left)].filter((x) => x >= 0);
-    const options = lifts.flatMap((lift) => shifts.map((shift) => ({ lift, shift, width })))
-      .sort((p, q) => p.lift + p.shift * 1.5 - (q.lift + q.shift * 1.5));
-    for (const o of options) {
-      const b = box(o.lift, o.shift);
-      if (!inside(b)) continue;
-      const c = cost(b);
-      if (c === 0) return o;
-      if (!best || c < best.cost) best = { spot: o, cost: c };
+  // Erst ohne Kopfzeile, QR-Kasten und Ansage zu berühren; findet sich so nichts Freies, nur noch im Bild bleiben
+  const search = (strict: boolean) => {
+    let best: { spot: BubbleSpot; cost: number } | null = null;
+    // Breiten: wie sie ist, dann schmaler – die Größe misst die unsichtbare Kopie
+    for (const width of [0, 256, 200].filter((x) => x === 0 || x < w0)) {
+      const { w, h } = size(width);
+      const box = (lift: number, shift: number): Box => ({ left: a.right - shift - w, right: a.right - shift, bottom: a.top - gap - lift, top: a.top - gap - lift - h });
+      const inside = (b: Box) => b.left >= r.left + BUBBLE_GAP && b.top >= r.top + BUBBLE_GAP && (!strict || !blocks.some((x) => overlap(b, x) > 0));
+      const cost = (b: Box) => seats.reduce((n, s) => n + overlap(b, s), 0);
+      const lifts = [0, ...seats.map((s) => a.top - gap - s.top)].filter((l) => l >= 0);
+      const shifts = [0, ...seats.map((s) => a.right - s.left)].filter((x) => x >= 0);
+      const options = lifts.flatMap((lift) => shifts.map((shift) => ({ lift, shift, width })))
+        .sort((p, q) => p.lift + p.shift * 1.5 - (q.lift + q.shift * 1.5));
+      for (const o of options) {
+        const b = box(o.lift, o.shift);
+        if (!inside(b)) continue;
+        const c = cost(b);
+        if (c === 0) return { spot: o, cost: 0 };
+        if (!best || c < best.cost) best = { spot: o, cost: c };
+      }
     }
-  }
-  return best?.spot ?? HOME;
+    return best;
+  };
+  const found = search(true);
+  const spot = found?.cost === 0 ? found.spot : (() => { const loose = search(false); return loose && (!found || loose.cost < found.cost) ? loose.spot : found?.spot ?? HOME; })();
+  probe.style.maxWidth = "";
+  return spot;
 }
 
 /** Einstellungen am Tisch: Moderator an/aus, Charakter, Vorlesen */

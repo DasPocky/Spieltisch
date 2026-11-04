@@ -744,8 +744,11 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
     // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
     // (nur sichtbare Knöpfe prüfen: isEnabled ohne Zeitlimit wartet, bis es den Knopf gibt – wer nicht dran ist, hat keinen)
-    for (let i = 0; i < 60 && !(await screen.getByTestId("seat-board").count()); i++) {
+    for (const until = Date.now() + 60_000; Date.now() < until && !(await screen.getByTestId("seat-board").count());) {
       for (const p of phones) {
+        // Liegt eine Aktionskarte (z. B. gleich zu Beginn), muss erst ein Ziel gewählt werden – sonst gibt es kein „Noch eine!“
+        const aim = p.getByText(/wen trifft's\?/);
+        if (await aim.isVisible()) { await aim.locator("..").getByRole("button").first().click({ timeout: 3000 }).catch(() => {}); break; }
         const hit = p.getByRole("button", { name: /^Noch eine!/ }).first();
         if (!(await hit.isVisible())) continue;
         // Knopf kann zwischen Prüfen und Tippen gesperrt werden (Zug vorbei) – nicht ewig warten
@@ -1270,6 +1273,9 @@ for (const flat of [true, false]) {
     test.setTimeout(300_000);
     for (const bots of [3, 5]) {
       const { screen, anna } = await tableWithBots(browser, request, "eins", bots, { flat });
+      const errors: string[] = [];
+      screen.on("pageerror", (e) => errors.push(e.message));
+      screen.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
       await expect(screen.getByTestId("table-seat")).toHaveCount(bots + 1);
       for (const vp of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }]) {
         await screen.setViewportSize(vp);
@@ -1280,7 +1286,14 @@ for (const flat of [true, false]) {
           if (!(await screen.getByTestId("table-host-line").isVisible())) { await einsNudge(anna); continue; }
           const hit = await bubbleOverSeats(screen);
           if (!hit) continue;
-          expect(hit, `Sprechblase über Platz bei ${bots + 1} Spielern, ${vp.width}×${vp.height}`).toEqual([]);
+          // Bei Fehlern die Lage mitschreiben (Blase, ihr Stil, Plätze) und ein Bild sichern
+          const where = hit.length ? await screen.evaluate(() => {
+            const b = document.querySelector<HTMLElement>('[data-testid="table-host-line"]')!;
+            const box = (r: DOMRect) => [r.left, r.top, r.right, r.bottom].map(Math.round).join(",");
+            return `Blase ${box(b.getBoundingClientRect())} (${b.style.cssText}) · Plätze ${[...document.querySelectorAll<HTMLElement>(".seat-plate")].map((x) => `${x.textContent}: ${box(x.getBoundingClientRect())}`).join(" | ")}`;
+          }) : "";
+          if (hit.length) await shot(screen, `9w-tisch-moderator-fehler-${flat ? "flach" : "3d"}-${bots + 1}-${vp.width}`);
+          expect(hit, `Sprechblase über Platz bei ${bots + 1} Spielern, ${vp.width}×${vp.height}: ${where} · Fehler: ${errors.join(" / ").slice(0, 500)}`).toEqual([]);
           checked++;
           if (checked === 1 && bots === 5) await shot(screen, `9w-tisch-moderator-${flat ? "flach" : "3d"}-6-${vp.width}`);
         }
