@@ -16,6 +16,7 @@ import { SUITS as HS_SUITS, type HsState } from "../games/hellseher/logic";
 import { canPlay as hzCanPlay, type HzState } from "../games/herzen/logic";
 import { legalMoves as palastMoves, type PalastState } from "../games/palast/logic";
 import { suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
+import { canPlay as dkCanPlay, SOLOS as DK_SOLOS, type DkState } from "../games/doppelkopf/logic";
 import { POINT_STEPS } from "../games/alles/logic";
 import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../games/maexchen/logic";
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
@@ -254,6 +255,22 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       const hand = s.hands[s.curId ?? ""] ?? [];
       for (const card of hand) if (hzCanPlay(s, hand, card, r.options) || Math.random() < 0.05) add({ type: "play", card });
+      add({ type: "nextRound" });
+      break;
+    }
+    case "doppelkopf": {
+      const s = r.game as DkState;
+      const hand = s.hands[s.curId ?? ""] ?? [];
+      // Vorbehalt: meist gesund, sonst Hochzeit oder ein zufälliges Solo (ungültige lehnt die Logik ab)
+      if (s.phase === "reserve") for (const what of ["gesund", "gesund", "gesund", "hochzeit", pick(DK_SOLOS)]) add({ type: "reserve", what });
+      if (s.phase === "play") for (const card of hand) if (dkCanPlay(s, hand, card) || Math.random() < 0.05) add({ type: "play", card });
+      // Ansagen ab und zu: online jeder für sich, lokal das Gerät für jeden
+      if (s.phase === "play" && Math.random() < 0.15) for (const id of ids) {
+        const level = 1 + Math.floor(Math.random() * 5);
+        if (online) moves.push({ action: g({ type: "call", level }), actor: id });
+        else add({ type: "call", level, player: id });
+      }
+      if (Math.random() < 0.02) add({ type: "timeUp" });
       add({ type: "nextRound" });
       break;
     }

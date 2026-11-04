@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-11-doppelkopf",
+    date: "2026-11-03",
+    title: "Neues Kartenspiel: Doppelkopf",
+    items: [
+      "Immer zu viert mit doppeltem Blatt: Re (die Kreuz-Damen) gegen Kontra – wer zu wem gehört, zeigt sich erst im Spiel. Fehlende Plätze spielen Bots.",
+      "Vorbehalte (Hochzeit, Damen-, Buben-, Fleischlos- und Farbsolo), Ansagen Re und Kontra, Absagen bis „schwarz“, Sonderpunkte für Doppelkopf, Fuchs und Karlchen.",
+      "Abrechnung Zeile für Zeile, französisches oder deutsches Kartenbild. Mit Bots, Spielhilfe, Vorlesen, Zugzeit, an einem Handy für alle und am Großen Tisch (Beta). Pakete „Ohne Neunen“ und „Einsteiger“.",
+    ],
+  },
+  {
     id: "2026-10-zahlenromme",
     date: "2026-10-31",
     title: "Neues Spiel: Zahlen-Rommé",

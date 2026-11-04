@@ -9,6 +9,7 @@ import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import type { HzState } from "@shared/games/herzen/logic";
 import type { PalastState } from "@shared/games/palast/logic";
+import type { DkState } from "@shared/games/doppelkopf/logic";
 import { fullSet, isValidMeld, type ZrState } from "@shared/games/zahlenromme/logic";
 import type { P10State } from "@shared/games/zehnphasen/logic";
 import type { SbState } from "@shared/games/stapelbau/logic";
@@ -88,6 +89,18 @@ function checkCards(r: RoomState) {
       expect(new Set(all).size).toBe(all.length);
       expect(s.table.every(isValidMeld)).toBe(true);
     }
+  }
+  if (r.gameId === "doppelkopf") {
+    // 48 (ohne Neunen 40) Karten: Hände, gespielte Stiche und der laufende Stich – immer vier Plätze
+    const s = r.game as DkState;
+    expect(s.seats).toHaveLength(4);
+    if (s.phase === "reserve" || s.phase === "play") {
+      const n = Object.values(s.hands).flat().length + s.tricks.length * 4 + s.trick.length;
+      expect(n).toBe(s.handSize * 4);
+      expect(s.tricks.reduce((t, x) => t + x.augen, 0)).toBeLessThanOrEqual(240);
+    }
+    // Abrechnung: was die einen bekommen, zahlen die anderen
+    for (const h of s.history) expect(Object.values(h.points).reduce((t, x) => t + x, 0)).toBe(0);
   }
   if (r.gameId === "klingel") {
     const s = r.game as KlState;
@@ -241,6 +254,10 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["palast", 3, { seven: false, four: false }],
   ["palast", 5, { swap: false }],
   ["palast", 8, {}],
+  ["doppelkopf", 4, { rounds: "4" }],
+  ["doppelkopf", 2, { rounds: "4", nines: false }],
+  ["doppelkopf", 1, { rounds: "4", solos: false, absagen: false, think: "30" }],
+  ["doppelkopf", 3, { rounds: "4", specials: false, pictures: "de" }],
   ["zahlenromme", 2, {}],
   ["zahlenromme", 4, {}],
   ["zahlenromme", 3, { joker: false, end: "1" }],
