@@ -24,6 +24,7 @@ import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite a
 import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
 import { bestMelds as zrBest, handPoints as zrPoints, isValidMeld as zrValid, normalize as zrNormalize, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
 import { augenOf as dkAugen, nextCall as dkNextCall, suggestCall as dkCall, suggestCard as dkCard, suggestReserve as dkReserve, type DkState } from "../games/doppelkopf/logic";
+import { augenOf as skAugen, bidOptions as skBidOptions, suggestBid as skBid, suggestCard as skCard, suggestDiscard as skDiscard, suggestGame as skGame, suggestSkat as skSkat, KINDS as SK_KINDS, type SkState as SkatState } from "../games/skat/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -399,6 +400,25 @@ const scoreDoppelkopf: Scorer = (view, a, _after, me) => {
   return a.card === dkCard(s, me) ? 100 : -dkAugen(a.card as never);
 };
 
+// ---------------------------------------------------------------- Skat (nach Handstärke reizen, Spielart und Drücken planen, Stiche wie beim Doppelkopf)
+
+const scoreSkat: Scorer = (view, a, _after, me) => {
+  const s = view.game as SkatState;
+  if (a.type === "nextRound") return 10;
+  if (a.type === "bid" || a.type === "hold" || a.type === "pass") {
+    const best = skBid(s, me);
+    return best.type === a.type && (best.type !== "bid" || best.value === a.value) ? 100 : 0;
+  }
+  if (a.type === "skat") return a.take === skSkat(s, me) ? 100 : 0;
+  if (a.type === "discard") return JSON.stringify([...(a.cards as string[])].sort()) === JSON.stringify([...skDiscard(s, me)].sort()) ? 100 : 0;
+  if (a.type === "declare") {
+    const g = skGame(s, me);
+    return a.kind === g.kind && !!a.ouvert === g.ouvert && !a.schneider && !a.schwarz ? 100 : 0;
+  }
+  if (a.type !== "play") return -50;
+  return a.card === skCard(s, me) ? 100 : -skAugen(a.card as never);
+};
+
 // ---------------------------------------------------------------- Schocken (Einsen herauslegen, nicht der Schlechteste sein)
 
 const scoreSchocken: Scorer = (view, a, _after, me) => {
@@ -618,7 +638,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, doppelkopf: scoreDoppelkopf, zahlenromme: scoreZahlenromme, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, doppelkopf: scoreDoppelkopf, skat: scoreSkat, zahlenromme: scoreZahlenromme, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -726,6 +746,26 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
     const lv = dkNextCall(s, me, view.options);
     if (lv) out.push({ type: "call", level: lv });
     return out;
+  },
+  skat: (view, me) => {
+    const s = view.game as SkatState;
+    // Rundenende: weiter erst, wenn nur Bots am Tisch sitzen – Menschen lesen die Abrechnung und geben selbst
+    if (s.phase === "roundEnd") return view.bots?.length && view.players.some((p) => !view.bots!.includes(p.id)) ? [] : [{ type: "nextRound" }];
+    if (s.curId !== me) return [];
+    if (s.phase === "bid") {
+      const o = skBidOptions(s, me);
+      return [...(o.say !== null ? [{ type: "bid", value: o.say }] : []), ...(o.hold ? [{ type: "hold" }] : []), { type: "pass" }];
+    }
+    if (s.phase === "skat") return [{ type: "skat", take: true }, { type: "skat", take: false }];
+    if (s.phase === "discard") {
+      const hand = s.hands[me] ?? [];
+      return [{ type: "discard", cards: skDiscard(s, me) }, { type: "discard", cards: hand.slice(-2) }, { type: "discard", cards: hand.slice(0, 2) }];
+    }
+    if (s.phase === "declare") {
+      const g = skGame(s, me);
+      return [...SK_KINDS.map((kind) => ({ type: "declare", kind })), { type: "declare", kind: g.kind, ouvert: g.ouvert }];
+    }
+    return (s.hands[me] ?? []).map((card) => ({ type: "play", card }));
   },
   palast: (view, me) => {
     const s = view.game as PalastState;
