@@ -23,6 +23,7 @@ import type { KlState } from "../games/klingel/logic";
 import { colorOptions as akColor, suggestColor as akSuggestColor, suggestWhite as akSuggestWhite, type AkState } from "../games/ankreuzspiel/logic";
 import { legalMoves as palastMoves, sortCards as palastSort, strength as palastStrength, suggestMove as palastSuggest, suggestUp as palastUp, type PalastState } from "../games/palast/logic";
 import { bestMelds as zrBest, handPoints as zrPoints, isValidMeld as zrValid, normalize as zrNormalize, suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
+import { augenOf as dkAugen, nextCall as dkNextCall, suggestCall as dkCall, suggestCard as dkCard, suggestReserve as dkReserve, type DkState } from "../games/doppelkopf/logic";
 import { cardPoints as hzPoints, suggestCard as hzSuggest, suggestPass as hzPass, type HzState } from "../games/herzen/logic";
 import type { FischenState } from "../games/fischen/logic";
 import type { SkState } from "../games/himmelskarten/logic";
@@ -387,6 +388,17 @@ const scoreHerzen: Scorer = (view, a, _after, me) => {
   return a.card === hzSuggest(s, hand, view.options) ? 100 : -hzPoints(a.card as never);
 };
 
+// ---------------------------------------------------------------- Doppelkopf (Partner erkennen, schmieren, Augen sichern, nur starke Ansagen)
+
+const scoreDoppelkopf: Scorer = (view, a, _after, me) => {
+  const s = view.game as DkState;
+  if (a.type === "nextRound") return 10;
+  if (a.type === "reserve") return a.what === dkReserve(s, me, view.options) ? 100 : 0;
+  if (a.type === "call") return a.level === dkCall(s, me, view.options) ? 200 : -200;
+  if (a.type !== "play") return -50;
+  return a.card === dkCard(s, me) ? 100 : -dkAugen(a.card as never);
+};
+
 // ---------------------------------------------------------------- Schocken (Einsen herauslegen, nicht der Schlechteste sein)
 
 const scoreSchocken: Scorer = (view, a, _after, me) => {
@@ -606,7 +618,7 @@ const scoreZehnphasen: Scorer = (view, a, _after, me) => {
   }
 };
 
-const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, zahlenromme: scoreZahlenromme, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
+const SCORERS: Record<string, Scorer> = { zehnphasen: scoreZehnphasen, glueckssieben: scoreGlueckssieben, himmelskarten: scoreHimmelskarten, stapelbau: scoreStapelbau, fischen: scoreFischen, hellseher: scoreHellseher, herzen: scoreHerzen, klingel: () => 0, palast: scorePalast, doppelkopf: scoreDoppelkopf, zahlenromme: scoreZahlenromme, schocken: scoreSchocken, bluff: scoreBluff, ankreuzspiel: scoreAnkreuzspiel, fuenfwuerfel: scoreFuenfwuerfel, maexchen: scoreMaexchen, alles: scoreAlles, maumau: scoreMaumau, eins: scoreEins, vier: scoreVier, dame: scoreDame, muehle: scoreMuehle, ludo: scoreLudo };
 
 /** Alle sinnvollen Züge – ohne Zufall, damit dieselbe Lage denselben Zug ergibt */
 const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
@@ -700,6 +712,19 @@ const MOVES: Record<string, (view: RoomState, me: string) => A[] | null> = {
       // der Vorschlag und zwei schlichtere Wahlen (die ersten bzw. letzten drei Karten)
       for (const cards of [hzPass(hand), hand.slice(0, 3), hand.slice(-3)]) out.push({ type: "pass", cards });
     }
+    return out;
+  },
+  doppelkopf: (view, me) => {
+    const s = view.game as DkState;
+    // Rundenende: weiter erst, wenn nur Bots am Tisch sitzen – Menschen lesen die Abrechnung und geben selbst
+    if (s.phase === "roundEnd") return view.bots?.length && view.players.some((p) => !view.bots!.includes(p.id)) ? [] : [{ type: "nextRound" }];
+    if (s.curId !== me) return [];
+    // Vorbehalt: gesund, Hochzeit oder das Solo, das zur Hand passt – kein Solo aufs Geratewohl (auch nicht bei „leicht“)
+    if (s.phase === "reserve") return [...new Set(["gesund", "hochzeit", dkReserve(s, me, view.options)])].map((what) => ({ type: "reserve", what }));
+    const out: A[] = (s.hands[me] ?? []).map((card) => ({ type: "play", card }));
+    // Ansagen nur am eigenen Zug (höchstens fünf Stufen – jede Partie endet)
+    const lv = dkNextCall(s, me, view.options);
+    if (lv) out.push({ type: "call", level: lv });
     return out;
   },
   palast: (view, me) => {
