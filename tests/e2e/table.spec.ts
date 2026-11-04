@@ -1253,7 +1253,8 @@ async function einsNudge(anna: Page) {
 
 for (const flat of [true, false]) {
   test(`Moderator ${flat ? "flach" : "3D"}: die Sprechblase verdeckt bei 4 und 6 Spielern keinen Platz (1440×900 und 1280×720)`, async ({ browser, request }) => {
-    test.setTimeout(180_000);
+    // vier Partien-Ansichten mit Bots, 3D ohne Grafikchip ist langsam
+    test.setTimeout(300_000);
     for (const bots of [3, 5]) {
       const { screen, anna } = await tableWithBots(browser, request, "eins", bots, { flat });
       await expect(screen.getByTestId("table-seat")).toHaveCount(bots + 1);
