@@ -123,9 +123,19 @@ test("Klingel an einem Handy für alle: Zonen am Rand, Klingel in der Mitte, meh
   }
   await sizes(page, "klingel-lokal", stackBeside);
   // Klingeln: Ben tippt in seine Zone, gleichzeitig tippt Dora auf die Klingel – der Erste zählt
-  const ok = await ready(page, "[data-testid=kl-local]");
-  await page.getByTestId("kl-zone-Ben").dispatchEvent("pointerdown", { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true });
-  if (ok) await page.getByTestId("kl-bell").dispatchEvent("pointerdown", { clientX: 200, clientY: 420, pointerId: 2, isPrimary: false });
+  // Zählen und klingeln in einem Zug im Browser – sonst kann dazwischen das automatische Aufdecken (nach 8 s) die Lage ändern
+  const ok = await page.evaluate(() => {
+    const t: Record<string, number> = {};
+    for (const el of document.querySelectorAll('[data-testid=kl-local] [data-testid="fruit-card"]')) {
+      const [f, n] = (el.getAttribute("data-card") ?? "").split("-");
+      t[f] = (t[f] ?? 0) + Number(n);
+    }
+    const five = Object.values(t).includes(5);
+    const fire = (id: string, init: PointerEventInit) => document.querySelector(`[data-testid="${id}"]`)!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, ...init }));
+    fire("kl-zone-Ben", { clientX: 10, clientY: 10, pointerId: 1, isPrimary: true });
+    if (five) fire("kl-bell", { clientX: 200, clientY: 420, pointerId: 2, isPrimary: false });
+    return five;
+  });
   await expect(page.getByTestId("ring-flash")).toHaveAttribute("data-ok", String(ok));
   await expect(page.getByTestId("ring-flash")).toContainText(ok ? "Ben war am schnellsten" : "Ben hat falsch geklingelt");
   await expectNoScroll(page);
