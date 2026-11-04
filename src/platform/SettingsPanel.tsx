@@ -102,9 +102,16 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
   const fold = fit && auto.game === room.gameId ? auto : { game: room.gameId, closed: [] as string[], pills: false, touched: false };
   const extraGroup = !inGame && (entryChoice || hints);
   const order = [...(extraGroup ? ["raum"] : []), ...[...groups].reverse(), "sets", "extra", "basics"];
+  // Nur gleich beim Öffnen einklappen (kurzes Fenster) – danach springt nichts mehr von selbst
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!fit) return;
+    const t = setTimeout(() => setSettled(true), 700);
+    return () => clearTimeout(t);
+  }, [fit]);
   useLayoutEffect(() => {
     const el = root.current, box = el?.parentElement;
-    if (!fit || fold.touched || !el || !box) return;
+    if (!fit || fold.touched || settled || !el || !box) return;
     const check = () => {
       if (box.scrollHeight <= box.clientHeight + 1) return;
       const next = order.find((k) => {
@@ -124,7 +131,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
   const folding = (sec: string) => ({ sec, autoClosed: fold.closed.includes(sec), pill: fold.pills, onTouch: fit ? () => touch(sec) : undefined });
 
   return (
-    <section ref={root} className={cn("grid", fit ? "gap-3" : "gap-4", className)}>
+    <section ref={root} className={cn("grid", fit ? "gap-3" : "gap-4", className)} data-fit={fit ? (settled || fold.touched ? "fertig" : "misst") : undefined}>
       {title && (
         <div className="flex items-baseline justify-between">
           <h3 className="font-semibold">Einstellungen</h3>

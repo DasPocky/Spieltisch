@@ -124,8 +124,8 @@ export async function openSettings(page: Page) {
 export async function unfoldSettings(page: Page) {
   const body = page.getByTestId("settings-body");
   await expect(body).toBeVisible();
-  // kurz warten, bis das Blatt fertig eingeklappt hat (Bilder, Schrift)
-  await page.waitForTimeout(250);
+  // warten, bis das Blatt fertig eingeklappt hat (es klappt nur gleich beim Öffnen ein)
+  await expect(body.locator('[data-fit="fertig"]')).toHaveCount(1, { timeout: 10_000 });
   for (let i = 0; i < 20; i++) {
     const folded = body.locator("[data-auto-collapsed]").first();
     if (!(await folded.count())) break;
@@ -137,7 +137,7 @@ export async function unfoldSettings(page: Page) {
 export async function expectSettingsFit(page: Page) {
   const body = page.getByTestId("settings-body");
   await expect(body).toBeVisible();
-  await page.waitForTimeout(400);
+  await expect(body.locator('[data-fit="fertig"]')).toHaveCount(1, { timeout: 10_000 });
   const { scroll, height } = await body.evaluate((el) => ({ scroll: el.scrollHeight, height: el.clientHeight }));
   expect(scroll, "Einstellungs-Blatt scrollt").toBeLessThanOrEqual(height + 1);
   await expectNoScroll(page);
