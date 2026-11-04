@@ -116,6 +116,25 @@ describe("Palast", () => {
     expect([cardsText(["herz-B"]), cardsText(["pik-K"]), cardsText(["pik-A"]), cardsText(["karo-7", "herz-7"])]).toEqual(["einen Buben", "einen König", "ein Ass", "2× Sieben"]);
   });
 
+  it("Großer Tisch: nach einer Zehn bzw. vier gleichen zeigt die Mitte kurz „Verbrannt!“, beim nächsten Zug nicht mehr", () => {
+    let r = fix(start(2), { hands: { p1: ["herz-2", "pik-10", "kreuz-4", "herz-4", "karo-9"], p2: ["karo-3", "herz-4", "pik-4"] }, discard: ["karo-A"] });
+    const tv = () => palastTable({ ...r, game: viewRoom(r, WATCH_ID).game });
+    expect(tv()?.flash).toBeUndefined();
+    r = play(r, ["herz-2"]);
+    r = play(r, ["herz-4", "pik-4"]);
+    expect(tv()?.flash).toBeUndefined();
+    r = play(r, ["kreuz-4", "herz-4"]);
+    expect(tv()?.flash).toMatchObject({ text: "🔥 Verbrannt!", sub: expect.stringContaining("Vier gleiche") });
+    expect(tv()?.discard).toEqual([]);
+    const four = tv()!.flash!.key;
+    r = play(r, ["pik-10"]);
+    expect(tv()?.flash).toMatchObject({ text: "🔥 Verbrannt!", sub: expect.stringContaining("Zehn") });
+    // neuer Schlüssel: der Hinweis erscheint noch einmal
+    expect(tv()!.flash!.key).not.toBe(four);
+    r = play(r, ["karo-9"]);
+    expect(tv()?.flash).toBeUndefined();
+  });
+
   it("Hausregel „Vier gleiche“ aus: kein Verbrennen", () => {
     let r = fix(start(2, { four: false }), { hands: { p1: ["herz-4", "pik-4", "karo-9"], p2: ["karo-4", "kreuz-4", "karo-8"] }, discard: [] });
     r = play(r, ["herz-4", "pik-4"]);

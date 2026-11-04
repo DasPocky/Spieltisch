@@ -45,7 +45,7 @@ import { SoundPanel, SoundUnlock, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, nextMood, readMood, useTableHost } from "@/platform/table/host";
 import { MOODS } from "@/platform/moderator/lines";
 import { FeltDice, FeltGrid, FeltSign, FeltTabletop, SignClock } from "@/platform/table/blocks";
-import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
+import { FeltPiles, FeltWords, SeatBoard, SeatSheet } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
@@ -405,7 +405,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
           turn={model?.turn === p.id || sham?.czar === p.id} away={!p.bot && !online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
           video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
-          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} />
+          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} sheet={model?.sheets?.[p.id]} />
       ))}
       {/* Stich: jede Karte vor dem Platz, der sie gespielt hat – in 3D wie flach */}
       {model?.trick && felt && <FeltTrick trick={model.trick} felt={felt} seats={players.map((p, i) => ({ id: p.id, at: points[i] }))} />}
@@ -429,6 +429,7 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
+      {model?.flash && <OnFelt rect={felt ?? null}><FeltFlash flash={model.flash} /></OnFelt>}
       {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
       {/* Quizfrage groß über dem Tisch */}
       {model?.quiz && <QuizBoard quiz={model.quiz} />}
@@ -549,7 +550,7 @@ function useSeatPlace(x: number, y: number) {
   return { ref, pos };
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden, sheet }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
   /** Schild am Pult (Quiz auf der Bühne): geantwortet bzw. richtig/falsch */
   badge?: QuizMark;
@@ -560,6 +561,8 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
   boardAbove?: boolean;
   /** Auslage liegt in 3D auf dem Tisch – hier nur für Vorleseprogramme */
   boardHidden?: boolean;
+  /** Mini-Blatt (Ankreuzspiel) – in 3D wie flach am Platz */
+  sheet?: NonNullable<TableModel["sheets"]>[string];
 }) {
   const showVideo = !!video && !videoHidden;
   const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
@@ -578,9 +581,10 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
       <span className={cn("plate max-w-full truncate", turn && "plate-turn")}>
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
-      {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
+      {note && <span lang="de" className="line-clamp-3 max-w-full text-center text-sm font-semibold hyphens-auto drop-shadow [overflow-wrap:anywhere]">{note}</span>}
       {badge && <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold shadow", BADGE[badge.tone])} data-testid="seat-quiz" data-tone={badge.tone}>{badge.text}</span>}
       {board && <div className={cn(boardAbove && "order-first", boardHidden && "sr-only")}><SeatBoard board={board} /></div>}
+      {sheet && <div className={cn(boardAbove && "order-first")}><SeatSheet sheet={sheet} label={name} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
     </div>
   );
@@ -812,10 +816,24 @@ function SchamlosStatus({ s, name, count }: { s: SchamlosState; name: (id: strin
   );
 }
 
-/**
- * Inhalt, der auf dem Filz liegt: bleibt innerhalb der Tischfläche und wächst mit ihr (Maße in cqh/cqw).
- * Ohne 3D (kein WebGL) ein fester Bereich in der Mitte.
- */
+/** Kurzer Hinweis groß in der Mitte (z. B. „🔥 Verbrannt!“): bei jedem neuen Schlüssel ein paar Sekunden lang */
+function FeltFlash({ flash }: { flash: NonNullable<TableModel["flash"]> }) {
+  const [shown, setShown] = useState<number | null>(flash.key);
+  useEffect(() => {
+    setShown(flash.key);
+    const t = setTimeout(() => setShown(null), 4000);
+    return () => clearTimeout(t);
+  }, [flash.key]);
+  if (shown !== flash.key) return null;
+  return (
+    <div className="pop flex flex-col items-center gap-[1cqh] rounded-[2.4cqh] bg-[#2b2118]/90 px-[4cqw] py-[2.4cqh] text-center text-[#f7ecd6] shadow-2xl" role="status" data-testid="table-flash">
+      <span className="text-[8cqh] leading-none font-black">{flash.text}</span>
+      {flash.sub && <span className="text-[3cqh] font-semibold opacity-85">{flash.sub}</span>}
+    </div>
+  );
+}
+
+
 /** Stich auf dem Filz: Karten zwischen Mitte und Platz, die gewinnende hervorgehoben */
 function FeltTrick({ trick, felt, seats }: { trick: NonNullable<TableModel["trick"]>; felt: FeltRect; seats: { id: string; at?: { x: number; y: number } }[] }) {
   const cx = felt.x + felt.w / 2, cy = felt.y + felt.h / 2;
@@ -840,6 +858,11 @@ function FeltTrick({ trick, felt, seats }: { trick: NonNullable<TableModel["tric
   );
 }
 
+
+/**
+ * Inhalt, der auf dem Filz liegt: bleibt innerhalb der Tischfläche und wächst mit ihr (Maße in cqh/cqw).
+ * Ohne 3D (kein WebGL) ein fester Bereich in der Mitte.
+ */
 function OnFelt({ rect, children, className }: { rect: FeltRect | null; children: React.ReactNode; className?: string }) {
   const style: React.CSSProperties = rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h } : { left: "15%", top: "20%", width: "70%", height: "55%" };
   return <div className={cn("pointer-events-none absolute flex items-center justify-center", className)} style={{ ...style, containerType: "size" }}>{children}</div>;

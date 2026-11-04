@@ -628,7 +628,8 @@ export function createTableScene(canvas: HTMLCanvasElement, quality: Quality = "
     const rows = Math.ceil(words.cells.length / words.cols);
     const cw = 0.24, cd = cw * 0.625, gap = 0.025;
     const W = words.cols * cw + (words.cols - 1) * gap, D = rows * cd + (rows - 1) * gap;
-    const sc = Math.min(1, (FELT_W - 0.3) / W, (FELT_D - 0.2) / D);
+    // Wenige Karten (Antworten bei Stadt-Land-Fluss) dürfen größer liegen – das volle Raster (Decknamen) bleibt wie es ist
+    const sc = Math.min(words.cells.length <= 8 ? 1.7 : 1, (FELT_W - 0.3) / W, (FELT_D - 0.2) / D);
     homeRect = { x0: -W * sc / 2 - 0.1, z0: -D * sc / 2 - 0.08, x1: W * sc / 2 + 0.1, z1: D * sc / 2 + 0.12 };
     const geo = new BoxGeometry(1, 0.008, 0.625);
     words.cells.forEach((cell, k) => {

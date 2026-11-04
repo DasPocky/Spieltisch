@@ -1,9 +1,12 @@
 import type { RoomState } from "@shared/platform/room";
-import { allCrosses, pendingWhite, ROWS, totalOf, whiteSum, type AkState } from "@shared/games/ankreuzspiel/logic";
+import { allCrosses, CELLS, pendingWhite, ROWS, totalOf, whiteSum, type AkState } from "@shared/games/ankreuzspiel/logic";
 import type { TableModel } from "../../platform/table/model";
 import { diceOf } from "./dice";
 
-/** Ankreuzspiel am Tisch: weiße und farbige Würfel in der Mitte, an den Plätzen Punkte, Kreuze und Fehlwürfe */
+/** Bis zu so vielen Spielern passt das Mini-Blatt an jeden Platz – darüber bleibt nur der Text */
+export const SHEET_MAX = 6;
+
+/** Ankreuzspiel am Tisch: weiße und farbige Würfel in der Mitte, an den Plätzen Punkte, Kreuze und Fehlwürfe – bis 6 Spieler mit Mini-Blatt */
 export function ankreuzspielTable(room: RoomState): TableModel | null {
   const s = room.game as AkState;
   if (s.phase === "over") return null;
@@ -23,8 +26,12 @@ export function ankreuzspielTable(room: RoomState): TableModel | null {
     notes: Object.fromEntries(room.players.map((p) => {
       const sh = s.sheets[p.id];
       if (!sh) return [p.id, "zuschauen"];
-      return [p.id, `${totalOf(sh)} Punkte · ${allCrosses(sh)} Kreuze · ${sh.misses} ${sh.misses === 1 ? "Fehlwurf" : "Fehlwürfe"}`];
+      const pts = totalOf(sh), x = allCrosses(sh);
+      return [p.id, `${pts} ${pts === 1 ? "Punkt" : "Punkte"} · ${x} ${x === 1 ? "Kreuz" : "Kreuze"} · ${sh.misses} ${sh.misses === 1 ? "Fehlwurf" : "Fehlwürfe"}`];
     })),
+    sheets: Object.keys(s.sheets).length <= SHEET_MAX ? Object.fromEntries(Object.entries(s.sheets).map(([id, sh]) => [id, {
+      rows: ROWS.map((r, i) => ({ color: r.color, marks: Array.from({ length: CELLS }, (_, k) => sh.rows[i].includes(k)), lock: sh.locks[i] })),
+    }])) : undefined,
     dice: { slots: 2 + ROWS.filter((_, r) => !s.closed[r]).length, values: shown.values, held: shown.values.map(() => false), tints: shown.tints, n: s.n, note, still: s.phase !== "white" },
   };
 }

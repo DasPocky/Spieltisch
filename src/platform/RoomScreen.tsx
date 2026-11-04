@@ -366,13 +366,14 @@ function GameLobby({ room, me, online, code, dispatch, onAddLocal, onPhoto, isHo
         onPick={(id) => { setPick(false); void loadGameUI(id).then(() => dispatch({ type: "selectGame", gameId: id }), () => toast("Das Spiel lädt gerade nicht – kurz Netz prüfen.")); }} />
 
       <Sheet open={settings} onOpenChange={setSettings}>
-        <SheetContent>
+        {/* fast bildschirmhoch: so passen die Einstellungen öfter ganz hinein (sonst klappt das Panel Bereiche ein) */}
+        <SheetContent className="max-h-[calc(100dvh-0.5rem)]">
           <SheetHeader>
             <SheetTitle>Einstellungen: {info.name}</SheetTitle>
             <SheetDescription>{isHost ? "Gilt für alle in dieser Partie." : "Legt der Host fest – du kannst sie nur ansehen."}</SheetDescription>
           </SheetHeader>
-          <div className="overflow-y-auto px-5 pt-3 pb-4">
-            <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} title={false} />
+          <div className="overflow-y-auto px-5 pt-3 pb-4" data-testid="settings-body">
+            <SettingsPanel room={room} editable={isHost} online={!!code} dispatch={dispatch} title={false} fit />
           </div>
           <div className="shrink-0 border-t border-border px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Button className="w-full" onClick={() => setSettings(false)}>Fertig</Button>

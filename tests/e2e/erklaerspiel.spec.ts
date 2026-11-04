@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { ALL_ON, captureSpeech, createRoom, expectNoScroll, joinRoom, newPhone, setConfig, shot, spoken, startLocal } from "./util";
+import { ALL_ON, captureSpeech, createRoom, expectNoScroll, joinRoom, newPhone, setConfig, shot, spoken, startLocal, openSettings } from "./util";
 
 /** Einstellungen per Minus/Plus */
 const fewer = async (p: Page, label: string, times: number) => { for (let i = 0; i < times; i++) await p.getByRole("button", { name: `${label} verringern` }).click(); };
@@ -19,7 +19,7 @@ test("Erklärspiel online mit 4 Handys: erklären, Gegner kontrolliert und nimmt
   for (const n of names.slice(1)) { const p = await newPhone(browser); await joinRoom(p, code, n, "1234"); phones.push(p); }
   const [anna, ben, cem, dora] = phones;
   // Einstellungen: ein Zug je Team, 30 Sekunden
-  await anna.getByTestId("settings-summary").click();
+  await openSettings(anna);
   await fewer(anna, "Züge je Team", 2);
   await fewer(anna, "Zeit pro Zug (s)", 2);
   await anna.getByRole("button", { name: "Fertig", exact: true }).click();

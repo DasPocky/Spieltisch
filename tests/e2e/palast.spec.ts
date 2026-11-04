@@ -3,30 +3,28 @@ import { adminLogin, ALL_ON, captureSpeech, expectNoScroll, newPhone, setConfig,
 
 /** Ein Schritt auf diesem Handy: Sichtschutz weg, fertig tauschen, niedrigste passende Karten legen, aufnehmen oder blind aufdecken. */
 async function step(p: Page): Promise<boolean> {
+  // Zwischen Prüfen und Tippen kann ein Knopf verschwinden oder gesperrt werden (Bots ziehen weiter) –
+  // darum jede Abfrage und jeder Klick mit kurzem Zeitlimit, sonst wartet Playwright bis zum Testende
+  const enabled = (l: ReturnType<Page["getByTestId"]>) => l.isEnabled({ timeout: 500 }).catch(() => false);
+  const tap = async (l: ReturnType<Page["getByTestId"]>) => { await l.click({ timeout: 3000 }).catch(() => {}); return true; };
   const cover = p.getByRole("button", { name: /Karten zeigen/ });
-  if (await cover.isVisible()) { await cover.click(); return true; }
+  if (await cover.isVisible()) return tap(cover as ReturnType<Page["getByTestId"]>);
   const ready = p.getByTestId("swap-ready");
-  if (await ready.isVisible()) {
-    if (await ready.isEnabled()) { await ready.click(); return true; }
-    return false;
-  }
+  if (await ready.isVisible()) return (await enabled(ready)) ? tap(ready) : false;
   const blind = p.getByTestId("blind-go");
-  if (await blind.isVisible()) {
-    if (await blind.isEnabled()) { await blind.click(); return true; }
-    return false;
-  }
+  if (await blind.isVisible()) return (await enabled(blind)) ? tap(blind) : false;
   const take = p.getByTestId("take");
   if (!(await take.isVisible())) return false;
-  if (await take.isEnabled()) { await take.click(); return true; }
+  if (await enabled(take)) return tap(take);
   const go = p.getByTestId("play-go");
   const card = p.locator('[data-testid="hand"] button:not([disabled]), [data-testid="my-table"] [data-testid="up-card"]:not([disabled])').first();
   if (await card.count()) {
-    if (!(await go.isEnabled())) {
+    if (!(await enabled(go))) {
       // links antippen – im Fächer liegt die nächste Karte rechts darüber
       await card.click({ timeout: 2000, position: { x: 6, y: 24 } }).catch(() => {});
       await expect(go).toBeEnabled({ timeout: 1000 }).catch(() => {});
     }
-    if (await go.isEnabled()) { await go.click({ timeout: 2000 }).catch(() => {}); return true; }
+    if (await enabled(go)) { await go.click({ timeout: 2000 }).catch(() => {}); return true; }
   }
   return false;
 }
@@ -124,8 +122,8 @@ async function newScreen(browser: Browser): Promise<Page> {
   return ctx.newPage();
 }
 
-test("Palast am Großen Tisch: Stapel und Ablage in der Mitte, Tischkarten am Platz, keine Handkarten", async ({ browser, request }) => {
-  test.setTimeout(120_000);
+test("Palast am Großen Tisch: Stapel und Ablage in der Mitte, Tischkarten am Platz, keine Handkarten, „Verbrannt!“ nach einer Zehn", async ({ browser, request }) => {
+  test.setTimeout(300_000);
   await setConfig(request, { ...ALL_ON, modes: { palast: { table: "on" } } });
   try {
     const screen = await newScreen(browser);
@@ -156,6 +154,17 @@ test("Palast am Großen Tisch: Stapel und Ablage in der Mitte, Tischkarten am Pl
     await expect(screen.getByTestId("seat-board").first()).toBeVisible();
     await expect(screen.getByTestId("hand")).toHaveCount(0);
     await shot(screen, "palast-fernseher");
+    // Weiterspielen, bis jemand verbrennt (Zehn oder vier gleiche): die Mitte zeigt kurz „Verbrannt!“, dann wieder den Tisch
+    const flash = screen.getByTestId("table-flash");
+    for (let i = 0; i < 600 && !(await flash.isVisible()); i++) {
+      let moved = false;
+      for (const p of phones) if (!(await flash.isVisible())) moved = (await step(p)) || moved;
+      if (!moved) await screen.waitForTimeout(200);
+    }
+    await expect(flash).toContainText("Verbrannt!");
+    await screen.waitForTimeout(300);
+    await screen.screenshot({ path: "screenshots/palast-fernseher-verbrannt.png" });
+    await expect(flash).toBeHidden({ timeout: 6000 });
   } finally {
     await setConfig(request, ALL_ON);
   }

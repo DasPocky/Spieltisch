@@ -144,3 +144,57 @@ test("Stadt-Land-Fluss am Großen Tisch: Buchstabe groß, keine Antworten vor de
     await setConfig(request, ALL_ON);
   }
 });
+
+for (const flat of [true, false]) {
+  test(`Stadt-Land-Fluss am Großen Tisch ${flat ? "flach" : "in 3D"}: lange Antworten werden umbrochen und verkleinert, nie abgeschnitten`, async ({ browser, request }) => {
+    test.setTimeout(150_000);
+    await setConfig(request, { ...ALL_ON, modes: { stadtlandfluss: { table: "on" } } });
+    try {
+      const screen = await newScreen(browser);
+      if (flat) await screen.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+      await screen.goto("/tisch");
+      await screen.getByTestId("table-new").click();
+      await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+      const code = screen.url().split("/").pop()!;
+      const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+      const phones: Page[] = [];
+      for (const name of ["Anna", "Ben", "Cem"]) {
+        const p = await newPhone(browser);
+        await p.goto(`/r/${code}#pin=${pin}`);
+        await expect(p.getByLabel("PIN")).toHaveValue(pin);
+        await p.getByLabel("Dein Name").fill(name);
+        await p.getByRole("button", { name: "Beitreten" }).click();
+        phones.push(p);
+      }
+      await expect(screen.getByTestId("table-seat")).toHaveCount(3);
+      await phones[0].getByTestId("meet-play").click();
+      await phones[0].getByTestId("pick-stadtlandfluss").click();
+      await phones[0].getByRole("button", { name: "Spiel starten" }).click();
+      await expect(phones[0].getByTestId("slf-in-0")).toBeVisible();
+      const L = await letterOf(phones[0]);
+      // 40 Zeichen (die Höchstlänge): ein einziges langes Wort bzw. mehrere lange Wörter
+      const long = `${L}onaudampfschifffahrtsgesellschaftskapit`.slice(0, 40);
+      const words = `${L}roße Hafenstadt am südlichen Mittelmeer`.slice(0, 40);
+      await phones[0].getByTestId("slf-in-0").fill(long);
+      await phones[1].getByTestId("slf-in-0").fill(words);
+      await phones[2].getByTestId("slf-in-0").fill(`${L}x`);
+      for (const p of phones) await p.getByTestId("slf-done").click();
+      const view = screen.getByTestId("table-view");
+      await expect(view).toContainText(`Stadt mit ${L}`);
+      await screen.waitForTimeout(800);
+      // Platz-Notiz: ganz lesbar, nicht breiter als der Platz
+      const seats = await screen.getByTestId("table-seat").evaluateAll((els) => els.map((el) => ({ text: el.textContent ?? "", over: el.scrollWidth > el.clientWidth + 1 })));
+      expect(seats.some((s) => s.text.includes(long))).toBe(true);
+      expect(seats.filter((s) => s.over)).toEqual([]);
+      if (flat) {
+        // Wortkarten in der Mitte: ganzer Text, nichts ragt heraus
+        const cells = await screen.getByTestId("table-word").evaluateAll((els) => els.map((el) => ({ text: el.textContent ?? "", cut: el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1 })));
+        expect(cells.map((c) => c.text)).toEqual(expect.arrayContaining([`Anna: ${long}`, `Ben: ${words}`]));
+        expect(cells.filter((c) => c.cut)).toEqual([]);
+      }
+      await shot(screen, `slf-8-fernseher-lange-antworten-${flat ? "flach" : "3d"}`);
+    } finally {
+      await setConfig(request, ALL_ON);
+    }
+  });
+}
