@@ -39,26 +39,31 @@ test("Update im Spiel: wer dran ist, wird nicht unterbrochen – die anderen lad
   await expect(host.getByTestId("hand")).toBeVisible();
   await expect(guest.getByTestId("hand")).toBeVisible();
 
-  // Anna ist dran: kein Neuladen mitten im Zug
-  await newerServer(host);
-  await mark(host);
-  await poke(host);
-  await host.waitForTimeout(4000);
-  expect(await marked(host)).toBe(true);
+  // Wer dran ist, hängt von der Startkarte ab (eine 8 überspringt Anna) – nachsehen statt annehmen
+  await expect(host.getByTestId("status")).not.toHaveText("");
+  const hostWaits = /ist am Zug/.test(await host.getByTestId("status").innerText());
+  const [onTurn, waiting] = hostWaits ? [guest, host] : [host, guest];
 
-  // Ben ist nicht dran: lädt neu, landet wieder in derselben Partie als Ben
-  await newerServer(guest);
-  await mark(guest);
-  await poke(guest);
+  // Wer dran ist: kein Neuladen mitten im Zug
+  await newerServer(onTurn);
+  await mark(onTurn);
+  await poke(onTurn);
+  await onTurn.waitForTimeout(4000);
+  expect(await marked(onTurn)).toBe(true);
+
+  // Wer nicht dran ist: lädt neu, landet wieder in derselben Partie
+  await newerServer(waiting);
+  await mark(waiting);
+  await poke(waiting);
   let loads = 0;
-  guest.on("framenavigated", (f) => { if (f === guest.mainFrame()) loads++; });
-  await expect.poll(() => marked(guest).catch(() => false), { timeout: 10_000 }).toBe(false);
-  await expect(guest.getByTestId("hand")).toBeVisible();
+  waiting.on("framenavigated", (f) => { if (f === waiting.mainFrame()) loads++; });
+  await expect.poll(() => marked(waiting).catch(() => false), { timeout: 10_000 }).toBe(false);
+  await expect(waiting.getByTestId("hand")).toBeVisible();
   // Der Server meldet weiter „neuer“ (z. B. Zwischenspeicher): trotzdem nur einmal neu laden
-  await guest.waitForTimeout(3000);
+  await waiting.waitForTimeout(3000);
   expect(loads).toBe(1);
-  await expect(guest).toHaveURL(new RegExp(`/r/${code}$`));
-  await shot(guest, "92-update-im-spiel");
+  await expect(waiting).toHaveURL(new RegExp(`/r/${code}$`));
+  await shot(waiting, "92-update-im-spiel");
 });
 
 test("Update „Sofort für alle“ (Standard): auch wer dran ist, lädt nach kurzem Hinweis neu und spielt im selben Raum weiter", async ({ browser }) => {

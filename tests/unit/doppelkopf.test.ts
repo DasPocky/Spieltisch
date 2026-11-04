@@ -240,7 +240,9 @@ describe("Doppelkopf: Raum", () => {
     const s = r.game as DkState;
     expect(s.deadline).not.toBeNull();
     const t = doppelkopf.apply(s, { type: "timeUp" }, { ...ctx({ think: "30" }, "p2"), players: r.players, now: s.deadline! + 10 });
-    expect(t.said[s.curId!]).toBe("gesund");
+    // die App sagt den zur (zufälligen) Hand passenden Vorbehalt an – gesund oder z. B. Hochzeit
+    expect(["gesund", "vorbehalt"]).toContain(t.said[s.curId!]);
+    expect(t.n).toBeGreaterThan(s.n);
     // zu früh: nichts passiert
     expect(doppelkopf.apply(s, { type: "timeUp" }, { ...ctx({ think: "30" }, "p2"), players: r.players, now: s.deadline! - 5000 })).toBe(s);
   });
