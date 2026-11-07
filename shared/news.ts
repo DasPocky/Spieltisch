@@ -15,6 +15,26 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-11-skat",
+    date: "2026-11-04",
+    title: "Neues Kartenspiel: Skat",
+    items: [
+      "Drei spielen, zu viert sitzt der Geber aus – fehlende Plätze spielen Bots. Reizen von 18 aufwärts: Mittelhand sagt Vorhand, Hinterhand sagt dem Gewinner.",
+      "Skat aufnehmen und drücken oder Hand spielen: Farbspiel, Grand und Null (auch Hand und ouvert), Schneider und Schwarz ansagen. Die Abrechnung rechnet Spitzen und Spielwert vor – auch wer sich überreizt.",
+      "Liste über 3 bis 36 Spiele, französisches oder deutsches Kartenbild, Pakete „Mit Ramsch“ und „Einsteiger“. Mit Bots, Spielhilfe, Vorlesen, Zugzeit, an einem Handy für alle und am Großen Tisch (Beta).",
+    ],
+  },
+  {
+    id: "2026-11-doppelkopf",
+    date: "2026-11-03",
+    title: "Neues Kartenspiel: Doppelkopf",
+    items: [
+      "Immer zu viert mit doppeltem Blatt: Re (die Kreuz-Damen) gegen Kontra – wer zu wem gehört, zeigt sich erst im Spiel. Fehlende Plätze spielen Bots.",
+      "Vorbehalte (Hochzeit, Damen-, Buben-, Fleischlos- und Farbsolo), Ansagen Re und Kontra, Absagen bis „schwarz“, Sonderpunkte für Doppelkopf, Fuchs und Karlchen.",
+      "Abrechnung Zeile für Zeile, französisches oder deutsches Kartenbild. Mit Bots, Spielhilfe, Vorlesen, Zugzeit, an einem Handy für alle und am Großen Tisch (Beta). Pakete „Ohne Neunen“ und „Einsteiger“.",
+    ],
+  },
+  {
     id: "2026-10-zahlenromme",
     date: "2026-10-31",
     title: "Neues Spiel: Zahlen-Rommé",

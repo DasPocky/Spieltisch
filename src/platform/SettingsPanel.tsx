@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Minus, Plus } from "lucide-react";
 import type { RoomAction, RoomState } from "@shared/platform/room";
 import { getGame } from "@shared/games";
@@ -15,7 +15,7 @@ import { siteConfigNow } from "@/hooks/useSiteConfig";
 import { changedRules, currentPreset, presetKeys, presetsOf } from "@shared/platform/presets";
 
 /** Spiele mit Spielhilfen (siehe useHints) */
-export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles", "herzen", "schocken", "bluff", "ankreuzspiel", "palast", "zahlenromme"]);
+export const HINT_GAMES = new Set(["eins", "maumau", "zehnphasen", "stapelbau", "himmelskarten", "fuenfwuerfel", "glueckssieben", "alles", "herzen", "schocken", "bluff", "ankreuzspiel", "palast", "zahlenromme", "doppelkopf", "skat"]);
 
 const ENTRY_OPTIONS = [
   { value: "turn", label: "Wer dran ist", hint: "am eigenen Handy" },
@@ -63,14 +63,21 @@ export function settingsSummary(room: RoomState, online: boolean): string {
  * Ändern darf nur der Host (lokal: jeder), alle anderen sehen sie.
  * `inGame`: nur was sich während der Partie ändern lässt (fürs Menü), ohne Gruppen.
  */
-export function SettingsPanel({ room, editable, online, dispatch, className, inGame = false, title = true, presets = true }: {
+export function SettingsPanel({ room, editable, online, dispatch, className, inGame = false, title = true, presets = true, fit = false }: {
   room: RoomState; editable: boolean; online: boolean; dispatch: (a: RoomAction) => void; className?: string;
   inGame?: boolean; title?: boolean;
   /** Regelpakete zeigen (nicht in der Verwaltung: dort zählen die einzelnen Standards) */
   presets?: boolean;
+  /**
+   * Im Blatt ohne Scrollen: ragt der Inhalt über den Rahmen (das Elternelement), klappt das Panel beim Öffnen Bereiche ein –
+   * erst Gruppen von unten, dann eigene Sets, Vorschläge und Grundeinstellungen; reicht das nicht, stehen die
+   * eingeklappten Bereiche als kleine Knöpfe nebeneinander. Sobald jemand einen Bereich öffnet oder schließt, bleibt alles, wie es ist.
+   */
+  fit?: boolean;
 }) {
   const logic = getGame(room.gameId);
-  const Extra = getGameUI(room.gameId).SettingsExtra;
+  const ui = getGameUI(room.gameId);
+  const Extra = ui.SettingsExtra;
   const playing = room.phase === "playing";
   const setKind = siteConfigNow()?.features.sets === false ? null : kindOfGame(room.gameId);
   // „Nur eigene …“ steht bei der Auswahl der eigenen Sets
@@ -89,26 +96,68 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
       <span><span className="font-semibold">Spielhilfen erlauben</span><span className="block text-xs text-muted-foreground">Leuchten bei passenden Karten und Würfeln – nur für den Spieler am Zug. Aus: für alle aus, egal was jeder für sich eingestellt hat.</span></span>
     </label>
   );
+  // Selbst einklappen, solange niemand etwas angefasst hat (nur mit `fit`)
+  const root = useRef<HTMLElement>(null);
+  const [auto, setAuto] = useState<{ game: string; closed: string[]; pills: boolean; touched: boolean }>({ game: room.gameId, closed: [], pills: false, touched: false });
+  const fold = fit && auto.game === room.gameId ? auto : { game: room.gameId, closed: [] as string[], pills: false, touched: false };
+  const extraGroup = !inGame && (entryChoice || hints);
+  const order = [...(extraGroup ? ["raum"] : []), ...[...groups].reverse(), "sets", "extra", "basics"];
+  // Nur gleich beim Öffnen einklappen (kurzes Fenster) – danach springt nichts mehr von selbst
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!fit) return;
+    const t = setTimeout(() => setSettled(true), 700);
+    return () => clearTimeout(t);
+  }, [fit]);
+  useLayoutEffect(() => {
+    const el = root.current, box = el?.parentElement;
+    if (!fit || fold.touched || settled || !el || !box) return;
+    const check = () => {
+      if (box.scrollHeight <= box.clientHeight + 1) return;
+      const next = order.find((k) => {
+        if (fold.closed.includes(k)) return false;
+        const sec = [...el.querySelectorAll<HTMLElement>("[data-sec]")].find((x) => x.dataset.sec === k);
+        return sec?.dataset.open === "true" && sec.offsetHeight > 0;
+      });
+      if (next) setAuto({ ...fold, closed: [...fold.closed, next] });
+      else if (!fold.pills) setAuto({ ...fold, pills: true });
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el); ro.observe(box);
+    return () => ro.disconnect();
+  });
+  const touch = (sec: string) => setAuto({ ...fold, touched: true, closed: fold.closed.filter((k) => k !== sec) });
+  const folding = (sec: string) => ({ sec, autoClosed: fold.closed.includes(sec), pill: fold.pills, onTouch: fit ? () => touch(sec) : undefined });
+
   return (
-    <section className={cn("grid gap-4", className)}>
+    <section ref={root} className={cn("grid", fit ? "gap-3" : "gap-4", className)} data-fit={fit ? (settled || fold.touched ? "fertig" : "misst") : undefined}>
       {title && (
         <div className="flex items-baseline justify-between">
           <h3 className="font-semibold">Einstellungen</h3>
           {!editable && <span className="text-xs text-muted-foreground">legt der Host fest</span>}
         </div>
       )}
-      {Extra && !inGame && <Extra room={room} editable={editable && !playing} online={online} dispatch={dispatch} />}
-      {setKind && !inGame && (
-        <SetPicker room={room} editable={editable && !playing} online={online} dispatch={dispatch}
-          ownToggle={ownDef && (!ownDef.showIf || ownDef.showIf(room.options)) ? (enough) => (
-            <Setting def={ownDef} value={room.options[ownDef.key]} editable={editable && !playing && enough} onChange={(value) => dispatch({ type: "setOption", key: ownDef.key, value })} />
-          ) : undefined} />
+      {presets && !inGame && fit && <Presets room={room} editable={editable && !playing} dispatch={dispatch} />}
+      <div className={cn(fit ? "flex flex-wrap gap-2 [&>*]:basis-full [&>[data-pill]]:basis-auto" : "contents")}>
+      {Extra && !inGame && (
+        <Fold {...folding("extra")} title={ui.settingsExtraTitle ?? "Vorschläge"}><Extra room={room} editable={editable && !playing} online={online} dispatch={dispatch} /></Fold>
       )}
-      {presets && !inGame && <Presets room={room} editable={editable && !playing} dispatch={dispatch} />}
-      {/* Grundeinstellungen immer sichtbar, Gruppen einklappbar (Hausregeln anfangs zu) */}
-      {shown.filter((def) => inGame || !def.group).map(setting)}
+      {setKind && !inGame && (
+        <Fold {...folding("sets")} title="Eigene Sets">
+          <SetPicker room={room} editable={editable && !playing} online={online} dispatch={dispatch}
+            ownToggle={ownDef && (!ownDef.showIf || ownDef.showIf(room.options)) ? (enough) => (
+              <Setting def={ownDef} value={room.options[ownDef.key]} editable={editable && !playing && enough} onChange={(value) => dispatch({ type: "setOption", key: ownDef.key, value })} />
+            ) : undefined} />
+        </Fold>
+      )}
+      {presets && !inGame && !fit && <Presets room={room} editable={editable && !playing} dispatch={dispatch} />}
+      {/* Grundeinstellungen immer sichtbar (im Blatt notfalls eingeklappt), Gruppen einklappbar (Hausregeln anfangs zu) */}
+      {shown.some((def) => inGame || !def.group) && (
+        <Fold {...folding("basics")} title="Grundeinstellungen" gap={fit ? "gap-3" : "gap-4"}>{shown.filter((def) => inGame || !def.group).map(setting)}</Fold>
+      )}
       {groups.map((g) => (
-        <Group key={g} title={g} storeKey={`${room.gameId}:${g}`} changed={shown.filter((d) => d.group === g && changedFrom(d, room.options[d.key])).length}>
+        <Group key={g} {...folding(g)} title={g} storeKey={`${room.gameId}:${g}`} changed={shown.filter((d) => d.group === g && changedFrom(d, room.options[d.key])).length}>
           {shown.some((d) => d.group === g && d.chip) && (
             <div className="flex flex-wrap gap-1.5">{shown.filter((d) => d.group === g && d.chip).map((d) => (
               <Chip key={d.key} label={d.label} hint={"hint" in d ? d.hint : undefined} checked={room.options[d.key] === true} editable={editable && !playing}
@@ -119,7 +168,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
         </Group>
       ))}
       {inGame ? hintBox : (entryChoice || hints) && (
-        <Group title={extraTitle(hints, entryChoice)} storeKey="raum" changed={(entryChoice && room.entry !== "turn" ? 1 : 0) + (room.noHints ? 1 : 0)}>
+        <Group {...folding("raum")} title={extraTitle(hints, entryChoice)} storeKey="raum" changed={(entryChoice && room.entry !== "turn" ? 1 : 0) + (room.noHints ? 1 : 0)}>
           {hintBox}
           {entryChoice && (
             <Segmented label="Wer darf für den Spieler am Zug handeln?" value={room.entry} editable={editable} options={ENTRY_OPTIONS}
@@ -127,6 +176,7 @@ export function SettingsPanel({ room, editable, online, dispatch, className, inG
           )}
         </Group>
       )}
+      </div>
     </section>
   );
 }
@@ -160,22 +210,57 @@ export function hasInGameSettings(room: RoomState): boolean {
 
 const changedFrom = (def: SettingDef, value: unknown) => value !== undefined && value !== def.default;
 
+interface Folding {
+  /** Kennung des Bereichs (fürs Selbst-Einklappen im Blatt) */
+  sec?: string;
+  /** vom Blatt eingeklappt, weil sonst gescrollt werden müsste */
+  autoClosed?: boolean;
+  /** eingeklappt als kleiner Knopf statt als ganze Zeile */
+  pill?: boolean;
+  /** jemand öffnet oder schließt selbst – ab dann klappt das Blatt nichts mehr ein */
+  onTouch?: () => void;
+}
+
+/** Kopf eines eingeklappten oder einklappbaren Bereichs */
+function FoldHead({ title, open, pill, autoClosed, changed = 0, onClick }: { title: string; open: boolean; pill: boolean; autoClosed?: boolean; changed?: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-expanded={open} data-auto-collapsed={autoClosed || undefined}
+      className={cn("flex w-full items-center gap-2 text-left text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring", pill ? "rounded-full px-3 py-2" : "rounded-xl px-3 py-2.5")}>
+      <span className="flex-1">{title}</span>
+      {changed > 0 && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-xs font-semibold text-primary">{pill ? changed : `${changed} geändert`}</span>}
+      <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+    </button>
+  );
+}
+
+/** Bereich ohne eigene Gruppe (Grundeinstellungen, Vorschläge, eigene Sets): offen wie bisher, im Blatt notfalls eingeklappt */
+function Fold({ sec, autoClosed, pill = false, onTouch, title, gap = "gap-4", children }: Folding & { title: string; gap?: string; children: ReactNode }) {
+  if (!autoClosed) return <div className={cn("grid empty:hidden", gap)} data-sec={sec} data-open="true">{children}</div>;
+  return (
+    <div className={cn("ring-1 ring-inset ring-border", pill ? "rounded-full" : "rounded-xl")} data-sec={sec} data-open="false" data-pill={pill || undefined}>
+      <FoldHead title={title} open={false} pill={pill} autoClosed onClick={() => onTouch?.()} />
+    </div>
+  );
+}
+
 /** Einklappbare Gruppe – merkt sich auf dem Gerät, ob sie offen ist; zeigt, wie viel vom Standard abweicht */
-function Group({ title, storeKey, changed, children }: { title: string; storeKey: string; changed: number; children: ReactNode }) {
+function Group({ title, storeKey, changed, children, sec, autoClosed, pill = false, onTouch }: Folding & { title: string; storeKey: string; changed: number; children: ReactNode }) {
   const key = `spieltisch:group:${storeKey}`;
   // Hausregeln und Raum-Optionen starten eingeklappt, Wichtiges (Ablauf, Rollen) offen
   const initial = !/Hausregeln|Hilfen|Mitspielen/.test(title);
   const [open, setOpen] = useState(() => { try { const v = localStorage.getItem(key); return v === null ? initial : v === "1"; } catch { return initial; } });
-  const toggle = () => { setOpen(!open); try { localStorage.setItem(key, open ? "0" : "1"); } catch { /* egal */ } };
+  const shown = open && !autoClosed;
+  const toggle = () => {
+    onTouch?.();
+    // Vom Blatt eingeklappt: nur wieder aufklappen (gemerkt war sie offen)
+    if (autoClosed) return;
+    setOpen(!open); try { localStorage.setItem(key, open ? "0" : "1"); } catch { /* egal */ }
+  };
+  const asPill = pill && !shown;
   return (
-    <div className="rounded-xl ring-1 ring-inset ring-border">
-      <button type="button" onClick={toggle} aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring rounded-xl">
-        <span className="flex-1">{title}</span>
-        {changed > 0 && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-xs font-semibold text-primary">{changed} geändert</span>}
-        <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
-      {open && <div className="text-in grid gap-4 px-3 pt-1 pb-3">{children}</div>}
+    <div className={cn("ring-1 ring-inset ring-border", asPill ? "rounded-full" : "rounded-xl")} data-sec={sec} data-open={shown} data-pill={asPill || undefined}>
+      <FoldHead title={title} open={shown} pill={asPill} autoClosed={autoClosed} changed={changed} onClick={toggle} />
+      {shown && <div className="text-in grid gap-4 px-3 pt-1 pb-3">{children}</div>}
     </div>
   );
 }

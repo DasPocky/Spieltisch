@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { adminLogin, ALL_ON, captureSpeech, expectNoScroll, newPhone, setConfig, shot, spoken, startLocal } from "./util";
+import { ADMIN_PW, adminLogin, ALL_ON, captureSpeech, expectNoScroll, newPhone, setConfig, shot, spoken, startLocal } from "./util";
 
 /**
  * Ein Schritt wie ein vorsichtiger Spieler: würfeln; bei einer Entscheidung dem Tipp folgen (ankreuzen oder verzichten).
@@ -150,12 +150,63 @@ test("Ankreuzspiel am Großen Tisch: weiße und farbige Würfel in der Mitte, Kr
     const opt = phones[1].locator('[data-state="option"]').first();
     if (await opt.count()) { await opt.click(); await phones[1].getByTestId("mark-go").click(); }
     await expect(phones[1].getByTestId("ak-status")).toContainText("Warte auf");
+    // Mini-Blatt an jedem Platz: vier farbige Reihen, Bens Kreuz schon drin
+    await expect(screen.getByTestId("seat-sheet")).toHaveCount(3);
+    const ben = screen.getByTestId("table-seat").filter({ hasText: "Ben" }).getByTestId("seat-sheet");
+    await expect(ben.locator("> div")).toHaveCount(4);
+    await expect(ben.locator("[data-on]")).toHaveCount((await opt.count()) ? 1 : 0);
     await shot(screen, "ankreuzspiel-fernseher");
     // die anderen entscheiden, dann ist Ben dran
     for (const p of [phones[0], phones[2]]) if (await p.getByTestId("mark-pass").isVisible()) await p.getByTestId("mark-pass").click();
     if (await phones[0].getByTestId("mark-pass").isVisible()) await phones[0].getByTestId("mark-pass").click();
     await expect(phones[1].getByRole("button", { name: /Würfeln$/ })).toBeVisible();
     await expect(screen.getByTestId("table-view")).toContainText("Ben würfelt");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Ankreuzspiel am Großen Tisch in 3D mit 6 Spielern: Mini-Blatt an jedem Platz, alles im Bild, nichts überlappt", async ({ browser, request }) => {
+  test.setTimeout(150_000);
+  await setConfig(request, { ...ALL_ON, modes: { ankreuzspiel: { table: "on" } } });
+  try {
+    const screen = await newScreen(browser);
+    await screen.goto("/tisch");
+    await screen.getByTestId("table-new").click();
+    await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+    const code = screen.url().split("/").pop()!;
+    const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+    const anna = await newPhone(browser);
+    await anna.goto(`/r/${code}#pin=${pin}`);
+    await expect(anna.getByLabel("PIN")).toHaveValue(pin);
+    await anna.getByLabel("Dein Name").fill("Anna");
+    await anna.getByRole("button", { name: "Beitreten" }).click();
+    await expect(screen.getByTestId("table-seat")).toHaveCount(1);
+    expect((await request.post(`/api/admin/rooms/${code}/act`, { data: { password: ADMIN_PW, action: { type: "addBots", n: 5 } } })).ok()).toBe(true);
+    await expect(screen.getByTestId("table-seat")).toHaveCount(6);
+    await anna.getByTestId("meet-play").click();
+    await anna.getByTestId("pick-ankreuzspiel").click();
+    await anna.getByRole("button", { name: "Spiel starten" }).click();
+    await expect(screen.getByTestId("seat-sheet")).toHaveCount(6);
+    // ein paar Runden: Anna spielt mit, die Bots kreuzen an
+    for (let i = 0; i < 60 && (await screen.getByTestId("seat-sheet").locator("[data-on]").count()) < 8; i++) {
+      if (!(await step(anna))) await anna.waitForTimeout(300);
+    }
+    expect(await screen.getByTestId("seat-sheet").locator("[data-on]").count()).toBeGreaterThan(0);
+    for (const vp of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }]) {
+      await screen.setViewportSize(vp);
+      await screen.waitForTimeout(900);
+      const boxes = await screen.getByTestId("table-seat").evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }; }));
+      for (const b of boxes) {
+        expect(b.x0).toBeGreaterThanOrEqual(0); expect(b.y0).toBeGreaterThanOrEqual(0);
+        expect(b.x1).toBeLessThanOrEqual(vp.width); expect(b.y1).toBeLessThanOrEqual(vp.height);
+      }
+      for (let i = 0; i < boxes.length; i++) for (let k = i + 1; k < boxes.length; k++) {
+        const a = boxes[i], b = boxes[k];
+        expect(a.x1 <= b.x0 || b.x1 <= a.x0 || a.y1 <= b.y0 || b.y1 <= a.y0, `Plätze ${i} und ${k} überlappen bei ${vp.width}×${vp.height}`).toBe(true);
+      }
+      await shot(screen, `ankreuzspiel-fernseher-6-${vp.width}`);
+    }
   } finally {
     await setConfig(request, ALL_ON);
   }

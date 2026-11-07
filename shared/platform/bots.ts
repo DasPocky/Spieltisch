@@ -16,6 +16,8 @@ import { SUITS as HS_SUITS, type HsState } from "../games/hellseher/logic";
 import { canPlay as hzCanPlay, type HzState } from "../games/herzen/logic";
 import { legalMoves as palastMoves, type PalastState } from "../games/palast/logic";
 import { suggestPlay as zrSuggest, type ZrState } from "../games/zahlenromme/logic";
+import { canPlay as dkCanPlay, SOLOS as DK_SOLOS, type DkState } from "../games/doppelkopf/logic";
+import { BIDS as SK_BIDS, canPlay as skCanPlay, KINDS as SK_KINDS, type SkState } from "../games/skat/logic";
 import { POINT_STEPS } from "../games/alles/logic";
 import { ORDER as MAEX_ORDER, rankOf as maexRank, type MaexState } from "../games/maexchen/logic";
 import { legalMoves as dameMoves, type DameState } from "../games/dame/logic";
@@ -254,6 +256,43 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       }
       const hand = s.hands[s.curId ?? ""] ?? [];
       for (const card of hand) if (hzCanPlay(s, hand, card, r.options) || Math.random() < 0.05) add({ type: "play", card });
+      add({ type: "nextRound" });
+      break;
+    }
+    case "doppelkopf": {
+      const s = r.game as DkState;
+      const hand = s.hands[s.curId ?? ""] ?? [];
+      // Vorbehalt: meist gesund, sonst Hochzeit oder ein zufälliges Solo (ungültige lehnt die Logik ab)
+      if (s.phase === "reserve") for (const what of ["gesund", "gesund", "gesund", "hochzeit", pick(DK_SOLOS)]) add({ type: "reserve", what });
+      if (s.phase === "play") for (const card of hand) if (dkCanPlay(s, hand, card) || Math.random() < 0.05) add({ type: "play", card });
+      // Ansagen ab und zu: online jeder für sich, lokal das Gerät für jeden
+      if (s.phase === "play" && Math.random() < 0.15) for (const id of ids) {
+        const level = 1 + Math.floor(Math.random() * 5);
+        if (online) moves.push({ action: g({ type: "call", level }), actor: id });
+        else add({ type: "call", level, player: id });
+      }
+      if (Math.random() < 0.02) add({ type: "timeUp" });
+      add({ type: "nextRound" });
+      break;
+    }
+    case "skat": {
+      const s = r.game as SkState;
+      const hand = s.hands[s.curId ?? ""] ?? [];
+      // Reizen: der nächste Wert, ein Sprung, ja oder passe (ungültige lehnt die Logik ab)
+      if (s.phase === "bid" && s.bidding) {
+        const next = s.bidding.stage === 3 ? 18 : SK_BIDS.find((x) => x > s.bidding!.value) ?? 18;
+        for (const value of [next, SK_BIDS[SK_BIDS.indexOf(next) + 1] ?? next]) add({ type: "bid", value });
+        add({ type: "hold" });
+        add({ type: "pass" });
+      }
+      if (s.phase === "skat") { add({ type: "skat", take: true }); add({ type: "skat", take: Math.random() < 0.7 }); }
+      if (s.phase === "discard") add({ type: "discard", cards: shuffleInPlace([...hand]).slice(0, 2) });
+      if (s.phase === "declare") {
+        for (const kind of SK_KINDS) add({ type: "declare", kind });
+        add({ type: "declare", kind: pick(SK_KINDS), schneider: Math.random() < 0.3, schwarz: Math.random() < 0.1, ouvert: Math.random() < 0.15 });
+      }
+      if (s.phase === "play") for (const card of hand) if (skCanPlay(s, hand, card) || Math.random() < 0.05) add({ type: "play", card });
+      if (Math.random() < 0.02) add({ type: "timeUp" });
       add({ type: "nextRound" });
       break;
     }

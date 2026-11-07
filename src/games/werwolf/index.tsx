@@ -25,4 +25,4 @@ function History({ game: s }: BoardProps<WerwolfState, WerwolfAction>) {
   return <LogList entries={s.log} />;
 }
 
-export const werwolfUI: GameUI<WerwolfState, WerwolfAction> = { logic: werwolf, Icon, Board, Rules, History, HeaderExtra, SettingsExtra: Setup };
+export const werwolfUI: GameUI<WerwolfState, WerwolfAction> = { logic: werwolf, Icon, Board, Rules, History, HeaderExtra, SettingsExtra: Setup, settingsExtraTitle: "Schnellstart" };

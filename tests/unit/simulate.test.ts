@@ -9,6 +9,8 @@ import type { FischenState } from "@shared/games/fischen/logic";
 import type { MauMauState } from "@shared/games/maumau/logic";
 import type { HzState } from "@shared/games/herzen/logic";
 import type { PalastState } from "@shared/games/palast/logic";
+import type { DkState } from "@shared/games/doppelkopf/logic";
+import type { SkState as SkatState } from "@shared/games/skat/logic";
 import { fullSet, isValidMeld, type ZrState } from "@shared/games/zahlenromme/logic";
 import type { P10State } from "@shared/games/zehnphasen/logic";
 import type { SbState } from "@shared/games/stapelbau/logic";
@@ -87,6 +89,34 @@ function checkCards(r: RoomState) {
       expect(all.length).toBe(fullSet(s.joker).length);
       expect(new Set(all).size).toBe(all.length);
       expect(s.table.every(isValidMeld)).toBe(true);
+    }
+  }
+  if (r.gameId === "doppelkopf") {
+    // 48 (ohne Neunen 40) Karten: Hände, gespielte Stiche und der laufende Stich – immer vier Plätze
+    const s = r.game as DkState;
+    expect(s.seats).toHaveLength(4);
+    if (s.phase === "reserve" || s.phase === "play") {
+      const n = Object.values(s.hands).flat().length + s.tricks.length * 4 + s.trick.length;
+      expect(n).toBe(s.handSize * 4);
+      expect(s.tricks.reduce((t, x) => t + x.augen, 0)).toBeLessThanOrEqual(240);
+    }
+    // Abrechnung: was die einen bekommen, zahlen die anderen
+    for (const h of s.history) expect(Object.values(h.points).reduce((t, x) => t + x, 0)).toBe(0);
+  }
+  if (r.gameId === "skat") {
+    // 32 Karten: Hände, Skat, gespielte Stiche und der laufende Stich – drei aktive Plätze, zu viert ohne Karten für den Geber
+    const s = r.game as SkatState;
+    expect(s.active).toHaveLength(3);
+    if (s.seats.length > 3) expect(s.hands[s.dealerId] ?? []).toHaveLength(0);
+    if (s.phase !== "roundEnd" && s.phase !== "over") {
+      const all = [...Object.values(s.hands).flat(), ...s.skat, ...s.tricks.flatMap((t) => t.plays.map((p) => p.card)), ...s.trick.map((p) => p.card)];
+      expect(all).toHaveLength(32);
+      expect(new Set(all).size).toBe(32);
+    }
+    for (const h of s.history) {
+      if (h.kind === "eingepasst") expect(Object.values(h.points).every((x) => x === 0)).toBe(true);
+      else if (h.declarer) expect(h.points[h.declarer]).toBe(h.won ? h.value : -h.value * (r.options.double === false ? 1 : 2));
+      if (h.declarer && h.kind !== "null") expect(h.value).toBeGreaterThanOrEqual(h.bid);
     }
   }
   if (r.gameId === "klingel") {
@@ -241,6 +271,14 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["palast", 3, { seven: false, four: false }],
   ["palast", 5, { swap: false }],
   ["palast", 8, {}],
+  ["doppelkopf", 4, { rounds: "4" }],
+  ["doppelkopf", 2, { rounds: "4", nines: false }],
+  ["doppelkopf", 1, { rounds: "4", solos: false, absagen: false, think: "30" }],
+  ["doppelkopf", 3, { rounds: "4", specials: false, pictures: "de" }],
+  ["skat", 3, { rounds: "6" }],
+  ["skat", 4, { rounds: "6", ramsch: true }],
+  ["skat", 1, { rounds: "6", ramsch: true, jungfrau: false, double: false, think: "30" }],
+  ["skat", 2, { rounds: "6", pictures: "de" }],
   ["zahlenromme", 2, {}],
   ["zahlenromme", 4, {}],
   ["zahlenromme", 3, { joker: false, end: "1" }],

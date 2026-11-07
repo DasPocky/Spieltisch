@@ -26,6 +26,8 @@ import { QrCode } from "@/platform/QrCode";
 import { RoomScreen } from "@/platform/RoomScreen";
 import { Boundary } from "@/platform/Boundary";
 import { tableModel, type QuizMark, type TableModel } from "@/platform/table/model";
+import { PlayingCard } from "@/platform/cards/PlayingCard";
+import type { Card } from "@shared/cards/deck";
 import type { SchamlosState } from "@shared/games/schamlos/logic";
 import { BLANK, cardText, fillIn } from "@shared/games/schamlos/cards";
 import { createTableScene, webglOk, type FeltRect, type TableScene } from "@/platform/table/scene";
@@ -43,7 +45,7 @@ import { SoundPanel, SoundUnlock, useTableSound } from "@/platform/table/sound";
 import { HostCorner, HostPanel, nextMood, readMood, useTableHost } from "@/platform/table/host";
 import { MOODS } from "@/platform/moderator/lines";
 import { FeltDice, FeltGrid, FeltSign, FeltTabletop, SignClock } from "@/platform/table/blocks";
-import { FeltPiles, FeltWords, SeatBoard } from "@/platform/table/piles";
+import { FeltPiles, FeltWords, SeatBoard, SeatSheet } from "@/platform/table/piles";
 import { CouchAdd, CouchPlayers, useCouch } from "@/platform/table/Couch";
 import { enableSpatialNav } from "@/lib/spatialNav";
 import { useCallReady, useCouchCam, useSeatVideos } from "@/platform/table/video";
@@ -379,10 +381,15 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
     onFelt?.(f);
   }, [onFelt]);
   // Eigene Sicht: der eigene Platz vorn in der Mitte, die anderen der Reihe nach
+  // Spiele mit eigener Sitzordnung (Bots ohne Gerät) zeigen alle ihre Plätze
+  const order = model?.seatOrder;
+  const orderKey = order?.map((p) => `${p.id}:${p.name}:${p.bot ? 1 : 0}`).join("|");
   const players = useMemo(() => {
-    const i = me ? room.players.findIndex((p) => p.id === me) : -1;
-    return i > 0 ? [...room.players.slice(i), ...room.players.slice(0, i)] : room.players;
-  }, [room.players, me]);
+    const list = order ? order.map((p) => ({ id: p.id, name: p.name, bot: !!p.bot })) : room.players.map((p) => ({ ...p, bot: false }));
+    const i = me ? list.findIndex((p) => p.id === me) : -1;
+    return i > 0 ? [...list.slice(i), ...list.slice(0, i)] : list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.players, me, orderKey]);
   const seats = players.map((p) => p.id);
   const shown = useMemo(() => (model && me ? { ...model, counts: { ...model.counts, [me]: 0 } } : model), [model, me]);
   // In 3D liegen Stapel, Auslagen und Wortkarten echt auf dem Tisch – die HTML-Fassung bleibt nur für Vorleseprogramme
@@ -395,11 +402,13 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
       {real && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_70%_at_50%_52%,transparent_55%,rgb(0_0_0/0.5))]" />}
       {showSeats && players.map((p, i) => points[i] && !(me && p.id === me) && (
         <Seat key={p.id} x={points[i].x} y={points[i].y} name={p.name} avatar={avatars[p.id]} count={sham ? undefined : model?.counts[p.id]}
-          turn={model?.turn === p.id || sham?.czar === p.id} away={!online.has(p.id)} host={p.id === room.hostId}
+          turn={model?.turn === p.id || sham?.czar === p.id} away={!p.bot && !online.has(p.id)} host={p.id === room.hostId}
           note={sham ? `${sham.scores[p.id] ?? 0} Pkt.${sham.czar === p.id ? " · Zar" : sham.phase === "pick" && sham.played[p.id] ? " · gelegt ✓" : ""}` : model?.notes?.[p.id]}
           video={videos?.[p.id]} videoHidden={!!hiddenVideos?.has(p.id)} onToggleVideo={onToggleVideo ? () => onToggleVideo(p.id) : undefined}
-          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} />
+          board={model?.boards?.[p.id]} boardAbove={!!felt && points[i].y > felt.y + felt.h / 2} boardHidden={real} sheet={model?.sheets?.[p.id]} />
       ))}
+      {/* Stich: jede Karte vor dem Platz, der sie gespielt hat – in 3D wie flach */}
+      {model?.trick && felt && <FeltTrick trick={model.trick} felt={felt} seats={players.map((p, i) => ({ id: p.id, at: points[i] }))} />}
       {/* Klingel: in 3D wie flach als Bild über dem Tisch – die Klingel in der Mitte, vor jedem Platz seine offene Karte */}
       {model?.bell && <OnFelt rect={felt}><FeltBell bell={model.bell} /></OnFelt>}
       {model?.bell && felt && players.map((p, i) => points[i] && p.id in model.bell!.tops && (
@@ -420,13 +429,14 @@ export function TableStage({ room, online, model, sham, me, showSeats = true, on
             : model.words5 ? <FeltWords words={model.words5} /> : model.piles && <FeltPiles piles={model.piles} />}
         </OnFelt>
       )}
+      {model?.flash && <OnFelt rect={felt ?? null}><FeltFlash flash={model.flash} /></OnFelt>}
       {model?.sign?.endsAt ? <div className="absolute top-24 left-1/2 -translate-x-1/2"><SignClock endsAt={model.sign.endsAt} /></div> : null}
       {/* Quizfrage groß über dem Tisch */}
       {model?.quiz && <QuizBoard quiz={model.quiz} />}
       {/* Zeichenblatt groß über dem Tisch – live, wie eine Staffelei */}
       {model?.drawing && <DrawingBoard drawing={model.drawing} />}
       {/* Am Rechner sitzt oben ein Mitspieler – die Meldung steht dort unten auf dem Tisch */}
-      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news">{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
+      {model?.log.length && !sham ? <p className={cn("table-banner absolute left-1/2 max-w-2xl -translate-x-1/2", me ? "bottom-4" : "top-6")} data-testid="table-news" data-seat-avoid>{model.tabletop?.note ?? (real && model.words5?.title ? model.words5.title : model.log.at(-1))}</p> : null}
       {sham && <SchamlosStatus s={sham} name={(id) => room.players.find((p) => p.id === id)?.name ?? "?"} count={room.players.length} />}
     </>
   );
@@ -540,7 +550,7 @@ function useSeatPlace(x: number, y: number) {
   return { ref, pos };
 }
 
-function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden }: {
+function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video, videoHidden, onToggleVideo, board, boardAbove, boardHidden, sheet }: {
   x: number; y: number; name: string; avatar?: Parameters<typeof Avatar>[0]["avatar"]; count?: number; turn: boolean; away: boolean; host: boolean; note?: string;
   /** Schild am Pult (Quiz auf der Bühne): geantwortet bzw. richtig/falsch */
   badge?: QuizMark;
@@ -551,6 +561,8 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
   boardAbove?: boolean;
   /** Auslage liegt in 3D auf dem Tisch – hier nur für Vorleseprogramme */
   boardHidden?: boolean;
+  /** Mini-Blatt (Ankreuzspiel) – in 3D wie flach am Platz */
+  sheet?: NonNullable<TableModel["sheets"]>[string];
 }) {
   const showVideo = !!video && !videoHidden;
   const face = showVideo ? <SeatVideo stream={video} /> : <Avatar avatar={avatar} name={name} className="size-14 text-3xl" />;
@@ -569,9 +581,10 @@ function Seat({ x, y, name, avatar, count, turn, away, host, note, badge, video,
       <span className={cn("plate max-w-full truncate", turn && "plate-turn")}>
         {name}{count !== undefined && <span className="ml-1.5 tabular-nums opacity-75">· {count}</span>}{host && !count && count !== 0 ? <span className="ml-1 opacity-60">· Host</span> : null}
       </span>
-      {note && <span className="text-sm font-semibold drop-shadow">{note}</span>}
+      {note && <span lang="de" className="line-clamp-3 max-w-full text-center text-sm font-semibold hyphens-auto drop-shadow [overflow-wrap:anywhere]">{note}</span>}
       {badge && <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold shadow", BADGE[badge.tone])} data-testid="seat-quiz" data-tone={badge.tone}>{badge.text}</span>}
       {board && <div className={cn(boardAbove && "order-first", boardHidden && "sr-only")}><SeatBoard board={board} /></div>}
+      {sheet && <div className={cn(boardAbove && "order-first")}><SeatSheet sheet={sheet} label={name} /></div>}
       {away && <span className="text-xs font-semibold">nicht verbunden</span>}
     </div>
   );
@@ -802,6 +815,49 @@ function SchamlosStatus({ s, name, count }: { s: SchamlosState; name: (id: strin
     </p>
   );
 }
+
+/** Kurzer Hinweis groß in der Mitte (z. B. „🔥 Verbrannt!“): bei jedem neuen Schlüssel ein paar Sekunden lang */
+function FeltFlash({ flash }: { flash: NonNullable<TableModel["flash"]> }) {
+  const [shown, setShown] = useState<number | null>(flash.key);
+  useEffect(() => {
+    setShown(flash.key);
+    const t = setTimeout(() => setShown(null), 4000);
+    return () => clearTimeout(t);
+  }, [flash.key]);
+  if (shown !== flash.key) return null;
+  return (
+    <div className="pop flex flex-col items-center gap-[1cqh] rounded-[2.4cqh] bg-[#2b2118]/90 px-[4cqw] py-[2.4cqh] text-center text-[#f7ecd6] shadow-2xl" role="status" data-testid="table-flash">
+      <span className="text-[8cqh] leading-none font-black">{flash.text}</span>
+      {flash.sub && <span className="text-[3cqh] font-semibold opacity-85">{flash.sub}</span>}
+    </div>
+  );
+}
+
+
+/** Stich auf dem Filz: Karten zwischen Mitte und Platz, die gewinnende hervorgehoben */
+function FeltTrick({ trick, felt, seats }: { trick: NonNullable<TableModel["trick"]>; felt: FeltRect; seats: { id: string; at?: { x: number; y: number } }[] }) {
+  const cx = felt.x + felt.w / 2, cy = felt.y + felt.h / 2;
+  const w = Math.max(56, Math.min(felt.h * 0.19, felt.w * 0.09));
+  return (
+    <div className="pointer-events-none absolute inset-0" data-testid="table-trick">
+      {trick.map((t, i) => {
+        const at = seats.find((s) => s.id === t.id)?.at;
+        if (!at) return null;
+        // Richtung zum Platz, auf den Filz begrenzt: ein Drittel des Weges, höchstens bis kurz vor den Rand
+        const dx = at.x - cx, dy = at.y - cy, len = Math.hypot(dx, dy) || 1;
+        const r = Math.min(len * 0.34, Math.abs(dx) / len * (felt.w / 2 - w) + Math.abs(dy) / len * (felt.h / 2 - w * 1.15));
+        const x = cx + (dx / len) * Math.max(w * 0.7, r), y = cy + (dy / len) * Math.max(w * 0.7, r);
+        const tilt = ((t.id.charCodeAt(t.id.length - 1) % 7) - 3) * 2;
+        return (
+          <div key={`${t.id}-${i}`} className="absolute" style={{ left: x, top: y, width: w, transform: `translate(-50%, -50%) rotate(${tilt}deg)` }}>
+            <PlayingCard card={t.card as Card} className={cn("card-land w-full", t.win && "rounded-[10%] ring-4 ring-[#f7ecd6]")} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 /**
  * Inhalt, der auf dem Filz liegt: bleibt innerhalb der Tischfläche und wächst mit ihr (Maße in cqh/cqw).

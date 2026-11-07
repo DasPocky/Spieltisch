@@ -34,6 +34,12 @@ export function palastTable(room: RoomState): TableModel | null {
     notes: Object.fromEntries(room.players.map((p) => [p.id, s.phase === "swap"
       ? (s.ready[p.id] ? "fertig getauscht" : "tauscht …")
       : place(p.id) >= 0 ? `fertig – Platz ${place(p.id) + 1}` : `${cardsLeft(s, p.id)} Karten übrig`])),
+    // Gerade verbrannt: die Ablage ist leer – der Tisch sagt kurz, warum
+    flash: s.phase === "play" && s.last?.kind === "play" && s.last.burn ? {
+      text: "🔥 Verbrannt!",
+      sub: s.last.burn === "ten" ? "Zehn gelegt – die Ablage ist aus dem Spiel" : s.last.burn === "four" ? "Vier gleiche – die Ablage ist aus dem Spiel" : "Die Ablage ist lange genug gewandert",
+      key: s.n,
+    } : undefined,
     color: need?.max ? { label: "7 oder niedriger", hex: "#2a5cbf" } : s.phase === "play" && s.discard.length && !need ? { label: "Neustart – alles erlaubt", hex: "#1f7a4d" } : undefined,
   };
 }

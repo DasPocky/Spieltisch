@@ -35,6 +35,24 @@ export function FeltPiles({ piles, small }: { piles: NonNullable<TableModel["pil
   );
 }
 
+/** Mini-Blatt unter dem Platz (Ankreuzspiel): je Reihe kleine Felder in der Reihenfarbe, angekreuzte voll mit Kreuz, das Schloss rund */
+export function SeatSheet({ sheet, label }: { sheet: NonNullable<TableModel["sheets"]>[string]; label: string }) {
+  const crossed = sheet.rows.reduce((n, r) => n + r.marks.filter(Boolean).length + (r.lock ? 1 : 0), 0);
+  return (
+    <div className="grid gap-[2px] rounded-md bg-[#f7ecd6] p-[3px] shadow" role="img" aria-label={`Blatt von ${label}: ${crossed} Kreuze`} data-testid="seat-sheet">
+      {sheet.rows.map((r, i) => (
+        <div key={i} className="flex gap-[2px]">
+          {[...r.marks, !!r.lock].map((on, k) => (
+            <span key={k} data-on={on || undefined}
+              className={cn("grid size-[0.56rem] place-items-center text-[0.5rem] leading-none font-black text-white", k === r.marks.length ? "rounded-full" : "rounded-[2px]")}
+              style={on ? { background: r.color } : { background: `${r.color}33`, boxShadow: `inset 0 0 0 1px ${r.color}66` }}>{on ? "×" : ""}</span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Auslage eines Spielers unter seinem Platz: offene Karten im Raster, verdeckte als „?“, leere Lücken bleiben frei */
 export function SeatBoard({ board }: { board: NonNullable<TableModel["boards"]>[string] }) {
   return (
@@ -46,6 +64,14 @@ export function SeatBoard({ board }: { board: NonNullable<TableModel["boards"]>[
   );
 }
 
+/**
+ * Schriftgröße einer Wortkarte (in cqh): kurze Wörter groß (3,6), lange Texte kleiner, sodass alles in höchstens
+ * drei Zeilen passt (Karte 17cqw ≈ 30cqh breit, Großbuchstaben ≈ 0,7 em). Lange Wörter werden getrennt, nie abgeschnitten.
+ */
+export function wordSize(text: string): number {
+  return Math.max(1.3, Math.min(3.6, 17 / Math.sqrt(Math.max(1, text.length))));
+}
+
 /** Wortraster in der Mitte: Wortkarten, aufgedeckte in ihrer Farbe (weißer Text), darüber eine Zeile wie „Rot ist dran …“ */
 export function FeltWords({ words }: { words: NonNullable<TableModel["words5"]> }) {
   return (
@@ -53,9 +79,9 @@ export function FeltWords({ words }: { words: NonNullable<TableModel["words5"]> 
       {words.title && <span className="table-banner !static !translate-x-0 text-[4cqh]">{words.title}</span>}
       <div className="grid gap-[1.4cqh]" style={{ gridTemplateColumns: `repeat(${words.cols}, 17cqw)` }}>
         {words.cells.map((c, i) => (
-          <span key={i} data-testid="table-word" data-open={!!c.tone}
-            className="grid h-[11cqh] place-items-center truncate rounded-[1.2cqh] px-[0.8cqw] text-[3.6cqh] font-bold uppercase shadow-[0_3px_8px_rgb(0_0_0/0.3)]"
-            style={c.tone ? { background: c.tone, color: "#fff" } : { background: "#fbf7ef", color: "#2b2118" }}>
+          <span key={i} data-testid="table-word" data-open={!!c.tone} lang="de"
+            className="grid h-[11cqh] place-items-center overflow-hidden rounded-[1.2cqh] px-[0.8cqw] text-center leading-[1.1] font-bold uppercase hyphens-auto shadow-[0_3px_8px_rgb(0_0_0/0.3)] [overflow-wrap:anywhere]"
+            style={{ fontSize: `${wordSize(c.text)}cqh`, ...(c.tone ? { background: c.tone, color: "#fff" } : { background: "#fbf7ef", color: "#2b2118" }) }}>
             {isImage(c.text) ? <img src={setImageUrl(c.text)} alt="Bildkarte" className={cn("max-h-full max-w-full object-contain", c.tone && "opacity-50")} /> : c.text}
           </span>
         ))}

@@ -1,7 +1,7 @@
-import { expect as baseExpect, test, type Browser, type Page } from "@playwright/test";
+import { expect as baseExpect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 /** Vorschaubilder in voller Qualität (TABLE_HQ=1) zeichnen ohne Grafikchip langsam – dann länger warten */
 const expect = process.env.TABLE_HQ ? baseExpect.configure({ timeout: 30_000 }) : baseExpect;
-import { ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, shot } from "./util";
+import { ADMIN_PW, ALL_ON, closeSettings, FAKE_RTC, newPhone, openSettings, setConfig, shot } from "./util";
 
 /** Laptop oder Fernseher als Großer Tisch */
 async function newScreen(browser: Browser): Promise<Page> {
@@ -584,7 +584,7 @@ test("Bühne beim Quiz: Frage groß auf der Leinwand, an den Pulten nur „hat g
     await anna.getByTestId("meet-play").click();
     await anna.getByTestId("pick-quiz").click();
     // nur Auswahlfragen: dann gibt es sicher richtig und falsch
-    await anna.getByTestId("settings-summary").click();
+    await openSettings(anna);
     for (const k of ["Schätzen", "Ordnen"]) await anna.getByRole("checkbox", { name: new RegExp(`^${k}`) }).click();
     await anna.getByRole("button", { name: "Fertig", exact: true }).click();
     await screen.getByTestId("view-stage").click();
@@ -743,13 +743,18 @@ test("Zehn Phasen und Glückssieben am Tisch: Stapel in der Mitte, Phase bzw. of
     await anna.getByRole("button", { name: "Spiel starten" }).click();
     await expect(screen.getByTestId("table-pile").first()).toContainText("Ziehen");
     // wer dran ist, zieht eine Karte – sie liegt offen an seinem Platz
-    for (let i = 0; i < 15 && !(await screen.getByTestId("seat-board").count()); i++) {
+    // (nur sichtbare Knöpfe prüfen: isEnabled ohne Zeitlimit wartet, bis es den Knopf gibt – wer nicht dran ist, hat keinen)
+    for (const until = Date.now() + 60_000; Date.now() < until && !(await screen.getByTestId("seat-board").count());) {
       for (const p of phones) {
-        const hit = p.getByRole("button", { name: "Noch eine!", exact: true });
+        // Liegt eine Aktionskarte (z. B. gleich zu Beginn), muss erst ein Ziel gewählt werden – sonst gibt es kein „Noch eine!“
+        const aim = p.getByText(/wen trifft's\?/);
+        if (await aim.isVisible()) { await aim.locator("..").getByRole("button").first().click({ timeout: 3000 }).catch(() => {}); break; }
+        const hit = p.getByRole("button", { name: /^Noch eine!/ }).first();
+        if (!(await hit.isVisible())) continue;
         // Knopf kann zwischen Prüfen und Tippen gesperrt werden (Zug vorbei) – nicht ewig warten
-        if (await hit.isEnabled().catch(() => false)) { await hit.click({ timeout: 3000 }).catch(() => {}); break; }
+        if (await hit.isEnabled({ timeout: 500 }).catch(() => false)) { await hit.click({ timeout: 3000 }).catch(() => {}); break; }
       }
-      await screen.waitForTimeout(600);
+      await screen.waitForTimeout(500);
     }
     await expect(screen.getByTestId("seat-board").first()).toBeAttached();
     await screen.waitForTimeout(500);
@@ -1211,3 +1216,91 @@ test("Quiz am Tisch: Frage und Antworten groß, wer schon geantwortet hat – ni
     await setConfig(request, ALL_ON);
   }
 });
+
+/** Tisch mit Anna (Host am Handy) und Bots, Spiel gewählt und gestartet */
+async function tableWithBots(browser: Browser, request: APIRequestContext, game: string, bots: number, opts: { flat?: boolean; viewport?: { width: number; height: number }; start?: boolean } = {}) {
+  const ctx = await browser.newContext({ viewport: opts.viewport ?? { width: 1440, height: 900 }, locale: "de-DE" });
+  const screen = await ctx.newPage();
+  if (opts.flat) await screen.addInitScript(() => localStorage.setItem("spieltisch:quality", "flach"));
+  await screen.goto("/tisch");
+  await screen.getByTestId("table-new").click();
+  await expect(screen).toHaveURL(/\/tisch\/[A-Z0-9]{5}$/);
+  const code = screen.url().split("/").pop()!;
+  const pin = (await screen.evaluate((c) => localStorage.getItem(`spieltisch:table:${c}`), code))!;
+  const anna = await joinByLink(browser, code, pin, "Anna");
+  await expect(screen.getByTestId("table-seat")).toHaveCount(1);
+  const res = await request.post(`/api/admin/rooms/${code}/act`, { data: { password: ADMIN_PW, action: { type: "addBots", n: bots } } });
+  expect(res.ok()).toBe(true);
+  await expect(screen.getByTestId("table-seat")).toHaveCount(bots + 1);
+  await anna.getByTestId("meet-play").click();
+  await anna.getByTestId(`pick-${game}`).click();
+  if (opts.start !== false) await anna.getByRole("button", { name: "Spiel starten" }).click();
+  return { screen, anna, code };
+}
+
+/** Rechtecke, die sich mit der Sprechblase des Moderators überschneiden (leer = nichts verdeckt) */
+async function bubbleOverSeats(screen: Page) {
+  const snap = () => screen.evaluate(() => {
+    const b = document.querySelector('[data-testid="table-host-line"]')?.getBoundingClientRect();
+    if (!b) return null;
+    const seats = [...document.querySelectorAll('[data-testid="table-seat"]')].map((s) => ({ name: s.textContent ?? "", r: s.getBoundingClientRect() }));
+    const key = [b, ...seats.map((s) => s.r)].map((r) => `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`).join(";") + (document.querySelector('[data-testid="table-host-line"]')?.textContent ?? "");
+    return { key, hit: seats.filter(({ r }) => r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom).map(({ name }) => name) };
+  });
+  // Erst messen, wenn alles ruht (Plätze gleiten, die Blase blendet ein): zweimal hintereinander dieselbe Lage
+  let prev = await snap();
+  for (let i = 0; i < 12 && prev; i++) {
+    await screen.waitForTimeout(250);
+    const now = await snap();
+    if (!now) return null;
+    if (now.key === prev.key) return now.hit;
+    prev = now;
+  }
+  return null;
+}
+
+/** Eins: ist Anna dran, zieht sie und passt (bzw. zweifelt an) – so geht die Partie mit den Bots weiter */
+async function einsNudge(anna: Page) {
+  for (const name of [/^(\d )?ziehen$|^Ziehen$/i, /^Passen$/, /^Anzweifeln$/, /^Rot$/]) {
+    const b = anna.getByRole("button", { name }).first();
+    if (await b.isEnabled({ timeout: 300 }).catch(() => false)) await b.click({ timeout: 1000 }).catch(() => {});
+  }
+}
+
+for (const flat of [true, false]) {
+  test(`Moderator ${flat ? "flach" : "3D"}: die Sprechblase verdeckt bei 4 und 6 Spielern keinen Platz (1440×900 und 1280×720)`, async ({ browser, request }) => {
+    // vier Partien-Ansichten mit Bots, 3D ohne Grafikchip ist langsam
+    test.setTimeout(300_000);
+    for (const bots of [3, 5]) {
+      const { screen, anna } = await tableWithBots(browser, request, "eins", bots, { flat });
+      const errors: string[] = [];
+      screen.on("pageerror", (e) => errors.push(e.message));
+      screen.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+      await expect(screen.getByTestId("table-seat")).toHaveCount(bots + 1);
+      for (const vp of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }]) {
+        await screen.setViewportSize(vp);
+        // Mehrere Ansagen hintereinander (Bots ziehen, Anna zieht, wenn sie dran ist): jede Blase steht frei
+        let checked = 0;
+        for (let i = 0; i < 40 && checked < 3; i++) {
+          await screen.waitForTimeout(500);
+          if (!(await screen.getByTestId("table-host-line").isVisible())) { await einsNudge(anna); continue; }
+          const hit = await bubbleOverSeats(screen);
+          if (!hit) continue;
+          // Bei Fehlern die Lage mitschreiben (Blase, ihr Stil, Plätze) und ein Bild sichern
+          const where = hit.length ? await screen.evaluate(() => {
+            const b = document.querySelector<HTMLElement>('[data-testid="table-host-line"]')!;
+            const box = (r: DOMRect) => [r.left, r.top, r.right, r.bottom].map(Math.round).join(",");
+            return `Blase ${box(b.getBoundingClientRect())} (${b.style.cssText}) · Plätze ${[...document.querySelectorAll<HTMLElement>(".seat-plate")].map((x) => `${x.textContent}: ${box(x.getBoundingClientRect())}`).join(" | ")}`;
+          }) : "";
+          if (hit.length) await shot(screen, `9w-tisch-moderator-fehler-${flat ? "flach" : "3d"}-${bots + 1}-${vp.width}`);
+          expect(hit, `Sprechblase über Platz bei ${bots + 1} Spielern, ${vp.width}×${vp.height}: ${where} · Fehler: ${errors.join(" / ").slice(0, 500)}`).toEqual([]);
+          checked++;
+          if (checked === 1 && bots === 5) await shot(screen, `9w-tisch-moderator-${flat ? "flach" : "3d"}-6-${vp.width}`);
+        }
+        expect(checked, "keine Sprechblase gesehen").toBeGreaterThan(0);
+      }
+      await screen.context().close();
+      await anna.context().close();
+    }
+  });
+}
