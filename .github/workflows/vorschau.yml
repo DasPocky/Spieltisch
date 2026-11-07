@@ -1,20 +1,27 @@
 name: Vorschau aufräumen
 
 # Nach jedem geschlossenen PR die Cloudflare-Vorschau seines Zweigs löschen (siehe scripts/vorschau-aufraeumen.mjs).
-# Braucht das Repository-Secret CLOUDFLARE_API_TOKEN (Workers Scripts: Edit); ohne Secret wird nur gewarnt.
+# Braucht das Repository-Secret CLOUDFLARE_API_TOKEN: Account-API-Token „spieltisch-vorschau-cleanup“
+# (nur Account → Workers Scripts → Edit, siehe docs/betrieb.md). Ohne Secret wird nur gewarnt.
+# Läuft nie für PRs aus Forks (die bekämen das Secret ohnehin nicht) – der Zweig muss in diesem Repository liegen.
 on:
   pull_request:
     types: [closed]
   workflow_dispatch:
 
+# Nur lesen – kein Job braucht Schreibrechte am Repository
+permissions:
+  contents: read
+
 jobs:
   clean:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
       - name: Vorschau löschen
@@ -23,4 +30,4 @@ jobs:
           BRANCH: ${{ github.head_ref }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::Secret CLOUDFLARE_API_TOKEN fehlt – Vorschau bitte von Hand löschen"; exit 0; fi
-          node scripts/vorschau-aufraeumen.mjs $BRANCH
+          node scripts/vorschau-aufraeumen.mjs ${BRANCH:+"$BRANCH"}

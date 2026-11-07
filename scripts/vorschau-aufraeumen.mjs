@@ -2,7 +2,8 @@
 // das Konto erlaubt nur 100 – sonst schlagen neue Vorschau-Builds fehl.
 //   node scripts/vorschau-aufraeumen.mjs              → Vorschauen aller Zweige, die in origin/main stecken oder gelöscht sind
 //   node scripts/vorschau-aufraeumen.mjs claude/xyz   → nur diese Zweige
-// Braucht CLOUDFLARE_API_TOKEN (Workers Scripts: Edit). Die Live-Version wird nie angefasst.
+// Braucht CLOUDFLARE_API_TOKEN (Account-API-Token „spieltisch-vorschau-cleanup“, nur Workers Scripts: Edit – docs/betrieb.md).
+// Die Live-Version wird nie angefasst.
 import { execSync } from "node:child_process";
 
 const ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID ?? "ef9cbceacd8be6cff839033e54c0cb6b";
