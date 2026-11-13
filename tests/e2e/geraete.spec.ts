@@ -578,3 +578,25 @@ test("Am Rechner (Ankreuzspiel): eigenes Blatt und Würfel unter dem Tisch, wür
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Klingel): Aufdecken und Klingel unter dem Tisch, Leertaste klingelt", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { klingel: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "klingel", "3434");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("kl-bell")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gk-desk-klingel");
+    // Ist Anna dran: A deckt auf; danach ist Ben dran
+    if (await area.getByTestId("kl-flip").isEnabled()) {
+      await page.keyboard.press("a");
+      await expect(area.getByTestId("kl-flip")).toBeDisabled();
+    }
+    // Leertaste klingelt (hier meist falsch) – die Klingel zeigt, dass Anna geklingelt hat
+    await page.keyboard.press(" ");
+    await expect(area.getByTestId("kl-bell")).not.toContainText("Klingeln");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

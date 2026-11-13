@@ -59,7 +59,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   zahlenromme: { table: "beta" },
   doppelkopf: { table: "beta", desk: "beta" },
   skat: { table: "beta", desk: "beta" },
-  klingel: { table: "beta" },
+  klingel: { table: "beta", desk: "beta" },
 };
 
 /** Spiele mit eigener Tisch-Ansicht (andere zeigt der Tisch wie ein Handy in der Mitte) */
