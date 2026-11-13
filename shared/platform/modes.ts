@@ -50,7 +50,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   kritzelpost: { table: "beta" },
   herzen: { table: "beta", desk: "beta" },
   stadtlandfluss: { table: "beta" },
-  schocken: { table: "beta" },
+  schocken: { table: "beta", desk: "beta" },
   erklaerspiel: { table: "beta" },
   bluff: { table: "beta", desk: "beta" },
   werbinich: { table: "beta" },

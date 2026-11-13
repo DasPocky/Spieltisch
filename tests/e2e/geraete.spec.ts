@@ -536,3 +536,23 @@ test("Am Rechner (Bluff): eigene Würfel offen unter dem Tisch, ansagen per Tast
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Schocken): Würfel unter dem Tisch, würfeln per Leertaste", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { schocken: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "schocken", "9191");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("round")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    // Ist Anna dran: Leertaste würfelt – danach gibt es „Stehen lassen“
+    if (await area.getByRole("button", { name: /^Würfeln/ }).isVisible()) {
+      await page.keyboard.press(" ");
+      await expect(area.getByTestId("stop")).toBeVisible();
+      await page.waitForTimeout(1500);
+    }
+    await shot(page, "gi-desk-schocken");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
