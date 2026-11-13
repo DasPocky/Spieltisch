@@ -479,3 +479,22 @@ test("Am Rechner (Doppelkopf): Hand unter dem Tisch, Vorbehalt und Karten per Ta
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Skat): Hand unter dem Tisch, Reizen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { skat: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "skat", "6565");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(10);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gf-desk-skat");
+    // Ist Anna beim Reizen dran: P passt – danach steht das Reizfeld nicht mehr unter ihrer Hand
+    if (await area.getByTestId("bid").isVisible()) {
+      await page.keyboard.press("p");
+      await expect(area.getByTestId("bid")).toBeHidden();
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
