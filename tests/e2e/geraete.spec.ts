@@ -556,3 +556,25 @@ test("Am Rechner (Schocken): Würfel unter dem Tisch, würfeln per Leertaste", a
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Ankreuzspiel): eigenes Blatt und Würfel unter dem Tisch, würfeln und auslassen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { ankreuzspiel: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "ankreuzspiel", "2323");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("turn-info")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    // Ist Anna dran: Leertaste würfelt, dann entscheidet sie (Weiß) – N lässt aus
+    if (await area.getByRole("button", { name: /Würfeln/ }).isVisible()) {
+      await page.keyboard.press(" ");
+      await expect(area.getByTestId("mark-pass")).toBeVisible();
+      await page.waitForTimeout(600);
+      await shot(page, "gj-desk-ankreuzspiel");
+      await page.keyboard.press("n");
+      await expect(area.getByTestId("mark-pass")).toBeHidden();
+    } else await shot(page, "gj-desk-ankreuzspiel");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

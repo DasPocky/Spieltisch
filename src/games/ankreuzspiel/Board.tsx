@@ -12,6 +12,7 @@ import { RollButton } from "@/platform/dice3d/RollButton";
 import { useCountdown } from "@/platform/Countdown";
 import { HintChip } from "@/platform/HintChip";
 import { Seats } from "@/platform/Seats";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { speak } from "@/platform/speech";
@@ -81,7 +82,7 @@ function deciderOf(s: AkState, me: string | null, canAct: boolean): string | nul
   return null;
 }
 
-function Play({ room, game: s, me, online, canAct, act }: Props) {
+function Play({ room, game: s, me, online, canAct, act, desk }: Props) {
   const players = room.players;
   const local = me === null;
   const hints = useHints();
@@ -117,6 +118,22 @@ function Play({ room, game: s, me, online, canAct, act }: Props) {
   const head = s.phase === "roll" ? `${who(s.curId)} ${who(s.curId) === "Du" ? "würfelst" : "würfelt"}`
     : s.phase === "white" ? `Weiß ${whiteSum(s)} für alle`
     : `${who(s.curId)}: Weiß + Farbe`;
+
+  if (desk) {
+    return (
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)_25rem] items-start gap-3">
+        <div className="grid gap-1">
+          <p className="text-sm" data-testid="turn-info"><b className="text-base">{head}</b><span className="text-muted-foreground"> · {shown === me ? "dein Blatt" : `Blatt von ${nameIn(players, shown)}`}</span></p>
+          {shown && s.sheets[shown] && (
+            <SheetView s={s} id={shown} options={options} sel={sel} tip={tip ?? null} misses={maxMissesOf(room.options)}
+              onPick={(m) => { vibrate(6); setSel((x) => (x && x.row === m.row && x.n === m.n ? null : { row: m.row, n: m.n })); }} />
+          )}
+        </div>
+        <Panel s={s} players={players} who={who} decider={decider} canAct={canAct} local={local} sel={sel} tip={tip} left={left} open={open} act={act}
+          pick={(m) => setSel(m)} desk />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -203,10 +220,10 @@ function SheetView({ s, id, options, sel, tip, misses, onPick }: {
   );
 }
 
-function Panel({ s, players, who, decider, canAct, local, sel, tip, left, open, act, pick }: {
+function Panel({ s, players, who, decider, canAct, local, sel, tip, left, open, act, pick, desk }: {
   s: AkState; players: Player[]; who: (id: string | null | undefined) => string; decider: string | null; canAct: boolean; local: boolean;
   sel: { row: number; n: number } | null; tip: { row: number; n: number } | null | undefined; left: number | null; open: string[];
-  act: (a: AkAction) => void; pick: (m: { row: number; n: number }) => void;
+  act: (a: AkAction) => void; pick: (m: { row: number; n: number }) => void; desk?: boolean;
 }) {
   const shown = diceOf(s);
   const rolling = s.phase === "roll";
@@ -219,13 +236,26 @@ function Panel({ s, players, who, decider, canAct, local, sel, tip, left, open, 
       : "Niemand hat angekreuzt"
     : null;
 
+  const white = s.phase === "white";
+  const skip = () => { if (!decider) return; vibrate(8); act(white ? { type: "white", row: null, ...(local ? { player: decider } : {}) } : { type: "color", row: null }); };
+  const mark = () => { if (!sel || !decider) return; vibrate(12); act(white ? { type: "white", row: sel.row, ...(local ? { player: decider } : {}) } : { type: "color", row: sel.row, n: sel.n }); };
+
+  // Am Rechner: Leertaste würfelt, Enter kreuzt an, N lässt aus bzw. nimmt den Fehlwurf, T übernimmt den Tipp
+  useDeskKeys((e) => {
+    if (!desk) return;
+    const k = e.key.toLowerCase();
+    if (k === " " && canRoll) { e.preventDefault(); act({ type: "roll" }); }
+    else if (k === "enter" && decider) mark();
+    else if (k === "n" && decider) skip();
+    else if (k === "t" && decider && tip) pick(tip);
+  });
+
   let status: ReactNode;
   let buttons: ReactNode = null;
   if (rolling) {
     status = lastLine ? <span className="truncate" data-testid="last-turn">{lastLine}</span> : <span>{canRoll ? (local ? `${cur}, du beginnst.` : "Du beginnst.") : `${cur} beginnt.`}</span>;
     if (canRoll) buttons = <RollButton onRoll={() => act({ type: "roll" })}><Dices className="max-[359px]:hidden" />{local ? `${cur}: Würfeln` : "Würfeln"}</RollButton>;
   } else if (decider) {
-    const white = s.phase === "white";
     const hasOwn = s.marks.some((m) => m.id === decider);
     const miss = !white && !hasOwn;
     const name = local ? `${nameIn(players, decider)}: ` : "";
@@ -234,12 +264,11 @@ function Panel({ s, players, who, decider, canAct, local, sel, tip, left, open, 
       : <span className="truncate">{name}{white ? `Weiß ${whiteSum(s)} – in einer Reihe ankreuzen?` : "Ein weißer plus ein farbiger Würfel?"}</span>;
     buttons = (
       <div className="grid grid-cols-2 gap-2">
-        <Button size="lg" variant="secondary" className="px-2" onClick={() => { vibrate(8); act(white ? { type: "white", row: null, ...(local ? { player: decider } : {}) } : { type: "color", row: null }); }} data-testid="mark-pass">
-          {white ? "Nicht ankreuzen" : miss ? "Fehlwurf" : "Keine Farbe"}
+        <Button size="lg" variant="secondary" className="px-2" onClick={skip} data-testid="mark-pass">
+          {white ? "Nicht ankreuzen" : miss ? "Fehlwurf" : "Keine Farbe"}{desk && <kbd className="ml-1 text-xs opacity-60">N</kbd>}
         </Button>
-        <Button size="lg" className="px-2" disabled={!sel} data-testid="mark-go"
-          onClick={() => { if (!sel) return; vibrate(12); act(white ? { type: "white", row: sel.row, ...(local ? { player: decider } : {}) } : { type: "color", row: sel.row, n: sel.n }); }}>
-          <Check className="max-[359px]:hidden" />{sel ? `${markLabel(sel)}` : "Feld antippen"}
+        <Button size="lg" className="px-2" disabled={!sel} data-testid="mark-go" onClick={mark}>
+          <Check className="max-[359px]:hidden" />{sel ? `${markLabel(sel)}` : desk ? "Ankreuzen" : "Feld antippen"}{desk && <kbd className="ml-1 text-xs opacity-60">Enter</kbd>}
         </Button>
       </div>
     );
@@ -253,13 +282,14 @@ function Panel({ s, players, who, decider, canAct, local, sel, tip, left, open, 
 
   return (
     <section className="glass grid gap-1.5 rounded-2xl p-2">
-      <DiceTray values={shown.values} tints={shown.tints} rollKey={`${s.turn}-${s.curId}`} className="h-[clamp(3.25rem,10dvh,5rem)]"
+      <DiceTray values={shown.values} tints={shown.tints} still={desk} rollKey={`${s.turn}-${s.curId}`} className="h-[clamp(3.25rem,10dvh,5rem)]"
         label="Würfel: zwei weiße, dazu die farbigen" empty={canRoll ? "Tippe auf „Würfeln“" : `${cur} würfelt gleich`} onThrow={canRoll ? () => act({ type: "roll" }) : undefined} />
       <div className="flex min-h-6 items-center justify-center gap-2 text-center text-sm text-muted-foreground" data-testid="ak-status">
         {status}
         {left !== null && s.phase === "white" && <b className={cn("shrink-0 tabular-nums", left <= 10 ? "text-destructive" : "text-foreground")} data-testid="think-left">{left} s</b>}
       </div>
       {buttons}
+      {desk && <p className="text-center text-xs text-muted-foreground">Tasten: Leertaste würfeln · Enter ankreuzen · N auslassen · T Tipp</p>}
     </section>
   );
 }
