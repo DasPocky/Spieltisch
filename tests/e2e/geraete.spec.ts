@@ -433,3 +433,170 @@ test("Am Rechner (Glückssieben): eigene Reihe unter dem Tisch, „Noch eine!“
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Herzen): Hand unter dem Tisch, drei Karten per Tastatur weitergeben", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { herzen: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "herzen", "4343", ["Cem", "Dora"]);
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(13);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gd-desk-herzen");
+    // Erste Runde: drei Karten nach links – 1, 2, 3 wählen, Enter gibt sie weiter
+    const status = area.getByTestId("status");
+    await expect(status).toContainText("Drei Karten für");
+    for (const k of ["1", "2", "3"]) await page.keyboard.press(k);
+    await expect(area.getByTestId("pass-go")).toBeEnabled();
+    await page.keyboard.press("Enter");
+    await expect(status).toContainText("Warte auf");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Doppelkopf): Hand unter dem Tisch, Vorbehalt und Karten per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { doppelkopf: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "doppelkopf", "5454");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(12);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "ge-desk-doppelkopf");
+    // Ist Anna mit dem Vorbehalt dran: S öffnet die Soli, Esc schließt sie, G sagt gesund
+    const status = area.getByTestId("status");
+    await expect(status).not.toHaveText("");
+    if (await area.getByTestId("reserve").isVisible()) {
+      await page.keyboard.press("s");
+      await expect(area.getByTestId("solo-list")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(area.getByTestId("reserve")).toBeVisible();
+      await page.keyboard.press("g");
+      await expect(area.getByTestId("reserve")).toBeHidden();
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Skat): Hand unter dem Tisch, Reizen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { skat: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "skat", "6565");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(10);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gf-desk-skat");
+    // Ist Anna beim Reizen dran: P passt – danach steht das Reizfeld nicht mehr unter ihrer Hand
+    if (await area.getByTestId("bid").isVisible()) {
+      await page.keyboard.press("p");
+      await expect(area.getByTestId("bid")).toBeHidden();
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Palast): Tauschen und Tischkarten unter dem Tisch, fertig per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { palast: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "palast", "7878");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("swap")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gg-desk-palast");
+    // F: fertig getauscht – danach wartet Anna auf Ben oder die Partie beginnt
+    await page.keyboard.press("f");
+    await expect(area.getByTestId("swap-ready")).toBeDisabled();
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Bluff): eigene Würfel offen unter dem Tisch, ansagen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { bluff: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "bluff", "8989");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("status")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    // Ist Anna dran: Augenzahl 3, Enter sagt die kleinste erlaubte Anzahl an – danach ist Ben dran
+    if (await area.getByTestId("bid").isVisible()) {
+      await expect(area.getByTestId("my-dice")).toBeVisible();
+      await shot(page, "gh-desk-bluff");
+      await page.keyboard.press("3");
+      await page.keyboard.press("Enter");
+      await expect(area.getByTestId("current-player")).toHaveText("Ben");
+    } else await shot(page, "gh-desk-bluff");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Schocken): Würfel unter dem Tisch, würfeln per Leertaste", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { schocken: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "schocken", "9191");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("round")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    // Ist Anna dran: Leertaste würfelt – danach gibt es „Stehen lassen“
+    if (await area.getByRole("button", { name: /^Würfeln/ }).isVisible()) {
+      await page.keyboard.press(" ");
+      await expect(area.getByTestId("stop")).toBeVisible();
+      await page.waitForTimeout(1500);
+    }
+    await shot(page, "gi-desk-schocken");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Ankreuzspiel): eigenes Blatt und Würfel unter dem Tisch, würfeln und auslassen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { ankreuzspiel: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "ankreuzspiel", "2323");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("turn-info")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    // Ist Anna dran: Leertaste würfelt, dann entscheidet sie (Weiß) – N lässt aus
+    if (await area.getByRole("button", { name: /Würfeln/ }).isVisible()) {
+      await page.keyboard.press(" ");
+      await expect(area.getByTestId("mark-pass")).toBeVisible();
+      await page.waitForTimeout(600);
+      await shot(page, "gj-desk-ankreuzspiel");
+      await page.keyboard.press("n");
+      await expect(area.getByTestId("mark-pass")).toBeHidden();
+    } else await shot(page, "gj-desk-ankreuzspiel");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
+
+test("Am Rechner (Klingel): Aufdecken und Klingel unter dem Tisch, Leertaste klingelt", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { klingel: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "klingel", "3434");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("kl-bell")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gk-desk-klingel");
+    // Ist Anna dran: A deckt auf; danach ist Ben dran
+    if (await area.getByTestId("kl-flip").isEnabled()) {
+      await page.keyboard.press("a");
+      await expect(area.getByTestId("kl-flip")).toBeDisabled();
+    }
+    // Leertaste klingelt (hier meist falsch) – die Klingel zeigt, dass Anna geklingelt hat
+    await page.keyboard.press(" ");
+    await expect(area.getByTestId("kl-bell")).not.toContainText("Klingeln");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

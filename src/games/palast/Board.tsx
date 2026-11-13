@@ -8,6 +8,7 @@ import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { CardBack, PlayingCard } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { Seats } from "@/platform/Seats";
@@ -117,7 +118,7 @@ function groups(cards: Card[]): { rank: Rank; cards: Card[] }[] {
   return RANKS.map((rank) => ({ rank, cards: cards.filter((c) => rankOf(c) === rank) })).filter((g) => g.cards.length);
 }
 
-function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: Props) {
   const players = room.players;
   const o = room.options;
   const local = me === null;
@@ -186,6 +187,98 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
   const needPill = s.phase === "play" ? needText(s, o) : "Tauschen";
   const sevenOn = !!needOf(s, o)?.max;
 
+  // Hand, Tischkarten und Knöpfe – am Handy unten, am Rechner unter dem Tisch
+  const bottom = (
+    <>
+    {covered && handoffId ? (
+      <HandoffCover name={nameIn(players, handoffId)} onReveal={reveal} />
+    ) : !viewer ? null : s.phase === "swap" ? (
+      <SwapArea hand={hand} up={up} downLeft={downLeft} pick={pick} onPick={pickSwap} active={swapping}
+        onSuggest={hints && swapping ? () => act({ type: "arrange", up: suggestUp(hand, up), player: viewer ?? undefined }) : undefined}
+        onReady={() => { vibrate(10); act({ type: "ready", player: viewer ?? undefined }); }} />
+    ) : isOut ? (
+      <p className="glass rounded-2xl p-3 text-center text-sm text-muted-foreground" data-testid="done">Du hast alle Karten los – schau den anderen zu.</p>
+    ) : (
+      <>
+        {src === "hand" ? (
+          <>
+            <div className="flex items-end justify-center gap-1.5" data-testid="my-table" aria-label="Deine Tischkarten">
+              {downLeft.map((d, i) => <Slot key={i} up={up[i]} down={d} className="w-[min(9vw,2.3rem)]" />)}
+              <span className="ml-1 self-center text-[0.68rem] leading-tight text-muted-foreground">Tisch-<br />karten</span>
+            </div>
+            <HandFan hand={hand} sel={sel} myTurn={myTurn} tipRank={tipRank} ok={(r) => fits(s, r, o)} onPick={choose} />
+          </>
+        ) : (
+          <div className="flex items-end justify-center gap-2 pt-3 pb-1" data-testid="my-table" aria-label="Deine Tischkarten">
+            {downLeft.map((d, i) => {
+              const c = up[i];
+              const okUp = !!c && myTurn && src === "up" && fits(s, rankOf(c), o);
+              return (
+                <Slot key={i} up={c} down={d} className="w-[min(21vw,5.2rem)]" testId={`slot-${i}`}
+                  upSel={!!c && sel?.rank === rankOf(c)} upOk={myTurn && src === "up" ? okUp : undefined} downOk={myTurn && src === "down" && d && tip?.type === "blind" && tip.i === i}
+                  onUp={okUp ? () => { const all = up.filter((x) => rankOf(x) === rankOf(c)).length; choose(rankOf(c), all); } : undefined}
+                  onDown={myTurn && src === "down" && d ? () => { vibrate(14); act({ type: "blind", i }); } : undefined} />
+              );
+            })}
+          </div>
+        )}
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+          {src === "down" ? (
+            <Button size="lg" className="col-span-2" disabled={!myTurn} data-testid="blind-go"
+              onClick={() => { const i = downLeft.findIndex(Boolean); if (i >= 0) { vibrate(14); act({ type: "blind", i }); } }}>
+              {myTurn ? "Blind aufdecken" : `${cur} ist dran`}
+            </Button>
+          ) : (
+            <>
+              <Button size="lg" className="min-w-0 truncate px-3 whitespace-nowrap" disabled={!myTurn || !sel} data-testid="play-go" onClick={lay}>
+                {!myTurn ? `${cur} ist dran` : sel ? `${sel.n}× ${rankWord(sel.rank)} legen` : "Legen"}
+              </Button>
+              <Button size="lg" variant={nothing ? "default" : "secondary"} disabled={!nothing} data-testid="take"
+                className={cn("px-3",nothing && tip?.type === "take" && "hint-glow")} onClick={() => { vibrate(14); act({ type: "take" }); }}>
+                Aufnehmen
+              </Button>
+            </>
+          )}
+        </div>
+      </>
+    )}
+    </>
+  );
+
+  // Am Rechner: Wert per Taste wählen (1–9, 0 – nochmal drücken nimmt eine weniger), Enter legt, A nimmt auf, B deckt blind auf;
+  // Tauschen: V Vorschlag, F fertig
+  useDeskKeys((e) => {
+    if (!desk || !viewer) return;
+    const k = e.key.toLowerCase();
+    if (s.phase === "swap") {
+      if (!swapping) return;
+      if (k === "v" && hints) act({ type: "arrange", up: suggestUp(hand, up), player: viewer });
+      else if (k === "f") act({ type: "ready", player: viewer });
+      return;
+    }
+    if (!myTurn) return;
+    if (k === "a" && nothing) { act({ type: "take" }); return; }
+    if (k === "b" && src === "down") { const i = downLeft.findIndex(Boolean); if (i >= 0) act({ type: "blind", i }); return; }
+    if (k === "enter") return lay();
+    const n = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"].indexOf(k);
+    const g = groups(from)[n];
+    if (n >= 0 && g && fits(s, g.rank, o)) choose(g.rank, g.cards.length);
+  });
+
+  if (desk) {
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
+        <p className="flex flex-wrap items-center justify-center gap-x-3 text-base">
+          <span data-testid="status" className={cn((myTurn || swapping) && "font-semibold")}><SmoothText>{status}</SmoothText></span>
+          <span className="text-sm text-muted-foreground" data-testid="need">{needPill}{s.burned.length ? ` · verbrannt ${s.burned.length}` : ""}</span>
+        </p>
+        {bottom}
+        {s.phase === "play" && myTurn && <p className="text-center text-xs text-muted-foreground">Tasten: 1–0 Wert wählen (nochmal: eine weniger) · Enter legen · A aufnehmen · B blind</p>}
+        {swapping && <p className="text-center text-xs text-muted-foreground">Tasten: V Vorschlag · F fertig</p>}
+      </div>
+    );
+  }
+
   return (
     <>
       <Seats me={me} online={online} seats={players.map((p) => {
@@ -229,58 +322,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
       </div>
 
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {covered && handoffId ? (
-          <HandoffCover name={nameIn(players, handoffId)} onReveal={reveal} />
-        ) : !viewer ? null : s.phase === "swap" ? (
-          <SwapArea hand={hand} up={up} downLeft={downLeft} pick={pick} onPick={pickSwap} active={swapping}
-            onSuggest={hints && swapping ? () => act({ type: "arrange", up: suggestUp(hand, up), player: viewer ?? undefined }) : undefined}
-            onReady={() => { vibrate(10); act({ type: "ready", player: viewer ?? undefined }); }} />
-        ) : isOut ? (
-          <p className="glass rounded-2xl p-3 text-center text-sm text-muted-foreground" data-testid="done">Du hast alle Karten los – schau den anderen zu.</p>
-        ) : (
-          <>
-            {src === "hand" ? (
-              <>
-                <div className="flex items-end justify-center gap-1.5" data-testid="my-table" aria-label="Deine Tischkarten">
-                  {downLeft.map((d, i) => <Slot key={i} up={up[i]} down={d} className="w-[min(9vw,2.3rem)]" />)}
-                  <span className="ml-1 self-center text-[0.68rem] leading-tight text-muted-foreground">Tisch-<br />karten</span>
-                </div>
-                <HandFan hand={hand} sel={sel} myTurn={myTurn} tipRank={tipRank} ok={(r) => fits(s, r, o)} onPick={choose} />
-              </>
-            ) : (
-              <div className="flex items-end justify-center gap-2 pt-3 pb-1" data-testid="my-table" aria-label="Deine Tischkarten">
-                {downLeft.map((d, i) => {
-                  const c = up[i];
-                  const okUp = !!c && myTurn && src === "up" && fits(s, rankOf(c), o);
-                  return (
-                    <Slot key={i} up={c} down={d} className="w-[min(21vw,5.2rem)]" testId={`slot-${i}`}
-                      upSel={!!c && sel?.rank === rankOf(c)} upOk={myTurn && src === "up" ? okUp : undefined} downOk={myTurn && src === "down" && d && tip?.type === "blind" && tip.i === i}
-                      onUp={okUp ? () => { const all = up.filter((x) => rankOf(x) === rankOf(c)).length; choose(rankOf(c), all); } : undefined}
-                      onDown={myTurn && src === "down" && d ? () => { vibrate(14); act({ type: "blind", i }); } : undefined} />
-                  );
-                })}
-              </div>
-            )}
-            <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
-              {src === "down" ? (
-                <Button size="lg" className="col-span-2" disabled={!myTurn} data-testid="blind-go"
-                  onClick={() => { const i = downLeft.findIndex(Boolean); if (i >= 0) { vibrate(14); act({ type: "blind", i }); } }}>
-                  {myTurn ? "Blind aufdecken" : `${cur} ist dran`}
-                </Button>
-              ) : (
-                <>
-                  <Button size="lg" className="min-w-0 truncate px-3 whitespace-nowrap" disabled={!myTurn || !sel} data-testid="play-go" onClick={lay}>
-                    {!myTurn ? `${cur} ist dran` : sel ? `${sel.n}× ${rankWord(sel.rank)} legen` : "Legen"}
-                  </Button>
-                  <Button size="lg" variant={nothing ? "default" : "secondary"} disabled={!nothing} data-testid="take"
-                    className={cn("px-3",nothing && tip?.type === "take" && "hint-glow")} onClick={() => { vibrate(14); act({ type: "take" }); }}>
-                    Aufnehmen
-                  </Button>
-                </>
-              )}
-            </div>
-          </>
-        )}
+        {bottom}
       </div>
     </>
   );

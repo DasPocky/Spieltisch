@@ -8,6 +8,7 @@ import type { Options, Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { Die } from "@/platform/Die";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
 import { Seats } from "@/platform/Seats";
@@ -172,7 +173,7 @@ function AllCups({ r, players, who, jokers }: { r: BluffReveal; players: Player[
   );
 }
 
-function Play({ room, game: s, me, online, canAct, act }: Props) {
+function Play({ room, game: s, me, online, canAct, act, desk }: Props) {
   const players = room.players;
   const local = me === null;
   const hints = useHints();
@@ -190,6 +191,40 @@ function Play({ room, game: s, me, online, canAct, act }: Props) {
   const owner = local ? (covered ? null : s.curId) : me;
   const myDice = !s.table && owner && s.phase === "bid" ? s.cups[owner] ?? null : null;
   const last = lastBid(s);
+  const next = () => { vibrate(10); act({ type: "next" }); };
+
+  // Am Rechner: Enter nach dem Aufdecken weiter; Ansage-Tasten stecken in den Knöpfen (Controls)
+  useDeskKeys((e) => { if (desk && s.phase === "reveal" && e.key === "Enter") next(); });
+
+  if (desk) {
+    const mine = !s.table && me ? s.cups[me] ?? [] : [];
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
+        <style>{CSS}</style>
+        <p className="text-center text-base" data-testid="status">
+          {s.phase === "bid" ? <><b data-testid="current-player">{cur ? who(cur.id) : "?"}</b> <SmoothText>{cur?.id === me ? (last ? "erhöhst oder zweifelst" : "sagst an") : last ? "erhöht oder zweifelt" : "sagt an"}</SmoothText>{last ? <span className="text-muted-foreground"> · liegt: {last.count} × {faceName(last.face, last.count)}</span> : null}</> : <b>Aufgedeckt</b>}
+        </p>
+        {s.phase === "reveal" && s.reveal ? (
+          <>
+            <RevealCard r={s.reveal} who={who} />
+            <Button size="lg" onClick={next} data-testid="next">{s.reveal.final ? "Zum Ergebnis" : `Nächste Runde – ${who(s.starter)} ${who(s.starter) === "Du" ? "beginnst" : "beginnt"}`} <kbd className="ml-1 text-xs opacity-60">Enter</kbd></Button>
+          </>
+        ) : (
+          <>
+            {mine.length > 0 && (
+              <div className="flex items-center justify-center gap-2" data-testid="my-dice" aria-label={`Deine Würfel: ${mine.join(", ")}`}>
+                <span className="text-sm text-muted-foreground">Deine Würfel</span>
+                {mine.map((d, i) => <Die key={i} value={d} className={cn("size-10", last && (d === last.face || (jokers && d === 1)) && "ring-2 ring-ice rounded-lg")} />)}
+              </div>
+            )}
+            {myTurn ? <><Controls key={`${s.curId}-${s.round}-${s.bids.length}`} s={s} options={room.options} me={owner} act={act} hints={hints && !!myDice} desk />
+              <p className="text-center text-xs text-muted-foreground">Tasten: 1–6 Augenzahl · ↑/↓ Anzahl · Enter ansagen{last ? " · B Bluff" : ""}{last && exactOf(room.options) ? " · G Genau" : ""}</p></>
+              : <p className="glass rounded-xl py-3 text-center text-muted-foreground">Warte auf <b className="text-foreground">{cur?.name}</b></p>}
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -237,7 +272,7 @@ function Play({ room, game: s, me, online, canAct, act }: Props) {
   );
 }
 
-function Controls({ s, options, me, act, hints }: { s: BluffState; options: Options; me: string | null; act: (a: BluffAction) => void; hints: boolean }) {
+function Controls({ s, options, me, act, hints, desk }: { s: BluffState; options: Options; me: string | null; act: (a: BluffAction) => void; hints: boolean; desk?: boolean }) {
   const can = turnOptions(s, options);
   const last = lastBid(s);
   const total = totalDice(s);
@@ -253,6 +288,39 @@ function Controls({ s, options, me, act, hints }: { s: BluffState; options: Opti
   const low = face ? minCount(s, face, options) : null;
   const valid = face !== null && low !== null && count >= low && count <= total;
   const chance = hints && me && valid ? bidChance(s, me, { count, face: face! }, options) : null;
+  const call = (type: "doubt" | "exact") => {
+    vibrate(20);
+    if (s.table) { setAsking(type); return; }
+    act({ type });
+  };
+  const pickFace = (f: number) => {
+    const m = minCount(s, f, options);
+    if (m === null) return;
+    vibrate(5);
+    setFace(f);
+    setCount((c) => (f === face ? c : m));
+  };
+  const send = () => { if (valid) { vibrate(12); act({ type: "bid", count, face: face! }); } };
+
+  // Am Rechner: 1–6 Augenzahl, ↑/↓ Anzahl, Enter ansagen, B Bluff, G Genau; beim Nachzählen ↑/↓ und Enter, Esc zurück
+  useDeskKeys((e) => {
+    if (!desk) return;
+    const k = e.key.toLowerCase();
+    if (asking && last) {
+      if (k === "arrowup") setActual((a) => Math.min(total, a + 1));
+      else if (k === "arrowdown") setActual((a) => Math.max(0, a - 1));
+      else if (k === "enter") act({ type: asking, actual });
+      else if (k === "escape") setAsking(null);
+      return;
+    }
+    const f = Number(k);
+    if (f >= 1 && f <= 6) pickFace(f);
+    else if (k === "arrowup" && face) setCount((c) => Math.min(total, c + 1));
+    else if (k === "arrowdown" && face && low !== null) setCount((c) => Math.max(low, c - 1));
+    else if (k === "enter") send();
+    else if (k === "b" && last) call("doubt");
+    else if (k === "g" && last && can.exact && exactOf(options)) call("exact");
+  });
 
   if (asking && last) {
     return (
@@ -271,18 +339,6 @@ function Controls({ s, options, me, act, hints }: { s: BluffState; options: Opti
     );
   }
 
-  const call = (type: "doubt" | "exact") => {
-    vibrate(20);
-    if (s.table) { setAsking(type); return; }
-    act({ type });
-  };
-  const pickFace = (f: number) => {
-    const m = minCount(s, f, options);
-    if (m === null) return;
-    vibrate(5);
-    setFace(f);
-    setCount((c) => (f === face ? c : m));
-  };
 
   return (
     <section className="glass grid grid-cols-1 gap-2 rounded-2xl p-2.5">
@@ -307,7 +363,7 @@ function Controls({ s, options, me, act, hints }: { s: BluffState; options: Opti
         <Button size="icon" variant="secondary" aria-label="Anzahl verringern" disabled={!face || low === null || count <= low} onClick={() => setCount((c) => c - 1)}><Minus /></Button>
         <b className="w-8 text-center text-2xl tabular-nums" data-testid="bid-count">{count}</b>
         <Button size="icon" variant="secondary" aria-label="Anzahl erhöhen" disabled={!face || count >= total} onClick={() => setCount((c) => c + 1)}><Plus /></Button>
-        <Button size="lg" className="min-w-0 whitespace-nowrap" disabled={!valid} onClick={() => { vibrate(12); act({ type: "bid", count, face: face! }); }} data-testid="bid">
+        <Button size="lg" className="min-w-0 whitespace-nowrap" disabled={!valid} onClick={send} data-testid="bid">
           <span className="truncate">{valid ? `${count} × ${faceName(face!, count)}` : can.bid ? "Augenzahl wählen" : "Nicht zu überbieten"}</span>
         </Button>
       </div>
