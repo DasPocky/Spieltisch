@@ -498,3 +498,20 @@ test("Am Rechner (Skat): Hand unter dem Tisch, Reizen per Tastatur", async ({ br
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Palast): Tauschen und Tischkarten unter dem Tisch, fertig per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { palast: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "palast", "7878");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("swap")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gg-desk-palast");
+    // F: fertig getauscht – danach wartet Anna auf Ben oder die Partie beginnt
+    await page.keyboard.press("f");
+    await expect(area.getByTestId("swap-ready")).toBeDisabled();
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
