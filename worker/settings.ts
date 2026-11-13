@@ -1,4 +1,5 @@
 /** Ein einziges Durable Object für die Seite: Admin-Einstellungen und -Sitzungen, Raumverzeichnis, Statistik, Verlauf */
+import { cfTokenActive } from "./cfToken";
 import { renameStored } from "../shared/games/renamed";
 import { DurableObject } from "cloudflare:workers";
 import { GAMES, isGameId } from "../shared/games";
@@ -410,12 +411,10 @@ export class SiteSettings extends DurableObject<Env> {
     return { ...cfg, mode: fromEnv ? (env as UpdateMode) : cfg.mode, fromEnv };
   }
 
-  /** Ist DEPLOY_TOKEN noch gültig (nicht abgelaufen, nicht gelöscht)? */
+  /** Ist DEPLOY_TOKEN noch gültig (nicht abgelaufen, nicht gelöscht)? Account- und User-Tokens, siehe cfToken.ts */
   private async tokenOk(): Promise<boolean> {
     try {
-      const res = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", { headers: { authorization: `Bearer ${this.env.DEPLOY_TOKEN}` } });
-      const body = (await res.json().catch(() => null)) as { result?: { status?: string } } | null;
-      const ok = res.ok && body?.result?.status === "active";
+      const ok = await cfTokenActive(this.env.DEPLOY_TOKEN ?? "", this.env.CF_ACCOUNT_ID);
       if (!ok) await this.ctx.storage.put("releaseError", "DEPLOY_TOKEN ist ungültig oder abgelaufen – Updates gehen sofort live, bis ein neuer Schlüssel gesetzt ist.");
       else await this.ctx.storage.delete("releaseError");
       return ok;
