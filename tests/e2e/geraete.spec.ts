@@ -515,3 +515,24 @@ test("Am Rechner (Palast): Tauschen und Tischkarten unter dem Tisch, fertig per 
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Bluff): eigene Würfel offen unter dem Tisch, ansagen per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { bluff: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "bluff", "8989");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("status")).toBeVisible();
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    // Ist Anna dran: Augenzahl 3, Enter sagt die kleinste erlaubte Anzahl an – danach ist Ben dran
+    if (await area.getByTestId("bid").isVisible()) {
+      await expect(area.getByTestId("my-dice")).toBeVisible();
+      await shot(page, "gh-desk-bluff");
+      await page.keyboard.press("3");
+      await page.keyboard.press("Enter");
+      await expect(area.getByTestId("current-player")).toHaveText("Ben");
+    } else await shot(page, "gh-desk-bluff");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
