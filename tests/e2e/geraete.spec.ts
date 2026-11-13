@@ -433,3 +433,24 @@ test("Am Rechner (Glückssieben): eigene Reihe unter dem Tisch, „Noch eine!“
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Herzen): Hand unter dem Tisch, drei Karten per Tastatur weitergeben", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { herzen: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "herzen", "4343", ["Cem", "Dora"]);
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(13);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "gd-desk-herzen");
+    // Erste Runde: drei Karten nach links – 1, 2, 3 wählen, Enter gibt sie weiter
+    const status = area.getByTestId("status");
+    await expect(status).toContainText("Drei Karten für");
+    for (const k of ["1", "2", "3"]) await page.keyboard.press(k);
+    await expect(area.getByTestId("pass-go")).toBeEnabled();
+    await page.keyboard.press("Enter");
+    await expect(status).toContainText("Warte auf");
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});
