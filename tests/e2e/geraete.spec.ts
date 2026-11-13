@@ -454,3 +454,28 @@ test("Am Rechner (Herzen): Hand unter dem Tisch, drei Karten per Tastatur weiter
     await setConfig(request, ALL_ON);
   }
 });
+
+test("Am Rechner (Doppelkopf): Hand unter dem Tisch, Vorbehalt und Karten per Tastatur", async ({ browser, request }) => {
+  await setConfig(request, { ...ALL_ON, modes: { doppelkopf: { desk: "on" } } });
+  try {
+    const { page } = await deskGame(browser, "doppelkopf", "5454");
+    const area = page.getByTestId("desk-hand");
+    await expect(area.getByTestId("hand").locator("button")).toHaveCount(12);
+    await expectNoScroll(page);
+    await expectNamedControls(page);
+    await shot(page, "ge-desk-doppelkopf");
+    // Ist Anna mit dem Vorbehalt dran: S öffnet die Soli, Esc schließt sie, G sagt gesund
+    const status = area.getByTestId("status");
+    await expect(status).not.toHaveText("");
+    if (await area.getByTestId("reserve").isVisible()) {
+      await page.keyboard.press("s");
+      await expect(area.getByTestId("solo-list")).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(area.getByTestId("reserve")).toBeVisible();
+      await page.keyboard.press("g");
+      await expect(area.getByTestId("reserve")).toBeHidden();
+    }
+  } finally {
+    await setConfig(request, ALL_ON);
+  }
+});

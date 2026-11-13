@@ -57,7 +57,7 @@ export const GAME_MODES: Record<string, Partial<Record<PlayMode, ModeState>>> = 
   ankreuzspiel: { table: "beta" },
   palast: { table: "beta" },
   zahlenromme: { table: "beta" },
-  doppelkopf: { table: "beta" },
+  doppelkopf: { table: "beta", desk: "beta" },
   skat: { table: "beta" },
   klingel: { table: "beta" },
 };
