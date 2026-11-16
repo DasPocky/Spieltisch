@@ -10,19 +10,19 @@
  * Läuft im Browser (lokal) und im Durable Object (online). Zufall nur über shared/platform/random.
  */
 import { firstPlayerId } from "../../platform/turns";
-import { rollDice, shuffle } from "../../platform/random";
+import { randomCode, rollDice, shuffle } from "../../platform/random";
 import { GameError, type GameContext, type GameLogic, type Options, type Player } from "../../platform/types";
 
 // ── Karten ──────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface Suspect { id: string; name: string; short: string; color: string }
+export interface Suspect { id: string; name: string; short: string; color: string; /** Buchstabe auf der Figur */ mark: string }
 export const SUSPECTS: Suspect[] = [
-  { id: "graefin", name: "Gräfin von Lindenau", short: "Gräfin", color: "#8c2f45" },
-  { id: "kapitaen", name: "Kapitän Brandt", short: "Kapitän", color: "#27477d" },
-  { id: "doktor", name: "Doktor Seidel", short: "Doktor", color: "#6b6f78" },
-  { id: "rosa", name: "Fräulein Rosa Wendt", short: "Rosa", color: "#d9768f" },
-  { id: "gaertner", name: "Gärtner Hubert", short: "Gärtner", color: "#3f7d4a" },
-  { id: "koechin", name: "Köchin Martha", short: "Köchin", color: "#c08a2b" },
+  { id: "graefin", name: "Gräfin von Lindenau", short: "Gräfin", color: "#8c2f45", mark: "G" },
+  { id: "kapitaen", name: "Kapitän Brandt", short: "Kapitän", color: "#27477d", mark: "K" },
+  { id: "doktor", name: "Doktor Seidel", short: "Doktor", color: "#6b6f78", mark: "D" },
+  { id: "rosa", name: "Fräulein Rosa Wendt", short: "Rosa", color: "#d9768f", mark: "R" },
+  { id: "gaertner", name: "Gärtner Hubert", short: "Gärtner", color: "#3f7d4a", mark: "H" },
+  { id: "koechin", name: "Köchin Martha", short: "Köchin", color: "#c08a2b", mark: "M" },
 ];
 export const WEAPONS = [
   { id: "brief", name: "Brieföffner", with: "mit dem Brieföffner" },
@@ -135,6 +135,8 @@ export interface Suggestion {
 
 export interface SpState {
   v: 1;
+  /** Kennung dieser Partie (z. B. für den Notizblock auf dem Gerät) */
+  gid: string;
   phase: "move" | "moving" | "suggest" | "refute" | "after" | "over";
   /** Spieler → Figur (Kennung aus SUSPECTS) */
   role: Record<string, string>;
@@ -343,7 +345,7 @@ export function newGame(players: Player[], options: Options, ctx?: Pick<GameCont
   const rooms = shuffle(ROOMS.map((_, i) => i));
   const weaponAt = Object.fromEntries(WEAPONS.map((w, i) => [w.id, rooms[i]]));
   const s: SpState = {
-    v: 1, phase: "move", role, token, weaponAt, hands, solution, curId: first, dice: null, movedFrom: null,
+    v: 1, gid: randomCode(8), phase: "move", role, token, weaponAt, hands, solution, curId: first, dice: null, movedFrom: null,
     summoned: [], out: [], pending: null, refuterId: null, history: [], seen: Object.fromEntries(ids.map((id) => [id, []])),
     lastShown: null, lastAccusation: null, winnerId: null, names: Object.fromEntries(players.map((p) => [p.id, p.name])),
     rules: rulesOf(options), n: 0, log: [],
@@ -527,12 +529,13 @@ export function botPlan(s: SpState, id: string): SpAction[] {
     if (rooms.length) return [{ type: "move", to: pickOf(rooms) }];
     const anyRoom = [...reach.keys()].filter(isRoom);
     if (anyRoom.length && Math.random() < 0.5) return [{ type: "move", to: pickOf(anyRoom) }];
-    // Sonst so nah wie möglich an einen offenen Raum
+    // Sonst so nah wie möglich an eine Tür eines offenen Raums (Luftlinie über die Felder reicht als Schätzung)
+    const doors = goals.flatMap((g) => DOORS[g]);
     let best: Pos | null = null, bestD = 999;
     for (const p of reach.keys()) {
       if (isRoom(p)) continue;
-      const trial = { ...s, token: { ...s.token, [me]: p } };
-      const d = Math.min(...goals.map((g) => distanceToRoom(trial, me, g)));
+      const r = Math.floor(p / SIZE), c = p % SIZE;
+      const d = Math.min(...doors.map(([dr, dc]) => Math.abs(dr - r) + Math.abs(dc - c)));
       if (d < bestD) { bestD = d; best = p; }
     }
     return best !== null ? [{ type: "move", to: best }] : [];

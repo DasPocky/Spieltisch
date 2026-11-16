@@ -37,6 +37,7 @@ import { Icon as PalastIcon } from "./palast/Icon";
 import { Icon as ZahlenrommeIcon } from "./zahlenromme/Icon";
 import { Icon as DoppelkopfIcon } from "./doppelkopf/Icon";
 import { Icon as SkatIcon } from "./skat/Icon";
+import { Icon as SpurensucheIcon } from "./spurensuche/Icon";
 import { Icon as KlingelIcon } from "./klingel/Icon";
 import { Icon as QuizIcon } from "./quiz/Icon";
 import { Icon as AllesIcon } from "./alles/Icon";
@@ -77,6 +78,7 @@ const ICONS: Record<GameId, Icon> = {
   zahlenromme: ZahlenrommeIcon,
   doppelkopf: DoppelkopfIcon,
   skat: SkatIcon,
+  spurensuche: SpurensucheIcon,
   klingel: KlingelIcon,
   quiz: QuizIcon,
   alles: AllesIcon,
@@ -116,6 +118,7 @@ const LOADERS: Record<GameId, () => Promise<GameUI>> = {
   zahlenromme: () => import("./zahlenromme").then((m) => m.zahlenrommeUI as unknown as GameUI),
   doppelkopf: () => import("./doppelkopf").then((m) => m.doppelkopfUI as unknown as GameUI),
   skat: () => import("./skat").then((m) => m.skatUI as unknown as GameUI),
+  spurensuche: () => import("./spurensuche").then((m) => m.spurensucheUI as unknown as GameUI),
   klingel: () => import("./klingel").then((m) => m.klingelUI as unknown as GameUI),
   quiz: () => import("./quiz").then((m) => m.quizUI as unknown as GameUI),
   alles: () => import("./alles").then((m) => m.allesUI as unknown as GameUI),

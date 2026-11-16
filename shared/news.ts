@@ -15,6 +15,16 @@ export interface NewsEntry {
 
 export const NEWS: NewsEntry[] = [
   {
+    id: "2026-11-spurensuche",
+    date: "2026-11-16",
+    title: "Neues Brettspiel: Spurensuche",
+    items: [
+      "Mord im Landhaus: Wer war es, womit und wo? Drei Karten liegen verdeckt – wer sie als Erster richtig nennt, gewinnt. Für 3 bis 6, fehlende Plätze spielen Bots.",
+      "Würfeln und durch die Flure ziehen, Geheimgänge zwischen den Ecken, in jedem Raum ein Verdacht. Reihum zeigt der Erste mit einer passenden Karte genau eine – nur dir.",
+      "Der Notizblock streicht eigene und gezeigte Karten selbst. Eine Anklage pro Spiel: falsch heißt raus, gezeigt wird trotzdem weiter. Online, an einem Handy für alle und mit Vorlesen.",
+    ],
+  },
+  {
     id: "2026-11-skat",
     date: "2026-11-04",
     title: "Neues Kartenspiel: Skat",

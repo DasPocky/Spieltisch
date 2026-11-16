@@ -30,6 +30,7 @@ import type { WbState } from "../games/werbinich/logic";
 import { inPlay as shInPlay, type ShState } from "../games/schocken/logic";
 import { readyFruit as klReady, type KlState } from "../games/klingel/logic";
 import { pendingWhite as akPending, type AkState } from "../games/ankreuzspiel/logic";
+import { botPlan as spPlan, spurensuche as spLogic, view as spView, type SpState } from "../games/spurensuche/logic";
 import { lastBid as blLast, minCount as blMin, totalDice as blTotal, type BluffState } from "../games/bluff/logic";
 import { applyRoomAction, currentPlayerId, roomGame, type RoomAction, type RoomState } from "./room";
 import { GameError } from "./types";
@@ -509,6 +510,14 @@ export function candidates(r: RoomState, online: boolean): Move[] {
       for (const value of MAEX_ORDER.slice(from, from + 4)) add({ type: "announce", value });
       add({ type: "announce", value: pick(MAEX_ORDER) });
       if (!last || last.value === 21 || Math.random() < 0.4) { add({ type: "reveal" }); add({ type: "reveal", truth: Math.random() < 0.5 }); }
+      break;
+    }
+    case "spurensuche": {
+      // Nur mit eigenem Wissen: Sicht des Bots, Plan aus der Logik (sicher anklagen, offene Räume, Unbekanntes verdächtigen)
+      const s = r.game as SpState;
+      // Handeln kann nur, wer dran ist bzw. gerade widerlegt
+      const who = [spLogic.currentPlayerId(s)].filter((x): x is string => !!x);
+      for (const id of who) for (const a of spPlan(spView(s, id), id)) moves.push({ action: g(a as { type: string } & Record<string, unknown>), actor: online ? id : null });
       break;
     }
     case "ludo": {
