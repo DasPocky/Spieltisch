@@ -141,6 +141,17 @@ test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Kar
   await free.click();
   await expect(free).toHaveText("✗");
 
+  // Legende und eigene Notizen
+  await expect(anna.getByTestId("legend")).toContainText("hat sie nicht");
+  await anna.getByTestId("text-open").click();
+  await anna.getByTestId("text-area").fill("Cem fragt dauernd nach dem Weinkeller");
+  await anna.getByTestId("text-save").click();
+  await expect(anna.getByTestId("text-open")).toContainText("•");
+  await anna.getByTestId("text-open").click();
+  await expect(anna.getByTestId("text-area")).toHaveValue("Cem fragt dauernd nach dem Weinkeller");
+  await shot(anna, "spurensuche-eigene-notiz");
+  await anna.getByTestId("text-save").click();
+
   // Kleines Handy passt auch
   await ben.setViewportSize({ width: 360, height: 640 });
   await expectNoScroll(ben);

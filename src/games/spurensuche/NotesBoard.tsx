@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCheck, ListPlus, PenLine, Trash2, Trophy, UserRound } from "lucide-react";
+import { CheckCheck, ListPlus, NotebookPen, PenLine, Trash2, Trophy, UserRound } from "lucide-react";
 import type { SpAction, SpState } from "@shared/games/spurensuche/logic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ export function NotesBoard({ room, game: s, me, isHost, act }: Props) {
   const self = me ?? notes.self;
   const auto = useMemo(() => infer({ ...notes, self }, cards, order), [notes, self, cards, order]);
   const sol = useMemo(() => solutionOf(cards, auto, order), [cards, auto, order]);
-  const [sheet, setSheet] = useState<null | "mine" | "entry" | "names" | "finish" | "self">(null);
+  const [sheet, setSheet] = useState<null | "mine" | "entry" | "names" | "finish" | "self" | "text">(null);
   const short = (id: string) => (id === self ? "Ich" : (players.find((p) => p.id === id)?.name ?? "?").slice(0, 4));
   const name = (id: string) => players.find((p) => p.id === id)?.name ?? "?";
 
@@ -57,12 +57,22 @@ export function NotesBoard({ room, game: s, me, isHost, act }: Props) {
         <RulesSheet gameId={room.gameId} />
       </div>
 
-      <div className="grid shrink-0 grid-cols-4 gap-1.5">
-        <Button size="sm" variant="secondary" onClick={() => setSheet(self ? "mine" : "self")} data-testid="mine-open"><UserRound className="size-4" />{self ? "Meine" : "Ich bin …"}</Button>
-        <Button size="sm" onClick={() => setSheet("entry")} disabled={!self} data-testid="entry-open"><ListPlus className="size-4" />Verdacht</Button>
-        <Button size="sm" variant="secondary" onClick={() => setSheet("names")} data-testid="names-open"><PenLine className="size-4" />Namen</Button>
-        {isHost || me === null ? <Button size="sm" variant="secondary" onClick={() => setSheet("finish")} data-testid="finish-open"><Trophy className="size-4" />Gelöst</Button> : <span />}
+      <div className="grid shrink-0 grid-cols-[1fr_1fr_1fr_auto_auto] gap-1.5">
+        <Button size="sm" variant="secondary" className="px-2" onClick={() => setSheet(self ? "mine" : "self")} data-testid="mine-open"><UserRound className="size-4" />{self ? "Meine" : "Ich bin …"}</Button>
+        <Button size="sm" className="px-2" onClick={() => setSheet("entry")} disabled={!self} data-testid="entry-open"><ListPlus className="size-4" />Verdacht</Button>
+        <Button size="sm" variant="secondary" className="px-2" onClick={() => setSheet("text")} data-testid="text-open"><NotebookPen className="size-4" />Notiz{notes.text?.trim() ? " •" : ""}</Button>
+        <Button size="sm" variant="secondary" className="px-2.5" onClick={() => setSheet("names")} data-testid="names-open" aria-label="Kartennamen anpassen" title="Kartennamen anpassen"><PenLine className="size-4" /></Button>
+        {isHost || me === null ? <Button size="sm" variant="secondary" className="px-2.5" onClick={() => setSheet("finish")} data-testid="finish-open" aria-label="Fall gelöst" title="Fall gelöst"><Trophy className="size-4" /></Button> : <span />}
       </div>
+
+      {/* Legende */}
+      <p className="flex shrink-0 flex-wrap items-center justify-center gap-x-2.5 gap-y-0.5 text-[0.7rem] text-muted-foreground" data-testid="legend">
+        <span><b className="text-[#a8454f]">✗</b> hat sie nicht</span>
+        <span><b className="text-[#2f8a4a]">✓</b> hat sie</span>
+        <span><b className="text-[#27477d]">?</b> vielleicht</span>
+        <span className="flex items-center gap-1"><span className="inline-block size-3 rounded-sm bg-black/[0.08] ring-1 ring-black/10" />von der App</span>
+        <span className="flex items-center gap-1"><span className="inline-block size-3 rounded-sm bg-[#ffe9a8]" />Lösung</span>
+      </p>
 
       {/* Der Zettel */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-paper p-1.5 text-paper-ink shadow-md" data-testid="sheet">
@@ -99,6 +109,7 @@ export function NotesBoard({ room, game: s, me, isHost, act }: Props) {
       <EntrySheet open={sheet === "entry"} onClose={() => setSheet(null)} cards={cards} order={order} self={self} name={name} log={notes.log}
         onAdd={(e) => setNotes({ ...notes, log: [...notes.log, e] })} onRemove={(id) => setNotes({ ...notes, log: notes.log.filter((x) => x.id !== id) })} />
       <NamesSheet open={sheet === "names"} onClose={() => setSheet(null)} cards={cards} onChange={setCards} />
+      <TextSheet open={sheet === "text"} onClose={() => setSheet(null)} text={notes.text ?? ""} onChange={(text) => setNotes({ ...notes, text })} />
       <FinishSheet open={sheet === "finish"} onClose={() => setSheet(null)} players={players} onFinish={(w) => { setSheet(null); act({ type: "finish", winner: w }); }} />
     </div>
   );
@@ -228,6 +239,19 @@ function NamesSheet({ open, onClose, cards, onChange }: { open: boolean; onClose
         <Button variant="secondary" onClick={() => setDraft(DEFAULT_CARDS)}>Zurücksetzen</Button>
         <Button onClick={() => { onChange(draft.filter((c) => c.name.trim()).map((c) => ({ ...c, name: c.name.trim() }))); onClose(); }} data-testid="names-save">Speichern</Button>
       </div>
+    </Shell>
+  );
+}
+
+function TextSheet({ open, onClose, text, onChange }: { open: boolean; onClose: () => void; text: string; onChange: (t: string) => void }) {
+  const [draft, setDraft] = useState(text);
+  useEffect(() => { if (open) setDraft(text); }, [open, text]);
+  return (
+    <Shell open={open} onClose={() => { onChange(draft); onClose(); }} title="Eigene Notizen" desc="Alles, was nicht in die Tabelle passt – bleibt nur auf deinem Handy.">
+      <textarea value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000} rows={8} data-testid="text-area" aria-label="Eigene Notizen"
+        placeholder="z. B. Cem fragt dauernd nach dem Weinkeller …"
+        className="w-full resize-none rounded-xl bg-paper p-3 text-sm text-paper-ink ring-1 ring-inset ring-black/10 outline-none focus-visible:ring-[3px] focus-visible:ring-ring" />
+      <Button onClick={() => { onChange(draft); onClose(); }} data-testid="text-save"><CheckCheck className="size-4" />Speichern</Button>
     </Shell>
   );
 }

@@ -31,6 +31,8 @@ export interface Notes {
   /** Handeinträge: Karte → Spieler → Zeichen */
   marks: Record<string, Record<string, Mark>>;
   log: Entry[];
+  /** freie eigene Notizen */
+  text?: string;
 }
 export const emptyNotes = (self: string | null): Notes => ({ self, mine: [], marks: {}, log: [] });
 
