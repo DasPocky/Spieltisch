@@ -184,13 +184,19 @@ export async function handleSets(request: Request, env: Env, url: URL): Promise<
   return json({ error: "Nicht gefunden." }, 404);
 }
 
-/** Bilder der Kartensets ausliefern – nur mit dem genauen (nicht erratbaren) Namen */
+/**
+ * Bilder der Kartensets ausliefern – nur mit dem genauen Namen (rund 100 Bit Zufall, nicht erratbar, gelöschte Sets
+ * nehmen ihre Bilder mit). Bewusst ohne Signatur: die Namen stehen im Spielstand jedes Raums, am Fernseher und in den
+ * Tisch-Texturen; ablaufende Signaturen dort wären viel Umbau für wenig Gewinn (docs/betrieb.md, „Sicherheit“).
+ * Nur der Browser darf zwischenspeichern, keine geteilten Zwischenspeicher; Suchmaschinen nehmen nichts auf.
+ */
 export async function serveSetImage(env: Env, key: string): Promise<Response> {
   const obj = env.FILES ? await env.FILES.get(key) : null;
   if (!obj) return new Response("Nicht gefunden.", { status: 404 });
   return new Response(obj.body, { headers: {
     "content-type": obj.httpMetadata?.contentType ?? "application/octet-stream",
-    "cache-control": "public, max-age=31536000, immutable",
+    "cache-control": "private, max-age=31536000, immutable",
+    "x-robots-tag": "noindex, nofollow, noimageindex",
     "x-content-type-options": "nosniff",
     "content-security-policy": "default-src 'none'",
   } });

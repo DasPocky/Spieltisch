@@ -71,6 +71,7 @@ Zwei getrennte Account-Tokens mit gleichem Recht, damit ein geleakter GitHub-Sec
 - **Host:** Wer den Raum erstellt, ist Host. Entfernte Spieler kommen nur mit neuem Beitritt per PIN zurück.
 - **Eingaben:** Jede Aktion wird auf dem Server geprüft, Nachrichten über 4 KB werden verworfen, der Chat ist begrenzt.
 - **Sprache und Video:** Das Token bleibt auf dem Server. Der Worker lässt nur Mitspieler desselben Raums Sitzungen anlegen und Spuren abholen. Ton und Bild werden nicht gespeichert.
+- **Bilder eigener Kartensets:** nur über ihren genauen Namen abrufbar (rund 100 Bit Zufall, der Ordner ist ein Hash der Profil-ID); gelöschte Sets und verwaiste Bilder verschwinden aus R2. Ausgeliefert mit `cache-control: private` (kein geteilter Zwischenspeicher) und `x-robots-tag: noindex`. Bewusst ohne ablaufende Signatur: Wer ein Bild einmal in einem Raum gesehen hat, kann es weiter abrufen, bis das Set gelöscht ist. Signaturen müssten in jeden Spielstand, an den Fernseher und in die Tisch-Texturen – zu viel Umbau für wenig Gewinn.
 - **Admin:** Passwort nur als Secret, Vergleich in konstanter Zeit, nach 8 Fehlversuchen 10 Minuten Pause. Sitzungen gelten 30 Tage (höchstens 20 gleichzeitig) und enden mit „Abmelden“ sofort. Zuschauen läuft über eine eigene WebSocket-Verbindung, die der Worker erst nach Prüfung des Sitzungs-Tokens an den Raum weiterreicht; sie kann nur lesen. Anmelden, Zuschauen und jeder Eingriff landen im **Protokoll der Verwaltung** (nur was und wann – keine Inhalte, PINs oder Chat; die letzten 200).
 
 ## Datenhaltung
