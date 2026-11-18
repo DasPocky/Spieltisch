@@ -305,6 +305,8 @@ const SCENARIOS: [string, number, Record<string, unknown>][] = [
   ["ludo", 4, { startField: "free", end: "all" }],
   ["ludo", 6, { board: "6", end: "all", mustHit: true }],
   ["ludo", 5, { board: "6", start: "home" }],
+  ["spurensuche", 3, {}],
+  ["spurensuche", 6, { dice: "1", autoShow: false }],
   ["vier", 2, {}],
   ["vier", 2, { size: "9x7" }],
   ["muehle", 2, {}],

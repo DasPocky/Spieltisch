@@ -32,7 +32,7 @@ export function Games() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-[max(1rem,2.5vh)] pb-3">
       <h1 className="text-2xl font-bold tracking-tight">Spiele</h1>
-      <p className="games-sub mt-0.5 text-sm text-muted-foreground">{games.length} Spiele – antippen für Regeln und Start</p>
+      <p className={cn("games-sub mt-0.5 text-sm text-muted-foreground", games.length > 36 && "games-many")}>{games.length} Spiele – antippen für Regeln und Start</p>
       <div className="no-scrollbar -mx-4 mt-3 flex shrink-0 gap-1.5 overflow-x-auto px-4" role="tablist" aria-label="Kategorie">
         {[null, ...cats].map((c) => (
           <button key={c ?? "alle"} type="button" role="tab" aria-selected={cat === c} onClick={() => setCat(c)}
@@ -43,7 +43,7 @@ export function Games() {
         ))}
       </div>
       {/* Ab 25 Spielen fünf Spalten, ab 31 sechs; ab 26 ohne Spielerzahl (steht im Infoblatt) */}
-      <ul className={cn("games-grid mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]", wide ? "grid-cols-6 gap-1" : dense ? "grid-cols-5 gap-1.5" : "grid-cols-4", shown.length > 25 && "games-tight")} data-testid="game-grid">
+      <ul className={cn("games-grid mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]", wide ? "grid-cols-6 gap-1" : dense ? "grid-cols-5 gap-1.5" : "grid-cols-4", shown.length > 25 && "games-tight", shown.length > 36 && "games-many")} data-testid="game-grid">
         {shown.map(({ id, info, Icon }) => (
           <li key={id}>
             <button type="button" onClick={() => setOpen(id)} data-testid={`game-${id}`}
