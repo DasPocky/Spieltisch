@@ -22,6 +22,7 @@ export const NEWS: NewsEntry[] = [
       "Mord im Landhaus: Wer war es, womit und wo? Drei Karten liegen verdeckt – wer sie als Erster richtig nennt, gewinnt. Für 3 bis 6, fehlende Plätze spielen Bots.",
       "Würfeln und durch die Flure ziehen, Geheimgänge zwischen den Ecken, in jedem Raum ein Verdacht. Reihum zeigt der Erste mit einer passenden Karte genau eine – nur dir.",
       "Der Notizblock streicht eigene und gezeigte Karten selbst. Eine Anklage pro Spiel: falsch heißt raus, gezeigt wird trotzdem weiter. Online, an einem Handy für alle und mit Vorlesen.",
+      "Am echten Brett: Mit „Echtes Brettspiel“ wird jedes Handy zum Notizblock – eigene Karten markieren, Verdachte eintragen, die App kreuzt an und zeigt die Lösung, sobald sie feststeht. Kartennamen lassen sich wie in der eigenen Schachtel anpassen.",
     ],
   },
   {

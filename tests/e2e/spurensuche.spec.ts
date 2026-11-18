@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, expectNoScroll, joinRoom, newPhone, shot, startLocal } from "./util";
+import { closeSettings, createRoom, expectNoScroll, joinRoom, newPhone, openSettings, shot, startLocal } from "./util";
 
 /**
  * Ein Schritt am Handy für alle: Sichtschutz weg, würfeln, ziehen (lieber in einen Raum), verdächtigen,
@@ -101,4 +101,53 @@ test("Spurensuche online mit drei Handys: jeder sieht nur seine Karten, wer dran
   await expect(cur.getByTestId("status")).not.toContainText("gewürfelt");
   await expectNoScroll(cur);
   await shot(cur, "spurensuche-online");
+});
+
+test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Karten, Verdacht eintragen, App kreuzt an", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const anna = await newPhone(browser), ben = await newPhone(browser), cem = await newPhone(browser);
+  const code = await createRoom(anna, "spurensuche", "Anna", "5858");
+  await openSettings(anna);
+  await anna.getByRole("radio", { name: /Echtes Brettspiel/ }).click();
+  await closeSettings(anna);
+  await joinRoom(ben, code, "Ben", "5858");
+  await joinRoom(cem, code, "Cem", "5858");
+  await expect(anna.getByText("Cem", { exact: true }).first()).toBeVisible();
+  await anna.getByRole("button", { name: "Spiel starten" }).click();
+  for (const p of [anna, ben, cem]) await expect(p.getByTestId("sheet")).toBeVisible();
+  await expect(anna.getByTestId("house")).toHaveCount(0);
+  await expectNoScroll(anna);
+  await shot(anna, "spurensuche-notizblock-leer");
+
+  // Meine Karten: drei antippen – sie fallen weg
+  await anna.getByTestId("mine-open").click();
+  for (const c of ["s:graefin", "w:gift", "r:turm"]) await anna.getByTestId(`mine-${c}`).click();
+  await anna.getByTestId("mine-done").click();
+  await expect(anna.getByTestId("row-s:graefin")).toHaveClass(/line-through/);
+
+  // Verdacht: ich frage, Ben zeigt mir den Seidenschal
+  await anna.getByTestId("entry-open").click();
+  for (const c of ["s:doktor", "w:schal", "r:kaminhalle"]) await anna.getByTestId(`e-${c}`).click();
+  await anna.locator("[data-testid^='shower-']").first().click();
+  await anna.getByTestId("shown-w:schal").click();
+  await shot(anna, "spurensuche-verdacht-eintragen");
+  await anna.getByTestId("entry-save").click();
+  await expect(anna.getByTestId("row-w:schal")).toHaveClass(/line-through/);
+  await expectNoScroll(anna);
+  await shot(anna, "spurensuche-notizblock");
+
+  // Hand-Eintrag in einer leeren Zelle: ✗, ✓, ?
+  const free = anna.locator("[data-testid^='cell-r:weinkeller-']").last();
+  await free.click();
+  await expect(free).toHaveText("✗");
+
+  // Kleines Handy passt auch
+  await ben.setViewportSize({ width: 360, height: 640 });
+  await expectNoScroll(ben);
+  await shot(ben, "spurensuche-notizblock-klein");
+
+  // Spielleitung: Fall gelöst
+  await anna.getByTestId("finish-open").click();
+  await anna.locator("[data-testid^='winner-']").first().click();
+  await expect(anna.getByRole("button", { name: "Nochmal spielen" })).toBeVisible();
 });

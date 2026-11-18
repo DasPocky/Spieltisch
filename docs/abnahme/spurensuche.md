@@ -22,4 +22,5 @@ Stand: November 2026. Neues Spiel (Kategorie Brett). Eigenes Setting, eigene Fig
 | Nichts bleibt hängen: Überspringen beim Widerlegen und im Zug, Spieler verlässt die Partie | `tests/unit/spurensuche.test.ts`, `tests/unit/simulate.test.ts` |
 | Bots: ganze Partien zu Ende, nur mit eigenem Wissen, klagen erst sicher an | `tests/unit/spurensuche.test.ts` |
 | Ein Handy für alle: Sichtschutz (auch beim Widerlegen), würfeln, ziehen, verdächtigen, Notizblock, ohne Scrollen auf 390×844 und 360×640 | `tests/e2e/spurensuche.spec.ts` |
+| Echtes Brettspiel: keine Karten und Züge in der App, Notizblock je Handy (eigene Karten, Verdachte, Folgerungen, Lösung, eigene Kartennamen), Spielleitung beendet mit Sieger | `tests/unit/spurensuche-notes.test.ts`, `tests/e2e/spurensuche.spec.ts` |
 | Offen | Tisch-Ansicht mit Brett in 3D, Bühne, „Am Rechner“, Spielstärke der Bots, Abnahme am echten Fernseher |

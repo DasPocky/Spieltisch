@@ -30,6 +30,8 @@ function Rules() {
         <P><B>Wer:</B> {SUSPECTS.map((x) => x.name).join(", ")}.</P>
         <P><B>Womit:</B> {WEAPONS.map((x) => x.name).join(", ")}.</P>
         <P><B>Wo:</B> {ROOMS.map((x) => x.name).join(", ")}.</P>
+        <h3 className="mt-4 font-semibold">Am echten Brett</h3>
+        <P>Einstellung <B>„Echtes Brettspiel“</B>: Ihr spielt mit Brett, Würfeln und Karten am Tisch – jedes Handy ist der eigene <B>Notizblock</B> mit einer Spalte je Mitspieler. Unter <B>„Meine“</B> markierst du deine Karten, unter <B>„Verdacht“</B> trägst du ein, wer gefragt hat, was, wer nichts hatte und wer gezeigt hat. Die App kreuzt daraus selbst an und hebt die Lösung gelb hervor, sobald sie feststeht. Unter <B>„Namen“</B> benennst du die Karten so wie in eurer Schachtel.</P>
         <h3 className="mt-4 font-semibold">In der App</h3>
         <P>Der <B>Notizblock</B> streicht deine eigenen und alle dir gezeigten Karten selbst; weitere Vermutungen markierst du mit ✗, ? oder ✓. Online sieht jeder nur seine Karten. An einem Handy für alle reicht ihr es weiter – auch zum Widerlegen. Hat jemand nur eine passende Karte, zeigt die App sie von selbst (abschaltbar).</P>
       </section>
@@ -38,6 +40,7 @@ function Rules() {
 }
 
 function HeaderExtra({ game: s }: BoardProps<SpState, SpAction>) {
+  if (s.phase === "notes" || s.rules?.real) return null;
   return (
     <span className="rounded-full bg-secondary px-3 py-1 text-sm whitespace-nowrap text-muted-foreground ring-1 ring-inset ring-border">
       <b className="text-foreground tabular-nums">{s.history.length}</b> {s.history.length === 1 ? "Verdacht" : "Verdachte"}

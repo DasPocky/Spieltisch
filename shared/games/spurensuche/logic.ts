@@ -137,7 +137,8 @@ export interface SpState {
   v: 1;
   /** Kennung dieser Partie (z. B. für den Notizblock auf dem Gerät) */
   gid: string;
-  phase: "move" | "moving" | "suggest" | "refute" | "after" | "over";
+  /** „notes“: echtes Brettspiel am Tisch, die App ist nur der Notizblock */
+  phase: "move" | "moving" | "suggest" | "refute" | "after" | "over" | "notes";
   /** Spieler → Figur (Kennung aus SUSPECTS) */
   role: Record<string, string>;
   /** Figur → Position (alle sechs Figuren stehen auf dem Brett, auch ohne Spieler) */
@@ -183,16 +184,20 @@ export type SpAction =
   | { type: "noSuggest" }
   | { type: "show"; card: Card }
   | { type: "accuse"; suspect: string; weapon: string; room: number }
-  | { type: "end" };
+  | { type: "end" }
+  /** Echtes Brettspiel: der Fall ist gelöst (Sieger) bzw. ungelöst (null) – nur die Spielleitung */
+  | { type: "finish"; winner: string | null };
 
 export interface Rules {
+  /** Gespielt wird am echten Brett, die App ist nur der Notizblock */
+  real: boolean;
   /** Würfel: zwei (Original) oder einer (kürzere Wege, langsamer) */
   dice: 1 | 2;
   /** Mitspieler zeigen: Wer nur eine passende Karte hat, zeigt sie automatisch */
   autoShow: boolean;
 }
 export function rulesOf(o: Options): Rules {
-  return { dice: o.dice === "1" ? 1 : 2, autoShow: o.autoShow !== false };
+  return { real: o.board === "real", dice: o.dice === "1" ? 1 : 2, autoShow: o.autoShow !== false };
 }
 
 const MAX_LOG = 80;
@@ -350,6 +355,15 @@ export function newGame(players: Player[], options: Options, ctx?: Pick<GameCont
     lastShown: null, lastAccusation: null, winnerId: null, names: Object.fromEntries(players.map((p) => [p.id, p.name])),
     rules: rulesOf(options), n: 0, log: [],
   };
+  if (s.rules.real) {
+    // Am echten Brett: keine Karten und keine Züge in der App – nur der Notizblock je Handy
+    s.hands = Object.fromEntries(ids.map((id) => [id, []]));
+    s.solution = null;
+    s.phase = "notes";
+    s.curId = null;
+    push(s, "Gespielt wird am echten Brett – das Handy ist euer Notizblock.");
+    return s;
+  }
   push(s, `Ein Mord im Landhaus! ${nameOf(s, first)} beginnt.`);
   return s;
 }
@@ -364,6 +378,16 @@ export function apply(prev: SpState, a: SpAction, ctx: GameContext): SpState {
   s.n++;
   const cur = s.curId;
   const me = s.role[cur ?? ""];
+
+  if (s.phase === "notes") {
+    if (a.type !== "finish") throw new GameError("Am echten Brett führt die App keine Züge.");
+    if (a.winner !== null && !s.role[a.winner]) throw new GameError("Unbekannter Spieler.");
+    s.winnerId = a.winner;
+    s.phase = "over";
+    push(s, a.winner ? `${nameOf(s, a.winner)} hat den Fall gelöst!` : "Der Fall bleibt ungelöst.");
+    return s;
+  }
+  if (a.type === "finish") throw new GameError("Das geht nur am echten Brett.");
 
   switch (a.type) {
     case "roll": {
@@ -564,28 +588,35 @@ export const spurensuche: GameLogic<SpState, SpAction> = {
   version: 1,
   settings: [
     {
-      key: "dice", label: "Würfel", type: "choice", default: "2",
+      key: "board", label: "Spielbrett", type: "choice", default: "app",
+      choices: [
+        { value: "app", label: "In der App", hint: "Brett, Würfel und Karten auf dem Handy" },
+        { value: "real", label: "Echtes Brettspiel", hint: "ihr spielt am Tisch – jedes Handy ist der Notizblock" },
+      ],
+    },
+    {
+      key: "dice", label: "Würfel", type: "choice", default: "2", showIf: (o) => o.board !== "real",
       choices: [
         { value: "2", label: "Zwei", hint: "wie im Original" },
         { value: "1", label: "Einer", hint: "kürzere Schritte, mehr Taktik" },
       ],
     },
-    { key: "autoShow", label: "Nur eine passende Karte: automatisch zeigen", type: "toggle", default: true },
+    { key: "autoShow", label: "Nur eine passende Karte: automatisch zeigen", type: "toggle", default: true, showIf: (o) => o.board !== "real" },
   ],
   turnBased: true,
   ownTurnsOnly: true,
   joinMidGame: false,
   setup: (ctx) => newGame(ctx.players, ctx.options, ctx),
-  actionKind: (a) => (a.type === "show" ? "player" : ["roll", "passage", "stay", "move", "suggest", "noSuggest", "accuse", "end"].includes(a.type) ? "turn" : null),
+  actionKind: (a) => (a.type === "finish" ? "host" : a.type === "show" ? "player" : ["roll", "passage", "stay", "move", "suggest", "noSuggest", "accuse", "end"].includes(a.type) ? "turn" : null),
   apply,
   currentPlayerId: (s) => (s.phase === "refute" ? s.refuterId : s.phase === "over" ? null : s.curId),
   isOver: (s) => s.phase === "over",
   results: (s, ctx) => ctx.players.filter((p) => s.role[p.id]).map((p) => ({ id: p.id, won: p.id === s.winnerId })),
   view,
-  skipLabel: (s) => (s.phase === "refute" && s.refuterId ? `Für ${s.names[s.refuterId]} eine Karte zeigen`
+  skipLabel: (s) => (s.phase === "notes" ? null : s.phase === "refute" && s.refuterId ? `Für ${s.names[s.refuterId]} eine Karte zeigen`
     : s.phase !== "over" && s.curId ? `${s.names[s.curId]} überspringen` : null),
   skipTurn(prev) {
-    if (prev.phase === "over") return prev;
+    if (prev.phase === "over" || prev.phase === "notes") return prev;
     const s = structuredClone(prev);
     if (s.phase === "refute" && s.refuterId && s.pending) {
       const m = matching(s, s.refuterId, s.pending);
@@ -600,6 +631,7 @@ export const spurensuche: GameLogic<SpState, SpAction> = {
   },
   onPlayerRemoved(prev, id, ctx) {
     if (prev.phase === "over" || !prev.role[id]) return prev;
+    if (prev.phase === "notes") { const s = structuredClone(prev); delete s.role[id]; delete s.hands[id]; return s; }
     const s = structuredClone(prev);
     s.n++;
     // Karten des Gehenden werden aufgedeckt an alle verteilt bekannt: wir geben sie reihum weiter

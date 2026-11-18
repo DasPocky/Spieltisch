@@ -16,6 +16,7 @@ import { speak } from "@/platform/speech";
 import { readStr, writeStr } from "@/lib/storage";
 import { cn, vibrate } from "@/lib/utils";
 import { narration } from "./narration";
+import { NotesBoard } from "./NotesBoard";
 
 type Props = BoardProps<SpState, SpAction>;
 const nameIn = (s: SpState, id: string | null | undefined) => (id ? s.names[id] ?? "?" : "?");
@@ -23,6 +24,7 @@ const nameIn = (s: SpState, id: string | null | undefined) => (id ? s.names[id] 
 export function Board(props: Props) {
   useNarration(props);
   if (props.game.phase === "over") return <Result {...props} />;
+  if (props.game.phase === "notes") return <NotesBoard {...props} />;
   return <Play {...props} />;
 }
 
