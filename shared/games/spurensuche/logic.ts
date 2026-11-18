@@ -169,6 +169,8 @@ export interface SpState {
   /** Letzte Anklage */
   lastAccusation: { by: string; suspect: string; weapon: string; room: number; right: boolean; n: number } | null;
   winnerId: string | null;
+  /** Echtes Brettspiel: Kartennamen der eigenen Schachtel, von der Spielleitung für alle im Raum gesetzt */
+  cardNames?: CardNames | null;
   names: Record<string, string>;
   rules: Rules;
   n: number;
@@ -186,7 +188,19 @@ export type SpAction =
   | { type: "accuse"; suspect: string; weapon: string; room: number }
   | { type: "end" }
   /** Echtes Brettspiel: der Fall ist gelöst (Sieger) bzw. ungelöst (null) – nur die Spielleitung */
-  | { type: "finish"; winner: string | null };
+  | { type: "finish"; winner: string | null }
+  /** Echtes Brettspiel: Kartennamen für alle im Raum (je Gruppe eine Liste) – nur die Spielleitung */
+  | { type: "names"; names: CardNames };
+
+/** Kartennamen je Gruppe: Personen, Werkzeuge, Räume (je 1–15, höchstens 30 Zeichen) */
+export interface CardNames { s: string[]; w: string[]; r: string[] }
+export function cleanCardNames(x: unknown): CardNames | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as Record<string, unknown>;
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter((n): n is string => typeof n === "string").map((n) => n.trim().slice(0, 30)).filter(Boolean).slice(0, 15) : []);
+  const out = { s: list(o.s), w: list(o.w), r: list(o.r) };
+  return out.s.length && out.w.length && out.r.length ? out : null;
+}
 
 export interface Rules {
   /** Gespielt wird am echten Brett, die App ist nur der Notizblock */
@@ -379,6 +393,13 @@ export function apply(prev: SpState, a: SpAction, ctx: GameContext): SpState {
   const cur = s.curId;
   const me = s.role[cur ?? ""];
 
+  if (s.phase === "notes" && a.type === "names") {
+    const names = cleanCardNames(a.names);
+    if (!names) throw new GameError("Jede Gruppe braucht mindestens einen Namen.");
+    s.cardNames = names;
+    push(s, "Die Spielleitung hat die Kartennamen für alle eingetragen.");
+    return s;
+  }
   if (s.phase === "notes") {
     if (a.type !== "finish") throw new GameError("Am echten Brett führt die App keine Züge.");
     if (a.winner !== null && !s.role[a.winner]) throw new GameError("Unbekannter Spieler.");
@@ -517,10 +538,19 @@ export function lacks(s: SpState): Record<string, Set<Card>> {
 /** Offene Kandidaten je Art aus Sicht eines Spielers */
 export function candidatesFor(s: SpState, id: string): { suspects: string[]; weapons: string[]; rooms: number[] } {
   const known = knownCards(s, id);
+  // Öffentlich: wer bei einem Verdacht nichts zeigen konnte, hat keine der drei Karten.
+  // Hat also kein Mitspieler eine Karte und ich auch nicht, liegt sie in der Lösung.
+  const miss = lacks(s);
+  const others = seatOrder(s).filter((x) => x !== id);
+  const surely = (c: Card) => !known.has(c) && others.length > 0 && others.every((o) => miss[o]?.has(c));
+  const narrow = <T,>(all: T[], card: (x: T) => Card): T[] => {
+    const sure = all.find((x) => surely(card(x)));
+    return sure !== undefined ? [sure] : all.filter((x) => !known.has(card(x)));
+  };
   return {
-    suspects: SUSPECTS.filter((x) => !known.has(sCard(x.id))).map((x) => x.id),
-    weapons: WEAPONS.filter((x) => !known.has(wCard(x.id))).map((x) => x.id),
-    rooms: ROOMS.map((_, i) => i).filter((i) => !known.has(rCard(i))),
+    suspects: narrow(SUSPECTS.map((x) => x.id), sCard),
+    weapons: narrow(WEAPONS.map((x) => x.id), wCard),
+    rooms: narrow(ROOMS.map((_, i) => i), rCard),
   };
 }
 
@@ -607,7 +637,7 @@ export const spurensuche: GameLogic<SpState, SpAction> = {
   ownTurnsOnly: true,
   joinMidGame: false,
   setup: (ctx) => newGame(ctx.players, ctx.options, ctx),
-  actionKind: (a) => (a.type === "finish" ? "host" : a.type === "show" ? "player" : ["roll", "passage", "stay", "move", "suggest", "noSuggest", "accuse", "end"].includes(a.type) ? "turn" : null),
+  actionKind: (a) => (a.type === "finish" || a.type === "names" ? "host" : a.type === "show" ? "player" : ["roll", "passage", "stay", "move", "suggest", "noSuggest", "accuse", "end"].includes(a.type) ? "turn" : null),
   apply,
   currentPlayerId: (s) => (s.phase === "refute" ? s.refuterId : s.phase === "over" ? null : s.curId),
   isOver: (s) => s.phase === "over",
