@@ -7,7 +7,26 @@ const Sheet = (props: React.ComponentProps<typeof SheetPrimitive.Root>) => <Shee
 const SheetTrigger = (props: React.ComponentProps<typeof SheetPrimitive.Trigger>) => <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
 const SheetClose = (props: React.ComponentProps<typeof SheetPrimitive.Close>) => <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
 
-function SheetContent({ className, children, ...props }: React.ComponentProps<typeof SheetPrimitive.Content>) {
+/**
+ * Höhe der Bildschirmtastatur (Handy): der Teil des Fensters, den der sichtbare Bereich unten nicht mehr zeigt.
+ * Blätter rücken darüber, damit Eingabefelder nicht verdeckt werden.
+ */
+function useKeyboardInset(): number {
+  const [inset, setInset] = React.useState(0);
+  React.useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
+  }, []);
+  return inset > 60 ? inset : 0;
+}
+
+function SheetContent({ className, children, style, ...props }: React.ComponentProps<typeof SheetPrimitive.Content>) {
+  const kb = useKeyboardInset();
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-navy-950/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
@@ -18,6 +37,7 @@ function SheetContent({ className, children, ...props }: React.ComponentProps<ty
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=closed]:duration-200 data-[state=open]:duration-300",
           className,
         )}
+        style={kb ? { ...style, bottom: kb, maxHeight: `calc(100dvh - ${kb}px - 0.75rem)` } : style}
         {...props}
       >
         <div className="mx-auto mt-3 h-1.5 w-11 shrink-0 rounded-full bg-border" />

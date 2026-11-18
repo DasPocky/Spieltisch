@@ -150,7 +150,22 @@ test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Kar
   await anna.getByTestId("text-open").click();
   await expect(anna.getByTestId("text-area")).toHaveValue("Cem fragt dauernd nach dem Weinkeller");
   await shot(anna, "spurensuche-eigene-notiz");
+  // Tastatur auf (nachgestellt: der sichtbare Bereich wird 320 px kleiner) – das Notizfeld bleibt darüber sichtbar
+  await anna.evaluate(() => {
+    const vv = window.visualViewport!;
+    Object.defineProperty(vv, "height", { configurable: true, get: () => window.innerHeight - 320 });
+    vv.dispatchEvent(new Event("resize"));
+  });
+  const vh = await anna.evaluate(() => window.innerHeight);
+  await expect.poll(async () => { const b = await anna.getByTestId("text-area").boundingBox(); return b ? b.y + b.height : 9999; }).toBeLessThanOrEqual(vh - 320);
+  await expect(anna.getByTestId("text-save")).toBeInViewport();
+  await shot(anna, "spurensuche-notiz-tastatur");
   await anna.getByTestId("text-save").click();
+  await anna.evaluate(() => {
+    const vv = window.visualViewport!;
+    Object.defineProperty(vv, "height", { configurable: true, get: () => window.innerHeight });
+    vv.dispatchEvent(new Event("resize"));
+  });
 
   // Namen wie in der eigenen Schachtel – als Liste
   await anna.getByTestId("names-open").click();

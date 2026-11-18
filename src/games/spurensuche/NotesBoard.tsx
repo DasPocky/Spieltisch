@@ -143,7 +143,7 @@ function Shell({ open, onClose, title, desc, children }: { open: boolean; onClos
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent>
         <SheetHeader><SheetTitle>{title}</SheetTitle><SheetDescription>{desc}</SheetDescription></SheetHeader>
-        <div className="grid gap-2 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</div>
+        <div className="grid min-h-0 gap-2 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</div>
       </SheetContent>
     </Sheet>
   );
@@ -283,7 +283,7 @@ function TextSheet({ open, onClose, text, onChange }: { open: boolean; onClose: 
   useEffect(() => { if (open) setDraft(text); }, [open, text]);
   return (
     <Shell open={open} onClose={() => { onChange(draft); onClose(); }} title="Eigene Notizen" desc="Alles, was nicht in die Tabelle passt – bleibt nur auf deinem Handy.">
-      <textarea value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000} rows={8} data-testid="text-area" aria-label="Eigene Notizen"
+      <textarea value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000} rows={6} data-testid="text-area" aria-label="Eigene Notizen"
         placeholder="z. B. Cem fragt dauernd nach dem Weinkeller …"
         className="w-full resize-none rounded-xl bg-paper p-3 text-sm text-paper-ink ring-1 ring-inset ring-black/10 outline-none focus-visible:ring-[3px] focus-visible:ring-ring" />
       <Button onClick={() => { onChange(draft); onClose(); }} data-testid="text-save"><CheckCheck className="size-4" />Speichern</Button>
