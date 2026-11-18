@@ -217,6 +217,15 @@ describe("Spurensuche: nichts bleibt hängen", () => {
       expect(s.winnerId).not.toBeNull();
     }
   });
+  it("Bots werten aus, wer nichts zeigen konnte: niemand widerlegt und ich habe nichts davon → Lösung", () => {
+    let s = rig(start(), { p0: ["s:graefin"], p1: ["s:kapitaen"], p2: ["s:rosa"], p3: ["s:gaertner"] });
+    s = structuredClone(s); s.curId = "p0"; s.token[s.role.p0] = roomPos(4); s.phase = "suggest";
+    s = act(s, { type: "suggest", suspect: "doktor", weapon: "gift" });
+    expect(s.history.at(-1)!.shownBy).toBeNull();
+    const c = candidatesFor(spurensuche.view!(s, "p0"), "p0");
+    expect(c).toEqual({ suspects: ["doktor"], weapons: ["gift"], rooms: [4] });
+    expect(botPlan(spurensuche.view!(s, "p0"), "p0")[0]).toEqual({ type: "accuse", suspect: "doktor", weapon: "gift", room: 4 });
+  });
   it("Bots klagen erst an, wenn sie sicher sind", () => {
     const s = start();
     const id = s.curId!;

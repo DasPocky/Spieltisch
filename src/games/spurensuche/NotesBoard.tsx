@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCheck, ListPlus, NotebookPen, PenLine, Trash2, Trophy, UserRound } from "lucide-react";
 import type { SpAction, SpState } from "@shared/games/spurensuche/logic";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,22 @@ function useStored<T>(key: string, fallback: () => T): [T, (v: T) => void] {
 export function NotesBoard({ room, game: s, me, isHost, act }: Props) {
   const players = room.players.filter((p) => s.role[p.id]);
   const order = players.map((p) => p.id);
-  const [cards, setCards] = useStored<NoteCard[]>(NAMES_KEY, () => DEFAULT_CARDS);
+  const [deviceCards, setDeviceCards] = useStored<NoteCard[]>(NAMES_KEY, () => DEFAULT_CARDS);
+  const leader = isHost || me === null;
+  // Namen für alle: setzt die Spielleitung im Raum – sonst gelten die eigenen auf diesem Gerät
+  const roomCards = useMemo(() => (s.cardNames ? fromLists(DEFAULT_CARDS, { s: s.cardNames.s.join("\n"), w: s.cardNames.w.join("\n"), r: s.cardNames.r.join("\n") }, 0) : null), [s.cardNames]);
+  const cards = roomCards ?? deviceCards;
+  const sendNames = (cs: NoteCard[]) => act({ type: "names", names: { s: cs.filter((c) => c.group === "s").map((c) => c.name), w: cs.filter((c) => c.group === "w").map((c) => c.name), r: cs.filter((c) => c.group === "r").map((c) => c.name) } });
+  const setCards = (cs: NoteCard[]) => { setDeviceCards(cs); if (leader && me !== null) sendNames(cs); };
+  // Die Spielleitung bringt ihre gespeicherten Namen in jede neue Partie mit
+  const sent = useRef(false);
+  useEffect(() => {
+    if (sent.current || !leader || me === null || s.cardNames) return;
+    if (JSON.stringify(deviceCards.map((c) => c.name)) === JSON.stringify(DEFAULT_CARDS.map((c) => c.name))) return;
+    sent.current = true;
+    sendNames(deviceCards);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leader, me, s.cardNames, deviceCards]);
   const [notes, setNotes] = useStored<Notes>(`spieltisch:notes:spurensuche:${s.gid}:${me ?? "lokal"}`, () => emptyNotes(me));
   const self = me ?? notes.self;
   const auto = useMemo(() => infer({ ...notes, self }, cards, order), [notes, self, cards, order]);
@@ -108,7 +123,7 @@ export function NotesBoard({ room, game: s, me, isHost, act }: Props) {
       <MineSheet open={sheet === "mine"} onClose={() => setSheet(null)} cards={cards} mine={notes.mine} onChange={(mine) => setNotes({ ...notes, mine })} />
       <EntrySheet open={sheet === "entry"} onClose={() => setSheet(null)} cards={cards} order={order} self={self} name={name} log={notes.log}
         onAdd={(e) => setNotes({ ...notes, log: [...notes.log, e] })} onRemove={(id) => setNotes({ ...notes, log: notes.log.filter((x) => x.id !== id) })} />
-      <NamesSheet open={sheet === "names"} onClose={() => setSheet(null)} cards={cards} onChange={setCards} />
+      <NamesSheet open={sheet === "names"} onClose={() => setSheet(null)} cards={cards} onChange={setCards} shared={!!roomCards} leader={leader && me !== null} />
       <TextSheet open={sheet === "text"} onClose={() => setSheet(null)} text={notes.text ?? ""} onChange={(text) => setNotes({ ...notes, text })} />
       <FinishSheet open={sheet === "finish"} onClose={() => setSheet(null)} players={players} onFinish={(w) => { setSheet(null); act({ type: "finish", winner: w }); }} />
     </div>
@@ -215,7 +230,7 @@ function EntrySheet({ open, onClose, cards, order, self, name, log, onAdd, onRem
   );
 }
 
-function NamesSheet({ open, onClose, cards, onChange }: { open: boolean; onClose: () => void; cards: NoteCard[]; onChange: (c: NoteCard[]) => void }) {
+function NamesSheet({ open, onClose, cards, onChange, shared, leader }: { open: boolean; onClose: () => void; cards: NoteCard[]; onChange: (c: NoteCard[]) => void; shared: boolean; leader: boolean }) {
   const [draft, setDraft] = useState(cards);
   const [asList, setAsList] = useState(false);
   const listsOf = (cs: NoteCard[]) => Object.fromEntries((["s", "w", "r"] as Group[]).map((g) => [g, cs.filter((c) => c.group === g).map((c) => c.name).join("\n")])) as Record<Group, string>;
@@ -227,7 +242,10 @@ function NamesSheet({ open, onClose, cards, onChange }: { open: boolean; onClose
     onClose();
   };
   return (
-    <Shell open={open} onClose={onClose} title="Namen anpassen" desc="So heißen die Karten in eurer Schachtel? Einmal eintragen – das Handy merkt es sich.">
+    <Shell open={open} onClose={onClose} title="Namen anpassen"
+      desc={leader ? "So heißen die Karten in eurer Schachtel? Einmal eintragen – alle Handys im Raum bekommen sie, und dein Handy bringt sie in jede neue Partie mit."
+        : shared ? "Die Spielleitung hat die Namen für alle eingetragen. Was du hier änderst, gilt nur, wenn sie keine gesetzt hat."
+        : "So heißen die Karten in eurer Schachtel? Einmal eintragen – das Handy merkt es sich. Tipp: Trägt die Spielleitung sie ein, bekommen alle sie automatisch."}>
       <div className="grid grid-cols-2 gap-1.5" role="tablist" aria-label="Eingabe">
         <Chip on={!asList} onClick={() => { setAsList(false); }} testId="names-single">Einzeln</Chip>
         <Chip on={asList} onClick={() => { setLists(listsOf(draft)); setAsList(true); }} testId="names-list">Als Liste</Chip>

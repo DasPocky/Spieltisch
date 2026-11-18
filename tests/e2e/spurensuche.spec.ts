@@ -159,6 +159,9 @@ test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Kar
   await shot(anna, "spurensuche-namen-liste");
   await anna.getByTestId("names-save").click();
   await expect(anna.getByTestId("sheet")).toContainText("Wintergarten");
+  // … und die anderen Handys bekommen die Namen der Spielleitung automatisch
+  await expect(ben.getByTestId("sheet")).toContainText("Wintergarten");
+  await expect(cem.getByTestId("sheet")).toContainText("Billardzimmer");
 
   // Kleines Handy passt auch
   await ben.setViewportSize({ width: 360, height: 640 });
