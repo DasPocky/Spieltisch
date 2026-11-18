@@ -9,7 +9,7 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { readStr, writeStr } from "@/lib/storage";
 import { cn, vibrate } from "@/lib/utils";
 import {
-  between, cell, DEFAULT_CARDS, emptyNotes, GROUP_TITLE, infer, MARK_TEXT, nextMark, rowState, solutionOf, type Entry, type Group, type NoteCard, type Notes,
+  between, cell, DEFAULT_CARDS, emptyNotes, fromLists, GROUP_TITLE, infer, MARK_TEXT, nextMark, rowState, solutionOf, type Entry, type Group, type NoteCard, type Notes,
 } from "./notes";
 
 type Props = BoardProps<SpState, SpAction>;
@@ -217,12 +217,29 @@ function EntrySheet({ open, onClose, cards, order, self, name, log, onAdd, onRem
 
 function NamesSheet({ open, onClose, cards, onChange }: { open: boolean; onClose: () => void; cards: NoteCard[]; onChange: (c: NoteCard[]) => void }) {
   const [draft, setDraft] = useState(cards);
-  useEffect(() => { if (open) setDraft(cards); }, [open, cards]);
+  const [asList, setAsList] = useState(false);
+  const listsOf = (cs: NoteCard[]) => Object.fromEntries((["s", "w", "r"] as Group[]).map((g) => [g, cs.filter((c) => c.group === g).map((c) => c.name).join("\n")])) as Record<Group, string>;
+  const [lists, setLists] = useState<Record<Group, string>>(() => listsOf(cards));
+  useEffect(() => { if (open) { setDraft(cards); setLists(listsOf(cards)); setAsList(false); } }, [open, cards]);
   const add = (g: Group) => setDraft([...draft, { id: `${g}:eigen${Date.now()}`, group: g, name: "" }]);
+  const save = () => {
+    onChange(asList ? fromLists(cards, lists) : draft.filter((c) => c.name.trim()).map((c) => ({ ...c, name: c.name.trim() })));
+    onClose();
+  };
   return (
     <Shell open={open} onClose={onClose} title="Namen anpassen" desc="So heißen die Karten in eurer Schachtel? Einmal eintragen – das Handy merkt es sich.">
-      <div className="grid max-h-[60dvh] gap-2 overflow-y-auto">
-        {(["s", "w", "r"] as Group[]).map((g) => (
+      <div className="grid grid-cols-2 gap-1.5" role="tablist" aria-label="Eingabe">
+        <Chip on={!asList} onClick={() => { setAsList(false); }} testId="names-single">Einzeln</Chip>
+        <Chip on={asList} onClick={() => { setLists(listsOf(draft)); setAsList(true); }} testId="names-list">Als Liste</Chip>
+      </div>
+      <div className="grid max-h-[55dvh] gap-2 overflow-y-auto">
+        {(["s", "w", "r"] as Group[]).map((g) => asList ? (
+          <label key={g} className="grid gap-1">
+            <b className="text-xs text-muted-foreground">{GROUP_TITLE[g]} – eine Karte pro Zeile</b>
+            <textarea value={lists[g]} onChange={(e) => setLists({ ...lists, [g]: e.target.value })} rows={g === "r" ? 9 : 6} data-testid={`names-list-${g}`}
+              className="w-full resize-none rounded-xl bg-paper p-2 text-sm leading-snug text-paper-ink ring-1 ring-inset ring-black/10 outline-none focus-visible:ring-[3px] focus-visible:ring-ring" />
+          </label>
+        ) : (
           <div key={g} className="grid gap-1">
             <b className="text-xs text-muted-foreground">{GROUP_TITLE[g]}</b>
             {draft.filter((c) => c.group === g).map((c) => (
@@ -236,8 +253,8 @@ function NamesSheet({ open, onClose, cards, onChange }: { open: boolean; onClose
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="secondary" onClick={() => setDraft(DEFAULT_CARDS)}>Zurücksetzen</Button>
-        <Button onClick={() => { onChange(draft.filter((c) => c.name.trim()).map((c) => ({ ...c, name: c.name.trim() }))); onClose(); }} data-testid="names-save">Speichern</Button>
+        <Button variant="secondary" onClick={() => { setDraft(DEFAULT_CARDS); setLists(listsOf(DEFAULT_CARDS)); }}>Zurücksetzen</Button>
+        <Button onClick={save} data-testid="names-save">Speichern</Button>
       </div>
     </Shell>
   );

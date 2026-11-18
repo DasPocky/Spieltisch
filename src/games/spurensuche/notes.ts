@@ -125,3 +125,16 @@ export function between(order: string[], by: string, shower: string | null): str
   }
   return out;
 }
+
+/**
+ * Namen als Liste (eine Zeile je Karte) übernehmen: vorhandene Karten behalten ihre Kennung (Einträge bleiben),
+ * zusätzliche Zeilen werden neue Karten, fehlende fallen weg. Leere Liste lässt die Gruppe unverändert.
+ */
+export function fromLists(cards: NoteCard[], lists: Record<Group, string>, stamp = Date.now()): NoteCard[] {
+  return (["s", "w", "r"] as Group[]).flatMap((g) => {
+    const old = cards.filter((c) => c.group === g);
+    const names = lists[g].split(/[\n,;]/).map((x) => x.trim()).filter(Boolean).slice(0, 15);
+    if (!names.length) return old;
+    return names.map((name, i) => ({ id: old[i]?.id ?? `${g}:eigen${stamp}-${i}`, group: g, name: name.slice(0, 30) }));
+  });
+}

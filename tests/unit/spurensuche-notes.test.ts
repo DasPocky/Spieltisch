@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { spurensuche } from "@shared/games/spurensuche/logic";
 import type { Player } from "@shared/platform/types";
-import { between, DEFAULT_CARDS, emptyNotes, infer, rowState, solutionOf, type Notes } from "../../src/games/spurensuche/notes";
+import { between, DEFAULT_CARDS, emptyNotes, fromLists, infer, rowState, solutionOf, type Notes } from "../../src/games/spurensuche/notes";
 
 const P = ["a", "b", "c", "d"];
 const base = (): Notes => ({ ...emptyNotes("a"), mine: ["s:graefin", "w:gift", "r:turm"] });
@@ -54,5 +54,15 @@ describe("Spurensuche-Notizblock (echtes Brett)", () => {
     s = spurensuche.apply(s, { type: "finish", winner: "p1" }, ctx("p0"));
     expect(s.phase).toBe("over");
     expect(spurensuche.results!(s, ctx(null)).find((r) => r.won)?.id).toBe("p1");
+  });
+  it("Namen als Liste: eine Zeile je Karte, vorhandene Karten behalten ihre Kennung, leere Liste ändert nichts", () => {
+    const rooms = "Arbeitszimmer\nHalle\nSalon\nBibliothek\nSpeisezimmer\nBillardzimmer\nWintergarten\nMusikzimmer\nKüche";
+    const out = fromLists(DEFAULT_CARDS, { s: "", w: "Seil, Dolch", r: rooms }, 1);
+    expect(out.filter((c) => c.group === "s")).toEqual(DEFAULT_CARDS.filter((c) => c.group === "s"));
+    expect(out.filter((c) => c.group === "w").map((c) => c.name)).toEqual(["Seil", "Dolch"]);
+    const r = out.filter((c) => c.group === "r");
+    expect(r.map((c) => c.name)[0]).toBe("Arbeitszimmer");
+    expect(r[0].id).toBe(DEFAULT_CARDS.find((c) => c.group === "r")!.id);
+    expect(r).toHaveLength(9);
   });
 });

@@ -152,6 +152,14 @@ test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Kar
   await shot(anna, "spurensuche-eigene-notiz");
   await anna.getByTestId("text-save").click();
 
+  // Namen wie in der eigenen Schachtel – als Liste
+  await anna.getByTestId("names-open").click();
+  await anna.getByTestId("names-list").click();
+  await anna.getByTestId("names-list-r").fill("Arbeitszimmer\nHalle\nSalon\nBibliothek\nSpeisezimmer\nBillardzimmer\nWintergarten\nMusikzimmer\nKüche");
+  await shot(anna, "spurensuche-namen-liste");
+  await anna.getByTestId("names-save").click();
+  await expect(anna.getByTestId("sheet")).toContainText("Wintergarten");
+
   // Kleines Handy passt auch
   await ben.setViewportSize({ width: 360, height: 640 });
   await expectNoScroll(ben);
