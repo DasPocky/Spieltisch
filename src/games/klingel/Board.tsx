@@ -13,6 +13,7 @@ import { RulesSheet } from "@/platform/RulesSheet";
 import { playSound } from "@/platform/sound";
 import { speak } from "@/platform/speech";
 import { cn, vibrate } from "@/lib/utils";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { BellShape, CardBack, EmptySlot, FruitCard } from "./Fruit";
 import { narration } from "./narration";
 
@@ -112,7 +113,7 @@ function Flash({ e, who }: { e: RingEvent; who: (id: string) => string }) {
 }
 
 /** Online: eigene Karte unten, die offenen Karten aller in der Mitte, große Klingel */
-function Online({ room, game: s, me, online, canAct, act, isHost }: Props) {
+function Online({ room, game: s, me, online, canAct, act, isHost, desk }: Props) {
   const players = room.players;
   const who = (id: string | null | undefined) => (id === me ? "Du" : nameIn(players, s, id));
   const toLocal = useLocalClock(s);
@@ -135,6 +136,39 @@ function Online({ room, game: s, me, online, canAct, act, isHost }: Props) {
     playSound("bell");
     act({ type: "ring", seq: s.seq, rt });
   };
+  const flip = () => { if (!myTurn) return; vibrate(8); act({ type: "flip" }); };
+
+  // Am Rechner: Leertaste klingelt, A deckt auf
+  useDeskKeys((e) => {
+    if (!desk) return;
+    if (e.key === " ") { e.preventDefault(); ring(); }
+    else if (e.key.toLowerCase() === "a") flip();
+  });
+
+  if (desk) {
+    return (
+      <div className="relative mx-auto flex w-full max-w-3xl flex-col gap-2">
+        <p className="text-center text-base" data-testid="kl-status">
+          {s.ring ? <b>Klingel!</b> : s.curId === me ? <b>Du deckst auf</b> : <><b>{who(s.curId)}</b> <span className="text-muted-foreground">deckt auf</span></>}
+          {s.auto && <span className="text-muted-foreground"> · im Takt</span>}
+          <span className="text-sm text-muted-foreground tabular-nums" data-testid="kl-mine">{me ? ` · ${s.stock[me]?.length ?? 0} verdeckt` : ""}</span>
+        </p>
+        {flash && <Flash e={flash} who={who} />}
+        <div className="grid grid-cols-[12rem_1fr] items-stretch gap-3">
+          <Button variant={myTurn ? "default" : "secondary"} className="h-auto flex-col gap-1 py-3" disabled={!myTurn} onClick={flip} data-testid="kl-flip"
+            aria-label={myTurn ? "Karte aufdecken" : "Aufdecken – du bist nicht dran"}>
+            <Layers className="size-6" /><span>Aufdecken <kbd className="text-xs opacity-60">A</kbd></span>
+          </Button>
+          <button type="button" onPointerDown={(e) => { e.preventDefault(); ring(); }} disabled={!mine} aria-label="Klingeln" data-testid="kl-bell"
+            className={cn("bell-btn relative flex items-center justify-center gap-4 rounded-3xl bg-paper py-2 shadow-lg ring-1 ring-black/5 outline-none select-none focus-visible:ring-4 focus-visible:ring-ring disabled:opacity-40",
+              rang === s.seq && "bell-hit")}>
+            <BellShape className="h-28 w-auto" down={rang === s.seq} />
+            <span className="text-lg font-bold text-paper-ink">{late ? "Zu spät!" : rang === s.seq ? (s.ring ? "Geklingelt …" : "Geklingelt") : <>Klingeln <kbd className="text-xs font-normal opacity-60">Leertaste</kbd></>}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col gap-2 pt-1 pb-[calc(0.6rem+env(safe-area-inset-bottom))]">
@@ -154,7 +188,7 @@ function Online({ room, game: s, me, online, canAct, act, isHost }: Props) {
       {flash && <Flash e={flash} who={who} />}
       <div className="flex shrink-0 items-center gap-3">
         <div className="flex w-[30%] flex-col items-center gap-1">
-          <Button variant={myTurn ? "default" : "secondary"} className="h-auto w-full flex-col gap-0.5 py-2" disabled={!myTurn} onClick={() => { vibrate(8); act({ type: "flip" }); }} data-testid="kl-flip"
+          <Button variant={myTurn ? "default" : "secondary"} className="h-auto w-full flex-col gap-0.5 py-2" disabled={!myTurn} onClick={flip} data-testid="kl-flip"
             aria-label={myTurn ? "Karte aufdecken" : "Aufdecken – du bist nicht dran"}>
             <Layers className="size-5" /><span className="text-sm leading-tight">Aufdecken</span>
           </Button>

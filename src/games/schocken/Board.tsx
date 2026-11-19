@@ -11,6 +11,7 @@ import { DiceTray } from "@/platform/dice3d/DiceTray";
 import { RollButton } from "@/platform/dice3d/RollButton";
 import { HintChip } from "@/platform/HintChip";
 import { Seats } from "@/platform/Seats";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { ResultScreen } from "@/platform/ResultScreen";
 import { RulesSheet } from "@/platform/RulesSheet";
 import { SmoothText } from "@/platform/SmoothText";
@@ -73,7 +74,7 @@ function Result({ room, game: s, isHost, dispatch }: Props) {
   return <ResultScreen winner={win.join(" & ")} subtitle={subtitle} ranking={ranking} isHost={isHost} dispatch={dispatch} scoreLabel="Deckel" />;
 }
 
-function Play({ room, game: s, me, online, canAct, act }: Props) {
+function Play({ room, game: s, me, online, canAct, act, desk }: Props) {
   const players = room.players;
   const local = me === null;
   const hints = useHints();
@@ -96,6 +97,35 @@ function Play({ room, game: s, me, online, canAct, act }: Props) {
     };
   });
 
+  const bottom = (
+    <>
+    {roundEnd ? (
+      <RoundEnd s={s} who={who} act={act} />
+    ) : s.table ? (
+      canAct ? <Tally s={s} players={players} act={act} /> : <Waiting text={<>Am Tisch wird gewürfelt – <b className="text-foreground">{cur}</b> tippt ein</>} />
+    ) : canAct ? (
+      <Controls key={`${s.curId}-${s.round}`} s={s} options={room.options} me={s.curId!} act={act} hints={hints} name={local ? cur : null} desk={desk} />
+    ) : (
+      <section className="glass rounded-2xl p-2.5">
+        <DiceTray values={s.dice} held={s.held} rollKey={`${s.n}-${s.curId}-${s.throws}`} className="h-24" empty={`${cur} würfelt gleich`} />
+        <p className="mt-1.5 text-center text-sm text-muted-foreground">Warte auf <b className="text-foreground">{cur}</b></p>
+      </section>
+    )}
+    </>
+  );
+
+  // Am Rechner: Enter zur nächsten Runde (Würfel-Tasten stecken in Controls)
+  useDeskKeys((e) => { if (desk && roundEnd && e.key === "Enter") act({ type: "next" }); });
+
+  if (desk) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
+        <p className="text-center text-base" data-testid="round"><b>{HALF_NAME(s.half)}</b> <span className="text-muted-foreground">· Runde {s.round}{s.phase === "roll" && !roundEnd ? ` · ${who(s.curId)} ${who(s.curId) === "Du" ? "würfelst" : "würfelt"}` : ""}</span></p>
+        {bottom}
+      </div>
+    );
+  }
+
   return (
     <>
       <Seats me={me} online={online} seats={seats} />
@@ -109,18 +139,7 @@ function Play({ room, game: s, me, online, canAct, act }: Props) {
         <Middle s={s} who={who} order={order} />
       </div>
       <div className="shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {roundEnd ? (
-          <RoundEnd s={s} who={who} act={act} />
-        ) : s.table ? (
-          canAct ? <Tally s={s} players={players} act={act} /> : <Waiting text={<>Am Tisch wird gewürfelt – <b className="text-foreground">{cur}</b> tippt ein</>} />
-        ) : canAct ? (
-          <Controls key={`${s.curId}-${s.round}`} s={s} options={room.options} me={s.curId!} act={act} hints={hints} name={local ? cur : null} />
-        ) : (
-          <section className="glass rounded-2xl p-2.5">
-            <DiceTray values={s.dice} held={s.held} rollKey={`${s.n}-${s.curId}-${s.throws}`} className="h-24" empty={`${cur} würfelt gleich`} />
-            <p className="mt-1.5 text-center text-sm text-muted-foreground">Warte auf <b className="text-foreground">{cur}</b></p>
-          </section>
-        )}
+        {bottom}
       </div>
     </>
   );
@@ -196,7 +215,7 @@ function Middle({ s, who, order }: { s: ShState; who: (id: string | null | undef
   );
 }
 
-function Controls({ s, options, me, act, hints, name }: { s: ShState; options: Props["room"]["options"]; me: string; act: (a: ShAction) => void; hints: boolean; name: string | null }) {
+function Controls({ s, options, me, act, hints, name, desk }: { s: ShState; options: Props["room"]["options"]; me: string; act: (a: ShAction) => void; hints: boolean; name: string | null; desk?: boolean }) {
   const can = turnOptions(s, options);
   const rolled = s.dice.length === 3;
   const plan = hints && rolled ? suggest(s, me, options) : null;
@@ -206,9 +225,18 @@ function Controls({ s, options, me, act, hints, name }: { s: ShState; options: P
     : s.turned ? "Die zweite Sechs muss zurück in den Becher – würfle."
     : can.left <= 0 ? "Keine Würfe mehr – lass stehen."
     : "Antippen zum Herauslegen";
+  // Am Rechner: Leertaste/W würfeln, 1–3 herauslegen, S stehen lassen, D Sechsen drehen
+  useDeskKeys((e) => {
+    if (!desk) return;
+    const k = e.key.toLowerCase();
+    if ((k === " " || k === "w") && can.roll && can.left > 0) { e.preventDefault(); act({ type: "roll" }); }
+    else if (["1", "2", "3"].includes(k) && can.hold && rolled) act({ type: "hold", i: Number(k) - 1 });
+    else if (k === "s" && rolled && can.stop) act({ type: "stop" });
+    else if (k === "d" && can.turn) act({ type: "turn" });
+  });
   return (
     <section className="glass rounded-2xl p-2.5">
-      <DiceTray values={s.dice} held={s.held} hint={hint} rollKey={`${s.n}-${s.curId}-${s.throws}`} canToggle={can.hold} onToggle={(i) => act({ type: "hold", i })}
+      <DiceTray values={s.dice} held={s.held} hint={hint} still={desk} rollKey={`${s.n}-${s.curId}-${s.throws}`} canToggle={can.hold} onToggle={(i) => act({ type: "hold", i })}
         className="h-24" label="Würfel – antippen zum Herauslegen" onThrow={can.roll ? () => act({ type: "roll" }) : undefined} />
       <div className="mt-1.5 flex min-h-6 items-center justify-center text-center text-sm text-muted-foreground">
         {tip && !s.turned ? <HintChip>Tipp: {tip}</HintChip> : <span className="truncate"><SmoothText>{status}</SmoothText></span>}
@@ -228,6 +256,7 @@ function Controls({ s, options, me, act, hints, name }: { s: ShState; options: P
           </Button>
         )}
       </div>
+      {desk && <p className="mt-1.5 text-center text-xs text-muted-foreground">Tasten: Leertaste würfeln · 1–3 herauslegen · S stehen lassen{can.turn ? " · D drehen" : ""}</p>}
     </section>
   );
 }

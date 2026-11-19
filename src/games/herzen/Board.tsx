@@ -5,6 +5,7 @@ import type { Player } from "@shared/platform/types";
 import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { PlayingCard } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { Seats } from "@/platform/Seats";
@@ -18,6 +19,8 @@ import { cn, vibrate } from "@/lib/utils";
 
 type Props = BoardProps<HzState, HzAction>;
 const nameIn = (players: Player[], id: string | null | undefined) => players.find((p) => p.id === id)?.name ?? "?";
+/** Am Rechner: Tasten für die Karten der Hand (bis 13) */
+const CARD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "q", "w", "e"];
 
 export function Board(props: Props) {
   useNarration(props);
@@ -57,7 +60,7 @@ function Trick({ plays, players, me, winner, faded }: { plays: Play[]; players: 
   );
 }
 
-function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: Props) {
   const players = room.players;
   const local = me === null;
   const hints = useHints();
@@ -95,6 +98,63 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
     vibrate(10);
     act({ type: "play", card: c });
   };
+
+  const give = () => { if (sel.length !== 3) return; vibrate(10); act({ type: "pass", cards: sel, player: viewer ?? undefined }); setSel([]); };
+
+  // Am Rechner: Karte per Taste (1–9, 0, Q, W, E), beim Weitergeben wählen und mit Enter geben, V für den Vorschlag
+  useDeskKeys((e) => {
+    if (!desk) return;
+    const k = e.key.toLowerCase();
+    if (s.phase === "roundEnd") { if (k === "enter") act({ type: "nextRound" }); return; }
+    if (passing && k === "enter") return give();
+    if (passing && k === "v" && hints) return setSel(suggestPass(hand));
+    const c = hand[CARD_KEYS.indexOf(k)];
+    if (CARD_KEYS.includes(k) && c) onCard(c);
+  });
+
+  if (desk) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-center text-base">
+          <span data-testid="status" className={cn((myTurn || passing || s.phase === "roundEnd") && "font-semibold")}><SmoothText>{status}</SmoothText></span>
+          <span className="ml-3 text-sm text-muted-foreground tabular-nums">Runde {s.round}{s.phase === "play" ? ` · Stich ${s.trickNo + 1}` : s.phase === "pass" ? ` · ${DIR_NAME[s.dir]}` : ""} · {s.heartsBroken ? "Herz gebrochen" : "Herz noch zu"}</span>
+        </p>
+        {s.phase === "roundEnd" ? (
+          <div className="mx-auto grid w-full max-w-xl gap-2">
+            <RoundSummary s={s} players={players} me={me} />
+            <Button size="lg" onClick={() => act({ type: "nextRound" })}>Runde {s.round + 1} geben <kbd className="ml-1 text-xs opacity-60">Enter</kbd></Button>
+          </div>
+        ) : (
+          <>
+            <div className={cn("flex items-end justify-center", hand.length > 9 ? "gap-0" : "gap-1.5")} data-testid="hand">
+              {hand.map((c, i) => {
+                const ok = passing || playable(c);
+                const chosen = sel.includes(c);
+                return (
+                  <button key={c} type="button" disabled={!ok} data-card={c} onClick={() => onCard(c)} aria-pressed={passing ? chosen : undefined}
+                    title={myTurn && !ok ? whyNot(s, hand, c, room.options) ?? undefined : CARD_KEYS[i]?.toUpperCase()}
+                    className={cn("flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5 rounded-[11%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default xl:w-20",
+                      hand.length > 9 && i > 0 && "-ml-3 xl:-ml-4",
+                      myTurn && ok && "-translate-y-2 hover:-translate-y-4", chosen && "-translate-y-4", tip === c && "hint-glow")}>
+                    <PlayingCard card={c} dim={myTurn && !ok} className={cn("w-full", chosen && "rounded-[10%] ring-[3px] ring-primary", received.includes(c) && "rounded-[10%] ring-2 ring-ice")} />
+                    {CARD_KEYS[i] && <kbd className="text-xs uppercase opacity-60">{CARD_KEYS[i]}</kbd>}
+                  </button>
+                );
+              })}
+            </div>
+            {passing && (
+              <div className="mx-auto grid w-full max-w-xl grid-cols-[auto_1fr] gap-2">
+                {hints ? <Button size="lg" variant="secondary" onClick={() => setSel(suggestPass(hand))}>Vorschlag <kbd className="ml-1 text-xs opacity-60">V</kbd></Button> : <span />}
+                <Button size="lg" disabled={sel.length !== 3} data-testid="pass-go" onClick={give}>
+                  {sel.length === 3 ? `An ${nameIn(players, target)} geben` : `Noch ${3 - sel.length} ${3 - sel.length === 1 ? "Karte" : "Karten"} wählen`} <kbd className="ml-1 text-xs opacity-60">Enter</kbd>
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -166,8 +226,7 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
             {passing && (
               <div className="mt-2 grid grid-cols-[auto_1fr] gap-2">
                 {hints ? <Button size="lg" variant="secondary" onClick={() => setSel(suggestPass(hand))}>Vorschlag</Button> : <span />}
-                <Button size="lg" disabled={sel.length !== 3} data-testid="pass-go"
-                  onClick={() => { vibrate(10); act({ type: "pass", cards: sel, player: viewer ?? undefined }); setSel([]); }}>
+                <Button size="lg" disabled={sel.length !== 3} data-testid="pass-go" onClick={give}>
                   {sel.length === 3 ? `An ${nameIn(players, target)} geben` : `Noch ${3 - sel.length} ${3 - sel.length === 1 ? "Karte" : "Karten"} wählen`}
                 </Button>
               </div>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { BoardProps } from "@/games/types";
 import { useCountdown } from "@/platform/Countdown";
 import { dealDelay, Fan } from "@/platform/cards/Fan";
+import { useDeskKeys } from "@/platform/desk/keys";
 import { PlayingCard } from "@/platform/cards/PlayingCard";
 import { HandoffCover, useHandoff } from "@/platform/Handoff";
 import { HintChip } from "@/platform/HintChip";
@@ -22,6 +23,8 @@ import { cn, vibrate } from "@/lib/utils";
 
 type Props = BoardProps<DkState, DkAction>;
 const partyName = (p: Party) => (p === "re" ? "Re" : "Kontra");
+/** Am Rechner: Tasten für die Karten der Hand (bis 12) und die Soli */
+const CARD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "q", "w"];
 
 export function Board(props: Props) {
   useNarration(props);
@@ -79,7 +82,7 @@ function Trick({ plays, s, me, winner, faded, pictures }: { plays: Play[]; s: Dk
   );
 }
 
-function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
+function AppBoard({ room, game: s, me, online, canAct, act, desk }: Props) {
   const local = me === null;
   const o = room.options;
   const hints = useHints();
@@ -129,6 +132,91 @@ function AppBoard({ room, game: s, me, online, canAct, act }: Props) {
     return p ? partyName(p) : "";
   };
   const shownOnline = online ? new Set([...online, ...s.ghosts]) : null;
+  const soloOk = o.solos !== false;
+  const callLabel = call && mine ? (call === 1 ? `${partyName(mine)} ansagen` : `${callName(mine, call).replace(/^./, (x) => x.toUpperCase())} absagen`) : "";
+
+  // Am Rechner: G gesund, H Hochzeit, S Soli (dann 1–9, 0, Q, W; Esc zurück), A an-/absagen, Karten 1–9, 0, Q, W, Enter nächste Runde
+  useDeskKeys((e) => {
+    if (!desk) return;
+    const k = e.key.toLowerCase();
+    if (s.phase === "roundEnd") { if (k === "enter") act({ type: "nextRound" }); return; }
+    if (k === "a" && call && mine) return doCall();
+    if (!myTurn) return;
+    if (s.phase === "reserve") {
+      if (soloOpen) {
+        if (k === "escape") setSoloOpen(false);
+        else if (SOLOS[CARD_KEYS.indexOf(k)] && CARD_KEYS.includes(k)) reserve(SOLOS[CARD_KEYS.indexOf(k)]);
+        return;
+      }
+      if (k === "g") reserve("gesund");
+      else if (k === "h" && !reserveWhyNot(s, viewer!, "hochzeit", o)) reserve("hochzeit");
+      else if (k === "s" && soloOk) setSoloOpen(true);
+      return;
+    }
+    const c = hand[CARD_KEYS.indexOf(k)];
+    if (CARD_KEYS.includes(k) && c) onCard(c);
+  });
+
+  if (desk) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-base">
+          <span data-testid="status" className={cn((myTurn || s.phase === "roundEnd") && "font-semibold")}><SmoothText>{status}</SmoothText></span>
+          <span className="text-sm text-muted-foreground" data-testid="contract">
+            {s.contract ? `${contractName(s.contract, o)}${s.soloist && s.contract !== "normal" ? ` · ${s.soloist === viewer ? "du" : s.names[s.soloist]}` : ""}` : "Vorbehalte"}
+            {mine && s.phase === "play" ? ` · du bist ${partyName(mine)}, braucht ${needText(needOf(s.calls, mine))}` : ""}
+            {` · ${s.phase === "play" ? `Stich ${Math.min(s.tricks.length + 1, s.handSize)}/${s.handSize}` : `Runde ${s.round}/${s.total}`}`}
+          </span>
+          {left !== null && <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ring-inset", left <= 10 ? "bg-destructive/15 text-destructive ring-destructive/40" : "bg-secondary ring-border")} data-testid="turn-timer" aria-label={`Zugzeit: noch ${left} Sekunden`}>{left}s</span>}
+        </p>
+        {s.phase === "roundEnd" ? (
+          <div className="mx-auto grid w-full max-w-2xl gap-2">
+            <RoundSummary s={s} me={me} />
+            <Button size="lg" onClick={() => act({ type: "nextRound" })}>Runde {s.round + 1} geben <kbd className="ml-1 text-xs opacity-60">Enter</kbd></Button>
+          </div>
+        ) : (
+          <>
+            <div className={cn("flex items-end justify-center", hand.length > 9 ? "gap-0" : "gap-1.5")} data-testid="hand">
+              {hand.map((c, i) => {
+                const ok = playable(c);
+                return (
+                  <button key={`${c}-${i}`} type="button" disabled={!ok} data-card={c} onClick={() => onCard(c)}
+                    title={myTurn && s.phase === "play" && !ok ? whyNot(s, hand, c) ?? undefined : CARD_KEYS[i]?.toUpperCase()}
+                    className={cn("flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5 rounded-[11%] outline-none transition focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-default xl:w-20",
+                      hand.length > 9 && i > 0 && "-ml-3 xl:-ml-4", ok && "-translate-y-2 hover:-translate-y-4", tip === c && hand.indexOf(c) === i && "hint-glow")}>
+                    <PlayingCard card={shownCard(c, o)} dim={myTurn && s.phase === "play" && !ok} className="w-full" />
+                    {CARD_KEYS[i] && <kbd className="text-xs uppercase opacity-60">{CARD_KEYS[i]}</kbd>}
+                  </button>
+                );
+              })}
+            </div>
+            {s.phase === "reserve" && myTurn ? (
+              !soloOpen ? (
+                <div className="mx-auto grid w-full max-w-xl grid-cols-3 gap-2" data-testid="reserve">
+                  <Button size="lg" onClick={() => reserve("gesund")} className={cn(tipReserve === "gesund" && "hint-glow")}>Gesund <kbd className="ml-1 text-xs opacity-60">G</kbd></Button>
+                  <Button size="lg" variant="secondary" disabled={!!reserveWhyNot(s, viewer!, "hochzeit", o)} onClick={() => reserve("hochzeit")} className={cn(tipReserve === "hochzeit" && "hint-glow")}>Hochzeit <kbd className="ml-1 text-xs opacity-60">H</kbd></Button>
+                  <Button size="lg" variant="secondary" disabled={!soloOk} onClick={() => setSoloOpen(true)} className={cn(tipReserve && isSolo(tipReserve) && "hint-glow")} data-testid="solo-open">Solo … <kbd className="ml-1 text-xs opacity-60">S</kbd></Button>
+                </div>
+              ) : (
+                <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-1.5" data-testid="solo-list">
+                  {SOLOS.map((id, i) => (
+                    <Button key={id} variant="secondary" onClick={() => reserve(id)} title={SOLO_HINT[id]} className={cn(tipReserve === id && "hint-glow")}>
+                      {contractName(id, o)} <kbd className="ml-1 text-xs uppercase opacity-60">{CARD_KEYS[i]}</kbd>
+                    </Button>
+                  ))}
+                  <Button variant="ghost" onClick={() => setSoloOpen(false)}>Zurück <kbd className="ml-1 text-xs opacity-60">Esc</kbd></Button>
+                </div>
+              )
+            ) : call && mine ? (
+              <div className="flex justify-center gap-2">
+                <Button variant={call === 1 ? "default" : "secondary"} onClick={doCall} data-testid="call" className={cn(callTip && "hint-glow")}>{callLabel} <kbd className="ml-1 text-xs opacity-60">A</kbd></Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
