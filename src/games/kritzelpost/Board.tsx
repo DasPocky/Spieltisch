@@ -264,7 +264,7 @@ function Album({ room, game: s, me, isHost, act, dispatch }: P) {
   const lastBook = at.book + 1 >= s.books.length;
   const move = (dir: 1 | -1) => {
     vibrate(8);
-    if (!over) { act({ type: "page", dir }); return; }
+    if (!over) { act({ type: "page", dir, from: { book: s.book, page: s.page } }); return; }
     setPos((p) => {
       if (dir === 1) return p.page + 1 < per ? { ...p, page: p.page + 1 } : p.book + 1 < s.books.length ? { book: p.book + 1, page: 0 } : p;
       return p.page > 0 ? { ...p, page: p.page - 1 } : p.book > 0 ? { book: p.book - 1, page: per - 1 } : p;

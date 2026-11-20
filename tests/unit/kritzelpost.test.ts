@@ -149,6 +149,25 @@ describe("Kritzelpost", () => {
     expect((viewRoom(r, "p2").game as KState).books.flat()).toHaveLength(9);
   });
 
+  it("Album: derselbe Tipp zweimal blättert nur eine Seite weiter, auch nicht über das Ende hinaus", () => {
+    let r = start(3);
+    for (let k = 0; k < 3; k++) r = stepAll(r);
+    const tap = { type: "page" as const, dir: 1 as const, from: { book: 0, page: 0 } };
+    r = game(r, tap, "p1");
+    r = game(r, tap, "p1");
+    expect(g(r).page).toBe(1);
+    for (let i = 0; i < 6; i++) r = game(r, { type: "page", dir: 1 }, "p1");
+    expect(g(r).book).toBe(2);
+    expect(g(r).page).toBe(1);
+    const end = { type: "page" as const, dir: 1 as const, from: { book: 2, page: 2 } };
+    r = game(r, { ...end, from: { book: 2, page: 1 } }, "p1");
+    r = game(r, { ...end, from: { book: 2, page: 1 } }, "p1");
+    expect(g(r).phase).toBe("album");
+    r = game(r, end, "p1");
+    r = game(r, end, "p1");
+    expect(g(r).phase).toBe("over");
+  });
+
   it("Eisbrecher: alle zeichnen zuerst denselben Satz, Ketten bleiben getrennt", () => {
     let r = start(4, { mode: "eisbrecher" });
     const s = g(r);

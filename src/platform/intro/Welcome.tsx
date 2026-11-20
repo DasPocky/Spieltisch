@@ -11,38 +11,46 @@ const MAX_MS = 3300;
 const QUICK_MS = 700;
 
 type Piece = { id: string; x: number; y: number; r: number; fx: number; fy: number; fr: number; delay: number; size: number };
-/** Papierteile: wo sie herkommen (fx, fy) und wo sie um das Logo liegen bleiben (x, y) */
+/** Spielsteine: woher sie aufsteigen (fx, fy) und wo sie um das Logo schweben bleiben (x, y) */
 const PIECES: Piece[] = [
-  { id: "card-a", x: -78, y: -62, r: -16, fx: -260, fy: -420, fr: -140, delay: 0, size: 62 },
-  { id: "card-b", x: 80, y: -58, r: 14, fx: 300, fy: -380, fr: 160, delay: 0.08, size: 58 },
-  { id: "die", x: -86, y: 56, r: 10, fx: -320, fy: 300, fr: 220, delay: 0.16, size: 50 },
-  { id: "pawn", x: 86, y: 60, r: -6, fx: 340, fy: 340, fr: -180, delay: 0.24, size: 50 },
-  { id: "star", x: 0, y: -100, r: 8, fx: 40, fy: -520, fr: 260, delay: 0.32, size: 40 },
-  { id: "heart", x: -4, y: 104, r: -10, fx: -60, fy: 520, fr: -200, delay: 0.4, size: 36 },
+  { id: "card-a", x: -78, y: -62, r: -16, fx: -200, fy: 420, fr: -60, delay: 0, size: 58 },
+  { id: "card-b", x: 80, y: -58, r: 14, fx: 220, fy: 440, fr: 70, delay: 0.08, size: 54 },
+  { id: "die", x: -86, y: 56, r: 10, fx: -160, fy: 520, fr: 90, delay: 0.16, size: 48 },
+  { id: "pawn", x: 86, y: 60, r: -6, fx: 180, fy: 540, fr: -80, delay: 0.24, size: 46 },
+  { id: "star", x: 0, y: -100, r: 8, fx: 30, fy: 560, fr: 120, delay: 0.32, size: 38 },
+  { id: "heart", x: -4, y: 104, r: -10, fx: -40, fy: 600, fr: -90, delay: 0.4, size: 34 },
+];
+/** Blasen wie im EndLab-Icon: steigen langsam durchs Bild */
+const BUBBLES = [
+  { x: "12%", s: 18, d: 0, t: 3.4 }, { x: "28%", s: 10, d: 0.6, t: 2.8 }, { x: "46%", s: 26, d: 0.2, t: 4 },
+  { x: "64%", s: 12, d: 0.9, t: 3 }, { x: "80%", s: 20, d: 0.4, t: 3.6 }, { x: "90%", s: 8, d: 1.2, t: 2.6 },
 ];
 
-/** Die Teile als Papierschnitt: Farbfläche mit weißem Schnittrand */
+const ICE = "#3fb6d8";
+const NAVY = "#0e2240";
+const WHITE = "#ffffff";
+
+/** Die Steine in den EndLab-Farben: Weiß und Eisblau auf Marineblau */
 function Shape({ id }: { id: string }) {
-  const edge = { stroke: "var(--paper)", strokeWidth: 4, strokeLinejoin: "round" as const };
   switch (id) {
     case "card-a":
-      return <svg viewBox="0 0 60 80"><rect x="4" y="4" width="52" height="72" rx="8" fill="var(--primary)" {...edge} /><circle cx="30" cy="40" r="11" fill="var(--paper)" opacity=".9" /></svg>;
+      return <svg viewBox="0 0 60 80"><rect x="4" y="4" width="52" height="72" rx="10" fill={WHITE} /><circle cx="30" cy="40" r="11" fill={ICE} /></svg>;
     case "card-b":
-      return <svg viewBox="0 0 60 80"><rect x="4" y="4" width="52" height="72" rx="8" fill="var(--deep-500)" {...edge} /><path d="M30 24 L40 40 L30 56 L20 40 Z" fill="var(--paper)" opacity=".9" /></svg>;
+      return <svg viewBox="0 0 60 80"><rect x="4" y="4" width="52" height="72" rx="10" fill={ICE} /><path d="M30 24 L40 40 L30 56 L20 40 Z" fill={WHITE} /></svg>;
     case "die":
-      return <svg viewBox="0 0 60 60"><rect x="4" y="4" width="52" height="52" rx="12" fill="var(--paper)" stroke="var(--deep-500)" strokeWidth="3" />{[[18, 18], [42, 18], [30, 30], [18, 42], [42, 42]].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="4.5" fill="var(--deep-700)" />)}</svg>;
+      return <svg viewBox="0 0 60 60"><rect x="4" y="4" width="52" height="52" rx="12" fill={WHITE} />{[[18, 18], [42, 18], [30, 30], [18, 42], [42, 42]].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="4.5" fill={i === 2 ? ICE : NAVY} />)}</svg>;
     case "pawn":
-      return <svg viewBox="0 0 60 70"><path d="M30 6a11 11 0 0 1 7 19.5c4 3 6.5 8 7.5 14.5l4 20.5a4 4 0 0 1-4 4.5H15.5a4 4 0 0 1-4-4.5l4-20.5c1-6.5 3.5-11.5 7.5-14.5A11 11 0 0 1 30 6Z" fill="#f2b84b" {...edge} /></svg>;
+      return <svg viewBox="0 0 60 70"><path d="M30 6a11 11 0 0 1 7 19.5c4 3 6.5 8 7.5 14.5l4 20.5a4 4 0 0 1-4 4.5H15.5a4 4 0 0 1-4-4.5l4-20.5c1-6.5 3.5-11.5 7.5-14.5A11 11 0 0 1 30 6Z" fill={ICE} /></svg>;
     case "star":
-      return <svg viewBox="0 0 60 60"><path d="M30 5l7.5 15.5 17 2.5-12.3 12 2.9 17L30 44l-15.1 8 2.9-17L5.5 23l17-2.5Z" fill="#f6d365" {...edge} /></svg>;
+      return <svg viewBox="0 0 60 60"><path d="M30 5l7.5 15.5 17 2.5-12.3 12 2.9 17L30 44l-15.1 8 2.9-17L5.5 23l17-2.5Z" fill={WHITE} /></svg>;
     default:
-      return <svg viewBox="0 0 60 56"><path d="M30 52S5 36 5 19A12.5 12.5 0 0 1 30 13 12.5 12.5 0 0 1 55 19c0 17-25 33-25 33Z" fill="var(--primary)" {...edge} /></svg>;
+      return <svg viewBox="0 0 60 56"><path d="M30 52S5 36 5 19A12.5 12.5 0 0 1 30 13 12.5 12.5 0 0 1 55 19c0 17-25 33-25 33Z" fill={ICE} /></svg>;
   }
 }
 
 /**
- * „Willkommen zurück“: Papierteile flattern herein und legen sich um das Logo, der Avatar wird aufgeklebt,
- * unten füllt sich ein Ladebalken aus Papierstreifen. Währenddessen lädt die App alles Nötige.
+ * „Willkommen zurück“ im EndLab-Look: Spielsteine steigen wie Blasen auf und schweben um das Logo, der Avatar
+ * dockt mit eisblauem Ring an, unten füllt sich ein eisblauer Ladebalken. Währenddessen lädt die App alles Nötige.
  * Antippen überspringt, nach gut drei Sekunden geht es in jedem Fall weiter.
  */
 export function Welcome({ onDone }: { onDone: () => void }) {
@@ -75,7 +83,14 @@ export function Welcome({ onDone }: { onDone: () => void }) {
 
   return (
     <div role="status" aria-live="polite" aria-label={`Willkommen zurück, ${name}`} data-testid="welcome" onClick={leave}
-      className={cn("intro-bg fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden px-6", leaving && "intro-out")}>
+      className={cn("welcome-bg fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden px-6", leaving && "intro-out")}>
+      <svg className="welcome-wave pointer-events-none absolute inset-x-0 bottom-0 h-40 w-full" viewBox="0 0 512 94" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 22C110 -20 214 50 330 14S474 -16 512 0V94H0Z" fill={ICE} opacity=".22" />
+      </svg>
+      {BUBBLES.map((b, i) => (
+        <span key={i} aria-hidden="true" className="welcome-bubble pointer-events-none absolute bottom-0 rounded-full"
+          style={{ left: b.x, width: b.s, height: b.s, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />
+      ))}
       <div className="relative size-72 shrink-0">
         {PIECES.map((p) => (
           <span key={p.id} className="paper-piece absolute top-1/2 left-1/2"
@@ -84,25 +99,24 @@ export function Welcome({ onDone }: { onDone: () => void }) {
           </span>
         ))}
         <div className="logo-pop absolute top-1/2 left-1/2 -mt-12 -ml-12">
-          <Logo className="size-24 -rotate-6 rounded-3xl shadow-[0_6px_0_rgb(0_0_0/0.12),0_16px_30px_rgb(0_0_0/0.18)]" />
+          <Logo className="size-24 rounded-[1.6rem] shadow-[0_0_0_3px_rgb(255_255_255/0.85),0_0_36px_rgb(63_182_216/0.45),0_16px_40px_rgb(0_0_0/0.35)]" />
           <span className="avatar-stick absolute -right-5 -bottom-4">
-            <span className="tape absolute -top-2 left-1/2 h-3.5 w-9 -translate-x-1/2 rotate-[-12deg]" />
-            <Avatar avatar={avatar} className="size-14 text-3xl ring-4 ring-[var(--paper)] shadow-[0_4px_10px_rgb(0_0_0/0.2)]" />
+            <Avatar avatar={avatar} className="size-14 text-3xl ring-4 ring-[#3fb6d8] shadow-[0_4px_14px_rgb(0_0_0/0.35)]" />
           </span>
         </div>
       </div>
-      <p className="text-rise mt-4 text-lg text-muted-foreground" style={{ animationDelay: "1.35s" }}>Willkommen zurück,</p>
-      <h1 className="text-rise font-display max-w-full truncate text-4xl font-bold tracking-tight" style={{ animationDelay: "1.5s" }}>{name}!</h1>
+      <p className="text-rise mt-4 text-lg text-white/75" style={{ animationDelay: "1.35s" }}>Willkommen zurück,</p>
+      <h1 className="text-rise font-display max-w-full truncate text-4xl font-bold tracking-tight text-white" style={{ animationDelay: "1.5s" }}>{name}!</h1>
       <div className="mt-8 flex w-56 gap-1.5" aria-hidden="true" data-testid="welcome-progress">
         {Array.from({ length: strips }, (_, i) => (
-          <span key={i} className="strip relative h-2.5 flex-1 overflow-hidden rounded-[3px] bg-foreground/10" style={{ rotate: `${[-2, 1.5, -1, 2, -1.5][i]}deg` }}>
-            <span className="strip-fill absolute inset-0 origin-left bg-primary"
+          <span key={i} className="strip relative h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
+            <span className="strip-fill absolute inset-0 origin-left bg-[#3fb6d8]"
               style={{ animationDuration: `${each}ms`, animationDelay: `${i * each}ms`, animationPlayState: i < strips - 1 || ready ? "running" : "paused" }}
               onAnimationEnd={i === strips - 1 ? () => setTimeout(leave, 200) : undefined} />
           </span>
         ))}
       </div>
-      <p className="text-rise absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] text-xs text-muted-foreground/70" style={{ animationDelay: "1.8s" }}>Tippen zum Überspringen</p>
+      <p className="text-rise absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] text-xs text-white/55" style={{ animationDelay: "1.8s" }}>Tippen zum Überspringen</p>
     </div>
   );
 }

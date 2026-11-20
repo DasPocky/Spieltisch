@@ -145,6 +145,26 @@
 .strip-fill { transform: scaleX(0); animation-name: strip-fill; animation-timing-function: linear; animation-fill-mode: forwards; will-change: transform; }
 @keyframes strip-fill { to { transform: scaleX(1); } }
 
+/* Willkommen zurück: Marineblau wie die EndLab-Icons, unabhängig von Hell/Dunkel */
+.welcome-bg {
+  background:
+    radial-gradient(70% 40% at 92% 4%, rgb(63 182 216 / 0.32) 0%, transparent 70%),
+    linear-gradient(160deg, #173a6b 0%, #0e2240 70%);
+  color: #fff;
+}
+.welcome-bubble {
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.8), rgb(63 182 216 / 0.55) 40%, rgb(63 182 216 / 0.25) 75%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  opacity: 0;
+  animation: bubble-up linear infinite;
+}
+@keyframes bubble-up {
+  0% { transform: translateY(20px); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translateY(-100vh); opacity: 0; }
+}
+.welcome-bg .paper-piece { filter: drop-shadow(0 8px 14px rgb(0 0 0 / 0.35)); }
+
 .paper-piece {
   translate: -50% -50%;
   filter: drop-shadow(0 3px 0 rgb(0 0 0 / 0.1)) drop-shadow(0 8px 12px rgb(0 0 0 / 0.14));
@@ -160,13 +180,13 @@
 @keyframes logo-pop { from { transform: scale(0.2) rotate(-30deg); opacity: 0; } }
 .avatar-stick { animation: avatar-stick 0.5s 1.1s cubic-bezier(0.3, 1.4, 0.5, 1) both; rotate: 8deg; }
 @keyframes avatar-stick { from { transform: scale(1.8) rotate(-24deg); opacity: 0; } 60% { opacity: 1; } }
-.tape { background: color-mix(in oklab, var(--paper) 70%, transparent); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); z-index: 1; }
 .text-rise { animation: text-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes text-rise { from { opacity: 0; transform: translateY(10px); } }
 .slide-in { animation: slide-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @keyframes slide-in { from { opacity: 0; transform: translateX(24px); } }
 @media (prefers-reduced-motion: reduce) {
   .paper-piece, .logo-pop, .avatar-stick, .text-rise, .slide-in { animation-duration: 0.01s; animation-delay: 0s !important; }
+  .welcome-bubble { display: none; }
 }
 
 /* Anklopfen: die Tür wackelt ab und zu */

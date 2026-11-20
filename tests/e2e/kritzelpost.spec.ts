@@ -77,15 +77,13 @@ test("Kritzelpost online mit drei Handys: Satz, Zeichnung, Beschreibung – nur 
   await shot(ben, "kp-6-album-bild");
   await anna.getByTestId("kp-next").click();
   await expect(anna.getByTestId("kp-next")).toContainText("Nächste Kette");
-  // Blättern bis zum Ende: nach jedem Tipp warten, bis sich die Seite sichtbar ändert (kein Klick geht verloren, keiner zu viel)
+  // Weiter bis zur letzten Seite: drei Ketten mit je drei Seiten, wir stehen auf Seite 3 der ersten.
+  // Je Tipp auf die erwartete Seite warten – so geht kein Tipp verloren und keiner zu viel.
   const next = anna.getByTestId("kp-next");
   const album = anna.getByTestId("kp-album");
-  for (let k = 0; k < 12 && !(await next.innerText()).includes("Album beenden"); k++) {
-    const where = await album.innerText();
-    await expect(async () => {
-      if ((await album.innerText()) === where) await next.click();
-      await expect(album).not.toHaveText(where, { timeout: 3000 });
-    }).toPass({ timeout: 20_000 });
+  for (let step = 0; step < 6; step++) {
+    await next.click();
+    await expect(album).toContainText(`Seite ${(step % 3) + 1}/3`);
   }
   await expect(next).toContainText("Album beenden");
   await anna.getByTestId("kp-next").click();
