@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "EndLab",
-  "short_name": "EndLab",
+  "name": "Spieltisch",
+  "short_name": "Spieltisch",
   "description": "Alle EndLab-Projekte in einer App – ein Speicher, ein Profil. Mit dem Spieltisch für den Spieleabend.",
   "lang": "de",
   "start_url": "/",
