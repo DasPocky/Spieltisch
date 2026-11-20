@@ -17,6 +17,11 @@ Durable Objects). Überblick: `README.md`, Aufbau und Tests:
 - Deploy nur über **Cloudflare Workers Builds**, nie von Hand und nie aus
   GitHub Actions. GitHub Actions prüfen nur.
 - Nichts darf hängen bleiben: Jede Änderung am Betrieb hat einen Rückweg.
+- **Vollbild auf dem Handy:** Die App reicht bis an alle Ränder
+  (`viewport-fit=cover`, Statusleiste durchscheinend, Hintergrund auch auf
+  `<html>`). Nichts Bedienbares unter Notch, Kamera-Loch oder Home-Leiste:
+  Abstände mit `env(safe-area-inset-*)`, Dialoge und Blätter nie höher als der
+  freie Bereich, auch im Querformat.
 - **Keine Ideen, Konzepte oder Pläne im Repo.** Ins Repo kommt nur, was gebaut
   ist und gilt: Code, Tests, Betriebsdoku, CLAUDE.md. Vorschläge nur im Chat.
 
@@ -29,8 +34,10 @@ Durable Objects). Überblick: `README.md`, Aufbau und Tests:
 - Gestaltung: **kein Scrollen auf dem Handy**, leichte Oberfläche, **keine
   Markennamen** in Texten, Looks, Bildern, Code, Kennungen und Dateinamen
   (frühere Kennungen nur in `shared/games/renamed.ts`).
-- Standard-Look ist „Papierschnitt“; Online zuerst, „Ein Handy für alle“ und
-  Offline sind im Admin einschaltbar.
+- Look ist einheitlich EndLab wie in allen EndLab-Apps (hell „Welle“, dunkel
+  „Nachthimmel“, Schrift Sora); Hell/Dunkel stellt jeder selbst ein, Standard
+  wie das Handy. Online zuerst, „Ein Handy für alle“ und Offline sind im Admin
+  einschaltbar.
 
 ## Arbeiten im Repo
 

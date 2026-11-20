@@ -17,28 +17,16 @@ export type Vec = [number, number, number];
 export interface DieDraw { pos: Vec; quat: Quat; scale?: number; mark?: "held" | "hint" | null; /** eigene Farbe (z. B. farbige Würfel im Ankreuzspiel) */ tint?: DieTint }
 export interface DieTint { face: string; pip: string }
 
-/** Farben je Look: Würfelkörper, Augen, die Eins; `sharp` = kantigere Würfel */
+/** Farben der Würfel im EndLab-Look: Körper, Augen, die Eins; `sharp` = kantigere Würfel */
 interface DieLook { face: string; pip: string; one: string; sharp?: boolean }
 const LOOKS: Record<string, DieLook> = {
-  // Standard: dunkle Würfel mit hellen Augen – heben sich klar von hellen Flächen ab
-  base: { face: "#1c2640", pip: "#f6f2ea", one: "#ff5d5d" },
-  // Dunkler Modus: helle Würfel, sonst verschwinden sie im Hintergrund
-  dark: { face: "#ece6da", pip: "#0b1020", one: "#c8102e" },
-  casino: { face: "#c8141f", pip: "#ffffff", one: "#ffffff" },
-  nacht: { face: "#3a2d7c", pip: "#33dbf2", one: "#ff58ba" },
-  arcade: { face: "#1d1d4a", pip: "#ffe14d", one: "#ff3d7f", sharp: true },
-  spielbox: { face: "#ffffff", pip: "#111111", one: "#ef3e36", sharp: true },
-  comic: { face: "#ffe01a", pip: "#111111", one: "#e8322b", sharp: true },
-  bonbon: { face: "#ff9fcb", pip: "#ffffff", one: "#6a3cc8" },
-  siebziger: { face: "#e06a2c", pip: "#f7ead0", one: "#f7ead0" },
-  klar: { face: "#16161a", pip: "#ffffff", one: "#ff5a3c" },
+  // Hell: marineblaue Würfel mit weißen Augen, die Eins in Eisblau
+  base: { face: "#0e2240", pip: "#ffffff", one: "#3fb6d8" },
+  // Dunkel: helle Würfel, sonst verschwinden sie im Hintergrund
+  dark: { face: "#eaf6fb", pip: "#0e2240", one: "#1d7fa0" },
 };
 function currentLook(): DieLook {
-  const el = document.documentElement;
-  const look = el.dataset.look ?? "";
-  const dark = el.dataset.theme === "dark";
-  if (look === "aurora" && dark) return LOOKS.nacht;
-  return LOOKS[look] ?? (dark ? LOOKS.dark : LOOKS.base);
+  return document.documentElement.dataset.theme === "dark" ? LOOKS.dark : LOOKS.base;
 }
 
 /** Augen je Zahl im 3×3-Raster (Zeile, Spalte) */

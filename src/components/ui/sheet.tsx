@@ -33,16 +33,16 @@ function SheetContent({ className, children, style, ...props }: React.ComponentP
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-3xl border-t border-border bg-popover text-popover-foreground shadow-[0_-12px_40px_rgba(0,0,0,.5)] outline-none",
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.75rem))] flex-col rounded-t-3xl border-t border-border bg-popover text-popover-foreground shadow-[0_-12px_40px_rgba(0,0,0,.5)] outline-none",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=closed]:duration-200 data-[state=open]:duration-300",
           className,
         )}
-        style={kb ? { ...style, bottom: kb, maxHeight: `calc(100dvh - ${kb}px - 0.75rem)` } : style}
+        style={kb ? { ...style, bottom: kb, maxHeight: `calc(100dvh - ${kb}px - 0.75rem - env(safe-area-inset-top))` } : style}
         {...props}
       >
         <div className="mx-auto mt-3 h-1.5 w-11 shrink-0 rounded-full bg-border" />
         {children}
-        <SheetPrimitive.Close className="absolute top-3 right-3 grid size-10 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring">
+        <SheetPrimitive.Close className="absolute top-3 right-[max(0.75rem,env(safe-area-inset-right))] grid size-10 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring">
           <XIcon className="size-5" />
           <span className="sr-only">Schließen</span>
         </SheetPrimitive.Close>

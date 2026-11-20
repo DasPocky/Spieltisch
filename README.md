@@ -14,12 +14,12 @@ Die Spielesammlung für den Spieleabend am Handy: Raum öffnen, Link teilen, zus
 - **Chat, Sprache, Video** – Text-Chat mit Reaktionen als Sprechblasen, Sprach- und Videochat mit den Gesichtern direkt in der Spielerleiste. Jeder Raum ist zugleich **Treffpunkt**: reden ohne Spiel, spielen ohne Video – beides geht.
 - **Echte 3D-Würfel** – Die Würfel fliegen mit echter Physik über den Bildschirm und landen gut lesbar in der Ablage. Das Ergebnis kommt immer aus fairem Zufall.
 - **Für jede Runde passend** – Alle Spieler in einer Zeile, kein Scrollen, auch auf kleinen Handys. Jedes Spiel geht in der App oder mit echtem Material am Tisch (die App ist dann Punkteblock, Schlüsselkarte oder Erzähler).
-- **14 Looks** – Der Admin wählt den Stil, hell oder dunkel stellt jeder selbst ein.
+- **EndLab-Look** – Marineblau und Eisblau wie alle EndLab-Apps; hell oder dunkel stellt jeder selbst ein, Standard wie das Handy.
 - **Rund um die Partie** – Siegerehrung mit Podium, Spielabend-Wertung, Gruppen mit Bestenliste, Profile mit Statistik.
 - **Verwaltung** – Eigener Tab auf Admin-Geräten: Live-Räume mit Eingriffen und unsichtbarem Zuschauen, Statistik mit Spitzenzeiten, Freigaben und Standards je Spiel, Status mit Versionsabgleich und ein Entwickler-Modus mit Testspielern.
 - **Als App installierbar** – eigenes Icon und Vorschaubild beim Teilen. Optional einschaltbar: „Ein Handy für alle“ und Offline-Nutzung.
 
-<p align="center"><img src="docs/images/funktionen.png" alt="Lobby, Chat und Video, 14 Looks, Siegerehrung"></p>
+<p align="center"><img src="docs/images/funktionen.png" alt="Lobby, Chat und Video, Siegerehrung"></p>
 
 ## Spiele
 

@@ -14,9 +14,10 @@ describe("Admin", () => {
   });
 
   it("Look: Standard Papierschnitt, nur bekannte Looks", () => {
-    expect(sanitizeConfig({}, Object.keys(GAMES)).look).toBe("papier");
-    expect(sanitizeConfig({ look: "kreide" }, Object.keys(GAMES)).look).toBe("kreide");
-    expect(sanitizeConfig({ look: "pink" }, Object.keys(GAMES)).look).toBe("papier");
+    expect(sanitizeConfig({}, Object.keys(GAMES)).look).toBe("endlab");
+    // Früher wählbare Looks werden zum einheitlichen EndLab-Look
+    expect(sanitizeConfig({ look: "papier" }, Object.keys(GAMES)).look).toBe("endlab");
+    expect(sanitizeConfig({ look: "pink" }, Object.keys(GAMES)).look).toBe("endlab");
   });
 
   it("Optionen: Grenzen begrenzt, unbekannte Spiele raus, Funktionen standardmäßig an", () => {

@@ -105,8 +105,8 @@ export function CallStrip({ call, players, me, compact }: { call: CallControls; 
       {/* Ton der anderen – unsichtbar, spielt automatisch */}
       {Object.entries(call.streams).map(([id, s]) => <RemoteAudio key={id} stream={s} />)}
       {big && (
-        <div className="fixed inset-0 z-40 grid content-center gap-2 bg-navy-950/95 p-4" role="dialog" aria-label="Video groß">
-          <Button variant="secondary" size="icon" className="absolute top-4 right-4" aria-label="Schließen" onClick={() => setBig(false)}><X /></Button>
+        <div className="fixed inset-0 z-40 grid content-center gap-2 bg-navy-950/95 pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]" role="dialog" aria-label="Video groß">
+          <Button variant="secondary" size="icon" className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))]" aria-label="Schließen" onClick={() => setBig(false)}><X /></Button>
           <div className="grid grid-cols-2 gap-2">
             {ids.map((id) => (
               <Tile key={id} name={nameOf(id)} stream={id === me ? call.local : call.streams[id]} self={id === me} large
