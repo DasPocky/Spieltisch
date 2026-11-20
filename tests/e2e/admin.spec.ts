@@ -357,19 +357,13 @@ test("Admin: Gruppen und Profile erscheinen im Verzeichnis und lassen sich lösc
   await expect(page.getByTestId(`profile-${profile}`)).toHaveCount(0);
 });
 
-test("Admin: Update-Zeitpunkt, Neuigkeiten bearbeiten, Betrieb und Protokoll", async ({ page }) => {
+test("Admin: Updates, Neuigkeiten bearbeiten, Betrieb und Protokoll", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/einstellungen");
-  const modes = page.getByTestId("update-modes");
-  await expect(modes.getByRole("radio", { name: /^Sofort/ })).toHaveAttribute("aria-checked", "true");
-  await modes.getByRole("radio", { name: /Wenn keine Partie läuft/ }).click();
-  await expect(modes.getByRole("radio", { name: /Wenn keine Partie läuft/ })).toHaveAttribute("aria-checked", "true");
-  // Lokal fehlen die Schlüssel zum Warten – das steht deutlich da
-  await expect(page.getByTestId("update-missing")).toBeVisible();
-  await expect(page.getByLabel("Höchstens warten Stunden")).toHaveValue("3");
+  // Jede Version geht sofort live – es gibt nichts mehr einzustellen
+  await expect(page.getByTestId("update-mode")).toHaveText(/Sofort für alle/);
+  await page.getByTestId("update-mode").scrollIntoViewIfNeeded();
   await shot(page, "a20-updates");
-  await modes.getByRole("radio", { name: /^Sofort/ }).click();
-  await expect(modes.getByRole("radio", { name: /^Sofort/ })).toHaveAttribute("aria-checked", "true");
 
   // Neuigkeit umschreiben, dann wieder Original
   const news = page.getByTestId("news-admin").locator("[data-testid^='news-']").first();

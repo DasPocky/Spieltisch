@@ -45,17 +45,15 @@ npm run dev -- --host  # zum Testen mit dem Handy im selben WLAN
 | `npm run build` | Typprüfung und Produktions-Build |
 | `npm test` | Unit-Tests (Vitest) |
 | `npm run test:e2e` | Handy-Tests im Browser (Playwright) |
-| `npm run deploy` | Build und Deploy per Wrangler |
+| `npm run cf:build`, `cf:deploy`, `cf:preview` | Befehle für Cloudflare Workers Builds (siehe [Betrieb](docs/betrieb.md)) |
 
-Jeder Push auf `main` wird von Cloudflare automatisch gebaut und ausgeliefert.
+Jeder Merge auf `main` wird von Cloudflare Workers Builds gebaut und geht sofort live; jeder andere Zweig bekommt eine Vorschau.
 
 ## Technik
 
-React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui im Browser; Cloudflare Workers mit Durable Objects auf dem Server; three.js und cannon-es für die Würfel; Cloudflare Realtime für Sprache und Video. Läuft im kostenlosen Cloudflare-Tarif.
+React 19, TypeScript, Vite, Tailwind CSS v4 und shadcn/ui im Browser; Cloudflare Workers mit Durable Objects auf dem Server; three.js und cannon-es für die Würfel; Cloudflare Realtime für Sprache und Video.
 
 ## Dokumentation
 
-- [Konzept](docs/konzept.md) – Leitbild, App-Aufbau, Räume, Umsetzungsplan, Ausblick auf native Apps
 - [Entwicklung](docs/entwicklung.md) – Architektur, Grundprinzipien, ein neues Spiel hinzufügen, Tests
 - [Betrieb](docs/betrieb.md) – Deployment, Secrets, Sicherheit, Datenhaltung
-- [Roadmap](docs/roadmap.md) – geplante Spiele und offene Punkte

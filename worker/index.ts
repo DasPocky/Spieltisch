@@ -54,16 +54,6 @@ export default {
     // Welche Version läuft, wartet ein Update? (Geräte laden danach neu bzw. zeigen einen Hinweis)
     if (url.pathname === "/api/version" && request.method === "GET") return json(await settingsOf(env).version());
 
-    // Der Build meldet eine hochgeladene Version: sofort live oder warten (scripts/release.mjs)
-    if (url.pathname === "/api/release" && request.method === "POST") {
-      const key = request.headers.get("x-release-key") ?? "";
-      if (!env.RELEASE_SECRET || !(await sameSecret(key, env.RELEASE_SECRET))) return json({ deploy: "now", note: "Ohne RELEASE_SECRET geht jede Version sofort live." }, 403);
-      const body = (await readBody(request)) as { versionId?: unknown; sha?: unknown; time?: unknown } | null;
-      const v = { versionId: String(body?.versionId ?? ""), sha: String(body?.sha ?? ""), time: String(body?.time ?? "") };
-      if (!/^[0-9a-f-]{36}$/.test(v.versionId) || !/^[0-9a-f]{7,40}$/.test(v.sha)) return badRequest();
-      return json({ deploy: await settingsOf(env).releaseOffer(v) });
-    }
-
     // Dateien einspielen (GitHub-Aktion „Dateien einspielen“, scripts/assets.mjs) – nur mit RELEASE_SECRET, nur hochladen
     const release = url.pathname.match(/^\/api\/release\/files\/(.+)$/);
     if (release && request.method === "PUT") {
@@ -285,11 +275,6 @@ export default {
     }
 
     return json({ error: "Nicht gefunden." }, 404);
-  },
-
-  // Alle 5 Minuten: wartendes Update freischalten, wenn es dran ist
-  async scheduled(_event, env, ctx) {
-    ctx.waitUntil(settingsOf(env).releaseTick().then(() => undefined, () => undefined));
   },
 } satisfies ExportedHandler<Env>;
 

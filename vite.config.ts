@@ -36,7 +36,7 @@ function buildInfo() {
 
 /**
  * Basispfad: mit APP_BASE ausdrücklich, sonst in jedem Cloudflare-Build (Produktion und Vorschau) „/spieltisch“ –
- * die App läuft unter endlab.de/spieltisch (E3, docs/endlab.md). Lokal und in den Tests bleibt sie an der Wurzel.
+ * die App läuft unter endlab.de/spieltisch. Lokal und in den Tests bleibt sie an der Wurzel.
  */
 const APP_BASE = (process.env.APP_BASE ?? (process.env.WORKERS_CI_BRANCH ? "/spieltisch" : "")).replace(/\/+$/, "");
 

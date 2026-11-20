@@ -1,95 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, Rocket, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Rocket, Sparkles } from "lucide-react";
 import { NEWS, MAX_NEWS_ITEM, MAX_NEWS_TITLE, type NewsOverrides } from "@shared/news";
-import { DEFAULT_UPDATE, RELEASE_HOW, UPDATE_MODES, type ReleaseStatus } from "@shared/platform/update";
+import type { ReleaseStatus } from "@shared/platform/update";
 import type { HealthDay } from "@shared/platform/admin";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "./context";
-import { AuthError, Panel, ago, dateTime } from "./shared";
+import { Panel, dateTime } from "./shared";
 
-const HOURS = Array.from({ length: 24 }, (_, h) => h);
-
-/** Updates: wann neue Versionen live gehen, was gerade wartet, was zuletzt kam */
+/** Updates: jede neue Version geht nach dem Merge sofort live, Geräte laden kurz neu */
 export function UpdatesPanel() {
-  const { config, save, api } = useAdmin();
+  const { api } = useAdmin();
   const [status, setStatus] = useState<ReleaseStatus | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const load = useCallback(() => { api<ReleaseStatus>("/api/admin/release").then(setStatus, () => null); }, [api]);
-  useEffect(() => { load(); }, [load, config.update.mode]);
-  const u = config.update;
-  const locked = !!status?.modeFromEnv;
-  const mode = status?.mode ?? u.mode;
-  const waits = mode === "idle" || mode === "time" || mode === "manual";
-  const promote = async () => {
-    setBusy(true); setMsg(null);
-    try { await api("/api/admin/release", {}); setMsg({ ok: true, text: "Ist live – Geräte laden an einem ruhigen Moment neu." }); load(); }
-    catch (e) { if (!(e instanceof AuthError)) setMsg({ ok: false, text: (e as Error).message }); }
-    finally { setBusy(false); }
-  };
-
+  useEffect(() => { api<ReleaseStatus>("/api/admin/release").then(setStatus, () => null); }, [api]);
   return (
-    <Panel title="Updates" hint="Wann neue Versionen live gehen und wann die Geräte neu laden. Laufende Partien gehen nach dem Neuladen weiter." wide>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Update-Zeitpunkt" data-testid="update-modes">
-        {UPDATE_MODES.map((m) => (
-          <button key={m.value} type="button" role="radio" aria-checked={mode === m.value} disabled={locked}
-            onClick={() => u.mode !== m.value && void save({ update: { ...u, mode: m.value } }, `Updates: ${m.label}`)}
-            className={cn("rounded-xl p-2.5 text-left outline-none ring-1 ring-inset ring-border focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60", mode === m.value && "bg-primary/10 ring-2 ring-primary")}>
-            <span className="block text-sm font-semibold">{m.label}{m.value === DEFAULT_UPDATE.mode && <span className="font-normal text-muted-foreground"> · Standard</span>}</span>
-            <span className="block text-xs leading-snug text-muted-foreground">{m.hint}</span>
-          </button>
-        ))}
-      </div>
-      {locked && <p className="text-sm text-muted-foreground">Fest eingestellt über die Variable <code>UPDATE_MODE</code> – hier nicht änderbar.</p>}
-      {mode === "idle" && (
-        <label className="flex items-center gap-2 text-sm">
-          <span className="flex-1">Höchstens warten <span className="text-muted-foreground">Stunden</span></span>
-          <Input type="number" min={1} max={48} className="w-20 text-center" aria-label="Höchstens warten Stunden" defaultValue={u.maxWaitHours} disabled={locked}
-            onBlur={(e) => { const v = Math.min(48, Math.max(1, Number(e.target.value) || 3)); if (v !== u.maxWaitHours) void save({ update: { ...u, maxWaitHours: v } }, `Höchstens ${v} Stunden warten`); }} />
-        </label>
-      )}
-      {mode === "time" && (
-        <label className="flex items-center gap-2 text-sm">
-          <span className="flex-1">Uhrzeit <span className="text-muted-foreground">(deutsche Zeit)</span></span>
-          <select className="h-9 rounded-md border border-input bg-transparent px-2" aria-label="Uhrzeit" value={u.hour} disabled={locked}
-            onChange={(e) => void save({ update: { ...u, hour: Number(e.target.value) } }, `Updates um ${e.target.value} Uhr`)}>
-            {HOURS.map((h) => <option key={h} value={h}>{h} Uhr</option>)}
-          </select>
-        </label>
-      )}
-      {status && waits && (!status.canPromote || !status.canReceive) && (
-        <p className="rounded-xl bg-destructive/10 p-2.5 text-sm text-destructive" data-testid="update-missing">
-          Damit Updates warten können, fehlen noch {[!status.canReceive && "RELEASE_SECRET", !status.canPromote && "DEPLOY_TOKEN"].filter(Boolean).join(" und ")} (siehe Betrieb-Doku). Bis dahin geht jede Version sofort live.
-        </p>
-      )}
-
-      {status?.error && <p className="rounded-xl bg-destructive/10 p-2.5 text-sm text-destructive" data-testid="update-error">{status.error}</p>}
-      {status?.pending ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-primary/10 p-2.5 text-sm" data-testid="update-pending">
-          <Rocket className="size-4 text-primary" />
-          <span className="min-w-0 flex-1">Version <code>{status.pending.sha.slice(0, 7)}</code> wartet seit {ago(status.pending.at)}.</span>
-          <Button size="sm" disabled={busy} onClick={() => void promote()}>{busy && <Loader2 className="animate-spin" />}Jetzt live schalten</Button>
-        </div>
-      ) : status && <p className="text-sm text-muted-foreground">Gerade wartet kein Update.</p>}
-      {msg && <p role="status" className={cn("text-sm font-semibold", msg.ok ? "text-ok" : "text-destructive")}>{msg.text}</p>}
-
-      {!!status?.history.length && (
-        <details className="text-sm">
-          <summary className="cursor-pointer font-semibold">Verlauf ({status.history.length})</summary>
-          <ul className="mt-2 grid gap-1">
-            {status.history.map((h) => (
-              <li key={`${h.sha}-${h.at}`} className="flex flex-wrap gap-x-2">
-                <code>{h.sha.slice(0, 7)}</code>
-                <span className="text-muted-foreground">{dateTime(h.at)}</span>
-                <span>{h.skipped ? "übersprungen (neuere kam)" : h.liveAt ? `live ${h.how ? RELEASE_HOW[h.how] : ""}${h.liveAt - h.at > 60_000 ? `, ${ago(h.liveAt)}` : ""}` : "wartet"}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+    <Panel title="Updates" hint="Jede neue Version geht sofort live. Geräte zeigen einen kurzen Hinweis, laden neu und spielen im selben Raum weiter.">
+      <p className="flex items-center gap-2 text-sm" data-testid="update-mode">
+        <Rocket className="size-4 text-primary" />
+        Sofort für alle
+      </p>
+      {status && <p className="text-sm text-muted-foreground">Läuft: <code>{status.build.sha.slice(0, 7)}</code>{status.build.time ? `, gebaut ${dateTime(Date.parse(status.build.time))}` : ""}</p>}
     </Panel>
   );
 }

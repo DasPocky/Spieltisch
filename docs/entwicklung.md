@@ -149,7 +149,7 @@ Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/mo
 
 ## Basispfad (endlab.de/spieltisch)
 
-Die App kann unter einem Pfad laufen (Ziel: `endlab.de/spieltisch`, siehe [endlab.md](endlab.md)). Im Code bleiben alle Pfade **logisch** (`/r/CODE`, `/profil`, `/api/…`):
+Die App kann unter einem Pfad laufen (live: `endlab.de/spieltisch`). Im Code bleiben alle Pfade **logisch** (`/r/CODE`, `/profil`, `/api/…`):
 
 - `shared/platform/base.ts`: `BASE` (beim Bauen aus `APP_BASE`, sonst leer), `withBase`/`stripBase`/`url`.
 - Anfragen an `/api/…` bekommen den Basispfad zentral beim Start (`installBase` in `src/lib/base.ts`) – neuer Code ruft einfach `fetch("/api/…")`.

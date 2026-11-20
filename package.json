@@ -8,7 +8,9 @@
     "test:e2e": "playwright test",
     "check": "npm run build && npm test",
     "preview": "npm run build && vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "cf:build": "npm run build",
+    "cf:deploy": "node scripts/release.mjs",
+    "cf:preview": "wrangler preview",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {

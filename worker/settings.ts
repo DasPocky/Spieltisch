@@ -1,5 +1,4 @@
 /** Ein einziges Durable Object für die Seite: Admin-Einstellungen und -Sitzungen, Raumverzeichnis, Statistik, Verlauf */
-import { cfTokenActive } from "./cfToken";
 import { renameStored } from "../shared/games/renamed";
 import { DurableObject } from "cloudflare:workers";
 import { GAMES, isGameId } from "../shared/games";
@@ -8,7 +7,7 @@ import { GROUP_CODE_RE } from "../shared/platform/group";
 import { ACCESS_CODE_RE, DEFAULT_CONFIG, sanitizeConfig, sanitizeDefaults, type AccessConfig, type GameDefaults, type SiteConfig } from "../shared/platform/access";
 import { addHealth, countFeature, countStat, emptySiteStats, type HealthDay, type HealthDelta, STAT_KINDS, WIPE_KINDS, type AdminRoom, type ArchivedRoom, type DirGroup, type DirProfile, type SiteStats, type FeatureKind, type StatKind, type WipeKind } from "../shared/platform/admin";
 import { BUILD, type ServerStatus } from "../shared/build";
-import { DEFAULT_UPDATE, releaseDue, sanitizeUpdate, type PendingRelease, type ReleaseEntry, type ReleaseHow, type ReleaseStatus, type UpdateConfig, type UpdateMode, type VersionInfo } from "../shared/platform/update";
+import { DEFAULT_UPDATE, type ReleaseStatus, type VersionInfo } from "../shared/platform/update";
 import { LIFE_MS, type RoomCard } from "../shared/platform/directory";
 import { ROOM_CODE_RE } from "../shared/platform/protocol";
 import { toInfo, type CardSet, type CardSetInfo } from "../shared/platform/cardsets";
@@ -401,105 +400,16 @@ export class SiteSettings extends DurableObject<Env> {
     return (await this.ctx.storage.get<AuditEntry[]>("audit")) ?? [];
   }
 
-  // ----- Updates: neue Versionen zum gewählten Zeitpunkt freischalten -----
+  // ----- Updates: jede Version geht sofort live (Workers Builds deployt direkt) -----
 
-  /** Gilt gerade: Variable UPDATE_MODE vor der Admin-Einstellung */
-  private updateConfig(): UpdateConfig & { fromEnv: boolean } {
-    const cfg = sanitizeUpdate(this.data.config.update ?? DEFAULT_UPDATE);
-    const env = this.env.UPDATE_MODE;
-    const fromEnv = !!env && sanitizeUpdate({ mode: env }).mode === env;
-    return { ...cfg, mode: fromEnv ? (env as UpdateMode) : cfg.mode, fromEnv };
-  }
-
-  /** Ist DEPLOY_TOKEN noch gültig (nicht abgelaufen, nicht gelöscht)? Account- und User-Tokens, siehe cfToken.ts */
-  private async tokenOk(): Promise<boolean> {
-    try {
-      const ok = await cfTokenActive(this.env.DEPLOY_TOKEN ?? "", this.env.CF_ACCOUNT_ID);
-      if (!ok) await this.ctx.storage.put("releaseError", "DEPLOY_TOKEN ist ungültig oder abgelaufen – Updates gehen sofort live, bis ein neuer Schlüssel gesetzt ist.");
-      else await this.ctx.storage.delete("releaseError");
-      return ok;
-    } catch { return false; }
-  }
-
-  private canPromote(): boolean {
-    return !!(this.env.DEPLOY_TOKEN && this.env.CF_ACCOUNT_ID && this.env.WORKER_NAME);
-  }
-
-  private async releases(): Promise<{ pending: PendingRelease | null; history: ReleaseEntry[] }> {
-    return (await this.ctx.storage.get<{ pending: PendingRelease | null; history: ReleaseEntry[] }>("releases")) ?? { pending: null, history: [] };
-  }
-
-  private async saveReleases(r: { pending: PendingRelease | null; history: ReleaseEntry[] }): Promise<void> {
-    r.history = r.history.slice(0, 30);
-    await this.ctx.storage.put("releases", r);
-  }
-
-  /**
-   * Der Build hat eine neue Version hochgeladen: sofort live („now“) oder warten?
-   * Ohne Schlüssel zum Freischalten gilt immer „sofort“ – sonst bliebe das Update für immer liegen.
-   */
-  async releaseOffer(v: { versionId: string; sha: string; time: string }): Promise<"now" | "later"> {
-    const cfg = this.updateConfig();
-    const r = await this.releases();
-    // Warten nur, wenn der Worker später auch selbst freischalten kann (Schlüssel gültig) – sonst bliebe das Update liegen
-    const later = (cfg.mode === "idle" || cfg.mode === "time" || cfg.mode === "manual") && this.canPromote() && (await this.tokenOk());
-    // Ältere wartende Version wird überholt – die neue enthält alles
-    if (r.pending) r.history = r.history.map((h) => (h.sha === r.pending!.sha && !h.liveAt ? { ...h, skipped: true } : h));
-    r.history.unshift({ sha: v.sha, time: v.time, at: Date.now(), ...(later ? {} : { liveAt: Date.now(), how: "sofort" as const }) });
-    r.pending = later ? { ...v, at: Date.now() } : null;
-    await this.saveReleases(r);
-    return later ? "later" : "now";
-  }
-
-  /** Läuft gerade irgendwo eine Partie (mit jemandem online)? */
-  private async playingRooms(): Promise<number> {
-    return (await this.roomList()).filter((r) => r.phase === "playing" && (r.card?.online ?? r.players.filter((p) => p.online).length) > 0).length;
-  }
-
-  /** Wartendes Update freischalten, wenn es dran ist (alle 5 Minuten) – oder sofort (`force`, Knopf im Admin) */
-  async releaseTick(force = false): Promise<{ ok: boolean; error?: string; live?: boolean }> {
-    const r = await this.releases();
-    if (!r.pending) return { ok: true, live: false };
-    const how: ReleaseHow | null = force ? "knopf" : releaseDue(r.pending, this.updateConfig(), Date.now(), await this.playingRooms());
-    if (!how) return { ok: true, live: false };
-    const error = await this.promote(r.pending.versionId, r.pending.sha);
-    if (error) { await this.ctx.storage.put("releaseError", error); return { ok: false, error }; }
-    await this.ctx.storage.delete("releaseError");
-    r.history = r.history.map((h) => (h.sha === r.pending!.sha && !h.liveAt ? { ...h, liveAt: Date.now(), how, skipped: undefined } : h));
-    r.pending = null;
-    await this.saveReleases(r);
-    return { ok: true, live: true };
-  }
-
-  /** Version bei Cloudflare zu 100 % live schalten */
-  private async promote(versionId: string, sha: string): Promise<string | undefined> {
-    if (!this.canPromote()) return "Zum Freischalten fehlt der Schlüssel DEPLOY_TOKEN (siehe docs/betrieb.md).";
-    try {
-      const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${this.env.CF_ACCOUNT_ID}/workers/scripts/${this.env.WORKER_NAME}/deployments`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${this.env.DEPLOY_TOKEN}`, "content-type": "application/json" },
-        body: JSON.stringify({ strategy: "percentage", versions: [{ version_id: versionId, percentage: 100 }], annotations: { "workers/message": `Spieltisch ${sha.slice(0, 7)}` } }),
-      });
-      if (res.ok) return undefined;
-      const body = (await res.json().catch(() => null)) as { errors?: { message?: string }[] } | null;
-      return `Cloudflare lehnt ab: ${body?.errors?.[0]?.message ?? res.status}`;
-    } catch (e) {
-      return `Cloudflare nicht erreichbar: ${(e as Error).message}`;
-    }
-  }
-
+  /** Für die Verwaltung: wie Updates laufen */
   async releaseStatus(): Promise<ReleaseStatus> {
-    const cfg = this.updateConfig();
-    const r = await this.releases();
-    return { mode: cfg.mode, modeFromEnv: cfg.fromEnv, canPromote: this.canPromote(), canReceive: !!this.env.RELEASE_SECRET, pending: r.pending, history: r.history,
-      error: (await this.ctx.storage.get<string>("releaseError")) ?? undefined };
+    return { mode: "force", build: BUILD };
   }
 
-  /** Für alle: welche Version läuft, wann kommt die nächste */
+  /** Für alle: welche Version läuft. Es wartet nie ein Update. */
   async version(): Promise<VersionInfo> {
-    const cfg = this.updateConfig();
-    const r = await this.releases();
-    return { build: BUILD, mode: cfg.mode, pending: r.pending ? { at: r.pending.at, mode: cfg.mode, ...(cfg.mode === "time" ? { hour: cfg.hour } : {}) } : null };
+    return { build: BUILD, mode: "force", pending: null };
   }
 
   private async save() {

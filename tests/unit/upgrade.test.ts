@@ -4,7 +4,7 @@ import { GAMES, getGame, type GameId } from "@shared/games";
 import { formerGameId } from "@shared/games/renamed";
 import { addPlayer, applyRoomAction, createRoom, migrateRoomState, ROOM_SCHEMA, roomGame, upgradeRoom, type RoomState } from "@shared/platform/room";
 import type { GameLogic } from "@shared/platform/types";
-import { berlinHour, DEFAULT_UPDATE, releaseDue, sanitizeUpdate } from "@shared/platform/update";
+import { DEFAULT_UPDATE, sanitizeUpdate } from "@shared/platform/update";
 import { NEWS, newsFor, sanitizeNews } from "@shared/news";
 
 // Eine „gesicherte“ alte Mau-Mau-Version 0 – im echten Betrieb legt sie scripts/legacy.mjs an
@@ -76,32 +76,11 @@ describe("Update: laufende Partien", () => {
 });
 
 describe("Update-Zeitpunkt", () => {
-  const p = { versionId: "x", sha: "abc1234", time: "", at: 0 };
-  const H = 3_600_000;
-  it("sofort und je Raum: gleich live", () => {
-    expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "force" }, 1, 5)).toBe("sofort");
-    expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "now" }, 1, 5)).toBe("sofort");
-    expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "round" }, 1, 5)).toBe("sofort");
-  });
-  it("wenn keine Partie läuft – sonst spätestens nach der Höchstwartezeit", () => {
-    const cfg = { ...DEFAULT_UPDATE, mode: "idle" as const, maxWaitHours: 3 };
-    expect(releaseDue(p, cfg, H, 0)).toBe("ruhe");
-    expect(releaseDue(p, cfg, H, 2)).toBeNull();
-    expect(releaseDue(p, cfg, 3 * H, 2)).toBe("zeitlimit");
-  });
-  it("feste Uhrzeit (deutsche Zeit), verpasst spätestens nach einem Tag", () => {
-    const cfg = { ...DEFAULT_UPDATE, mode: "time" as const, hour: 4 };
-    const at4 = Date.parse("2026-10-20T02:10:00Z"); // 4:10 Uhr Sommerzeit
-    expect(berlinHour(at4)).toBe(4);
-    expect(releaseDue({ ...p, at: at4 - H }, cfg, at4, 3)).toBe("uhrzeit");
-    expect(releaseDue({ ...p, at: at4 - H }, cfg, at4 + 2 * H, 3)).toBeNull();
-    expect(releaseDue({ ...p, at: at4 - 26 * H }, cfg, at4 + 2 * H, 3)).toBe("uhrzeit");
-  });
-  it("nur per Knopf: nie von selbst", () => {
-    expect(releaseDue(p, { ...DEFAULT_UPDATE, mode: "manual" }, 99 * H, 0)).toBeNull();
-  });
-  it("Einstellungen werden geprüft", () => {
-    expect(sanitizeUpdate({ mode: "quatsch", maxWaitHours: 999, hour: -3 })).toEqual({ mode: "force", maxWaitHours: 48, hour: 0 });
+  it("es gilt immer „Sofort für alle“ – auch für alte gespeicherte Einstellungen", () => {
+    expect(DEFAULT_UPDATE.mode).toBe("force");
+    for (const alt of [{ mode: "idle", maxWaitHours: 5 }, { mode: "time", hour: 3 }, { mode: "manual" }, "quatsch", null]) {
+      expect(sanitizeUpdate(alt).mode).toBe("force");
+    }
   });
 });
 

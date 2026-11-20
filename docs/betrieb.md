@@ -4,61 +4,59 @@
 
 Live unter **https://spieltisch.endlab.de** (eigene Domain des Workers, `routes` in `wrangler.jsonc`). Die Zone `endlab.de` liegt bei Cloudflare (Nameserver von INWX dorthin delegiert, DNSSEC an, SSL „Full (strict)“, HTTPS erzwungen). `endlab.de` zeigt eine kleine Startseite (eigener Worker `endlab-start`, `www` leitet dorthin). Die alte Adresse `spieltisch.bjoern-ef9.workers.dev` bleibt erreichbar, weil Profile und Geräteschlüssel im Browser je Adresse liegen; Vorschauen je Zweig laufen weiter über workers.dev.
 
-## Deployment
+## Deploy über Workers Builds
 
-Cloudflare Workers Builds baut jeden Push auf `main` (Build `npm run build`, Deploy-Befehl `node scripts/release.mjs`). Das Skript
+Workers & Pages → spieltisch → Settings → Builds:
 
-1. legt die Programmteile der laufenden Version mit in die neue (Geräte mit der alten App können so weiter nachladen),
-2. lädt die neue Version hoch (`wrangler versions upload`),
-3. fragt den laufenden Worker (`/api/release`), ob sie sofort live geht oder warten soll – und schaltet sie ggf. gleich frei.
+| Feld | Wert |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `npm run cf:build` |
+| Deploy command | `npm run cf:deploy` |
+| Version command | `npm run cf:preview` |
+| API token | `endlab-workers-builds` |
 
-Ohne Antwort (kein `RELEASE_SECRET`, Worker nicht erreichbar) geht die Version sofort live; geht das Hochladen allein nicht (z. B. neue Durable-Object-Klasse), wird klassisch deployt. Manuell: `npx wrangler login` und `npm run deploy`.
+Was dahinter läuft, steht in `package.json`:
 
-GitHub Actions (`.github/workflows/ci.yml`) prüft parallel Build, Unit-Tests, Handy-Tests und die Desktop-/Fernseher-Reihe. Der Deploy wartet nicht darauf.
+- `cf:build` → `build`: Typecheck und Vite-Build. Schlägt etwas fehl, geht nichts live. Unit- und Handy-Tests laufen in GitHub Actions (`.github/workflows/ci.yml`) an jedem PR; gemergt wird nur, wenn sie grün sind.
+- `cf:deploy` → `scripts/release.mjs`: legt die Programmteile der laufenden Version mit in die neue (Geräte mit der alten App können so weiter nachladen), dann `wrangler deploy`. Jede Version geht sofort live.
+- `cf:preview` → `wrangler preview`: Vorschau je Zweig.
+
+### Stufen
+
+| Stufe | Wo | Daten |
+| --- | --- | --- |
+| Test | lokal und GitHub Actions | lokale Durable Objects, `.dev.vars` aus `scripts/test-env.mjs` |
+| Staging | Vorschau je Zweig (`previews` in `wrangler.jsonc`) | eigene, leere Durable Objects, R2 `spieltisch-vorschau-dateien` |
+| Live | `main` auf spieltisch.endlab.de | Durable Objects von live, R2 `spieltisch-dateien` |
+
+Vorschauen erben keine Secrets: ohne `ADMIN_PASSWORD` ist die Verwaltung dort aus, ohne Realtime-Token auch Audio und Video.
+
+**Vorschauen aufräumen:** Jede Vorschau legt eigene Durable-Object-Namespaces an (4 je Zweig, 500 im Konto). Nach jedem Merge löscht Claude die Vorschau: `node scripts/vorschau-aufraeumen.mjs` (ohne Argument alle gemergten oder gelöschten Zweige, sonst die genannten).
 
 ### Updates ohne Unterbrechung
 
-- **Zeitpunkt** (Verwaltung → Einstellungen → Updates, Standard „Sofort für alle“ = `force`): sofort für alle · am ruhigen Moment (`now`) · nach Rundenende je Raum · wenn keine Partie läuft (Höchstwartezeit, Standard 3 Std.) · feste Uhrzeit · nur per Knopf. Die Variable `UPDATE_MODE` (in `wrangler.jsonc` → `vars`) überschreibt die Einstellung. Wartende Versionen schaltet der Worker per Cron (alle 5 Minuten) frei – dafür braucht er `DEPLOY_TOKEN`.
-- **Geräte** merken neue Versionen (Raum-Gruß „hello“ beim Wiederverbinden nach dem Deploy und `/api/version` jede Minute). Standard „Sofort für alle“: kurzer Hinweis, nach 2,5 Sekunden Neuladen – auch mitten im Zug; die Partie geht danach im selben Raum weiter. In „Am ruhigen Moment“ laden sie dagegen erst neu, wenn es passt: Lobby, Partie-Ende oder wenn man nicht dran ist, spätestens nach 2 Minuten; im Modus „Nach Rundenende je Raum“ erst nach der Partie. Danach geht es im selben Raum weiter. Passt das Nachrichtenformat nicht mehr (`PROTOCOL`), laden sie sofort neu. Fehlt eine Programmdatei, lädt die App einmal neu.
+- **Geräte** merken neue Versionen (Raum-Gruß „hello“ beim Wiederverbinden nach dem Deploy und `/api/version` jede Minute): kurzer Hinweis, nach 2,5 Sekunden Neuladen – auch mitten im Zug; die Partie geht danach im selben Raum weiter. Passt das Nachrichtenformat nicht mehr (`PROTOCOL`), laden sie sofort neu. Fehlt eine Programmdatei, lädt die App einmal neu.
 - **Laufende Partien** spielen mit ihrer Spielversion zu Ende (gesicherte alte Logik und Oberfläche in `shared/legacy` bzw. `src/legacy`), sonst wird umgerechnet oder die Partie endet sanft (Gruppe und Spielabend bleiben) – siehe `docs/entwicklung.md`.
-- **Hinweise:** Wartet ein Update, steht es dezent im Raum. Danach zeigt „Was ist neu?“ einmal pro Gerät die Neuigkeiten aus `shared/news.ts` (in der Verwaltung änderbar).
+- **Hinweise:** „Was ist neu?“ zeigt einmal pro Gerät die Neuigkeiten aus `shared/news.ts` (in der Verwaltung änderbar).
 
-**Vorschauen aufräumen:** Jede Vorschau legt eigene Durable-Object-Namespaces an (4 je Zweig, Limit 100 im Konto, Fehler 10067). Nach jedem Merge die Vorschau löschen: `CLOUDFLARE_API_TOKEN=… node scripts/vorschau-aufraeumen.mjs` (ohne Argument alle gemergten oder gelöschten Zweige, sonst die genannten). Automatisch macht das `.github/workflows/vorschau.yml` beim Schließen eines PRs – dafür einmalig das Repository-Secret `CLOUDFLARE_API_TOKEN` setzen (Token „spieltisch-vorschau-cleanup“, siehe [Cloudflare-API-Tokens](#cloudflare-api-tokens)).
-
-Vorschau-Builds anderer Zweige brauchen keine dieser Secrets: Das Skript lädt dort nur hoch und fragt nie den Live-Worker. Den Deploy-Befehl für andere Zweige (`npx wrangler versions upload`) nicht ändern.
-
-Einrichtung für „warten können“ (einmalig): `RELEASE_SECRET` als Worker-Secret **und** als Build-Variable (gleicher Wert), `DEPLOY_TOKEN` als Worker-Secret (Token „spieltisch-deploy-updates“, siehe [Cloudflare-API-Tokens](#cloudflare-api-tokens)), Deploy-Befehl in Workers Builds auf `node scripts/release.mjs`. Ohne diese Schritte geht jede Version sofort live – wie bisher.
-
-**Rückgängig machen:** In Cloudflare unter Workers → spieltisch → Deployments eine frühere Version wieder auf 100 % setzen (oder `npx wrangler rollback`). Spielstände bleiben, Geräte laden die ältere Version beim nächsten Gruß nicht neu (sie ist nicht neuer) – erst die nächste Version.
+**Rückweg:** Workers & Pages → spieltisch → Deployments → ältere Version → **Rollback**, oder Claude per `wrangler rollback`. Spielstände bleiben, Geräte laden die ältere Version beim nächsten Gruß nicht neu (sie ist nicht neuer) – erst die nächste Version.
 
 Der Speicher der Durable Objects ist unabhängig vom Code – Räume überstehen einen Deploy, offene Verbindungen bauen sich selbst neu auf. Den Klassennamen `GameRoom` nicht umbenennen.
 
 ## Secrets
 
-Im Cloudflare-Dashboard unter **Workers & Pages → spieltisch → Settings → Variables and Secrets** (oder `npx wrangler secret put …`):
+Setzt Björn, die Werte sieht niemand sonst: `npx wrangler secret put <NAME>` oder Workers & Pages → spieltisch → Settings → Variables and Secrets.
 
 | Secret | Wofür | Ohne |
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | Zugang zu `/admin` | Admin-Bereich gesperrt |
-| `REALTIME_APP_TOKEN` | Sprach- und Videochat (Cloudflare **Realtime → Serverless SFU**, App Secret). Die App ID steht fest in `wrangler.jsonc` (`vars`) – im Dashboard gesetzte Variablen löscht jeder Deploy | kein Anruf-Knopf |
-| `RELEASE_SECRET` | Der Build meldet neue Versionen an (`/api/release`); gleicher Wert auch als Build-Variable | jede Version sofort live |
-| `DEPLOY_TOKEN` | Wartende Versionen freischalten (Account-API-Token „spieltisch-deploy-updates“, siehe unten) | jede Version sofort live |
+| `REALTIME_APP_TOKEN` | Sprach- und Videochat (Cloudflare **Realtime → Serverless SFU**, App Secret). Die App ID steht fest in `wrangler.jsonc` (`vars`) | kein Anruf-Knopf |
+| `RELEASE_SECRET` | Die GitHub-Aktion **Stimme** lädt damit Bausteine hoch (`/api/release/files`, `/api/release/voice`); gleicher Wert als GitHub-Secret | keine neuen Stimm-Bausteine |
 
-Feste Werte in `wrangler.jsonc` → `vars`: `CF_ACCOUNT_ID`, `WORKER_NAME`, optional `UPDATE_MODE`. Die globale Ratenbremse `SENSITIVE` (Cloudflare Rate Limiting, 60 je Minute und Adresse) steht unter `ratelimits`.
+Die globale Ratenbremse `SENSITIVE` (Cloudflare Rate Limiting, 60 je Minute und Adresse) steht unter `ratelimits`.
 
 Lokal stehen die Werte in `.dev.vars` (nicht eingecheckt). `scripts/test-env.mjs` legt die Datei für die Tests an, mit Admin-Passwort `test-admin` und simuliertem SFU (`REALTIME_FAKE=1`).
-
-## Cloudflare-API-Tokens
-
-Je Zweck ein eigener Token mit nur den Rechten, die er braucht. Sie stehen nie im Repo, in Logs oder im Chat: Björn trägt sie selbst ein. Ablauf jeweils **1 Jahr** (im Kalender vormerken und vorher neu anlegen). Keine IP-Filter, weil GitHub Actions und Workers Builds von wechselnden Adressen kommen.
-
-| Token | Art | Rechte (und warum) | Wo hinterlegt | Prüfen |
-| --- | --- | --- | --- | --- |
-| `spieltisch-deploy-updates` | Account-API-Token (`cfat_…`) | Account → **Workers Scripts → Edit**: eine hochgeladene Version per `POST …/deployments` auf 100 % schalten | Worker-Secret `DEPLOY_TOKEN` | Verwaltung → Updates: kein Hinweis „DEPLOY_TOKEN ist ungültig“, „Jetzt live“ schaltet frei |
-| `spieltisch-vorschau-cleanup` | Account-API-Token (`cfat_…`) | Account → **Workers Scripts → Edit**: Vorschauen auflisten und löschen, Durable-Object-Namespaces zählen | GitHub → Settings → Secrets and variables → Actions → `CLOUDFLARE_API_TOKEN` | einen PR schließen → Workflow „Vorschau aufräumen“ löscht dessen Vorschau |
-| `spieltisch-build` | User-API-Token (Workers Builds kann noch keine Account-Tokens) | Account → **Account Settings → Read** (wrangler liest das Konto) · Account → **Workers Scripts → Edit** (Versionen hochladen, deployen, Durable-Object-Migrations, Cron, Vorschauen) · Zone endlab.de → **Workers Routes → Edit** (Route `endlab.de/spieltisch*`, Custom Domain `spieltisch.endlab.de`) – weitere Rechte nur, wenn ein Build sie mit Fehlermeldung verlangt | Workers & Pages → spieltisch → Settings → Build → API token | Push auf `main` → Build und Deploy grün |
-
-Zwei getrennte Account-Tokens mit gleichem Recht, damit ein geleakter GitHub-Secret nicht den Live-Worker umschalten kann und jeder einzeln widerrufbar ist. Der Worker erkennt Account- und User-Tokens (`worker/cfToken.ts`: erst `/accounts/{id}/tokens/verify`, dann `/user/tokens/verify`). Sobald Workers Builds Account-Tokens unterstützt, `spieltisch-build` ebenfalls als Account-Token neu anlegen.
 
 ## Sicherheit
 
@@ -80,7 +78,7 @@ Zwei getrennte Account-Tokens mit gleichem Recht, damit ein geleakter GitHub-Sec
 | --- | --- | --- |
 | `GameRoom` (je Raum) | PIN-Hash, Spieler, Avatare, Einstellungen, Raumname und Zugang, Spielstand, die letzten 100 Chat-Nachrichten, Tokens, wer gerade anklopft | wenn der Raum so lange leer war, wie der Host gewählt hat (1 Stunde, 1 Tag, 1 Woche; höchstens die Obergrenze des Admins), oder über „Raum schließen“; Dauerräume nur vom Admin |
 | `ProfileStore` (je Profil) | Profilname, Statistik je Spiel, die letzten 30 Partien | ein Jahr nach der letzten Partie oder über „Profil löschen“ |
-| `SiteSettings` (einmal) | Admin-Einstellungen, Statistik, Verlauf vergangener Räume, Gruppen, Raumverzeichnis (Kurzinfo offener Räume), Update-Verlauf, Betriebskennzahlen (14 Tage, nur Zahlen), Protokoll der Verwaltung (200 Einträge) | vom Admin; Verzeichniseinträge mit dem Raum |
+| `SiteSettings` (einmal) | Admin-Einstellungen, Statistik, Verlauf vergangener Räume, Gruppen, Raumverzeichnis (Kurzinfo offener Räume), Betriebskennzahlen (14 Tage, nur Zahlen), Protokoll der Verwaltung (200 Einträge) | vom Admin; Verzeichniseinträge mit dem Raum |
 | Browser (`localStorage`) | Profil-ID und Geräteschlüssel, Name, Token je Raum, lokale Spielstände, persönliche Einstellungen | beim Verlassen bzw. vom Nutzer |
 
 IP-Adressen oder Konten speichert die App nicht (die Bremsen zählen Adressen nur kurz im Arbeitsspeicher bzw. bei Cloudflare).
@@ -91,7 +89,7 @@ IP-Adressen oder Konten speichert die App nicht (die Bremsen zählen Adressen nu
 
 ## Kosten
 
-Alles läuft im kostenlosen Cloudflare-Tarif (100.000 Worker-Anfragen pro Tag; WebSocket-Nachrichten zählen gebündelt). Ein Spieleabend braucht davon einen Bruchteil. Die Status-Leiste der Verwaltung zeigt den Verbrauch des Tages (ungefähr: jede Worker-Instanz meldet gesammelt).
+Läuft im Cloudflare-Konto von EndLab (Workers Paid); WebSocket-Nachrichten zählen gebündelt, ein Spieleabend braucht nur einen Bruchteil der enthaltenen Anfragen. Die Status-Leiste der Verwaltung zeigt den Verbrauch des Tages (ungefähr: jede Worker-Instanz meldet gesammelt).
 
 ## Version prüfen
 
@@ -103,7 +101,7 @@ Der Moderator am Tisch kann frische Sprüche über Cloudflare Workers AI holen (
 
 ## R2-Speicher
 
-Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`, auch für Vorschauen). Ordner:
+Bucket `spieltisch-dateien` (Speicherklasse Standard, kein öffentlicher Zugriff), im Worker als `FILES` gebunden (`wrangler.jsonc`; Vorschauen nutzen `spieltisch-vorschau-dateien`). Ordner:
 
 - `r/<Raum-Objekt-ID>/` – Fotos der Spieler; jeder Raum löscht seine Fotos, wenn er endet.
 - `assets/bilder/` – Bilder für Karten und Bühne
