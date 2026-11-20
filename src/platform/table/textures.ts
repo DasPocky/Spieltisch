@@ -21,7 +21,7 @@ export const CARD_RATIO: Record<TableDeck, number> = { cards: 8 / 5, eins: 7 / 5
 const W = 768;
 
 const PAPER = "#fdfdfb";
-const FONT = `"Quicksand", "Nunito", system-ui, sans-serif`;
+const FONT = `"Sora", system-ui, sans-serif`;
 
 function canvas(deck: TableDeck) {
   const c = document.createElement("canvas");

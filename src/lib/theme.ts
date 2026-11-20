@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from "react";
 
-/** Darstellung: hell (Standard), dunkel oder wie das Handy eingestellt ist */
+/** Darstellung: hell, dunkel oder wie das Handy eingestellt ist (Standard, wie in allen EndLab-Apps) */
 export type ThemeChoice = "light" | "dark" | "system";
 const KEY = "spieltisch:theme";
 const listeners = new Set<() => void>();
 
 export function themeChoice(): ThemeChoice {
-  try { const v = localStorage.getItem(KEY); return v === "dark" || v === "system" ? v : "light"; } catch { return "light"; }
+  try { const v = localStorage.getItem(KEY); return v === "dark" || v === "light" ? v : "system"; } catch { return "system"; }
 }
 
 /** Setzt `data-theme` auf <html> und die Statusleisten-Farbe */

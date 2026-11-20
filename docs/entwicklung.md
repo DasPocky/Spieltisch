@@ -26,7 +26,7 @@ Browser ──HTTP──▶ Worker ──▶ statische React-App (dist/client)
 | `src/platform/intro/` | Zum schnellen Ausprobieren eines Spiels: Verwaltung → Einstellungen → Entwickler-Modus, dann Entwickler → „Testraum mit Bots“. Bots ziehen zufällig erlaubte Züge; der Raum bleibt unsichtbar und zählt nicht.
 
 Willkommen (neues Gerät) und Begrüßung mit Laden (bekanntes Gerät) |
-| `src/styles/looks.css` | die Looks als CSS-Variablen (hell und dunkel) |
+| `src/styles/looks.css` | der EndLab-Look als CSS-Variablen (hell und dunkel) |
 | `tests/unit/`, `tests/e2e/` | Vitest und Playwright |
 
 **Routen:** `/` Start · `/spiele` Spiele · `/r/<CODE>` Online-Raum · `/lokal` ein Handy für alle (nur wenn eingeschaltet) · `/profil` · `/gruppe`, `/g/<CODE>` · `/admin`, `/admin/<bereich>` (live, statistik, spiele, leute, einstellungen, entwickler)

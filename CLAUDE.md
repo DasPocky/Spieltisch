@@ -29,8 +29,10 @@ Durable Objects). Überblick: `README.md`, Aufbau und Tests:
 - Gestaltung: **kein Scrollen auf dem Handy**, leichte Oberfläche, **keine
   Markennamen** in Texten, Looks, Bildern, Code, Kennungen und Dateinamen
   (frühere Kennungen nur in `shared/games/renamed.ts`).
-- Standard-Look ist „Papierschnitt“; Online zuerst, „Ein Handy für alle“ und
-  Offline sind im Admin einschaltbar.
+- Look ist einheitlich EndLab wie in allen EndLab-Apps (hell „Welle“, dunkel
+  „Nachthimmel“, Schrift Sora); Hell/Dunkel stellt jeder selbst ein, Standard
+  wie das Handy. Online zuerst, „Ein Handy für alle“ und Offline sind im Admin
+  einschaltbar.
 
 ## Arbeiten im Repo
 

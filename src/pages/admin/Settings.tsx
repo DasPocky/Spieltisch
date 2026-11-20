@@ -1,12 +1,10 @@
 import { Fragment, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { LOOKS } from "@shared/platform/looks";
 import { MAX_BANNER, MAX_MESSAGE, type Access, type SiteFeatures, type SiteLimits } from "@shared/platform/access";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import { Segmented } from "@/platform/Segmented";
 import { useAdmin } from "./context";
 import { FilesPanel } from "./Files";
@@ -38,7 +36,7 @@ const LIMITS: [keyof SiteLimits, string, string, number, number][] = [
   ["maxRooms", "Höchstens", "offene Räume (0 = egal)", 0, 500],
 ];
 
-/** Einstellungen: Aussehen, Startseite, Zugang, Funktionen, Grenzen, Daten – alles gilt sofort */
+/** Einstellungen: Startseite, Zugang, Funktionen, Grenzen, Daten – alles gilt sofort */
 export function SettingsSection() {
   const { config, save, api, setConfig } = useAdmin();
   const [resets, setResets] = useState(0);
@@ -46,24 +44,6 @@ export function SettingsSection() {
     <div className="grid gap-4 lg:grid-cols-2 lg:items-start" data-testid="admin-settings">
       {/* Nach „Einstellungen zurücksetzen“ die Felder frisch aufbauen – die Meldung unter „Daten“ bleibt stehen */}
       <Fragment key={resets}>
-      <Panel title="Aussehen" hint="Gilt für alle. Hell oder dunkel stellt jeder selbst ein." wide>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" role="radiogroup" aria-label="Aussehen">
-          {LOOKS.map((l) => (
-            <button key={l.id} type="button" role="radio" aria-checked={config.look === l.id} data-testid={`look-${l.id}`}
-              onClick={() => config.look !== l.id && void save({ look: l.id }, `Look: ${l.name}`)}
-              className={cn("flex min-w-0 items-center gap-2 rounded-xl p-2 text-left outline-none ring-1 ring-inset ring-border focus-visible:ring-2 focus-visible:ring-ring", config.look === l.id && "bg-primary/10 ring-2 ring-primary")}>
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg" style={{ background: l.page, boxShadow: `inset 0 0 0 1px ${l.ink}33` }} aria-hidden>
-                <span className="flex h-5 w-7 items-end justify-end rounded-[4px] p-0.5" style={{ background: l.card }}><span className="size-2.5 rounded-full" style={{ background: l.primary }} /></span>
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold" style={{ fontFamily: `"${l.font}"` }}>{l.name}</span>
-                <span className="block truncate text-[0.7rem] leading-tight text-muted-foreground">{l.desc}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </Panel>
-
       <Panel title="Startseite">
         <SaveField id="admin-banner" label="Hinweis-Banner (optional)" value={config.banner} max={MAX_BANNER} placeholder="z. B. Neu: Ludo und Mühle!"
           onSave={(banner) => save({ banner }, banner ? "Banner gespeichert" : "Banner entfernt")} />
