@@ -80,7 +80,9 @@ test("Kritzelpost online mit drei Handys: Satz, Zeichnung, Beschreibung – nur 
   // Blättern bis zum Ende: nach jedem Tipp warten, bis sich die Seite sichtbar ändert (kein Klick geht verloren, keiner zu viel)
   const next = anna.getByTestId("kp-next");
   const album = anna.getByTestId("kp-album");
-  for (let k = 0; k < 12 && !(await next.innerText()).includes("Album beenden"); k++) {
+  // Die Grenze schützt nur vor einer Endlosschleife: unter Last ändert sich der Albumtext auch ohne Tipp
+  // (ein Bild lädt nach), solche Durchgänge zählen mit – deshalb großzügig
+  for (let k = 0; k < 30 && !(await next.innerText()).includes("Album beenden"); k++) {
     const where = await album.innerText();
     await expect(async () => {
       if ((await album.innerText()) === where) await next.click();

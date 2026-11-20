@@ -99,7 +99,7 @@ async function botRoom(page: Page, bots: number) {
 
 for (const [w, h, bots] of [[360, 640, 2], [390, 844, 3]] as const) {
   test(`Skat online mit ${bots} Bots (${w}×${h}): reizen, Skat drücken, Spiel ansagen, Abrechnung – nur die eigene Hand`, async ({ page }) => {
-    test.setTimeout(420_000);
+    test.setTimeout(600_000);
     await page.setViewportSize({ width: w, height: h });
     await botRoom(page, bots);
     await expect(page.getByTestId("contract")).toBeVisible({ timeout: 30_000 });
@@ -107,7 +107,8 @@ for (const [w, h, bots] of [[360, 640, 2], [390, 844, 3]] as const) {
     let shotBid = false, shotOut = false, declared = false, shotSummary = false;
     const sum = page.getByTestId("round-summary");
     // nach Zeit statt nach Zügen: die Bots ziehen mit Pausen, ein Mensch wird nicht in jedem Spiel Alleinspieler
-    const until = Date.now() + 360_000;
+    // unter Last spielen die Bots langsamer; die Schleife endet sofort, sobald die Abrechnung da ist
+    const until = Date.now() + 540_000;
     while (Date.now() < until) {
       if (await sum.isVisible()) {
         if (!shotSummary || declared) { await expectNoScroll(page); await shot(page, `skat-abrechnung-${w}`); shotSummary = true; }

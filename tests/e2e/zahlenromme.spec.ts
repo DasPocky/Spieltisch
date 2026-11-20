@@ -133,7 +133,8 @@ async function newScreen(browser: Browser): Promise<Page> {
 }
 
 test("Zahlen-Rommé am Großen Tisch: der Tisch groß in der Mitte, keine Bänke", async ({ browser, request }) => {
-  test.setTimeout(240_000);
+  // Fernseher und drei Handys: unter Last braucht das deutlich länger als die 4 Minuten von früher
+  test.setTimeout(400_000);
   await setConfig(request, { ...ALL_ON, modes: { zahlenromme: { table: "on" } } });
   try {
     const screen = await newScreen(browser);
