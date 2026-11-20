@@ -39,8 +39,12 @@ for (const p of previews.filter((p) => wanted(p.name))) {
   console.log(`gelöscht: ${p.name}`);
   gone++;
 }
-const used = (await cf("/workers/durable_objects/namespaces?per_page=200")).result_info.total_count;
-console.log(`${gone} Vorschau(en) gelöscht, ${previews.length - gone} bleiben · Namespaces ${used}/${LIMIT}`);
+// Zählen braucht zusätzlich das Leserecht für Durable Objects – ohne dieses Recht nur ein Hinweis, gelöscht ist trotzdem
+const used = await cf("/workers/durable_objects/namespaces?per_page=200").then((b) => b.result_info.total_count, (e) => {
+  console.log(`Namespaces nicht gezählt (${e.message.slice(0, 80)})`);
+  return 0;
+});
+console.log(`${gone} Vorschau(en) gelöscht, ${previews.length - gone} bleiben · Namespaces ${used || "?"}/${LIMIT}`);
 if (used > LIMIT - 20) {
   console.error(`Achtung: nur noch Platz für ${Math.floor((LIMIT - used) / 4)} Vorschauen`);
   process.exitCode = 1;

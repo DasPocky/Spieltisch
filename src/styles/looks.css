@@ -114,3 +114,9 @@
   }
   [data-slot="button"][data-variant="default"] { background-image: var(--btn-image, none); }
 }
+
+/* EndLab-Logo für „Powered by EndLab“: Quadrat mit Punkt (wie in allen EndLab-Apps) */
+.endlab-logo { width: 1.25rem; height: 1.25rem; border-radius: 0.375rem; background: #0e2240; display: inline-grid; place-items: center; flex: none; }
+.endlab-logo::after { content: ""; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #3fb6d8; }
+:root[data-theme="dark"] .endlab-logo { background: #3fb6d8; }
+:root[data-theme="dark"] .endlab-logo::after { background: #0e2240; }

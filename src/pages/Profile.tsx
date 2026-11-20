@@ -280,6 +280,10 @@ export function Profile() {
       <NavRow icon={Sparkles} title="Neuigkeiten" sub="Was sich am Spieltisch zuletzt getan hat" onClick={() => setNews(true)} data-testid="news-link" />
       <NewsSheet open={news} onOpenChange={setNews} />
       {!admin && <NavRow icon={ShieldCheck} outline title="Verwaltung" sub="Nur mit Admin-Passwort" onClick={() => navigate("/admin")} data-testid="admin-link" />}
+      <p className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground" data-testid="powered-by">
+        <span className="endlab-logo" aria-hidden />
+        <span>Powered by <b className="text-foreground">EndLab</b></span>
+      </p>
     </main>
   );
 }
