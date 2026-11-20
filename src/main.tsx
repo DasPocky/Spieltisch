@@ -1,5 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+// Zuerst: Umzug von endlab.de/spieltisch annehmen, bevor irgendein Modul den Speicher liest
+import "./lib/moveIn";
 import "./index.css";
 import "./lib/theme";
 import { siteConfigNow, whenSiteConfig } from "./hooks/useSiteConfig";
