@@ -1,5 +1,5 @@
 import { stripBase, withBase } from "@shared/platform/base";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Dices, House, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import { WhatsNew } from "@/platform/WhatsNew";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
@@ -37,8 +37,28 @@ export function goTab(path: string) {
  * Raum und lokale Partie laufen ohne Hülle im Vollbild. Admin-Geräte haben einen fünften Tab „Verwaltung“.
  */
 export function AppShell({ tab, children }: { tab: Tab; children: ReactNode }) {
+  // Kopf im EndLab-Look nur auf den Tab-Seiten (looks.css: data-shell). Das Band reicht bis unter den
+  // Titelblock (Titel samt Unterzeile), damit kein Text auf der Kante steht; 36px Luft für die Welle.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.shell = tab;
+    const measure = () => {
+      const first = document.querySelector<HTMLElement>(".tab-in > main > :is(header, h1)");
+      if (!first) return root.style.removeProperty("--band");
+      let last: Element = first;
+      while (last.nextElementSibling && /^(H1|P)$/.test(last.nextElementSibling.tagName)) last = last.nextElementSibling;
+      root.style.setProperty("--band", `${Math.round(last.getBoundingClientRect().bottom + 36)}px`);
+    };
+    const raf = requestAnimationFrame(measure);
+    const late = setTimeout(measure, 400);
+    addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf); clearTimeout(late); removeEventListener("resize", measure);
+      delete root.dataset.shell; root.style.removeProperty("--band");
+    };
+  }, [tab]);
   return (
-    <div className="flex h-dvh-safe flex-col overflow-clip lg:flex-row">
+    <div className="shell-bleed flex h-dvh-safe flex-col overflow-clip lg:flex-row">
       <div key={tab} className="tab-in flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-testid={`tab-${tab}`}>{children}</div>
       <TabBar tab={tab} />
       <WhatsNew />
