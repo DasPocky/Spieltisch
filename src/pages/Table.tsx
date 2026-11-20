@@ -307,7 +307,7 @@ function TableView({ code, pin, room, online, remote, reacts, call, callKey, ann
   const cover = useRemote(remote, remoteActions);
 
   return (
-    <div className="table-room fixed inset-0 flex overflow-hidden" data-testid="table-view">
+    <div className="table-room fixed inset-0 flex overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]" data-testid="table-view">
       <main className={cn("relative min-w-0 flex-1 transition-[margin]", handOpen && "ml-[min(30rem,100vw)]")}>
         {stage ? (
           <StudioStage room={room} online={online} model={model} sham={sham} reacts={reacts} videos={videos} hiddenVideos={hiddenVideos} onToggleVideo={toggleVideo}>

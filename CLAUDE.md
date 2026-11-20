@@ -17,6 +17,11 @@ Durable Objects). Überblick: `README.md`, Aufbau und Tests:
 - Deploy nur über **Cloudflare Workers Builds**, nie von Hand und nie aus
   GitHub Actions. GitHub Actions prüfen nur.
 - Nichts darf hängen bleiben: Jede Änderung am Betrieb hat einen Rückweg.
+- **Vollbild auf dem Handy:** Die App reicht bis an alle Ränder
+  (`viewport-fit=cover`, Statusleiste durchscheinend, Hintergrund auch auf
+  `<html>`). Nichts Bedienbares unter Notch, Kamera-Loch oder Home-Leiste:
+  Abstände mit `env(safe-area-inset-*)`, Dialoge und Blätter nie höher als der
+  freie Bereich, auch im Querformat.
 - **Keine Ideen, Konzepte oder Pläne im Repo.** Ins Repo kommt nur, was gebaut
   ist und gilt: Code, Tests, Betriebsdoku, CLAUDE.md. Vorschläge nur im Chat.
 

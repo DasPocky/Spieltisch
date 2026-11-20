@@ -64,7 +64,7 @@ export function TableCamera({ name, onShot, onClose }: { name: string; onShot: (
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-6" role="dialog" aria-label={`Foto für ${name}`} data-testid="table-camera">
+    <div className="fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-black/70 pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))]" role="dialog" aria-label={`Foto für ${name}`} data-testid="table-camera">
       <div className="paper-note grid w-full max-w-xl gap-4 p-6">
         <h2 className="text-2xl font-bold">Foto für {name}</h2>
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#2b2118]">
