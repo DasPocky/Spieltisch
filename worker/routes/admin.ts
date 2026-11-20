@@ -125,12 +125,8 @@ export async function handleAdmin(request: Request, env: Env, path: string): Pro
     if (request.method === "DELETE") { await env.FILES.delete(ASSET_PREFIX + target.path); return json({ ok: true }); }
     return putAsset(env, target.path, request);
   }
-  // Updates: Stand (Modus, wartende Version, Verlauf) und „Jetzt live schalten“
+  // Updates: gehen immer sofort live – hier nur der Stand
   if (path === "/api/admin/release" && request.method === "GET") return json(await settings.releaseStatus());
-  if (path === "/api/admin/release" && request.method === "POST") {
-    const r = await settings.releaseTick(true);
-    return json(r, r.ok ? 200 : 502);
-  }
   if (path === "/api/admin/status" && request.method === "GET") {
     const status: ServerStatus = {
       ...(await settings.status()),

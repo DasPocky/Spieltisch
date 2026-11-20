@@ -19,15 +19,8 @@ export interface Env {
   REALTIME_FAKE?: string;
   /** Wartezeit bis zum Verbuchen der Ergebnisse in ms (Tests: kurz; ohne Angabe 2 Minuten) */
   RESULT_DELAY_MS?: string;
-  /** Updates: Zeitpunkt fest vorgeben (now, round, idle, time, manual) – überschreibt die Admin-Einstellung */
-  UPDATE_MODE?: string;
-  /** Secret: damit meldet der Build neue Versionen an (/api/release) */
+  /** Secret: GitHub-Aktion „Stimme“ holt fehlende Ansagen und lädt sie hoch (/api/release/voice, /files) */
   RELEASE_SECRET?: string;
-  /** Secret: Cloudflare-API-Token zum Freischalten wartender Versionen (Recht „Workers Scripts: Edit“) */
-  DEPLOY_TOKEN?: string;
-  /** Konto und Name dieses Workers bei Cloudflare (für das Freischalten) */
-  CF_ACCOUNT_ID?: string;
-  WORKER_NAME?: string;
   /** Globale Ratenbremse von Cloudflare für sicherheitsrelevante Wege (Profil-Schlüssel, Übertragung, PIN) */
   SENSITIVE?: RateLimit;
   /** R2-Speicher für größere Dateien (Fotos der Spieler). Fehlt er, sind Fotos aus. */
