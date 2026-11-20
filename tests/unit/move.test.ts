@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runInNewContext } from "node:vm";
-import { decodeMove, encodeMove, movePlan, MOVE_ANCHOR } from "../../shared/platform/move";
+import { decodeMove, encodeMove, movePlan, moveOutTarget, MOVE_ANCHOR } from "../../shared/platform/move";
 import { isNavigation, isOldHost, movePage, retireServiceWorker } from "../../worker/move";
 
 /** Führt das Skript der Umzugsseite mit einem erfundenen Speicher aus und liefert das Ziel */
@@ -66,6 +66,20 @@ describe("Umzug nach spieltisch.endlab.de", () => {
     expect(isOldHost("claude-xyz-spieltisch.bjoern-ef9.workers.dev")).toBe(false);
     expect(isOldHost("spieltisch.endlab.de")).toBe(false);
     expect(isOldHost("localhost")).toBe(false);
+  });
+
+  it("Auf workers.dev zieht die App selbst um – mit allen Spieltisch-Einträgen, Pfad und Suche", () => {
+    const store: Record<string, string> = { "spieltisch:profile": "p", "abfahrt:x": "1" };
+    const keys = Object.keys(store);
+    const storage = { length: keys.length, key: (i: number) => keys[i] ?? null, getItem: (k: string) => store[k] ?? null };
+    const target = moveOutTarget({ hostname: "spieltisch.bjoern-ef9.workers.dev", pathname: "/r/ABCDE", search: "?x=1" }, storage)!;
+    const [base, hash] = target.split("#umzug=");
+    expect(base).toBe("https://spieltisch.endlab.de/r/ABCDE?x=1");
+    expect(decodeMove(hash)).toEqual({ "spieltisch:profile": "p" });
+    expect(moveOutTarget({ hostname: "spieltisch.bjoern-ef9.workers.dev", pathname: "/", search: "" }, { length: 0, key: () => null, getItem: () => null })).toBe("https://spieltisch.endlab.de/");
+    for (const hostname of ["spieltisch.endlab.de", "localhost", "claude-x-spieltisch.bjoern-ef9.workers.dev"]) {
+      expect(moveOutTarget({ hostname, pathname: "/", search: "" }, storage)).toBeNull();
+    }
   });
 
   it("Der alte Service Worker räumt sich selbst ab", async () => {

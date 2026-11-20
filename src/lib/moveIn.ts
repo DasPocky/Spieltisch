@@ -1,7 +1,18 @@
 /**
  * Umzug annehmen (siehe shared/platform/move.ts). Läuft als erstes Modul, bevor irgendetwas den Speicher liest.
+ * Auf der alten workers.dev-Adresse zieht die App selbst um: Speicher einpacken, weiter nach spieltisch.endlab.de.
  */
-import { decodeMove, movePlan, MOVE_PARAM } from "@shared/platform/move";
+import { decodeMove, movePlan, MOVE_PARAM, moveOutTarget } from "@shared/platform/move";
+
+function moveOut() {
+  if (typeof window === "undefined") return;
+  let target: string | null = null;
+  try { target = moveOutTarget(location, localStorage); } catch { target = moveOutTarget(location, { length: 0, key: () => null, getItem: () => null }); }
+  if (!target) return;
+  location.replace(target);
+  // Nichts weiter starten: keine Anfragen, kein neues Profil auf der alten Adresse
+  throw new Error("Spieltisch zieht um nach spieltisch.endlab.de");
+}
 
 function moveIn() {
   if (typeof window === "undefined") return;
@@ -19,4 +30,5 @@ function moveIn() {
   }
 }
 
+moveOut();
 moveIn();
