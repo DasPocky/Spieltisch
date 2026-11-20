@@ -78,14 +78,26 @@
   --font-body: "Sora";
   --display-weight: 700;
   --radius: 1.15rem;
-  /* Welle oben wie in allen EndLab-Apps */
-  --page-pattern: radial-gradient(150% 120px at 50% -40px, var(--wave1) 0 70%, transparent 71%), radial-gradient(150% 140px at 50% -36px, var(--wave2) 0 70%, transparent 71%), radial-gradient(150% 160px at 50% -32px, var(--wave3) 0 70%, transparent 71%);
+  --page-pattern: none;
+}
+/* Tab-Seiten auf dem Handy: marineblauer Kopf mit Blase und Welle wie in allen EndLab-Apps,
+   die Seitentitel stehen weiß darauf. Ab Laptop-Breite (Seitenleiste) entfällt er. */
+@media (max-width: 1023px) {
+  :root[data-look="endlab"][data-shell] {
+    --page-pattern:
+      radial-gradient(circle 112px at calc(100% + 18px) calc(env(safe-area-inset-top, 0px) - 26px), rgb(63 182 216 / 0.35) 99%, transparent 100%) no-repeat,
+      radial-gradient(75% 28px at 50% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)), var(--page-top) 99%, transparent 100%) no-repeat,
+      linear-gradient(160deg, var(--head-from), var(--head-to) 70%) top / 100% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)) no-repeat;
+  }
+  :root[data-look="endlab"][data-shell] .tab-in > main > :is(header, h1) { color: #fff; }
+  :root[data-look="endlab"][data-shell] .tab-in > main > :is(header, h1) .text-muted-foreground,
+  :root[data-look="endlab"][data-shell] .tab-in > main > h1 + p { color: #a9e3f2; }
 }
 :root[data-look="endlab"][data-theme="light"] {
   --surf: #eef4f9; --ink: #0e2240; --tint: #3fb6d8; --hi: #1d7fa0; --back: #0e2240;
   --csurf: #ffffff;
   --primary: #1d7fa0; --primary-foreground: #ffffff;
-  --wave1: #bfe3f1; --wave2: #d3ecf6; --wave3: #e3f2f9;
+  --head-from: #0e2240; --head-to: #0e2240;
   --glass-shadow: 0 5px 0 #d5e5f0, 0 10px 18px -8px rgb(14 34 64 / 0.16);
   --btn-shadow: 0 4px 0 rgb(14 34 64 / 0.28);
 }
@@ -93,7 +105,7 @@
   --surf: #0b1a33; --ink: #eaf6fb; --tint: #3fb6d8; --hi: #7fd6ee; --back: #173a6b;
   --csurf: #14294a;
   --primary: #3fb6d8; --primary-foreground: #0e2240;
-  --wave1: #173a6b; --wave2: #132f57; --wave3: #0f2547;
+  --head-from: #173a6b; --head-to: #0b1a33;
   --glass-shadow: 0 5px 0 #081428, 0 10px 18px -8px rgb(0 0 0 / 0.5);
   --btn-shadow: 0 4px 0 rgb(0 0 0 / 0.4), 0 0 18px rgb(63 182 216 / 0.25);
 }
@@ -114,3 +126,9 @@
   }
   [data-slot="button"][data-variant="default"] { background-image: var(--btn-image, none); }
 }
+
+/* EndLab-Logo für „Powered by EndLab“: Quadrat mit Punkt (wie in allen EndLab-Apps) */
+.endlab-logo { width: 1.25rem; height: 1.25rem; border-radius: 0.375rem; background: #0e2240; display: inline-grid; place-items: center; flex: none; }
+.endlab-logo::after { content: ""; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #3fb6d8; }
+:root[data-theme="dark"] .endlab-logo { background: #3fb6d8; }
+:root[data-theme="dark"] .endlab-logo::after { background: #0e2240; }
