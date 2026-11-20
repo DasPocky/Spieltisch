@@ -34,11 +34,8 @@ function buildInfo() {
   };
 }
 
-/**
- * Basispfad: mit APP_BASE ausdrücklich, sonst in jedem Cloudflare-Build (Produktion und Vorschau) „/spieltisch“ –
- * die App läuft unter endlab.de/spieltisch. Lokal und in den Tests bleibt sie an der Wurzel.
- */
-const APP_BASE = (process.env.APP_BASE ?? (process.env.WORKERS_CI_BRANCH ? "/spieltisch" : "")).replace(/\/+$/, "");
+/** Basispfad: nur mit APP_BASE ausdrücklich. Die App läuft an der Wurzel von spieltisch.endlab.de. */
+const APP_BASE = (process.env.APP_BASE ?? "").replace(/\/+$/, "");
 
 export default defineConfig({
   base: `${APP_BASE}/`,

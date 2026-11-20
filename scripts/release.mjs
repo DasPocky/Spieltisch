@@ -24,7 +24,10 @@ async function keepPreviousAssets() {
   try {
     const res = await fetch(new URL("/precache.json", LIVE), { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) { console.log(`Alte Dateiliste nicht erreichbar (${res.status}) – ohne alte Programmteile.`); return; }
-    const files = (await res.json()).filter((f) => typeof f === "string" && /^\/assets\/[\w.-]+$/.test(f));
+    // Einmalig beim Umzug an die Wurzel: die alte Liste trägt noch „/spieltisch“ davor
+    const files = (await res.json())
+      .map((f) => (typeof f === "string" ? f.replace(/^\/spieltisch(?=\/assets\/)/, "") : f))
+      .filter((f) => typeof f === "string" && /^\/assets\/[\w.-]+$/.test(f));
     let added = 0;
     for (const f of files) {
       const dst = join(CLIENT, f);

@@ -2,7 +2,13 @@
 
 ## Adressen
 
-Live unter **https://spieltisch.endlab.de** (eigene Domain des Workers, `routes` in `wrangler.jsonc`). Die Zone `endlab.de` liegt bei Cloudflare (Nameserver von INWX dorthin delegiert, DNSSEC an, SSL „Full (strict)“, HTTPS erzwungen). `endlab.de` zeigt eine kleine Startseite (eigener Worker `endlab-start`, `www` leitet dorthin). Die alte Adresse `spieltisch.bjoern-ef9.workers.dev` bleibt erreichbar, weil Profile und Geräteschlüssel im Browser je Adresse liegen; Vorschauen je Zweig laufen weiter über workers.dev.
+Live unter **https://spieltisch.endlab.de** (eigene Domain des Workers, `routes` in `wrangler.jsonc`). Die Zone `endlab.de` liegt bei Cloudflare (Nameserver von INWX dorthin delegiert, DNSSEC an, SSL „Full (strict)“, HTTPS erzwungen). `endlab.de` zeigt eine kleine Startseite (eigener Worker `endlab-start`, `www` leitet dorthin).
+
+Frühere Adressen:
+
+- `endlab.de/spieltisch…` (Route `endlab.de/spieltisch*`): Seiten ziehen samt Daten auf dem Gerät um. Der Worker liefert eine kleine Seite (`worker/move.ts`), die alle Einträge mit `spieltisch:` im Anker `#umzug=…` nach `spieltisch.endlab.de` mitnimmt; dort übernimmt `src/lib/moveIn.ts` sie, solange noch kein Profil auf dem Gerät liegt. Ein Service Worker der alten Adresse meldet sich selbst ab. Dateien und `/api` laufen dort für offene Tabs weiter. Als App auf dem Home-Bildschirm muss man Spieltisch einmal neu hinzufügen.
+- `spieltisch.endlab.de/spieltisch…`: Seiten leiten auf denselben Pfad an der Wurzel um (301).
+- Die alte Adresse `spieltisch.bjoern-ef9.workers.dev` bleibt erreichbar, weil Profile und Geräteschlüssel im Browser je Adresse liegen; Vorschauen je Zweig laufen weiter über workers.dev.
 
 ## Deploy über Workers Builds
 
