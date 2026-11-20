@@ -147,6 +147,8 @@ test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Kar
   await anna.getByTestId("text-area").fill("Cem fragt dauernd nach dem Weinkeller");
   await anna.getByTestId("text-save").click();
   await expect(anna.getByTestId("text-open")).toContainText("•");
+  // Erst wieder öffnen, wenn das Blatt ganz weg ist: Ein Tipp während des Ausblendens zählt als „daneben“
+  await expect(anna.getByRole("dialog")).toHaveCount(0);
   await anna.getByTestId("text-open").click();
   await expect(anna.getByTestId("text-area")).toHaveValue("Cem fragt dauernd nach dem Weinkeller");
   await shot(anna, "spurensuche-eigene-notiz");
@@ -161,6 +163,7 @@ test("Spurensuche am echten Brett: jedes Handy ist der Notizblock – eigene Kar
   await expect(anna.getByTestId("text-save")).toBeInViewport();
   await shot(anna, "spurensuche-notiz-tastatur");
   await anna.getByTestId("text-save").click();
+  await expect(anna.getByRole("dialog")).toHaveCount(0);
   await anna.evaluate(() => {
     const vv = window.visualViewport!;
     Object.defineProperty(vv, "height", { configurable: true, get: () => window.innerHeight });
