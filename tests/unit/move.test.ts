@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runInNewContext } from "node:vm";
 import { decodeMove, encodeMove, movePlan, MOVE_ANCHOR } from "../../shared/platform/move";
-import { isNavigation, movePage, retireServiceWorker } from "../../worker/move";
+import { isNavigation, isOldHost, movePage, retireServiceWorker } from "../../worker/move";
 
 /** Führt das Skript der Umzugsseite mit einem erfundenen Speicher aus und liefert das Ziel */
 async function follow(store: Record<string, string>, target = "https://spieltisch.endlab.de/r/ABCDE?x=1") {
@@ -58,6 +58,14 @@ describe("Umzug nach spieltisch.endlab.de", () => {
     expect(isNavigation(req({ "sec-fetch-mode": "cors", accept: "text/html" }))).toBe(false);
     expect(isNavigation(req({ accept: "text/html,*/*" }))).toBe(true);
     expect(isNavigation(req({ accept: "text/html" }, "POST"))).toBe(false);
+  });
+
+  it("Umziehen nur von den früheren Adressen – Vorschauen und die neue Adresse bleiben", () => {
+    expect(isOldHost("endlab.de")).toBe(true);
+    expect(isOldHost("spieltisch.bjoern-ef9.workers.dev")).toBe(true);
+    expect(isOldHost("claude-xyz-spieltisch.bjoern-ef9.workers.dev")).toBe(false);
+    expect(isOldHost("spieltisch.endlab.de")).toBe(false);
+    expect(isOldHost("localhost")).toBe(false);
   });
 
   it("Der alte Service Worker räumt sich selbst ab", async () => {

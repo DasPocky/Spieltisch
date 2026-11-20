@@ -8,7 +8,7 @@ Frühere Adressen:
 
 - `endlab.de/spieltisch…` (Route `endlab.de/spieltisch*`): Seiten ziehen samt Daten auf dem Gerät um. Der Worker liefert eine kleine Seite (`worker/move.ts`), die alle Einträge mit `spieltisch:` im Anker `#umzug=…` nach `spieltisch.endlab.de` mitnimmt; dort übernimmt `src/lib/moveIn.ts` sie, solange noch kein Profil auf dem Gerät liegt. Ein Service Worker der alten Adresse meldet sich selbst ab. Dateien und `/api` laufen dort für offene Tabs weiter. Als App auf dem Home-Bildschirm muss man Spieltisch einmal neu hinzufügen.
 - `spieltisch.endlab.de/spieltisch…`: Seiten leiten auf denselben Pfad an der Wurzel um (301).
-- Die alte Adresse `spieltisch.bjoern-ef9.workers.dev` bleibt erreichbar, weil Profile und Geräteschlüssel im Browser je Adresse liegen; Vorschauen je Zweig laufen weiter über workers.dev.
+- `spieltisch.bjoern-ef9.workers.dev` (erste Adresse, an der Wurzel): Seiten ziehen genauso samt Daten um wie von `endlab.de/spieltisch`. `workers_dev` bleibt dafür vorerst an. Vorschauen je Zweig (`…-spieltisch.bjoern-ef9.workers.dev`) sind davon nicht betroffen.
 
 ## Deploy über Workers Builds
 

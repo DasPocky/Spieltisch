@@ -18,7 +18,7 @@ import { handleCall } from "./routes/call";
 import { ownsProfile } from "./auth";
 import { ASSET_PREFIX, assetPath } from "../shared/platform/files";
 import { pieceKey, validPiece } from "../shared/platform/voice";
-import { HOME, isNavigation, movePage, OLD_HOST, retireServiceWorker } from "./move";
+import { HOME, isNavigation, isOldHost, movePage, retireServiceWorker, WORKERS_DEV_HOST } from "./move";
 import { AI_DAILY, AI_MODEL, cleanHostLine, hostPrompt, parseHostLine } from "../shared/platform/hostline";
 
 /** Anfragen dieser Worker-Instanz, gesammelt gemeldet (nicht jede Anfrage einzeln – das wären doppelt so viele) */
@@ -37,14 +37,20 @@ const notOwner = () => json({ error: "Dieses Profil gehört zu einem anderen Ger
 export default {
   async fetch(request, env, ctx): Promise<Response> {
     let url = new URL(request.url);
+    // Erste Adresse auf workers.dev (an der Wurzel): Seiten ziehen samt Daten auf dem Gerät nach spieltisch.endlab.de
+    if (url.hostname === WORKERS_DEV_HOST) {
+      const path = stripBase(url.pathname, APP_PREFIX);
+      if (path === "/sw.js") return retireServiceWorker();
+      if (isNavigation(request) && !path.startsWith("/api/")) return movePage(`${HOME}${path}${url.search}`);
+    }
     // Frühere Adressen mit /spieltisch davor. Seiten ziehen um: von endlab.de samt Daten auf dem Gerät nach
     // spieltisch.endlab.de, auf derselben Adresse einfach an die Wurzel. Dateien und /api gibt es dort weiter ohne
     // Präfix, damit offene Tabs bis zum nächsten Neuladen laufen.
     const logical = stripBase(url.pathname, APP_PREFIX);
     if (logical !== url.pathname) {
-      if (url.hostname === OLD_HOST && logical === "/sw.js") return retireServiceWorker();
+      if (isOldHost(url.hostname) && logical === "/sw.js") return retireServiceWorker();
       if (isNavigation(request) && !logical.startsWith("/api/")) {
-        if (url.hostname === OLD_HOST) return movePage(`${HOME}${logical}${url.search}`);
+        if (isOldHost(url.hostname)) return movePage(`${HOME}${logical}${url.search}`);
         return Response.redirect(`${url.origin}${logical}${url.search}`, 301);
       }
       url = new URL(url);
