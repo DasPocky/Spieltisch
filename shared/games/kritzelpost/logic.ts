@@ -63,8 +63,9 @@ export type KAction =
   | { type: "clear"; player?: string }
   | { type: "done"; player?: string }
   | { type: "timeUp" }
-  /** Album blättern (Host) */
-  | { type: "page"; dir: 1 | -1 };
+  /** Album blättern (Host); `from` ist die Seite, von der aus geblättert wird (doppelt ankommende Tipps
+   *  blättern so nicht zweimal) */
+  | { type: "page"; dir: 1 | -1; from?: { book: number; page: number } };
 
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 /** Grenzen je Zeichnung (der ganze Spielstand bleibt so unter ~350 KB, auch mit 8 Spielern) */
@@ -216,7 +217,10 @@ function apply(prev: KState, a: KAction, ctx: GameContext): KState {
       return s;
     }
     case "page": {
+      // Schon weitergeblättert (z. B. derselbe Tipp zweimal unterwegs, auch über das Ende): nichts tun
+      if (a.from && s.phase === "over") return s;
       if (s.phase !== "album") throw new GameError("Das Album ist noch nicht offen.");
+      if (a.from && (a.from.book !== s.book || a.from.page !== s.page)) return s;
       const per = pagesPer(s);
       if (a.dir === 1) {
         if (s.page + 1 < per) s.page++;
