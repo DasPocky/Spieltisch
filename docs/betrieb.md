@@ -8,7 +8,7 @@ Frühere Adressen:
 
 - `endlab.de/spieltisch…` (Route `endlab.de/spieltisch*`): Seiten ziehen samt Daten auf dem Gerät um. Der Worker liefert eine kleine Seite (`worker/move.ts`), die alle Einträge mit `spieltisch:` im Anker `#umzug=…` nach `spieltisch.endlab.de` mitnimmt; dort übernimmt `src/lib/moveIn.ts` sie, solange noch kein Profil auf dem Gerät liegt. Ein Service Worker der alten Adresse meldet sich selbst ab. Dateien und `/api` laufen dort für offene Tabs weiter. Als App auf dem Home-Bildschirm muss man Spieltisch einmal neu hinzufügen.
 - `spieltisch.endlab.de/spieltisch…`: Seiten leiten auf denselben Pfad an der Wurzel um (301).
-- `spieltisch.bjoern-ef9.workers.dev` (erste Adresse, an der Wurzel): Dort liefert Cloudflare die Seiten ohne Worker aus, deshalb zieht die App selbst um (`moveOut` in `src/lib/moveIn.ts`): Sie packt alle `spieltisch:`-Einträge ein und geht nach `spieltisch.endlab.de`. `workers_dev` bleibt dafür vorerst an. Vorschauen je Zweig (`…-spieltisch.bjoern-ef9.workers.dev`) sind davon nicht betroffen.
+- `spieltisch.bjoern-ef9.workers.dev` (erste Adresse): abgeschaltet (`workers_dev: false` wie in allen EndLab-Apps). Vorschauen je Zweig (`…-spieltisch.bjoern-ef9.workers.dev`, `preview_urls`) laufen weiter. Rückweg: `workers_dev` wieder auf `true` setzen und mergen.
 
 ## Deploy über Workers Builds
 

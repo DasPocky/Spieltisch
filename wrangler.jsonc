@@ -27,10 +27,10 @@
     { "tag": "v4", "new_sqlite_classes": ["GroupStore"] }
   ],
   "observability": { "enabled": true },
-  // Eigene Domain (DNS-Eintrag und Zertifikat legt Cloudflare selbst an). Die workers.dev-Adresse bleibt erreichbar:
-  // Profile und Geräteschlüssel liegen im Browser je Adresse – wer dort spielt, zieht per Übertragungs-Code um.
+  // Eigene Domain (DNS-Eintrag und Zertifikat legt Cloudflare selbst an). Die workers.dev-Adresse ist aus wie in allen
+  // EndLab-Apps; Vorschauen je Zweig (preview_urls) laufen davon unabhängig weiter.
   "routes": [{ "pattern": "spieltisch.endlab.de", "custom_domain": true }, { "pattern": "endlab.de/spieltisch*", "zone_name": "endlab.de" }],
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": true,
   // Nicht geheim und deshalb hier statt im Dashboard: dort gesetzte Variablen löscht jeder Deploy.
   // Das Gegenstück REALTIME_APP_TOKEN bleibt ein Secret (wrangler secret put).

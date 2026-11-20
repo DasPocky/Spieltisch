@@ -42,21 +42,3 @@ export function movePlan(data: Record<string, string>, has: (key: string) => boo
   if (has(MOVE_ANCHOR)) return [];
   return Object.entries(data).filter(([k]) => !has(k));
 }
-
-/** Erste Adresse auf workers.dev: Dort liefert Cloudflare die Seite ohne Worker aus, also zieht die App selbst um */
-export const MOVE_FROM_HOST = "spieltisch.bjoern-ef9.workers.dev";
-export const MOVE_HOME = "https://spieltisch.endlab.de";
-
-/** Wohin die App von der alten Adresse aus geht – samt aller Spieltisch-Einträge im Anker; sonst null */
-export function moveOutTarget(loc: { hostname: string; pathname: string; search: string }, storage: { length: number; key(i: number): string | null; getItem(k: string): string | null }): string | null {
-  if (loc.hostname !== MOVE_FROM_HOST) return null;
-  const data: Record<string, string> = {};
-  for (let i = 0; i < storage.length; i++) {
-    const k = storage.key(i);
-    if (!k?.startsWith(MOVE_PREFIX)) continue;
-    const v = storage.getItem(k);
-    if (v !== null && v.length <= MOVE_MAX_VALUE) data[k] = v;
-  }
-  const hash = Object.keys(data).length ? `#${MOVE_PARAM}=${encodeMove(data)}` : "";
-  return `${MOVE_HOME}${loc.pathname}${loc.search}${hash}`;
-}
