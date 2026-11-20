@@ -1,16 +1,8 @@
 import { cn } from "@/lib/utils";
 
-/** Marken-Symbol von Spieltisch: Würfel vor einer Karte. */
+/** Marken-Symbol von Spieltisch: das App-Icon im EndLab-Look (public/icons/icon.svg) */
 export function Logo({ className }: { className?: string }) {
-  return (
-    <div className={cn("grid size-9 place-items-center rounded-xl bg-gradient-to-br from-deep-400 to-deep-700 shadow-sm", className)}>
-      <svg viewBox="0 0 40 40" className="size-[72%]" aria-hidden="true">
-        <rect x="17" y="5" width="17" height="24" rx="3.5" transform="rotate(12 25 17)" fill="#bcd3f5" opacity="0.9" />
-        <rect x="6" y="13" width="20" height="20" rx="5" fill="#fdfdfb" />
-        {[[11, 18], [21, 18], [16, 23], [11, 28], [21, 28]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.9" fill="#1f437f" />)}
-      </svg>
-    </div>
-  );
+  return <img src="/icons/icon.svg" alt="" aria-hidden="true" className={cn("size-9 rounded-xl shadow-sm", className)} />;
 }
 
 /** Rahmen für ein Spiel-Symbol in Kacheln und Kopfzeile */
