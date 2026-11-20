@@ -79,6 +79,22 @@ test("Blätter schließen mit der Zurück-Geste, Beitreten nimmt auch einen Link
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("Blatt sofort wieder öffnen: das verspätete Zurück vom vorigen Blatt schließt es nicht", async ({ page }) => {
+  // Langsames Gerät nachstellen: das Zurück nach dem Schließen kommt erst spät an
+  await page.evaluate(() => { const back = history.back.bind(history); history.back = () => void setTimeout(back, 400); });
+  await page.getByTestId("join-open").click();
+  await expect(page.getByLabel("Raumcode")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByTestId("join-open").click();
+  await page.waitForTimeout(800);
+  await expect(page.getByLabel("Raumcode")).toBeVisible();
+  // Zurück schließt es weiterhin, und danach bleibt kein toter Eintrag
+  await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test("Spiele-Tab: Infoblatt mit Regeln, Raum mit diesem Spiel öffnen", async ({ page }) => {
   await page.getByTestId("tabbar-spiele").click();
   await page.getByRole("tab", { name: "Brett" }).click();
