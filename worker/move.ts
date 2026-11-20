@@ -1,11 +1,17 @@
 /**
- * Alte Adresse endlab.de/spieltisch: Seiten ziehen samt Daten auf dem Gerät nach spieltisch.endlab.de um
- * (siehe shared/platform/move.ts). Dateien und /api bedient der Worker dort weiter, damit offene Tabs nicht brechen.
+ * Frühere Adressen endlab.de/spieltisch und spieltisch.bjoern-ef9.workers.dev: Seiten ziehen samt Daten auf dem Gerät
+ * nach spieltisch.endlab.de um (siehe shared/platform/move.ts). Dateien und /api bedient der Worker dort weiter, damit
+ * offene Tabs nicht brechen.
  */
 import { MOVE_MAX_VALUE, MOVE_PARAM, MOVE_PREFIX } from "../shared/platform/move";
 
 export const OLD_HOST = "endlab.de";
+/** Die erste Adresse überhaupt. Vorschauen haben eigene Namen davor (…-spieltisch.bjoern-ef9.workers.dev) und bleiben. */
+export const WORKERS_DEV_HOST = "spieltisch.bjoern-ef9.workers.dev";
 export const HOME = "https://spieltisch.endlab.de";
+
+/** Hosts, von denen Spieltisch umzieht */
+export const isOldHost = (host: string) => host === OLD_HOST || host === WORKERS_DEV_HOST;
 
 /** Seitenaufruf (nicht Datei, nicht fetch)? */
 export function isNavigation(request: Request): boolean {
