@@ -4,8 +4,18 @@ import { ADMIN_PW, adminLogin, ALL_ON, closeSettings, createRoom, expectNoScroll
 const BLACK = Array.from({ length: 6 }, (_, i) => `Eigene Frage ${i + 1}: ___?`);
 const WHITE = Array.from({ length: 40 }, (_, i) => `Eigene Antwort ${i + 1}`);
 
-/** Profil dieses Geräts (ID und Geräteschlüssel) */
-const profileOf = (p: Page) => p.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:profile") ?? "{}") as { id: string; key: string });
+/** Profil dieses Geräts (ID und Geräteschlüssel). Die App legt es erst an, wenn sie es braucht – fehlt es noch, legt
+ *  die Profilseite es an. */
+const readProfile = (p: Page) => p.evaluate(() => JSON.parse(localStorage.getItem("spieltisch:profile") ?? "{}") as { id?: string; key?: string });
+async function profileOf(p: Page): Promise<{ id: string; key: string }> {
+  if (!(await readProfile(p)).key) {
+    await p.goto("/profil");
+    await expect(p.getByTestId("stats")).toBeVisible();
+  }
+  const { id, key } = await readProfile(p);
+  expect(id && key).toBeTruthy();
+  return { id: id!, key: key! };
+}
 
 /** Im Profil ein Set anlegen – Schamlos: schwarze und weiße Karten je Zeile */
 async function newSchamlosSet(p: Page, name: string) {
