@@ -113,7 +113,11 @@ test("Zahlen-Rommé online mit drei Bots: nur die eigene Bank, Zugzeit, legen bi
   await expect(page.locator('[data-testid^="count-"]')).toHaveCount(4);
   let shotTurn = false, shotTimer = false;
   const roundEnd = page.getByTestId("round-end");
-  for (let i = 0; i < 1500 && !(await roundEnd.isVisible()); i++) {
+  // Das Rundenende steht nur kurz da (die Bots spielen weiter): ein eigener Beobachter wartet parallel
+  // darauf, statt nur zwischen zwei Zügen nachzusehen – so wird es nicht verpasst
+  let ended = false;
+  const seen = roundEnd.waitFor({ state: "visible", timeout: 380_000 }).then(() => (ended = true), () => false);
+  for (let i = 0; i < 1500 && !ended && !(await roundEnd.isVisible()); i++) {
     if (!shotTimer && (await page.getByTestId("turn-timer").isVisible())) shotTimer = true;
     if (!shotTurn && (await page.getByTestId("draw").isEnabled().catch(() => false))) {
       await expectNoScroll(page); await shot(page, "zahlenromme-zug"); shotTurn = true;
@@ -121,9 +125,12 @@ test("Zahlen-Rommé online mit drei Bots: nur die eigene Bank, Zugzeit, legen bi
     if (!(await step(page))) await page.waitForTimeout(300);
   }
   expect(shotTimer).toBe(true);
-  await expect(roundEnd).toBeVisible();
-  await expectNoScroll(page);
-  await shot(page, "zahlenromme-runde");
+  expect(await seen).toBe(true);
+  // Foto nur, solange das Rundenende noch steht
+  if (await roundEnd.isVisible()) {
+    await expectNoScroll(page);
+    await shot(page, "zahlenromme-runde");
+  }
 });
 
 /** Laptop oder Fernseher als Großer Tisch */

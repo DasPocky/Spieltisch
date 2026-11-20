@@ -104,13 +104,19 @@ for (const [w, h, bots] of [[360, 640, 2], [390, 844, 3]] as const) {
     await botRoom(page, bots);
     await expect(page.getByTestId("contract")).toBeVisible({ timeout: 30_000 });
     // zu viert sitzt der Geber aus – dann hat er keine Karten
-    let shotBid = false, shotOut = false, declared = false, shotSummary = false;
+    let shotBid = false, shotOut = false, declared = false, shotSummary = false, checked = false;
     const sum = page.getByTestId("round-summary");
     // nach Zeit statt nach Zügen: die Bots ziehen mit Pausen, ein Mensch wird nicht in jedem Spiel Alleinspieler
     // unter Last spielen die Bots langsamer; die Schleife endet sofort, sobald die Abrechnung da ist
     const until = Date.now() + 540_000;
     while (Date.now() < until) {
       if (await sum.isVisible()) {
+        // Erst prüfen, dann fotografieren: der nächste Geber (ein Bot) gibt bald neu, dann ist die Abrechnung weg
+        if (declared) {
+          await expect(page.getByTestId("lines")).toContainText("× 24");
+          await expect(page.getByTestId("skat-shown").getByRole("img")).toHaveCount(2);
+          checked = true;
+        }
         if (!shotSummary || declared) { await expectNoScroll(page); await shot(page, `skat-abrechnung-${w}`); shotSummary = true; }
         if (declared) break;
         await page.getByRole("button", { name: /^Spiel \d+ geben$/ }).click({ timeout: 3000 }).catch(() => {});
@@ -135,9 +141,8 @@ for (const [w, h, bots] of [[360, 640, 2], [390, 844, 3]] as const) {
       if (did === "play" && !(await page.getByTestId("trick").isVisible().catch(() => false))) await page.waitForTimeout(100);
     }
     expect(declared).toBe(true);
-    await expect(sum).toBeVisible();
-    await expect(page.getByTestId("lines")).toContainText("× 24");
-    await expect(page.getByTestId("skat-shown").getByRole("img")).toHaveCount(2);
+    // Abrechnung des eigenen Spiels gesehen und geprüft (Zeilen, gezeigter Skat)
+    expect(checked).toBe(true);
     if (bots === 3) expect(shotOut).toBe(true);
     // Bots geben nicht von selbst weiter – der Mensch liest erst
     await page.waitForTimeout(7000);
