@@ -147,9 +147,9 @@ Unter `/tisch` baut ein großer Bildschirm einen Raum auf (oder zeigt einen lauf
 
 Ein Spiel bekommt seine Tisch-Ansicht über ein Modell in `src/platform/table/model.ts` (Stapel, Ablage, Kartenzahl je Spieler, wer dran ist, Verlauf). Die 3D-Szene (`table/scene.ts`, three.js, nur bei Bedarf geladen) zeichnet daraus den Holztisch; Kartenbilder kommen aus denselben Bausteinen wie am Handy (`table/textures.ts`). Spiele ohne Modell zeigt der Tisch wie ein Handy in der Mitte.
 
-## Basispfad (endlab.de/spieltisch)
+## Basispfad
 
-Die App kann unter einem Pfad laufen (live: `endlab.de/spieltisch`). Im Code bleiben alle Pfade **logisch** (`/r/CODE`, `/profil`, `/api/…`):
+Live läuft die App an der Wurzel von `spieltisch.endlab.de`. Sie kann aber unter einem Pfad laufen (`APP_BASE`). Im Code bleiben alle Pfade **logisch** (`/r/CODE`, `/profil`, `/api/…`):
 
 - `shared/platform/base.ts`: `BASE` (beim Bauen aus `APP_BASE`, sonst leer), `withBase`/`stripBase`/`url`.
 - Anfragen an `/api/…` bekommen den Basispfad zentral beim Start (`installBase` in `src/lib/base.ts`) – neuer Code ruft einfach `fetch("/api/…")`.
@@ -159,7 +159,7 @@ Die App kann unter einem Pfad laufen (live: `endlab.de/spieltisch`). Im Code ble
 
 Feste Pfade wie `"/r/" + code` direkt in `location`/`history` vermeiden – immer über die Helfer.
 
-Bauen und prüfen mit Basispfad: `APP_BASE=/spieltisch npm run build && npx vite preview --port 5202`, dann `APP_BASE=/spieltisch PW_PORT=5202 npx playwright test basispfad --project=spiele --no-deps`. Vorschau-Builds bei Cloudflare (Zweig ≠ `main`) bauen automatisch mit `/spieltisch`; die Seite liegt dann unter `…workers.dev/spieltisch/` (die Wurzel geht weiter). Der Worker reicht `/spieltisch/*` ohne Präfix an `ASSETS` weiter.
+Bauen und prüfen mit Basispfad: `APP_BASE=/spieltisch npm run build && npx vite preview --port 5202`, dann `APP_BASE=/spieltisch PW_PORT=5202 npx playwright test basispfad --project=spiele --no-deps`. Der Worker nimmt `/spieltisch/*` von früher weiter an (siehe Betrieb, Frühere Adressen).
 
 ## Versionen und Updates
 

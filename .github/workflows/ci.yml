@@ -73,6 +73,9 @@ jobs:
         env:
           PW_NO_TABLE: ${{ matrix.notable }}
           CI: true
+      # Seitenzustand fehlgeschlagener Tests direkt im Log – ohne den Anhang herunterladen zu müssen
+      - if: failure()
+        run: find test-results -name error-context.md -exec sh -c 'echo "::group::$1"; cat "$1"; echo "::endgroup::"' _ {} \;
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
