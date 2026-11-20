@@ -37,7 +37,8 @@ jobs:
         env:
           SIM_ROUNDS: ${{ github.event_name == 'pull_request' && '5' || github.event_name == 'schedule' && '200' || '25' }}
 
-  # Handy-Tests laufen gleichzeitig mit dem Build, verteilt auf mehrere Rechner – jeder mit eigenem Server.
+  # Handy-Tests laufen gleichzeitig mit dem Build, verteilt auf viele Rechner – jeder mit eigenem Server.
+  # Öffentliches Repo: Minuten kosten nichts, bis zu 20 Jobs laufen gleichzeitig (hier 16 + Build).
   # Die Admin-Tests schalten Spiele ab und laufen deshalb für sich.
   e2e:
     name: Handy-Tests (${{ matrix.name }})
@@ -48,10 +49,18 @@ jobs:
       matrix:
         include:
           # Die schweren Fernseher-Tests (table.spec) laufen auf eigenen Rechnern, damit kein Teil viel länger braucht als die anderen
-          - { name: "Spiele 1/4", args: "--project=spiele --no-deps --shard=1/4", setup: true, notable: "1" }
-          - { name: "Spiele 2/4", args: "--project=spiele --no-deps --shard=2/4", setup: true, notable: "1" }
-          - { name: "Spiele 3/4", args: "--project=spiele --no-deps --shard=3/4", setup: true, notable: "1" }
-          - { name: "Spiele 4/4", args: "--project=spiele --no-deps --shard=4/4", setup: true, notable: "1" }
+          - { name: "Spiele 1/12", args: "--project=spiele --no-deps --shard=1/12", setup: true, notable: "1" }
+          - { name: "Spiele 2/12", args: "--project=spiele --no-deps --shard=2/12", setup: true, notable: "1" }
+          - { name: "Spiele 3/12", args: "--project=spiele --no-deps --shard=3/12", setup: true, notable: "1" }
+          - { name: "Spiele 4/12", args: "--project=spiele --no-deps --shard=4/12", setup: true, notable: "1" }
+          - { name: "Spiele 5/12", args: "--project=spiele --no-deps --shard=5/12", setup: true, notable: "1" }
+          - { name: "Spiele 6/12", args: "--project=spiele --no-deps --shard=6/12", setup: true, notable: "1" }
+          - { name: "Spiele 7/12", args: "--project=spiele --no-deps --shard=7/12", setup: true, notable: "1" }
+          - { name: "Spiele 8/12", args: "--project=spiele --no-deps --shard=8/12", setup: true, notable: "1" }
+          - { name: "Spiele 9/12", args: "--project=spiele --no-deps --shard=9/12", setup: true, notable: "1" }
+          - { name: "Spiele 10/12", args: "--project=spiele --no-deps --shard=10/12", setup: true, notable: "1" }
+          - { name: "Spiele 11/12", args: "--project=spiele --no-deps --shard=11/12", setup: true, notable: "1" }
+          - { name: "Spiele 12/12", args: "--project=spiele --no-deps --shard=12/12", setup: true, notable: "1" }
           - { name: "Tisch 1/2", args: "table.spec --project=spiele --no-deps --shard=1/2", setup: true }
           - { name: "Tisch 2/2", args: "table.spec --project=spiele --no-deps --shard=2/2", setup: true }
           - { name: "Verwaltung", args: "--project=admin --no-deps", setup: false }
@@ -63,7 +72,18 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # Browser zwischenspeichern (Schlüssel: Playwright-Version), nur die Systempakete kommen jedes Mal neu
+      - id: pw
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       # Einrichtung (z. B. „Ein Handy für alle“ einschalten) auf dem eigenen Server dieses Rechners
       - if: matrix.setup
         run: npx playwright test --project=setup
