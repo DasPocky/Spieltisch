@@ -89,9 +89,10 @@
       radial-gradient(circle 112px at calc(100% + 18px) calc(env(safe-area-inset-top, 0px) - 26px), rgb(63 182 216 / 0.35) 99%, transparent 100%) top / 100% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)) no-repeat,
       linear-gradient(160deg, var(--head-from), var(--head-to) 70%) top / 100% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)) no-repeat;
   }
-  :root[data-look="endlab"][data-shell] .tab-in > main > :is(header, h1) { color: #fff; }
-  :root[data-look="endlab"][data-shell] .tab-in > main > :is(header, h1) .text-muted-foreground,
-  :root[data-look="endlab"][data-shell] .tab-in > main > h1 + p { color: #a9e3f2; }
+  :root[data-look="endlab"][data-shell] [data-on-band] { color: #fff; }
+  /* Reine Überschrift als Titelzeile: so hoch wie eine Kopfzeile, damit jeder Titel gleich sitzt */
+  :root[data-look="endlab"][data-shell] h1[data-on-band] { display: flex; align-items: center; min-height: 44px; }
+  :root[data-look="endlab"][data-shell] [data-on-band] .text-muted-foreground { color: #a9e3f2; }
 }
 :root[data-look="endlab"][data-theme="light"] {
   --surf: #eef4f9; --ink: #0e2240; --tint: #3fb6d8; --hi: #1d7fa0; --back: #0e2240;

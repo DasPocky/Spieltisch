@@ -53,6 +53,8 @@ test("Erster Start: Profil vom alten Handy per Code übernehmen", async ({ brows
   // Altes Handy: Profil mit Namen, Code zum Übertragen holen
   const old = await (await browser.newContext()).newPage();
   await old.goto("/");
+  // Die App legt das Profil kurz nach dem Start an – erst dann gibt es ID und Schlüssel
+  await old.waitForFunction(() => localStorage.getItem("spieltisch:profile") !== null);
   await old.evaluate(() => localStorage.setItem("spieltisch:name", "Oma"));
   const code = await old.evaluate(async () => {
     const { id, key } = JSON.parse(localStorage.getItem("spieltisch:profile")!);

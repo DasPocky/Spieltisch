@@ -66,11 +66,9 @@ export function Home() {
           <Logo className="size-11 -rotate-6 rounded-xl" />
           {features?.profiles !== false && name && <Avatar avatar={avatar} className="absolute -right-1.5 -bottom-1.5 size-6 text-sm ring-2 ring-background" />}
         </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-2xl font-bold leading-tight tracking-tight" data-testid="greeting">{name ? `Hallo, ${name}!` : "Spieltisch"}</h1>
-          <p className="truncate text-sm text-muted-foreground">{name ? "Was spielt ihr heute?" : "Für euren Spieleabend"}</p>
-        </div>
+        <h1 className="min-w-0 flex-1 truncate text-2xl font-bold leading-tight tracking-tight" data-testid="greeting">{name ? `Hallo, ${name}!` : "Spieltisch"}</h1>
       </header>
+      <p className={cn("mt-1 truncate text-sm text-muted-foreground", !name && "lg:hidden")}>{name ? "Was spielt ihr heute?" : "Für euren Spieleabend"}</p>
 
       <DesktopHero top={!name} online={online} onlineOff={onlineOff} localOn={localOn} running={running}
         onRoom={() => setHosting(true)} onJoin={() => setJoining(true)} onLocal={() => playLocal(ids, locked)} />
