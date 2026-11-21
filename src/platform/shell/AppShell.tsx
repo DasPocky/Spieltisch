@@ -38,22 +38,50 @@ export function goTab(path: string) {
  */
 export function AppShell({ tab, children }: { tab: Tab; children: ReactNode }) {
   // Kopf im EndLab-Look nur auf den Tab-Seiten (looks.css: data-shell). Das Band reicht bis unter den
-  // Titelblock (Titel samt Unterzeile), damit kein Text auf der Kante steht; 36px Luft für die Welle.
+  // sichtbaren Titelblock (Titel samt Unterzeile), 24px Luft für die Welle. Was darunter folgt, rückt so
+  // weit ab, dass es ganz unter dem Band beginnt – nichts Bedienbares liegt halb im Dunkeln.
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.shell = tab;
+    let pushed: HTMLElement | null = null;
     const measure = () => {
+      if (pushed) { pushed.style.removeProperty("margin-top"); pushed = null; }
       const first = document.querySelector<HTMLElement>(".tab-in > main > :is(header, h1)");
       if (!first) return root.style.removeProperty("--band");
+      // Ausgeblendete Unterzeilen (z. B. auf kleinen Handys) zählen nicht zum Titelblock
+      const shown = (e: Element) => e.getClientRects().length > 0;
       let last: Element = first;
-      while (last.nextElementSibling && /^(H1|P)$/.test(last.nextElementSibling.tagName)) last = last.nextElementSibling;
-      root.style.setProperty("--band", `${Math.round(last.getBoundingClientRect().bottom + 36)}px`);
+      let next = first.nextElementSibling;
+      for (; next && /^(H1|P)$/.test(next.tagName); next = next.nextElementSibling) if (shown(next)) last = next;
+      while (next && !shown(next)) next = next.nextElementSibling;
+      // Ohne Scrollversatz: die Tab-Seite scrollt in sich, das Band bleibt stehen
+      const scrolled = first.closest(".tab-in")?.scrollTop ?? 0;
+      const band = Math.round(last.getBoundingClientRect().bottom + scrolled + 24);
+      root.style.setProperty("--band", `${band}px`);
+      if (next instanceof HTMLElement) {
+        const gap = band + 4 - (next.getBoundingClientRect().top + scrolled);
+        if (gap > 0) {
+          next.style.marginTop = `${Math.ceil((parseFloat(getComputedStyle(next).marginTop) || 0) + gap)}px`;
+          pushed = next;
+        }
+      }
     };
+    // Nachmessen, sobald die Seite fertig hereingeglitten ist oder sich ihr Inhalt ändert (nachgeladene
+    // Seiten, Schriften): Eine Messung mitten im Einblenden ergab sonst ein zu kurzes Band (Titel unsichtbar).
     const raf = requestAnimationFrame(measure);
     const late = setTimeout(measure, 400);
+    const main = document.querySelector(".tab-in")?.parentElement ?? document.body;
+    const mutations = new MutationObserver(() => requestAnimationFrame(measure));
+    mutations.observe(main, { childList: true, subtree: true });
+    const sizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(() => measure());
+    sizes?.observe(main);
     addEventListener("resize", measure);
+    addEventListener("animationend", measure);
+    void document.fonts?.ready.then(measure);
     return () => {
-      cancelAnimationFrame(raf); clearTimeout(late); removeEventListener("resize", measure);
+      cancelAnimationFrame(raf); clearTimeout(late); mutations.disconnect(); sizes?.disconnect();
+      if (pushed) pushed.style.removeProperty("margin-top");
+      removeEventListener("resize", measure); removeEventListener("animationend", measure);
       delete root.dataset.shell; root.style.removeProperty("--band");
     };
   }, [tab]);

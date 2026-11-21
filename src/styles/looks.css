@@ -85,8 +85,8 @@
 @media (max-width: 1023px) {
   :root[data-look="endlab"][data-shell] {
     --page-pattern:
-      radial-gradient(circle 112px at calc(100% + 18px) calc(env(safe-area-inset-top, 0px) - 26px), rgb(63 182 216 / 0.35) 99%, transparent 100%) no-repeat,
-      radial-gradient(75% 28px at 50% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)), var(--page-top) 99%, transparent 100%) no-repeat,
+      radial-gradient(75% 18px at 50% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)), var(--page-top) 99%, transparent 100%) no-repeat,
+      radial-gradient(circle 112px at calc(100% + 18px) calc(env(safe-area-inset-top, 0px) - 26px), rgb(63 182 216 / 0.35) 99%, transparent 100%) top / 100% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)) no-repeat,
       linear-gradient(160deg, var(--head-from), var(--head-to) 70%) top / 100% var(--band, calc(env(safe-area-inset-top, 0px) + 108px)) no-repeat;
   }
   :root[data-look="endlab"][data-shell] .tab-in > main > :is(header, h1) { color: #fff; }
