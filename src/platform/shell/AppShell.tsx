@@ -36,28 +36,36 @@ export function goTab(path: string) {
  * auf großen Bildschirmen (Laptop, Fernseher) links als Seitenleiste.
  * Raum und lokale Partie laufen ohne Hülle im Vollbild. Admin-Geräte haben einen fünften Tab „Verwaltung“.
  */
+/** Höhe der Titelzeile im Band (Kopfzeile mit Logo bzw. Zurück-Knopf, 44 px) */
+const TITLE_ROW = 44;
+
 export function AppShell({ tab, children }: { tab: Tab; children: ReactNode }) {
-  // Kopf im EndLab-Look nur auf den Tab-Seiten (looks.css: data-shell). Das Band reicht bis unter den
-  // sichtbaren Titelblock (Titel samt Unterzeile), 24px Luft für die Welle. Was darunter folgt, rückt so
-  // weit ab, dass es ganz unter dem Band beginnt – nichts Bedienbares liegt halb im Dunkeln.
+  // Kopf im EndLab-Look nur auf den Tab-Seiten (looks.css: data-shell). Das Band ist auf jeder Seite
+  // gleich hoch: Es umfasst genau die erste Zeile (Titel bzw. Kopfzeile, höchstens TITLE_ROW hoch) und
+  // die Welle. Diese Zeile trägt data-on-band und steht weiß darauf; was darunter folgt, rückt so weit
+  // ab, dass es ganz unter dem Band beginnt – nichts Bedienbares liegt halb im Dunkeln.
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.shell = tab;
     let pushed: HTMLElement | null = null;
-    const measure = () => {
+    let marked: HTMLElement | null = null;
+    const reset = () => {
       if (pushed) { pushed.style.removeProperty("margin-top"); pushed = null; }
-      const first = document.querySelector<HTMLElement>(".tab-in > main > :is(header, h1)");
-      if (!first) return root.style.removeProperty("--band");
-      // Ausgeblendete Unterzeilen (z. B. auf kleinen Handys) zählen nicht zum Titelblock
+      if (marked) { delete marked.dataset.onBand; marked = null; }
+    };
+    const measure = () => {
+      reset();
       const shown = (e: Element) => e.getClientRects().length > 0;
-      let last: Element = first;
-      let next = first.nextElementSibling;
-      for (; next && /^(H1|P)$/.test(next.tagName); next = next.nextElementSibling) if (shown(next)) last = next;
-      while (next && !shown(next)) next = next.nextElementSibling;
+      const first = [...document.querySelectorAll<HTMLElement>(".tab-in > main > :is(header, h1)")].find(shown);
+      if (!first) return root.style.removeProperty("--band");
+      first.dataset.onBand = "";
+      marked = first;
       // Ohne Scrollversatz: die Tab-Seite scrollt in sich, das Band bleibt stehen
       const scrolled = first.closest(".tab-in")?.scrollTop ?? 0;
-      const band = Math.round(last.getBoundingClientRect().bottom + scrolled + 24);
+      const band = Math.round(first.getBoundingClientRect().top + scrolled + TITLE_ROW + 20);
       root.style.setProperty("--band", `${band}px`);
+      let next = first.nextElementSibling;
+      while (next && !shown(next)) next = next.nextElementSibling;
       if (next instanceof HTMLElement) {
         const gap = band + 4 - (next.getBoundingClientRect().top + scrolled);
         if (gap > 0) {
@@ -80,7 +88,7 @@ export function AppShell({ tab, children }: { tab: Tab; children: ReactNode }) {
     void document.fonts?.ready.then(measure);
     return () => {
       cancelAnimationFrame(raf); clearTimeout(late); mutations.disconnect(); sizes?.disconnect();
-      if (pushed) pushed.style.removeProperty("margin-top");
+      reset();
       removeEventListener("resize", measure); removeEventListener("animationend", measure);
       delete root.dataset.shell; root.style.removeProperty("--band");
     };

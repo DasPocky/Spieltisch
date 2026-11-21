@@ -25,7 +25,7 @@ function Page({ children, back }: { children: ReactNode; back?: string }) {
   return (
     <main className={cn("mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6", !back && "pt-[max(1rem,2.5vh)]")}>
       {back && (
-        <header className="-mb-2 flex h-12 shrink-0 items-center">
+        <header className="flex h-11 shrink-0 items-center">
           <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => navigate(back)}><ChevronLeft />Alle Gruppen</Button>
         </header>
       )}
@@ -74,7 +74,7 @@ export function Groups() {
 
   return (
     <Page>
-      <h1 className="text-3xl font-bold tracking-tight">Gruppen</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Gruppen</h1>
       <p className="-mt-2 text-sm text-muted-foreground">Eure feste Runde: In der Lobby holt ihr Mitglieder mit einem Tipp dazu, Siege landen in eurer Bestenliste.</p>
 
       {groups.codes.length > 0 && (

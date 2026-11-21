@@ -123,12 +123,10 @@ export function Profile() {
 
   return (
     <main className={cn("mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6", !back && "pt-[max(1rem,2.5vh)]")}>
-      {back && (
-        <header className="-mb-2 flex h-12 shrink-0 items-center">
-          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" onClick={() => { remove(RETURN_KEY, true); navigate(back); }}><ChevronLeft />Zurück zum Spiel</Button>
-        </header>
-      )}
-      <h1 className="text-3xl font-bold tracking-tight">Mein Profil</h1>
+      <header className="flex h-11 shrink-0 items-center gap-1.5">
+        {back && <Button variant="ghost" size="icon" className="-ml-2 shrink-0" aria-label="Zurück zum Spiel" onClick={() => { remove(RETURN_KEY, true); navigate(back); }}><ChevronLeft /></Button>}
+        <h1 className="min-w-0 truncate text-2xl font-bold tracking-tight">Mein Profil</h1>
+      </header>
 
       <Card className="grid gap-2">
         <Label htmlFor="profile-name">Dein Name</Label>
